@@ -1,0 +1,69 @@
+= Neo4j Kafka Integrations
+
+
+
+== Neo4j-Kafka
+
+Stream transaction event handler events to a Kafka topic
+
+Ideas based on a now removed repository from workday.
+
+Currently for kafka
+
+
+=== Installation
+
+Build locally
+// todo release
+
+----
+mvn clean install
+----
+
+2. Copy `target/neo4j-kafka-*.jar` into `$NEO4J_HOME/plugins`
+3. Restart Neo4j
+
+=== Testing
+
+Following https://kafka.apache.org/quickstart[these instructions].
+
+1. Download & Unzip Kafka
+
+2. Run Zookeeper, server and a test consumer.
+
+----
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+bin/kafka-server-start.sh config/server.properties
+
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic neo4j [--from-beginning]
+----
+
+=== Next Steps
+
+* Externalize Config
+* Send data asynchronously
+* Use Kafka transactions for batching updates
+
+
+== Neo4j-Kafka-Consumer
+
+1. Read Kafka records from given topic(s)
+2. Treat records as input parameters
+3. Uses configured Cypher statements to merge them into the graph.
+
+=== Next Steps
+
+1. Implement as Kernel Extension
+2. Implement as Bolt Client
+
+== Neo4j-Kafka-Connect
+
+Implementation for a Kafka Sink / Source
+
+based on work in https://github.com/pegerto/kafka-connect-neo4j
+
+=== Next Steps
+
+1. Implement for Bolt connection
+2. Figure out if kernel extension makes sense
