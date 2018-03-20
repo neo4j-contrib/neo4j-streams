@@ -20,14 +20,14 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
     override fun newInstance(kernelContext: KernelContext, dependencies: Dependencies): Lifecycle {
         val db = dependencies.graphdatabaseAPI()
         val log = dependencies.log()
+        val configuration = dependencies.config()
 
         return object : LifecycleAdapter() {
             override fun start() {
                 val userLog = log.getUserLog(KafkaModule::class.java)
-                userLog.info("Starting up")
+                userLog.info("Initializing Kafka Connector")
                 try {
-                    val neo4jConfig = db.dependencyResolver.resolveDependency(Config::class.java)
-                    val config = KafkaConfiguration(neo4jConfig.raw)
+                    val config = KafkaConfiguration.from(configuration.raw)
                     val props = config.asProperties()
                     AdminClient.create(props).use { it.createTopics(listOf(NewTopic(config.topic, config.partitionSize, config.replication.toShort()))) }
 
@@ -35,8 +35,9 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
                     userLog.info("Kafka initialization successful")
 
                     txHandler = db.registerTransactionEventHandler(KafkaModule(userLog, producer, config))
+                    userLog.info("Kafka Connector started.")
                 } catch(e: Exception) {
-                    userLog.error("Error initializing Kafka Integration", e)
+                    userLog.error("Error initializing Kafka Connector", e)
                 }
             }
 
@@ -49,6 +50,7 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
     interface Dependencies {
         fun graphdatabaseAPI(): GraphDatabaseAPI
         fun log(): LogService
+        fun config(): Config
     }
 }
 

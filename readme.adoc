@@ -25,21 +25,27 @@ mvn clean install
 
 === Configuration
 
-The Kafka module contains the following configurations key (with defaults):
+You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
-* *kafka.bootstrap.servers*: _Default value: localhost:9092_
-* *kafka.acks*: _Default value: 1_
-* *kafka.retries*: _Default value: 2_
-* *kafka.partition.size*: _Default value: 1_
-* *kafka.linger.ms*: _Default value: 1_
-* *kafka.batch.size*: _Default value: 16384_
-* *kafka.buffer.memory*: _Default value: 33554432_
-* *kafka.topic*: _Default value: neo4j_
-* *kafka.replication*: _Default value: 1_
-* *kafka.group.id*: _Default value: neo4j_
+.neo4j.conf
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.acks=1
+kafka.num.partitions=1
+kafka.retries=2
+kafka.batch.size=16384
+kafka.buffer.memory=33554432
+kafka.reindex.batch.size=1000
+kafka.session.timeout.ms=15000
+kafka.connection.timeout.ms=10000
+kafka.replication=1
 
-For the description of every single proprerty you can count on the offcial https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka Documentation]
+kafka.topic=neo4j
+kafka.group.id=neo4j
+----
 
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
 
 === Testing
 

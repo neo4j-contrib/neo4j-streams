@@ -22,7 +22,7 @@ class KafkaModule(private val log: Log, private val producer: Producer<Long, Byt
 
             producer.send(producerRecord,
 //                    { meta, error -> error?.let { log.warn("an exception has occurred while sending record in partition ${meta.partition()} offset ${meta.offset()}") } })
-                    { meta, error -> log.warn("sending record in partition ${meta.partition()} offset ${meta.offset()} data ${meta.topic()} key size ${meta.serializedKeySize()}") })
+                    { meta, error -> log.warn("sending record in partition ${meta.partition()} offset ${meta.offset()} data ${meta.topic()} key size ${meta.serializedKeySize()}", error) })
 
         } catch (ioe: IOException) {
             log.error("error sending record to partition: $partition, with document id: ${node.id}", ioe)

@@ -22,7 +22,7 @@ class KafkaTest {
 
     companion object {
         @ClassRule @JvmField
-        var embeddedKafka = KafkaEmbedded(1, true, "neo4j")
+        var embeddedKafka = KafkaEmbedded(1, true, 1, "neo4j")
     }
 
     @Before

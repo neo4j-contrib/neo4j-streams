@@ -2,42 +2,46 @@ package kafka
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerConfig
-import org.neo4j.kernel.configuration.Config
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.apache.kafka.common.serialization.LongDeserializer
+import org.apache.kafka.common.serialization.LongSerializer
 import java.util.*
 
-data class KafkaConfiguration(val kafkaHosts: String = DEFAULTS.get("kafka.bootstrap.servers").toString(),
-                              val acks: String = DEFAULTS.get("kafka.acks").toString(),
-                              val retries: Int = DEFAULTS.get("kafka.retries").toString().toInt(),
-                              val partitionSize: Int = DEFAULTS.get("kafka.partition.size").toString().toInt(),
-                              val kafkaBatchSize: Int = DEFAULTS.get("kafka.batch.size").toString().toInt(),
-                              val kafkaBufferSize: Int = DEFAULTS.get("kafka.buffer.memory").toString().toInt(),
-                              val topic: String = DEFAULTS.get("kafka.topic").toString(),
-                              val replication: Int = DEFAULTS.get("kafka.replication").toString().toInt(),
-                              val groupId : String = DEFAULTS.get("kafka.group.id").toString()) {
+fun Map<String,String>.getInt(name:String, defaultValue: Int) = this.get(name)?.toInt() ?: defaultValue
 
-    constructor(config: Map<String, Any>) : this(
-            config.getOrDefault("kafka.bootstrap.servers", DEFAULTS.get("kafka.bootstrap.servers")).toString(),
-            config.getOrDefault("kafka.acks", DEFAULTS.get("kafka.acks")).toString(),
-            config.getOrDefault("kafka.retries", DEFAULTS.get("kafka.retries")).toString().toInt(),
-            config.getOrDefault("kafka.partition.size", DEFAULTS.get("kafka.partition.size")).toString().toInt(),
-            config.getOrDefault("kafka.batch.size", DEFAULTS.get("kafka.batch.size")).toString().toInt(),
-            config.getOrDefault("kafka.buffer.memory", DEFAULTS.get("kafka.buffer.memory")).toString().toInt(),
-            config.getOrDefault("kafka.topic", DEFAULTS.get("kafka.topic")).toString(),
-            config.getOrDefault("kafka.replication", DEFAULTS.get("kafka.replication")).toString().toInt(),
-            config.getOrDefault("kafka.group.id", DEFAULTS.get("kafka.group.id")).toString())
+data class KafkaConfiguration(val zookeeperHosts: String = "localhost:2181",
+                              val kafkaHosts: String = "localhost:9092",
+                              val acks: String = "1",
+                              val partitionSize: Int = 1,
+                              val retries: Int = 2,
+                              val kafkaBatchSize: Int = 16384,
+                              val kafkaBufferSize: Int = 33554432,
+                              val reindexBatchSize: Int = 1000,
+                              val sessionTimeoutMs: Int = 15 * 1000,
+                              val connectTimeoutMs: Int = 10 * 1000,
+                              val topic: String = "neo4j",
+                              val replication: Int = 1,
+                              val groupId: String = "neo4j") {
 
     companion object {
-        val DEFAULTS = mapOf(
-                "kafka.bootstrap.servers" to "localhost:9092",
-                "kafka.acks" to "1",
-                "kafka.retries" to 2,
-                "kafka.batch.size" to 16384,
-                "kafka.linger.ms" to 1,
-                "kafka.partition.size" to 1,
-                "kafka.buffer.memory" to 33554432,
-                "kafka.replication" to 1,
-                "kafka.group.id" to "neo4j",
-                "kafka.topic" to "neo4j")
+        fun from(config: Map<String, String>): KafkaConfiguration {
+            val default = KafkaConfiguration()
+            return default.copy(zookeeperHosts = config.getOrDefault("zookeeper.connect", default.zookeeperHosts),
+                    kafkaHosts = config.getOrDefault("bootstrap.servers", default.kafkaHosts),
+                    acks = config.getOrDefault("acks", default.acks),
+                    partitionSize = config.getInt("num.partitions", default.partitionSize),
+                    retries = config.getInt("retries", default.retries),
+                    kafkaBatchSize = config.getInt("batch.size", default.kafkaBatchSize),
+                    kafkaBufferSize = config.getInt("buffer.memory", default.kafkaBufferSize),
+                    reindexBatchSize = config.getInt("reindex.batch.size", default.reindexBatchSize),
+                    sessionTimeoutMs = config.getInt("session.timeout.ms", default.sessionTimeoutMs),
+                    connectTimeoutMs = config.getInt("connection.timeout.ms", default.connectTimeoutMs),
+                    topic = config.getOrDefault("topic", default.topic),
+                    replication = config.getInt("replication", default.replication),
+                    groupId = config.getOrDefault("group.id", default.groupId)
+            )
+        }
     }
 
     fun asProperties(): Properties {
@@ -53,10 +57,16 @@ data class KafkaConfiguration(val kafkaHosts: String = DEFAULTS.get("kafka.boots
         props.put("enable.auto.commit", "true")
         props.put("auto.commit.interval.ms", "1000")
          */
-        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.LongSerializer::class.java)
-        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.ByteArraySerializer::class.java)
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.LongDeserializer::class.java)
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, org.apache.kafka.common.serialization.ByteArrayDeserializer::class.java)
+        props.putAll(addSerializers())
+        return props
+    }
+
+    private fun addSerializers() : Properties {
+        val props = Properties()
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, LongSerializer::class.java)
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, ByteArraySerializer::class.java)
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java)
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer::class.java)
         return props
     }
 }
