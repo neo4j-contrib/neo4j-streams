@@ -23,6 +23,24 @@ mvn clean install
 2. Copy `target/neo4j-kafka-*.jar` into `$NEO4J_HOME/plugins`
 3. Restart Neo4j
 
+=== Configuration
+
+The Kafka module contains the following configurations key (with defaults):
+
+* *kafka.bootstrap.servers*: _Default value: localhost:9092_
+* *kafka.acks*: _Default value: 1_
+* *kafka.retries*: _Default value: 2_
+* *kafka.partition.size*: _Default value: 1_
+* *kafka.linger.ms*: _Default value: 1_
+* *kafka.batch.size*: _Default value: 16384_
+* *kafka.buffer.memory*: _Default value: 33554432_
+* *kafka.topic*: _Default value: neo4j_
+* *kafka.replication*: _Default value: 1_
+* *kafka.group.id*: _Default value: neo4j_
+
+For the description of every single proprerty you can count on the offcial https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka Documentation]
+
+
 === Testing
 
 Following https://kafka.apache.org/quickstart[these instructions].
@@ -41,7 +59,6 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic neo4j [-
 
 === Next Steps
 
-* Externalize Config
 * Send data asynchronously
 * Use Kafka transactions for batching updates
 

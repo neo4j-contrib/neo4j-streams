@@ -22,6 +22,7 @@
         <kotlin.version>1.1.51</kotlin.version>
         <neo4j.version>3.3.3</neo4j.version>
         <kafka.version>1.0.1</kafka.version>
+        <spring-kafka.version>2.1.4.RELEASE</spring-kafka.version>
     </properties>
 
     <organization>
@@ -34,6 +35,11 @@
             <id>jexp</id>
             <name>Michael Hunger</name>
             <email>michael@neo4j.com</email>
+        </developer>
+        <developer>
+            <id>conker84</id>
+            <name>Andrea Santurbano</name>
+            <email>santand@gmail.com</email>
         </developer>
     </developers>
 
@@ -116,6 +122,12 @@
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka-test</artifactId>
+            <version>${spring-kafka.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <repositories>
@@ -184,6 +196,12 @@
                         <goals>
                             <goal>test-compile</goal>
                         </goals>
+                        <configuration>
+                            <sourceDirs>
+                                <source>src/test/java</source>
+                                <source>src/test/kotlin</source>
+                            </sourceDirs>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
