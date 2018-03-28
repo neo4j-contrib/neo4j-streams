@@ -10,18 +10,13 @@ import java.io.IOException
 import java.lang.System.currentTimeMillis
 import java.util.concurrent.ThreadLocalRandom
 
-class KafkaModule(private val log: Log, private val producer: Producer<Long, ByteArray>, private val config: KafkaConfiguration) : TransactionEventHandler<Any> {
-    override fun afterCommit(data: TransactionData?, state: Any?) {}
-
-    override fun afterRollback(data: TransactionData?, state: Any?) {}
-
+class RecordPublisher(private val log: Log, private val producer: Producer<Long, ByteArray>, val config: KafkaConfiguration) {
     // todo batch send, see: https://kafka.apache.org/10/javadoc/index.html?org/apache/kafka/clients/producer/KafkaProducer.html
-    internal fun sendRecordToKafka(partition: Int, node: NodeRecord) {
+    fun sendRecordsToKafka(partition: Int, topic: String, node: NodeRecord) {
         try {
-            val producerRecord = ProducerRecord(config.topic, partition, currentTimeMillis(), node.id, objectMapper.writeValueAsBytes(node))
+            val producerRecord = ProducerRecord(topic, partition, currentTimeMillis(), node.id, objectMapper.writeValueAsBytes(node))
 
             producer.send(producerRecord,
-//                    { meta, error -> error?.let { log.warn("an exception has occurred while sending record in partition ${meta.partition()} offset ${meta.offset()}") } })
                     { meta, error -> log.warn("sending record in partition ${meta.partition()} offset ${meta.offset()} data ${meta.topic()} key size ${meta.serializedKeySize()}", error) })
 
         } catch (ioe: IOException) {
@@ -29,27 +24,39 @@ class KafkaModule(private val log: Log, private val producer: Producer<Long, Byt
         }
     }
 
-    override fun beforeCommit(transactionData: TransactionData): Any? {
-        val data = mutableMapOf<Long, NodeRecord>()
-
-        transactionData.deletedNodes().forEach { node ->
-            data.put(node.id, NodeRecord(node.id, state = UpdateState.deleted))
-        }
-
-        transactionData.createdNodes().forEach { node ->
-            data.computeIfAbsent(node.id, { NodeRecord(node, UpdateState.created) })
-        }
-
-        transactionData.assignedNodeProperties().forEach { p ->
-        data.computeIfAbsent(p.entity().id, { NodeRecord(p.entity(), UpdateState.updated) })
-        }
-
+    fun publish(data: Map<Long, Map<String, NodeRecord>>) {
         val partition = ThreadLocalRandom.current().nextInt(config.partitionSize)
-        data.values.forEach { sendRecordToKafka(partition, it) }
-        return null
+        data.values.forEach { records -> records.forEach { (topic, record) -> sendRecordsToKafka(partition, topic, record) } }
     }
 
     companion object {
         private val objectMapper = ObjectMapper()
+    }
+
+}
+class KafkaModule(val publisher: RecordPublisher, val config: KafkaConfiguration = publisher.config) : TransactionEventHandler<Any> {
+    override fun afterCommit(data: TransactionData?, state: Any?) {}
+
+    override fun afterRollback(data: TransactionData?, state: Any?) {}
+
+    override fun beforeCommit(transactionData: TransactionData): Any? {
+        // todo special case for default pattern (single topic, all labels, all props)
+
+        val data = mutableMapOf<Long, Map<String,NodeRecord>>()
+
+        transactionData.deletedNodes().forEach { node ->
+            data.put(node.id, NodePattern.forNode(config.patterns, node).associate { it.topic to NodeRecord(node.id, state = UpdateState.deleted)})
+        }
+
+        transactionData.createdNodes().forEach { node ->
+            data.computeIfAbsent(node.id, { NodePattern.toNodeRecords(node, UpdateState.created, config.patterns) })
+        }
+
+        transactionData.assignedNodeProperties().forEach { p ->
+        data.computeIfAbsent(p.entity().id, { NodePattern.toNodeRecords(p.entity(), UpdateState.updated, config.patterns) })
+        }
+
+        publisher.publish(data)
+        return null
     }
 }

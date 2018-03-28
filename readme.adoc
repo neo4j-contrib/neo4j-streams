@@ -27,6 +27,9 @@ mvn clean install
 
 You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
+// prefix ?
+// topic:*{*};:Node {prop1, prop2}, :Node{*,-prop1}
+
 .neo4j.conf
 ----
 kafka.zookeeper.connect=localhost:2181
@@ -41,11 +44,56 @@ kafka.session.timeout.ms=15000
 kafka.connection.timeout.ms=10000
 kafka.replication=1
 
-kafka.topic=neo4j
 kafka.group.id=neo4j
+
+kafka.topics=neo4j
+kafka.patterns=neo4j:*
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+=== Patterns
+
+To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
+
+You can chose Labels and properties for inclusion or exclusion, with `+*+` meaning *all*.
+
+Patterns are separated by semicolons `;`.
+
+The basic syntax is:
+
+----
+kafka.topics=topic1,topic2
+kafka.patterns=topic1:*;topic2:Label1 {prop1, prop2}, topic1:Label1:Label2{*,-prop1}, topic2:Label3{-prop1,-prop2,prop3}
+----
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| topic:*
+| all nodes go to this topic
+
+| topic:Label
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label{*}
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label1:Label2
+| nodes with these two labels are sent to this topic
+
+| topic1:Label1;topic2:Label2
+| nodes with Label1 are sent to topic1, nodes with Label2 are sent to topic2
+
+| topic:Label{prop1,prop2}
+| the prop1, prop2 of all nodes with this label are sent to the topic
+
+| topic:Label{-prop1,-prop2}
+| properties of the node with prop1, prop2 excluded, with the label are sent to the topic
+
+|===
 
 === Testing
 

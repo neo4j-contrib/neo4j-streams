@@ -16,6 +16,7 @@ import org.neo4j.kernel.lifecycle.LifecycleAdapter
 @Service.Implementation(KernelExtensionFactory::class)
 class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Dependencies>("KAFKA") {
     private var txHandler: TransactionEventHandler<Any>? = null
+    val prefix = "kafka."
 
     override fun newInstance(kernelContext: KernelContext, dependencies: Dependencies): Lifecycle {
         val db = dependencies.graphdatabaseAPI()
@@ -27,14 +28,17 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
                 val userLog = log.getUserLog(KafkaModule::class.java)
                 userLog.info("Initializing Kafka Connector")
                 try {
-                    val config = KafkaConfiguration.from(configuration.raw)
+                    val config = KafkaConfiguration.from(configuration.raw.filterKeys { it.startsWith(prefix) }.mapKeys { it.key.substring(prefix.length) })
                     val props = config.asProperties()
-                    AdminClient.create(props).use { it.createTopics(listOf(NewTopic(config.topic, config.partitionSize, config.replication.toShort()))) }
 
                     val producer = KafkaProducer<Long, ByteArray>(props)
                     userLog.info("Kafka initialization successful")
+                    AdminClient.create(config.asProperties()).use { client -> client.createTopics(
+                            config.topics.map { topic -> NewTopic(topic, config.partitionSize, config.replication.toShort()) }) }
 
-                    txHandler = db.registerTransactionEventHandler(KafkaModule(userLog, producer, config))
+                    val publisher = RecordPublisher(userLog, producer, config)
+
+                    txHandler = db.registerTransactionEventHandler(KafkaModule(publisher))
                     userLog.info("Kafka Connector started.")
                 } catch(e: Exception) {
                     userLog.error("Error initializing Kafka Connector", e)

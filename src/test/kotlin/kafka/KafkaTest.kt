@@ -1,15 +1,15 @@
 package kafka
 
-import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.producer.ProducerConfig
 import org.codehaus.jackson.map.ObjectMapper
-import org.junit.*
+import org.junit.After
+import org.junit.Before
+import org.junit.ClassRule
+import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.test.TestGraphDatabaseFactory
-import kotlin.test.assertEquals
 import org.springframework.kafka.test.rule.KafkaEmbedded
-import org.springframework.kafka.test.utils.KafkaTestUtils
+import kotlin.test.assertEquals
 
 
 /**
@@ -43,14 +43,16 @@ class KafkaTest {
         val props = config.asProperties()
         props.put("enable.auto.commit","true");
         val consumer = KafkaConsumer<Long,ByteArray>(props)
-        consumer.subscribe(listOf(config.topic))
+        consumer.subscribe(config.topics)
         Thread{
             db!!.execute("CREATE (:Person {name:'John Doe', age:42})").close()
         }.start()
-        val records = consumer.poll(10000)
+        val records = consumer.poll(5000)
         records.forEach { println("offset = ${it.offset()}, key = ${it.key()}, value = ${mapper.readValue(it.value(),Object::class.java)}") }
         assertEquals(1, records.count())
         assertEquals(true, records.all { mapper.readValue(it.value(),Map::class.java).let {
-            it["labels"] == listOf("Person") && it["data"] == mapOf("name" to "John Doe", "age" to 42)} })
+            it["labels"] == listOf("Person") && it["data"] == mapOf("name" to "John Doe", "age" to 42) && it["state"] == "created" } })
+
+        // todo update, delete
     }
 }

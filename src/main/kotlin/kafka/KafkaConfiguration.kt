@@ -20,14 +20,17 @@ data class KafkaConfiguration(val zookeeperHosts: String = "localhost:2181",
                               val reindexBatchSize: Int = 1000,
                               val sessionTimeoutMs: Int = 15 * 1000,
                               val connectTimeoutMs: Int = 10 * 1000,
-                              val topic: String = "neo4j",
                               val replication: Int = 1,
-                              val groupId: String = "neo4j") {
+                              val groupId: String = "neo4j",
+                              val topics: List<String> = listOf("neo4j"),
+                              val patterns: List<NodePattern> = listOf(NodePattern(topic=topics.first()))) {
 
     companion object {
-        fun from(config: Map<String, String>): KafkaConfiguration {
+        val commaRegexp = "\\s,\\s".toRegex()
+        fun from(config: Map<String,String>) : KafkaConfiguration {
             val default = KafkaConfiguration()
-            return default.copy(zookeeperHosts = config.getOrDefault("zookeeper.connect", default.zookeeperHosts),
+            val topics = config.get("topics")?.split(commaRegexp) ?: default.topics
+            return default.copy(zookeeperHosts = config.getOrDefault("zookeeper.connect",default.zookeeperHosts),
                     kafkaHosts = config.getOrDefault("bootstrap.servers", default.kafkaHosts),
                     acks = config.getOrDefault("acks", default.acks),
                     partitionSize = config.getInt("num.partitions", default.partitionSize),
@@ -35,11 +38,12 @@ data class KafkaConfiguration(val zookeeperHosts: String = "localhost:2181",
                     kafkaBatchSize = config.getInt("batch.size", default.kafkaBatchSize),
                     kafkaBufferSize = config.getInt("buffer.memory", default.kafkaBufferSize),
                     reindexBatchSize = config.getInt("reindex.batch.size", default.reindexBatchSize),
-                    sessionTimeoutMs = config.getInt("session.timeout.ms", default.sessionTimeoutMs),
-                    connectTimeoutMs = config.getInt("connection.timeout.ms", default.connectTimeoutMs),
-                    topic = config.getOrDefault("topic", default.topic),
+                    sessionTimeoutMs = config.getInt("session.timeout.ms", default.sessionTimeoutMs), 
+                    connectTimeoutMs = config.getInt("connection.timeout.ms", default.connectTimeoutMs), 
                     replication = config.getInt("replication", default.replication),
-                    groupId = config.getOrDefault("group.id", default.groupId)
+                    groupId = config.getOrDefault("group.id", default.groupId),
+                    topics = topics,
+                    patterns = NodePattern.parse(config.getOrDefault("patterns","neo4j:*"), topics = topics)
             )
         }
     }
