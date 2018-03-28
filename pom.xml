@@ -159,6 +159,7 @@
     </pluginRepositories>
 
     <build>
+    	<pluginManagement>
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -231,6 +232,7 @@
                 </configuration>
             </plugin>
         </plugins>
+        </pluginManagement>
     </build>
 
     <profiles>
