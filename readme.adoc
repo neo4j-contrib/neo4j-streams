@@ -1,4 +1,4 @@
-= Neo4j Kafka Integrations
+= Neo4j Streaming Data Integrations
 
 
 
