@@ -1,0 +1,140 @@
+= Neo4j Streaming Data Integrations
+
+
+
+== Neo4j-Kafka
+
+Stream transaction event handler events to a Kafka topic
+
+Ideas based on a now removed repository from workday.
+
+Currently for kafka
+
+
+=== Installation
+
+Build locally
+// todo release
+
+----
+mvn clean install
+----
+
+2. Copy `target/neo4j-kafka-*.jar` into `$NEO4J_HOME/plugins`
+3. Restart Neo4j
+
+=== Configuration
+
+You can set the following configuration values in your `neo4j.conf`, here are the defaults.
+
+// prefix ?
+// topic:*{*};:Node {prop1, prop2}, :Node{*,-prop1}
+
+.neo4j.conf
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.acks=1
+kafka.num.partitions=1
+kafka.retries=2
+kafka.batch.size=16384
+kafka.buffer.memory=33554432
+kafka.reindex.batch.size=1000
+kafka.session.timeout.ms=15000
+kafka.connection.timeout.ms=10000
+kafka.replication=1
+
+kafka.group.id=neo4j
+
+kafka.topics=neo4j
+kafka.patterns=neo4j:*
+----
+
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+=== Patterns
+
+To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
+
+You can chose Labels and properties for inclusion or exclusion, with `+*+` meaning *all*.
+
+Patterns are separated by semicolons `;`.
+
+The basic syntax is:
+
+----
+kafka.topics=topic1,topic2
+kafka.patterns=topic1:*;topic2:Label1 {prop1, prop2}, topic1:Label1:Label2{*,-prop1}, topic2:Label3{-prop1,-prop2,prop3}
+----
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| topic:*
+| all nodes go to this topic
+
+| topic:Label
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label{*}
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label1:Label2
+| nodes with these two labels are sent to this topic
+
+| topic1:Label1;topic2:Label2
+| nodes with Label1 are sent to topic1, nodes with Label2 are sent to topic2
+
+| topic:Label{prop1,prop2}
+| the prop1, prop2 of all nodes with this label are sent to the topic
+
+| topic:Label{-prop1,-prop2}
+| properties of the node with prop1, prop2 excluded, with the label are sent to the topic
+
+|===
+
+=== Testing
+
+Following https://kafka.apache.org/quickstart[these instructions].
+
+1. Download & Unzip Kafka
+
+2. Run Zookeeper, server and a test consumer.
+
+----
+bin/zookeeper-server-start.sh config/zookeeper.properties
+
+bin/kafka-server-start.sh config/server.properties
+
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic neo4j [--from-beginning]
+----
+
+=== Next Steps
+
+* Send data asynchronously
+* Use Kafka transactions for batching updates
+
+
+== Neo4j-Kafka-Consumer
+
+1. Read Kafka records from given topic(s)
+2. Treat records as input parameters
+3. Uses configured Cypher statements to merge them into the graph.
+
+=== Next Steps
+
+1. Implement as Kernel Extension
+2. Implement as Bolt Client
+
+== Neo4j-Kafka-Connect
+
+Implementation for a Kafka Sink / Source
+
+based on work in https://github.com/pegerto/kafka-connect-neo4j
+
+=== Next Steps
+
+1. Implement for Bolt connection
+2. Figure out if kernel extension makes sense

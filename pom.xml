@@ -5,8 +5,11 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.neo4j</groupId>
-    <artifactId>neo4j-kafka</artifactId>
-    <version>3.3.0.1</version>
+    <artifactId>neo4j-streams-parent</artifactId>
+    <version>3.4.7.1</version>
+    <packaging>pom</packaging>
+    <name>Neo4j Streams - Parent</name>
+    <description></description>
 
     <licenses>
         <license>
@@ -16,19 +19,25 @@
         </license>
     </licenses>
 
+    <modules>
+        <module>producer</module>
+        <module>consumer</module>
+        <module>doc</module>
+    </modules>
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
         <kotlin.version>1.1.51</kotlin.version>
-        <neo4j.version>3.3.3</neo4j.version>
+        <neo4j.version>3.4.7</neo4j.version>
         <kafka.version>1.0.1</kafka.version>
         <spring-kafka.version>2.1.4.RELEASE</spring-kafka.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>
 
     <organization>
-        <name>Neo Technology</name>
-        <url>http://neo4j.com</url>
+        <name>Neo4j, Inc.</name>
+        <url>https://neo4j.com</url>
     </organization>
 
     <developers>
@@ -45,9 +54,9 @@
     </developers>
 
     <scm>
-        <connection>scm:git:git@github.com:neo4j-contrib/neo4j-kafka.git</connection>
-        <developerConnection>scm:git:git@github.com:neo4j-contrib/neo4j-kafka.git</developerConnection>
-        <url>git@github.com:neo4j-contrib/neo4j-kafka.git</url>
+        <connection>scm:git:git@github.com:neo4j-contrib/neo4j-streams.git</connection>
+        <developerConnection>scm:git:git@github.com:neo4j-contrib/neo4j-streams.git</developerConnection>
+        <url>git@github.com:neo4j-contrib/neo4j-streams.git</url>
     </scm>
 
 
@@ -160,8 +169,10 @@
     </pluginRepositories>
 
     <build>
+
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
+
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
