@@ -1,17 +1,13 @@
 = Neo4j Streaming Data Integrations
 
+== Description
 
+The project is composed by 2 parts:
 
-== Neo4j-Kafka
+* Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
+* Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
 
-Stream transaction event handler events to a Kafka topic
-
-Ideas based on a now removed repository from workday.
-
-Currently for kafka
-
-
-=== Installation
+== Installation
 
 Build locally
 // todo release
@@ -23,12 +19,9 @@ mvn clean install
 2. Copy `target/neo4j-kafka-*.jar` into `$NEO4J_HOME/plugins`
 3. Restart Neo4j
 
-=== Configuration
+== Quick Configuration
 
 You can set the following configuration values in your `neo4j.conf`, here are the defaults.
-
-// prefix ?
-// topic:*{*};:Node {prop1, prop2}, :Node{*,-prop1}
 
 .neo4j.conf
 ----
@@ -95,7 +88,7 @@ kafka.patterns=topic1:*;topic2:Label1 {prop1, prop2}, topic1:Label1:Label2{*,-pr
 
 |===
 
-=== Testing
+== Testing
 
 Following https://kafka.apache.org/quickstart[these instructions].
 
@@ -110,31 +103,3 @@ bin/kafka-server-start.sh config/server.properties
 
 bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic neo4j [--from-beginning]
 ----
-
-=== Next Steps
-
-* Send data asynchronously
-* Use Kafka transactions for batching updates
-
-
-== Neo4j-Kafka-Consumer
-
-1. Read Kafka records from given topic(s)
-2. Treat records as input parameters
-3. Uses configured Cypher statements to merge them into the graph.
-
-=== Next Steps
-
-1. Implement as Kernel Extension
-2. Implement as Bolt Client
-
-== Neo4j-Kafka-Connect
-
-Implementation for a Kafka Sink / Source
-
-based on work in https://github.com/pegerto/kafka-connect-neo4j
-
-=== Next Steps
-
-1. Implement for Bolt connection
-2. Figure out if kernel extension makes sense

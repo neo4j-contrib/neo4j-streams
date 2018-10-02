@@ -1,0 +1,58 @@
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "updated",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": 123,
+    "type": "relationship",
+    "name": "KNOWS",
+    "before": {
+      "properties": {
+        "since": "2018-04-05T12:34:00[Europe/Berlin]"
+      },
+      "startNode": {
+        "labels": ["Person"],
+        "id": 123
+      },
+      "endNode": {
+        "labels": ["Person"],
+        "id": 456
+      }
+    },
+    "after": {
+      "properties": {
+        "since": "2018-04-05T12:34:00[Europe/Berlin]",
+        "to": "2019-04-05T23:00:00[Europe/Berlin]"
+      },
+      "startNode": {
+        "labels": ["Person"],
+        "id": 123
+      },
+      "endNode": {
+        "labels": ["Person"],
+        "id": 456
+      }
+    }
+  },
+  "schema": {
+    "before": {
+      "properties": {
+        "since": "datetime"
+      }
+    },
+    "after": {
+      "properties": {
+        "since": "datetime",
+        "to": "datetime"
+      }
+    }
+  }
+}

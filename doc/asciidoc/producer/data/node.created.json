@@ -1,0 +1,40 @@
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "created",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": 1004,
+    "type": "node",
+    "after": {
+      "labels": ["Person"],
+      "properties": {
+        "last_name": "Kretchmar",
+        "email": "annek@noanswer.org",
+        "first_name": "Anne Marie"
+      }
+    }
+  },
+  "schema": {
+    "after": {
+      "constraints": [{
+        "label": "Person",
+        "type": "NODE_KEY",
+        "properties": ["first_name", "last_name"]
+      }],
+      "properties": {
+        "id": "integer",
+        "last_name": "string",
+        "email": "string",
+        "first_name": "string"
+      }
+    }
+  }
+}

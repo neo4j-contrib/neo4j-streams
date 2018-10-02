@@ -1,0 +1,347 @@
+== Neo4j Streams Producer
+
+Is the transaction event handler events that sends data to a Kafka topic
+
+=== Configuration
+
+You can set the following configuration values in your `neo4j.conf`, here are the defaults.
+
+.neo4j.conf
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.acks=1
+kafka.num.partitions=1
+kafka.retries=2
+kafka.batch.size=16384
+kafka.buffer.memory=33554432
+kafka.reindex.batch.size=1000
+kafka.session.timeout.ms=15000
+kafka.connection.timeout.ms=10000
+kafka.replication=1
+
+kafka.topics=neo4j
+kafka.patterns=neo4j:*
+----
+
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+=== Patterns
+
+To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
+
+You can chose Labels and properties for inclusion or exclusion, with `+*+` meaning *all*.
+
+Patterns are separated by semicolons `;`.
+
+The basic syntax is:
+
+----
+kafka.topics=topic1,topic2
+kafka.patterns=topic1:*;topic2:Label1{prop1, prop2}, topic1:Label1:Label2{*,-prop1}, topic2:Label3{-prop1,-prop2,prop3}
+----
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| topic:*
+| all nodes go to this topic
+
+| topic:Label
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label{*}
+| all nodes with this label with all their properties go to this topic
+
+| topic:Label1:Label2
+| nodes with these two labels are sent to this topic
+
+| topic1:Label1;topic2:Label2
+| nodes with Label1 are sent to topic1, nodes with Label2 are sent to topic2
+
+| topic:Label{prop1,prop2}
+| the prop1, prop2 of all nodes with this label are sent to the topic
+
+| topic:Label{-prop1,-prop2}
+| properties of the node with prop1, prop2 excluded, with the label are sent to the topic
+
+|===
+
+=== Events
+
+The Producer streams three kind of events:
+
+* *created*: when a node/relation/property is created
+* *updated*: when a node/relation/property is updated
+* *deleted*: when a node/relation/property is deleted
+
+==== Created
+
+Following an example of the node creation event:
+
+```json
+include::data/node.created.json[]
+```
+
+```json
+include::data/relationship.created.json[]
+```
+
+==== Updated
+
+Following an example of the node update event:
+
+```json
+include::data/node.updated.json[]
+```
+
+```json
+include::data/relationship.updated.json[]
+```
+
+==== Deleted
+
+Following an example of the node creation event:
+
+```json
+include::data/node.deleted.json[]
+```
+
+```json
+include::data/relationship.deleted.json[]
+```
+
+=== Meta
+
+The *meta* field contains the metadata related to the transaction event:
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*timestamp*
+|Number
+|The timestamp related to the transaction event
+
+|*username*
+|String
+|The username that generated the transaction
+
+|*tx_id*
+|Number
+|The transaction id provided by the Neo4j trasaction manager
+
+|*tx_event_count*
+|Number
+|The number of the events included into the transaction (i.e. 2 update on nodes, 1 relationship creation)
+
+|*tx_event_id*
+|Number
+|The id of the event inside the transaction
+
+|*operation*
+|enum["created", "updated", "deleted"]
+|The operation type
+
+|*source*
+|Object
+|Contains the information about the source
+|===
+
+==== Source
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*hostname*
+|String
+|The information about the source
+|===
+
+
+=== Payload
+
+The *payload* field contains the information about the the data related to the event
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*id*
+|Number
+|The id of the graph entity
+
+|*type*
+|enum["node", "relationship"]
+|The type of the graph entity
+
+|*before*
+|Object
+|The data before the transaction event
+
+|*after*
+|Object
+|The data after the transaction event
+|===
+
+==== Payload: before and after
+
+We must distinguish two cases:
+
+===== Nodes
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*labels*
+|String[]
+|List of labels attached to the node
+
+|*properties*
+|Map<K, V>
+|List of properties attached to the node, the Key is the property name
+|===
+
+===== Relationships
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*type*
+|string
+|The relationship type
+
+|*properties*
+|Map<K,V>
+|List of properties attached to the relationship, the Key is the property name
+
+|*startNode*
+|Object
+|The starting node of the relationship
+
+|*endNode*
+|Object
+|The ending node of the relationship
+|===
+
+====== Relationships: startNode and endNode
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*id*
+|Number
+|The id of the node
+
+|*labels*
+|String[]
+|List of labels attached to the node
+|===
+
+
+=== Schema
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*before*
+|Object
+|The schema before the transaction event
+
+|*after*
+|Object
+|The schema after the transaction event
+|===
+
+==== Schema: before and after
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*before*
+|Object
+|The schema before the transaction event
+
+|*after*
+|Object
+|The schema after the transaction event
+|===
+
+We must distinguish two cases:
+
+===== Nodes
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*constraints*
+|Object[]
+|List of constraints attached to the node
+
+|*properties*
+|Map<K, V>
+|List of properties attached to the node
+|===
+
+====== Constraints
+
+A node can have a list of constraints attached to it:
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*label*
+|String
+|The label attached to the constraint
+
+|*type*
+|enum["NODE_KEY", "UNIQUENESS"]
+|The contraint type
+
+|*properties*
+|String[]
+|List of node properties involved in the constraint
+|===
+
+===== Relationships
+
+[cols="3*",options="header"]
+|===
+|Field
+|Type
+|Description
+
+|*properties*
+|Map<K, V>
+|List of properties attached to the relationship
+|===
