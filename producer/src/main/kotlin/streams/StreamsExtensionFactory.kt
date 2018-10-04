@@ -1,0 +1,4 @@
+package streams
+
+class StreamsExtensionFactory {
+}
