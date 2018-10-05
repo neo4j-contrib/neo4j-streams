@@ -2,10 +2,10 @@ package streams
 
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
+import streams.events.PreviousTransactionData
+import streams.events.PreviousTransactionDataBuilder
 import streams.events.StreamsEventBuilder
 import streams.events.StreamsEventMetaBuilder
-
-data class PreviousTransactionData(val labels : List<String>)
 
 class StreamsTransactionEventHandler(val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
 
@@ -17,8 +17,13 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
         router.sendEvent(event)
     }
 
-    override fun beforeCommit(p0: TransactionData?): PreviousTransactionData {
+    override fun beforeCommit(txd: TransactionData): PreviousTransactionData {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        //txd.assignedNodeProperties().map { p -> p.previouslyCommitedValue() }
+        val builder = PreviousTransactionDataBuilder()
+        builder = builder.withAssignedNodeProperties(txd.assignedNodeProperties())
+
+        return builder.build()
     }
 
     override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?) {
