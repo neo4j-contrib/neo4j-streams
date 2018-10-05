@@ -1,16 +1,15 @@
 package streams.events
 
-import kafka.UpdateState
 import org.neo4j.graphdb.schema.ConstraintType
 
-enum class UpdateState { created, updated, deleted }
+enum class OperationType { created, updated, deleted }
 
 data class Meta(val timestamp: Long,
                 val username: String,
                 val txId: Long,
                 val txEventId: Int,
                 val txEventsCount: Int,
-                val operation: UpdateState,
+                val operation: OperationType,
                 val source: Map<String, Any> = emptyMap())
 
 
