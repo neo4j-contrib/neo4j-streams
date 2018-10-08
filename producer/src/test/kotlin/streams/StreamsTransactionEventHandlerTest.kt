@@ -7,6 +7,7 @@ import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
 import streams.mocks.*
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class StreamsTransactionEventHandlerTest {
 
@@ -21,7 +22,7 @@ class StreamsTransactionEventHandlerTest {
     fun beforeCommitAddLabel() {
         val labels = mutableListOf<LabelEntry>(MockLabelEntry(
                 Label.label("Test"),
-                MockNode(nodeId = 1, labels = mutableListOf(Label.label("PreTest")))))
+                MockNode(nodeId = 1, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
 
         val txd = MockTransactionData(assignedLabels = labels)
         val previous = handler.beforeCommit(txd)
@@ -29,6 +30,9 @@ class StreamsTransactionEventHandlerTest {
         assertEquals(1, previous.nodeLabels.size)
         assertEquals(1, previous.nodeLabels[1]!!.size)
         assertEquals("PreTest", previous.nodeLabels[1]!![0])
+
+        assertEquals(1, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
     }
 
     @Test
@@ -44,22 +48,26 @@ class StreamsTransactionEventHandlerTest {
         assertEquals(2, previous.nodeLabels[1]!!.size)
         assertEquals("PreTest", previous.nodeLabels[1]!![0])
         assertEquals("Test", previous.nodeLabels[1]!![1])
+
+        assertEquals(1, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
     }
 
     @Test
     fun beforeCommitAddProperty() {
-        //FIXME check if it's correct
         val props = mutableListOf<PropertyEntry<Node>>()
-        val node = MockNode()
+        val node = MockNode(1)
         props.add(MockPropertyEntry<Node>(node, "p1", "value", null))
         val txd = MockTransactionData(assignedNodeProperties = props)
         val previous = handler.beforeCommit(txd)
         assertEquals(0, previous.nodeProperties.size)
+
+        assertEquals(1, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
     }
 
     @Test
     fun beforeCommitRemoveProperty() {
-        //FIXME check if it's correct
         val props = mutableListOf<PropertyEntry<Node>>()
         val node = MockNode(nodeId = 1)
         props.add(MockPropertyEntry<Node>(node, "p1", "value0", "value0"))
@@ -67,6 +75,9 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
+
+        assertEquals(1, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
     }
 
     @Test
@@ -78,7 +89,29 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
+
+        assertEquals(1, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
     }
 
 
+    @Test
+    fun beforeCommitMultinodes() {
+        val props = mutableListOf<PropertyEntry<Node>>()
+        val node = MockNode(nodeId = 1)
+        props.add(MockPropertyEntry<Node>(node, "p1", "value1", "value0"))
+
+        val labels = mutableListOf<LabelEntry>(MockLabelEntry(
+                Label.label("Test"),
+                MockNode(nodeId = 2, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
+
+        val txd = MockTransactionData(assignedNodeProperties = props, assignedLabels = labels)
+        val previous = handler.beforeCommit(txd)
+        assertEquals(1, previous.nodeProperties.size)
+        assertEquals("value0", previous.nodeProperties[1]!!["p1"])
+
+        assertEquals(2, previous.updatedNodeIds.size)
+        assertTrue { previous.updatedNodeIds.contains(1) }
+        assertTrue { previous.updatedNodeIds.contains(2) }
+    }
 }

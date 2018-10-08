@@ -1,8 +1,5 @@
 package kafka
 
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.admin.NewTopic
-import org.apache.kafka.clients.producer.KafkaProducer
 import org.neo4j.graphdb.event.TransactionEventHandler
 import org.neo4j.helpers.Service
 import org.neo4j.kernel.configuration.Config
@@ -25,6 +22,7 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
 
         return object : LifecycleAdapter() {
             override fun start() {
+                /*
                 val userLog = log.getUserLog(KafkaModule::class.java)
                 userLog.info("Initializing Kafka Connector")
                 try {
@@ -43,10 +41,13 @@ class KafkaExtensionFactory : KernelExtensionFactory<KafkaExtensionFactory.Depen
                 } catch(e: Exception) {
                     userLog.error("Error initializing Kafka Connector", e)
                 }
+                */
             }
 
             override fun stop() {
+                /*
                 txHandler?.let { db.unregisterTransactionEventHandler<Any>(it) }
+                */
             }
         }
     }

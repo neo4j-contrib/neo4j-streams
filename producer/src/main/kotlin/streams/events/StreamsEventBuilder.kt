@@ -53,6 +53,22 @@ class StreamsEventMetaBuilder(){
 }
 
 
+class NodePayloadBuilder(){
+
+    fun build() : NodePayload{
+        //FIXME implement
+        return NodePayload(0, null, null)
+    }
+}
+
+class SchemaBuilder() {
+
+    fun build() : Schema{
+        //FIXME implement
+        return Schema()
+    }
+}
+
 class StreamsEventBuilder(){
 
     private var meta: Meta? = null
@@ -61,6 +77,16 @@ class StreamsEventBuilder(){
 
     fun withMeta(meta : Meta): StreamsEventBuilder{
         this.meta = meta
+        return this
+    }
+
+    fun withPayload(payload : Payload) : StreamsEventBuilder{
+        this.payload = payload
+        return this
+    }
+
+    fun withSchema(schema : Schema) : StreamsEventBuilder{
+        this.schema = schema
         return this
     }
 

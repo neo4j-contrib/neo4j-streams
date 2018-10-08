@@ -2,26 +2,40 @@ package streams
 
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
-import streams.events.PreviousTransactionData
-import streams.events.PreviousTransactionDataBuilder
-import streams.events.StreamsEventBuilder
-import streams.events.StreamsEventMetaBuilder
+import streams.events.*
 
 class StreamsTransactionEventHandler(val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
 
-    override fun afterCommit(txd: TransactionData, p1: PreviousTransactionData?) {
+    override fun afterCommit(txd: TransactionData, previous: PreviousTransactionData) {
 
-        val meta = StreamsEventMetaBuilder().withTimestamp(txd.commitTime).build()
-        val builder = StreamsEventBuilder().withMeta(meta)
+        //FIXME implements with real data
+        val meta = StreamsEventMetaBuilder()
+                .withOperation(OperationType.updated)
+                .withTransactionEventId(0)
+                .withTransactionEventsCount(1)
+                .withUsername("test")
+                .withTimestamp(txd.commitTime)
+                .withTransactionId(0)
+                .build()
+
+        val payload = NodePayloadBuilder().build()
+
+        val schema = SchemaBuilder().build()
+
+        val builder = StreamsEventBuilder()
+                .withMeta(meta)
+                .withPayload(payload)
+                .withSchema(schema)
+
         val event = builder.build()
-        router.sendEvent(event)
+
+        previous.updatedNodeIds.forEach({ router.sendEvent(event) })
     }
 
     override fun beforeCommit(txd: TransactionData): PreviousTransactionData {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
-        //txd.assignedNodeProperties().map { p -> p.previouslyCommitedValue() }
         val builder = PreviousTransactionDataBuilder()
-        builder = builder.withAssignedNodeProperties(txd.assignedNodeProperties())
+                .withNodeProperties(txd.assignedNodeProperties(),txd.removedNodeProperties())
+                .withLabels(txd.assignedLabels(),txd.removedLabels())
 
         return builder.build()
     }

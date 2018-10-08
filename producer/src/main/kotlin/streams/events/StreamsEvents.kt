@@ -48,7 +48,7 @@ data class Constraint(val label: String?,
                       val properties: List<String>,
                       val type: ConstraintType)
 
-data class Schema(val constraints: List<Constraint>?,
-                  val properties: List<String>)
+data class Schema(val properties: List<String> = emptyList(),
+                  val constraints: List<Constraint>? = null)
 
 data class StreamsEvent(val meta: Meta, val payload: Payload, val schema: Schema)
