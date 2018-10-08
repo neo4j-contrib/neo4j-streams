@@ -20,8 +20,7 @@ kafka.session.timeout.ms=15000
 kafka.connection.timeout.ms=10000
 kafka.replication=1
 
-kafka.topics=neo4j
-kafka.patterns=neo4j:*
+kafka.routing.nodes.<TOPIC_NAME>=<PATTERN>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
@@ -37,8 +36,7 @@ Patterns are separated by semicolons `;`.
 The basic syntax is:
 
 ----
-kafka.topics=topic1,topic2
-kafka.patterns=topic1:*;topic2:Label1{prop1, prop2}, topic1:Label1:Label2{*,-prop1}, topic2:Label3{-prop1,-prop2,prop3}
+Label{*};Label1{prop1, prop2};Label3{-prop1,-prop2}
 ----
 
 [cols="1m,3a",opts=header]
@@ -46,26 +44,17 @@ kafka.patterns=topic1:*;topic2:Label1{prop1, prop2}, topic1:Label1:Label2{*,-pro
 | pattern
 | meaning
 
-| topic:*
-| all nodes go to this topic
+| Label{*}
+| all nodes with this label with all their properties go to the related topic
 
-| topic:Label
-| all nodes with this label with all their properties go to this topic
+| Label1:Label2
+| nodes with these two labels are sent to the related topic
 
-| topic:Label{*}
-| all nodes with this label with all their properties go to this topic
+| Label{prop1,prop2}
+| the prop1, prop2 of all nodes with this label are sent to the related topic
 
-| topic:Label1:Label2
-| nodes with these two labels are sent to this topic
-
-| topic1:Label1;topic2:Label2
-| nodes with Label1 are sent to topic1, nodes with Label2 are sent to topic2
-
-| topic:Label{prop1,prop2}
-| the prop1, prop2 of all nodes with this label are sent to the topic
-
-| topic:Label{-prop1,-prop2}
-| properties of the node with prop1, prop2 excluded, with the label are sent to the topic
+| Label{-prop1,-prop2}
+| properties of the node with prop1, prop2 excluded, with the label are sent to the related topic
 
 |===
 
