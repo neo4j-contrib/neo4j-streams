@@ -8,34 +8,131 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
 
     override fun afterCommit(txd: TransactionData, previous: PreviousTransactionData) {
 
-        //FIXME implements with real data
-        val meta = StreamsEventMetaBuilder()
-                .withOperation(OperationType.updated)
-                .withTransactionEventId(0)
-                .withTransactionEventsCount(1)
-                .withUsername("test")
-                .withTimestamp(txd.commitTime)
-                .withTransactionId(0)
-                .build()
+        //FIXME refactor
+        //FIXME metadata
+        //FIXME schema
 
-        val payload = NodePayloadBuilder().build()
+        val createdEvents = previous.createdPayload.map { it ->
+            val meta = StreamsEventMetaBuilder()
+                    .withOperation(OperationType.created)
+                    .withTransactionEventId(0)
+                    .withTransactionEventsCount(1)
+                    .withUsername("test")
+                    .withTimestamp(0)
+                    .withTransactionId(0)
+                    .build()
+            val schema = SchemaBuilder().build()
 
-        val schema = SchemaBuilder().build()
+            val builder = StreamsEventBuilder()
+                    .withMeta(meta)
+                    .withPayload(it)
+                    .withSchema(schema)
 
-        val builder = StreamsEventBuilder()
-                .withMeta(meta)
-                .withPayload(payload)
-                .withSchema(schema)
+            val event = builder.build()
+            event
+        }
 
-        val event = builder.build()
+        val deletedEvents = previous.deletedPayload.map { it ->
+            val meta = StreamsEventMetaBuilder()
+                    .withOperation(OperationType.deleted)
+                    .withTransactionEventId(0)
+                    .withTransactionEventsCount(1)
+                    .withUsername("test")
+                    .withTimestamp(0)
+                    .withTransactionId(0)
+                    .build()
 
-        previous.updatedNodeIds.forEach({ router.sendEvent(event) })
+            val schema = SchemaBuilder().build()
+
+            val builder = StreamsEventBuilder()
+                    .withMeta(meta)
+                    .withPayload(it)
+                    .withSchema(schema)
+
+            val event = builder.build()
+            event
+        }
+
+        val updatedNodes = previous.updatedPayloads.map { it ->
+            val meta = StreamsEventMetaBuilder()
+                    .withOperation(OperationType.updated)
+                    .withTransactionEventId(0)
+                    .withTransactionEventsCount(1)
+                    .withUsername("test")
+                    .withTimestamp(0)
+                    .withTransactionId(0)
+                    .build()
+
+            val schema = SchemaBuilder().build()
+
+            val builder = StreamsEventBuilder()
+                    .withMeta(meta)
+                    .withPayload(it)
+                    .withSchema(schema)
+
+            val event = builder.build()
+            event
+        }
+
+        createdEvents.forEach({ router.sendEvent(it)})
+        deletedEvents.forEach({ router.sendEvent(it)})
+        updatedNodes.forEach({ router.sendEvent(it)})
     }
 
     override fun beforeCommit(txd: TransactionData): PreviousTransactionData {
+
+        val createdPayload = txd.createdNodes().map {
+            val labels = it.labels.map { it.name() }
+
+            val afterNode = NodeChangeBuilder()
+                    .withLabels(labels)
+                    .withProperites(it.allProperties)
+                    .build()
+
+            val payload = NodePayloadBuilder()
+                    .withId(it.id)
+                    .withAfter(afterNode)
+                    .build()
+
+            payload
+        }
+
+        // labels and properties of deleted nodes are unreachable
+
+        //FIXME refactor see PreviousTransactionDataBuilder
+        val deletedNodeProperties = txd.removedNodeProperties().filter { txd.deletedNodes().contains( it.entity() )}
+                .map { it -> Pair(it.entity().id, Pair(it.key(), it.previouslyCommitedValue())) }
+                .groupBy({it.first},{it.second}) // { nodeId -> [(k,v)] }
+                .mapValues { it -> it.value.toMap() }
+
+        val deletedLabels = txd.removedLabels().filter { txd.deletedNodes().contains( it.node() )}
+                .map { labelEntry -> Pair(labelEntry.node().id, labelEntry.label().name()) } // [ (nodeId, [label]) ]
+                .groupBy({it.first},{it.second}) // { nodeId -> [label]  }
+
+
+        val removedNodeProperties = txd.removedNodeProperties().filter { !txd.deletedNodes().contains( it.entity() )}
+        val removedLabels = txd.removedLabels().filter { !txd.deletedNodes().contains( it.node() )}
+
+        val deletedPayload = txd.deletedNodes().map {
+
+            val beforeNode = NodeChangeBuilder()
+                    .withLabels(deletedLabels.getOrDefault(it.id, emptyList()))
+                    .withProperites(deletedNodeProperties.getOrDefault(it.id, emptyMap()))
+                    .build()
+
+            val payload = NodePayloadBuilder()
+                    .withId(it.id)
+                    .withBefore(beforeNode)
+                    .build()
+
+            payload
+        }
+
         val builder = PreviousTransactionDataBuilder()
-                .withNodeProperties(txd.assignedNodeProperties(),txd.removedNodeProperties())
-                .withLabels(txd.assignedLabels(),txd.removedLabels())
+                .withNodeProperties(txd.assignedNodeProperties(),removedNodeProperties)
+                .withLabels(txd.assignedLabels(),removedLabels)
+                .withCreatedPayloads(createdPayload)
+                .withDeletedPayloads(deletedPayload)
 
         return builder.build()
     }

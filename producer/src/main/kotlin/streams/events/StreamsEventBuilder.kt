@@ -52,12 +52,49 @@ class StreamsEventMetaBuilder(){
 
 }
 
+class NodeChangeBuilder(){
+
+    private var labels : List<String> = listOf()
+    private var properties :  Map<String, Any> = mapOf()
+
+    fun withLabels(labels : List<String>) : NodeChangeBuilder{
+        this.labels = labels
+        return this
+    }
+
+    fun withProperites(properties : Map<String, Any>) : NodeChangeBuilder{
+        this.properties = properties
+        return this
+    }
+
+    fun build() : NodeChange{
+        return NodeChange(properties = properties, labels = labels)
+    }
+}
 
 class NodePayloadBuilder(){
 
+    private var id : Long = 0
+    private var after : NodeChange? = null
+    private var before : NodeChange? = null
+
+    fun withId(id : Long) : NodePayloadBuilder{
+        this.id = id
+        return this
+    }
+
+    fun withBefore(before : NodeChange) : NodePayloadBuilder{
+        this.before = before
+        return this
+    }
+
+    fun withAfter(after : NodeChange) : NodePayloadBuilder{
+        this.after = after
+        return this
+    }
+
     fun build() : NodePayload{
-        //FIXME implement
-        return NodePayload(0, null, null)
+        return NodePayload(id, before, after)
     }
 }
 

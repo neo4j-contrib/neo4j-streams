@@ -6,6 +6,8 @@ import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.StreamsTransactionEventHandler
+import streams.events.NodeChange
+import streams.events.OperationType
 import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
 
@@ -29,8 +31,13 @@ class StreamsTransactionEventHandlerIT {
         db?.shutdown()
     }
 
-    @Test fun testBeforeCommit(){
+    @Test fun testSequence(){
         db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
+
+        assertEquals(2,router.events.size)
+        assertEquals(OperationType.created,router.events[0].meta.operation)
+        assertEquals(OperationType.created,router.events[1].meta.operation)
+
         router.reset()
 
         db!!.execute("MATCH (o:Person {name:'Omar'}), (a:Person {name:'Andrea'}) " +
@@ -42,6 +49,18 @@ class StreamsTransactionEventHandlerIT {
                 "SET a:Marked ")
 
         assertEquals(2,router.events.size)
+        assertEquals(OperationType.updated,router.events[0].meta.operation)
+        assertEquals(OperationType.updated,router.events[1].meta.operation)
+
+        router.reset()
+
+        db!!.execute("MATCH (o:Marked) DELETE o ")
+
+        assertEquals(1,router.events.size)
+        assertEquals(OperationType.deleted,router.events[0].meta.operation)
+        val before : NodeChange = router.events[0].payload.before as NodeChange
+        assertEquals(listOf("Person","Marked") , before.labels)
+        assertEquals(mapOf("name" to "Andrea", "age" to 31L) , before.properties)
     }
 
 }

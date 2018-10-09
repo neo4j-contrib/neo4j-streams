@@ -8,7 +8,9 @@ import org.neo4j.graphdb.event.TransactionData
 data class MockTransactionData(val assignedNodeProperties: MutableIterable<PropertyEntry<Node>> = mutableListOf(),
                                val removedNodeProperties: MutableIterable<PropertyEntry<Node>> = mutableListOf(),
                                val assignedLabels: MutableIterable<LabelEntry> = mutableListOf(),
-                               val removedLabels: MutableIterable<LabelEntry> = mutableListOf()) : TransactionData {
+                               val removedLabels: MutableIterable<LabelEntry> = mutableListOf(),
+                               val createdNodes : MutableIterable<Node> = mutableListOf(),
+                               val deletedNodes : MutableIterable<Node> = mutableListOf()) : TransactionData {
 
     override fun isDeleted(node: Node?): Boolean {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
@@ -39,7 +41,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun deletedNodes(): MutableIterable<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return deletedNodes
     }
 
     override fun metaData(): MutableMap<String, Any> {
@@ -51,7 +53,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun createdNodes(): MutableIterable<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return createdNodes
     }
 
     override fun assignedNodeProperties(): MutableIterable<PropertyEntry<Node>> {
@@ -90,7 +92,7 @@ data class MockPropertyEntry<T : PropertyContainer>(val entity: T,
 
 }
 
-class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf() ) : Node {
+class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf(), val properties:  MutableMap<String, Any> = mutableMapOf() ) : Node {
 
     override fun getId(): Long {
         return nodeId
@@ -105,7 +107,7 @@ class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Lab
     }
 
     override fun getAllProperties(): MutableMap<String, Any> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return properties
     }
 
     override fun addLabel(label: Label?) {
