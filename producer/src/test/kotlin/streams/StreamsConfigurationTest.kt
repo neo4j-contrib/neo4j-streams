@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class StreamsConfigurationTest {
 
     @Test
-    fun defaultPatterns() {
+    fun shouldCreateDefaultConfiguration() {
         val configuration = StreamsConfiguration.from(emptyMap())
 
         assertEquals(1, configuration.nodeRouting.size)
@@ -22,16 +22,23 @@ class StreamsConfigurationTest {
         assertTrue { configuration.relRouting[0].name == "" }
     }
 
-    @Test
-    fun nodesTopicName() {
-        val configuration = StreamsConfiguration.from(hashMapOf(
-                "kafka.routing.nodes.topic1" to "*",
-                "kafka.routing.nodes.topic2" to "Label1:Label2{p1, p2}",
-                "kafka.routing.nodes.topic3" to "Label1,Label2{p1, p2}",  // 2 rules
-                "kafka.routing.nodes.topic4" to "Label2{-p1, -p2}",
-                "kafka.routing.nodes.topic5" to "Label3{*}"))
+    @Test(expected = IllegalArgumentException::class)
+    fun badPatternShouldThrowIllegalArgumentException() {
+        StreamsConfiguration.from(linkedMapOf(
+                "kafka.routing.nodes.topic2" to "Label(1,2)"))
+    }
 
-        assertEquals(6, configuration.nodeRouting.size)
+    @Test
+    fun shouldCreateNodeRoutingConfiguration() {
+        val configuration = StreamsConfiguration.from(linkedMapOf(
+                "kafka.routing.nodes.topic1" to "*",
+                "kafka.routing.nodes.topic2" to "Label1:Label2{p1,p2}",
+                "kafka.routing.nodes.topic3.1" to "Label1;Label2{ p1, p2}",  // 2 rules
+                "kafka.routing.nodes.topic4" to "Label2{ -p1, -p2}",
+                "kafka.routing.nodes.topic5" to "Label3{*}",
+                "kafka.routing.nodes.topic6" to "Label4{ p1,p2,  p3, p4}"))
+
+        assertEquals(7, configuration.nodeRouting.size)
 
         assertEquals("topic1", configuration.nodeRouting[0].topic)
         assertTrue { configuration.nodeRouting[0].all }
@@ -45,13 +52,13 @@ class StreamsConfigurationTest {
         assertEquals(listOf("p1","p2"), configuration.nodeRouting[1].include)
         assertTrue { configuration.nodeRouting[1].exclude.isEmpty() }
 
-        assertEquals("topic3", configuration.nodeRouting[2].topic)
+        assertEquals("topic3.1", configuration.nodeRouting[2].topic)
         assertTrue { configuration.nodeRouting[2].all }
         assertEquals(listOf("Label1"), configuration.nodeRouting[2].labels)
         assertTrue { configuration.nodeRouting[2].include.isEmpty() }
         assertTrue { configuration.nodeRouting[2].exclude.isEmpty() }
 
-        assertEquals("topic3", configuration.nodeRouting[3].topic)
+        assertEquals("topic3.1", configuration.nodeRouting[3].topic)
         assertFalse { configuration.nodeRouting[3].all }
         assertEquals(listOf("Label2"), configuration.nodeRouting[3].labels)
         assertEquals(listOf("p1","p2"), configuration.nodeRouting[3].include)
@@ -59,24 +66,31 @@ class StreamsConfigurationTest {
 
         assertEquals("topic4", configuration.nodeRouting[4].topic)
         assertFalse { configuration.nodeRouting[4].all }
+        assertEquals(listOf("Label2"), configuration.nodeRouting[4].labels)
         assertTrue { configuration.nodeRouting[4].include.isEmpty() }
         assertEquals(listOf("p1","p2"), configuration.nodeRouting[4].exclude)
 
         assertEquals("topic5", configuration.nodeRouting[5].topic)
         assertTrue { configuration.nodeRouting[5].all }
-        assertTrue { configuration.nodeRouting[5].labels.isEmpty() }
+        assertEquals(listOf("Label3"), configuration.nodeRouting[5].labels)
         assertTrue { configuration.nodeRouting[5].include.isEmpty() }
         assertTrue { configuration.nodeRouting[5].exclude.isEmpty() }
+
+        assertEquals("topic6", configuration.nodeRouting[6].topic)
+        assertFalse { configuration.nodeRouting[6].all }
+        assertEquals(listOf("Label4"), configuration.nodeRouting[6].labels)
+        assertTrue { configuration.nodeRouting[6].exclude.isEmpty() }
+        assertEquals(listOf("p1","p2","p3","p4"), configuration.nodeRouting[6].include)
     }
 
     @Test
-    fun relsTopicName() {
-        val configuration = StreamsConfiguration.from(hashMapOf(
+    fun shouldCreateRelationshipRoutingConfiguration() {
+        val configuration = StreamsConfiguration.from(linkedMapOf(
                 "kafka.routing.relationships.topic1" to "*",
                 "kafka.routing.relationships.topic2" to "KNOWS",
                 "kafka.routing.relationships.topic3" to "KNOWS{*}",
-                "kafka.routing.relationships.topic4" to "KNOWS,LOVES{p1,p2}", //2 rules
-                "kafka.routing.relationships.topic5" to "LOVES{-p1,-p2}"))
+                "kafka.routing.relationships.topic4" to "KNOWS;LOVES{p1, p2}", //2 rules
+                "kafka.routing.relationships.topic5" to "LOVES{-p1, -p2 }"))
 
         assertEquals(6, configuration.relRouting.size)
 
@@ -115,5 +129,11 @@ class StreamsConfigurationTest {
         assertEquals("LOVES",configuration.relRouting[5].name)
         assertTrue { configuration.relRouting[5].include.isEmpty() }
         assertEquals(listOf("p1","p2"),configuration.relRouting[5].exclude)
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun multipleRelationshipsShouldThrowIllegalArgumentException() {
+        StreamsConfiguration.from(linkedMapOf(
+                "kafka.routing.relationships.topic2" to "KNOWS:FAILS"))
     }
 }
