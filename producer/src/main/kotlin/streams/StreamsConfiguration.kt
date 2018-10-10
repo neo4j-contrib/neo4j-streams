@@ -4,6 +4,15 @@ import kafka.getInt
 import org.apache.commons.lang3.StringUtils
 import streams.events.EntityType
 
+
+
+private fun <T> filterMap(config: Map<String, String>, routingPrefix: String, clazz: Class<T>): List<T> {
+    return config.entries
+            .filter { it.key.startsWith(routingPrefix) }
+            .map { it.key.replace(routingPrefix, StringUtils.EMPTY) to it.value }
+            .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.first, it.second, EntityType.node) as List<T> }
+}
+
 data class StreamsConfiguration(val zookeeperHosts: String = "localhost:2181",
                                 val kafkaHosts: String = "localhost:9092",
                                 val acks: String = "1",
@@ -19,15 +28,11 @@ data class StreamsConfiguration(val zookeeperHosts: String = "localhost:2181",
                                 val relRouting : List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration())){
     companion object {
         fun from(config: Map<String,String>) : StreamsConfiguration {
-            val nodeRouting = config.entries
-                    .filter { it.key.startsWith(RoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX) }
-                    .map { it.key.replace(RoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX, StringUtils.EMPTY) to it.value }
-                    .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.first, it.second, EntityType.node) as List<NodeRoutingConfiguration> }
+            val nodeRouting = filterMap(config = config, routingPrefix = RoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
+                    clazz = NodeRoutingConfiguration::class.java)
 
-            val relRouting = config.entries
-                    .filter { it.key.startsWith(RoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX) }
-                    .map { it.key.replace(RoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX, StringUtils.EMPTY) to it.value }
-                    .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.first, it.second, EntityType.relationship) as List<RelationshipRoutingConfiguration> }
+            val relRouting = filterMap(config = config, routingPrefix = RoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
+                    clazz = RelationshipRoutingConfiguration::class.java)
 
             val default = StreamsConfiguration()
             return default.copy(zookeeperHosts = config.getOrDefault("zookeeper.connect",default.zookeeperHosts),

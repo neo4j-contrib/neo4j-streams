@@ -1,7 +1,7 @@
 package streams
 
 import org.apache.kafka.common.internals.Topic
-import streams.events.EntityType
+import streams.events.*
 
 object RoutingConfigurationConstants {
     const val NODE_ROUTING_KEY_PREFIX: String = "kafka.routing.nodes."
@@ -44,6 +44,41 @@ abstract class RoutingConfiguration {
     abstract val exclude: List<String>
 }
 
+private fun hasLabel(label: String, streamsEvent: StreamsEvent): Boolean {
+    if (streamsEvent.payload.type == EntityType.relationship) {
+        return false
+    }
+    val payload = when(streamsEvent.meta.operation) {
+        OperationType.deleted -> streamsEvent.payload.before as NodeChange
+        else -> streamsEvent.payload.after as NodeChange
+    }
+    return payload.labels.orEmpty().contains(label)
+}
+
+private fun isRelationshipType(name: String, streamsEvent: StreamsEvent): Boolean {
+    if (streamsEvent.payload.type == EntityType.node) {
+        return false
+    }
+    val relationshipChange = streamsEvent.payload as RelationshipPayload
+    return relationshipChange.name == name
+}
+
+private fun filterProperties(recordChange: RecordChange?, routingConfiguration: RoutingConfiguration): Map<String, Any>? {
+    if (recordChange == null) {
+        return null
+    }
+    if (!routingConfiguration.all) {
+        if (routingConfiguration.include.isNotEmpty()) {
+            return recordChange.properties!!.filter { prop -> routingConfiguration.include.contains(prop.key) }
+        }
+        if (routingConfiguration.exclude.isNotEmpty()) {
+            return recordChange.properties!!.filter { prop -> !routingConfiguration.exclude.contains(prop.key) }
+        }
+
+    }
+    return recordChange.properties
+}
+
 data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                                     override val topic: String = "neo4j",
                                     override val all: Boolean = true,
@@ -67,7 +102,33 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                             include = properties.include, exclude = properties.exclude)
                 }
             }
+        }
 
+        fun prepareEvent(streamsEvent: StreamsEvent, routingConf: List<NodeRoutingConfiguration>): Map<String, StreamsEvent> {
+            return routingConf
+                    .filter {
+                        it.all || it.labels.any { hasLabel(it, streamsEvent) }
+                    }
+                    .map {
+                        val nodePayload = streamsEvent.payload as NodePayload
+                        val recordBefore = nodePayload.before as NodeChange
+                        val recordAfter = nodePayload.after as NodeChange
+
+                        val newRecordBefore = recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
+                                labels = recordBefore.labels)
+                        val newRecordAfter = recordAfter.copy(properties = filterProperties(streamsEvent.payload.after!!, it),
+                                labels = recordBefore.labels)
+                        val newNodePayload = nodePayload.copy(id = nodePayload.id,
+                                before = newRecordBefore,
+                                after = newRecordAfter)
+
+                        val newStreamsEvent = streamsEvent.copy(schema = streamsEvent.schema,
+                                meta = streamsEvent.meta,
+                                payload = newNodePayload)
+
+                        it.topic to newStreamsEvent
+                    }
+                    .associateBy({ it.first }, { it.second })
         }
     }
 }
@@ -98,6 +159,36 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                             include = properties.include, exclude = properties.exclude)
                 }
             }
+        }
+
+        fun prepareEvent(streamsEvent: StreamsEvent, routingConf: List<RelationshipRoutingConfiguration>): Map<String, StreamsEvent> {
+            return routingConf
+                    .filter {
+                        it.all || isRelationshipType(it.name, streamsEvent)
+                    }
+                    .map {
+                        val relationshipPayload = streamsEvent.payload as RelationshipPayload
+                        val recordBefore = relationshipPayload.before as RelationshipChange
+                        val recordAfter = relationshipPayload.after as RelationshipChange
+
+                        val newRecordBefore = recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
+                                sourceNode = recordBefore.sourceNode,
+                                endNode = recordBefore.endNode)
+                        val newRecordAfter = recordAfter.copy(properties = filterProperties(streamsEvent.payload.after!!, it),
+                                sourceNode = recordAfter.sourceNode,
+                                endNode = recordAfter.endNode)
+                        val newRelationshipPayload = relationshipPayload.copy(id = relationshipPayload.id,
+                                before = newRecordBefore,
+                                after = newRecordAfter,
+                                name = relationshipPayload.name)
+
+                        val newStreamsEvent = streamsEvent.copy(schema = streamsEvent.schema,
+                                meta = streamsEvent.meta,
+                                payload = newRelationshipPayload)
+
+                        it.topic to newStreamsEvent
+                    }
+                    .associateBy({ it.first }, { it.second })
         }
     }
 }

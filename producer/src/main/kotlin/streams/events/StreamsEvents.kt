@@ -18,11 +18,11 @@ enum class EntityType { node, relationship }
 data class RelationshipNodeChange(val id: Long,
                                   val labels: List<String>?)
 
-abstract class RecordChange{ abstract val properties: Map<String, Any> }
-data class NodeChange(override val properties: Map<String, Any>,
+abstract class RecordChange{ abstract val properties: Map<String, Any>? }
+data class NodeChange(override val properties: Map<String, Any>?,
                       val labels: List<String>?): RecordChange()
 
-data class RelationshipChange(override val properties: Map<String, Any>,
+data class RelationshipChange(override val properties: Map<String, Any>?,
                               val sourceNode: RelationshipNodeChange,
                               val endNode: RelationshipNodeChange): RecordChange()
 
