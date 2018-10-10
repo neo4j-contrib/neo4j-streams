@@ -9,17 +9,19 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
     override fun afterCommit(txd: TransactionData, previous: PreviousTransactionData) {
 
         //FIXME refactor
-        //FIXME metadata
         //FIXME schema
+
+        val totalEventsCount = previous.createdPayload.size + previous.deletedPayload.size + previous.updatedPayloads.size
+        var eventId = 0
 
         val createdEvents = previous.createdPayload.map { it ->
             val meta = StreamsEventMetaBuilder()
                     .withOperation(OperationType.created)
-                    .withTransactionEventId(0)
-                    .withTransactionEventsCount(1)
-                    .withUsername("test")
-                    .withTimestamp(0)
-                    .withTransactionId(0)
+                    .withTransactionEventId(eventId++)
+                    .withTransactionEventsCount(totalEventsCount)
+                    .withUsername(txd.username())
+                    .withTimestamp(txd.commitTime)
+                    .withTransactionId(txd.transactionId)
                     .build()
             val schema = SchemaBuilder().build()
 
@@ -35,11 +37,11 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
         val deletedEvents = previous.deletedPayload.map { it ->
             val meta = StreamsEventMetaBuilder()
                     .withOperation(OperationType.deleted)
-                    .withTransactionEventId(0)
-                    .withTransactionEventsCount(1)
-                    .withUsername("test")
-                    .withTimestamp(0)
-                    .withTransactionId(0)
+                    .withTransactionEventId(eventId++)
+                    .withTransactionEventsCount(totalEventsCount)
+                    .withUsername(txd.username())
+                    .withTimestamp(txd.commitTime)
+                    .withTransactionId(txd.transactionId)
                     .build()
 
             val schema = SchemaBuilder().build()
@@ -56,11 +58,11 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
         val updatedNodes = previous.updatedPayloads.map { it ->
             val meta = StreamsEventMetaBuilder()
                     .withOperation(OperationType.updated)
-                    .withTransactionEventId(0)
-                    .withTransactionEventsCount(1)
-                    .withUsername("test")
-                    .withTimestamp(0)
-                    .withTransactionId(0)
+                    .withTransactionEventId(eventId++)
+                    .withTransactionEventsCount(totalEventsCount)
+                    .withUsername(txd.username())
+                    .withTimestamp(txd.commitTime)
+                    .withTransactionId(txd.transactionId)
                     .build()
 
             val schema = SchemaBuilder().build()

@@ -37,6 +37,10 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(2,router.events.size)
         assertEquals(OperationType.created,router.events[0].meta.operation)
         assertEquals(OperationType.created,router.events[1].meta.operation)
+        assertEquals(2,router.events[0].meta.txEventsCount)
+        assertEquals(2,router.events[1].meta.txEventsCount)
+        assertEquals(0,router.events[0].meta.txEventId)
+        assertEquals(1,router.events[1].meta.txEventId)
 
         router.reset()
 
@@ -51,6 +55,11 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(2,router.events.size)
         assertEquals(OperationType.updated,router.events[0].meta.operation)
         assertEquals(OperationType.updated,router.events[1].meta.operation)
+        assertEquals(2,router.events[0].meta.txEventsCount)
+        assertEquals(2,router.events[1].meta.txEventsCount)
+        assertEquals(0,router.events[0].meta.txEventId)
+        assertEquals(1,router.events[1].meta.txEventId)
+
 
         router.reset()
 
@@ -61,6 +70,9 @@ class StreamsTransactionEventHandlerIT {
         val before : NodeChange = router.events[0].payload.before as NodeChange
         assertEquals(listOf("Person","Marked") , before.labels)
         assertEquals(mapOf("name" to "Andrea", "age" to 31L) , before.properties)
+
+        assertEquals(1,router.events[0].meta.txEventsCount)
+        assertEquals(0,router.events[0].meta.txEventId)
     }
 
 }

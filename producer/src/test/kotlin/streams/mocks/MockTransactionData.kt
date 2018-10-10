@@ -4,6 +4,7 @@ import org.neo4j.graphdb.*
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
 import org.neo4j.graphdb.event.TransactionData
+import java.time.LocalDateTime
 
 data class MockTransactionData(val assignedNodeProperties: MutableIterable<PropertyEntry<Node>> = mutableListOf(),
                                val removedNodeProperties: MutableIterable<PropertyEntry<Node>> = mutableListOf(),
@@ -11,6 +12,14 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
                                val removedLabels: MutableIterable<LabelEntry> = mutableListOf(),
                                val createdNodes : MutableIterable<Node> = mutableListOf(),
                                val deletedNodes : MutableIterable<Node> = mutableListOf()) : TransactionData {
+
+    override fun getTransactionId(): Long {
+        return 123
+    }
+
+    override fun getCommitTime(): Long {
+        return LocalDateTime.now().nano / 1000L
+    }
 
     override fun isDeleted(node: Node?): Boolean {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
@@ -37,7 +46,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun username(): String {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return "mock"
     }
 
     override fun deletedNodes(): MutableIterable<Node> {
