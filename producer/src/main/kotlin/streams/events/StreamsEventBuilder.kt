@@ -98,6 +98,37 @@ class NodePayloadBuilder(){
     }
 }
 
+class RelationshipPayloadBuilder() {
+    private var id: Long = 0
+    private var after: RelationshipChange? = null
+    private var before: RelationshipChange? = null
+    private var name: String? = null
+
+    fun withId(id: Long): RelationshipPayloadBuilder {
+        this.id = id
+        return this
+    }
+
+    fun withBefore(before: RelationshipChange): RelationshipPayloadBuilder {
+        this.before = before
+        return this
+    }
+
+    fun withAfter(after: RelationshipChange): RelationshipPayloadBuilder {
+        this.after = after
+        return this
+    }
+
+    fun withName(name: String): RelationshipPayloadBuilder {
+        this.name = name
+        return this
+    }
+
+    fun build(): RelationshipPayload {
+        return RelationshipPayload(id, before, after, name!!)
+    }
+}
+
 class SchemaBuilder() {
 
     fun build() : Schema{

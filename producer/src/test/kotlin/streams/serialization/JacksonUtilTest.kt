@@ -13,7 +13,7 @@ import kotlin.test.assertEquals
 class JacksoUtilTest {
 
     @Test
-    fun shouldSerializeGeomearyAndTemporalDataTypes() {
+    fun shouldSerializeGeometryAndTemporalDataTypes() {
         // Given
         val expected = "{\"point2d\":{\"coordinates\":[1.0,2.0],\"crs\":{\"name\":\"cartesian\",\"table\":\"SR_ORG\",\"code\":7203,\"href\":\"http://spatialreference.org/ref/sr-org/7203/\",\"dimension\":2,\"geographic\":false,\"calculator\":{},\"type\":\"cartesian\"}}," +
                 "\"point3d\":{\"coordinates\":[1.0,2.0,3.0],\"crs\":{\"name\":\"cartesian-3d\",\"table\":\"SR_ORG\",\"code\":9157,\"href\":\"http://spatialreference.org/ref/sr-org/9157/\",\"dimension\":3,\"geographic\":false,\"calculator\":{},\"type\":\"cartesian-3d\"}}," +

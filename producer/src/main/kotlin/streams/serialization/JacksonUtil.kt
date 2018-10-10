@@ -10,14 +10,15 @@ import org.codehaus.jackson.map.SerializerProvider
 import org.codehaus.jackson.map.module.SimpleModule
 import org.neo4j.graphdb.spatial.CRS
 import org.neo4j.graphdb.spatial.Geometry
+import org.neo4j.graphdb.spatial.Point
 import java.io.IOException
 import java.time.temporal.TemporalAccessor
 
 
 data class InternalPoint(val coordinates: List<Double>, val crs: CRS)
-class PointSerializer : JsonSerializer<Geometry>() {
+class PointSerializer : JsonSerializer<Point>() {
     @Throws(IOException::class, JsonProcessingException::class)
-    override fun serialize(value: Geometry?, jgen: JsonGenerator,
+    override fun serialize(value: Point?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
         if (value == null) {
             return
@@ -45,7 +46,7 @@ object JacksonUtil {
 
     init {
         val module = SimpleModule("Neo4jKakfaSerializer", Version(1, 0, 0, ""))
-        module.addSerializer(Geometry::class.java, PointSerializer())
+        module.addSerializer(Point::class.java, PointSerializer())
         module.addSerializer(TemporalAccessor::class.java, TemporalAccessorSerializer())
         OBJECT_MAPPER.registerModule(module)
         OBJECT_MAPPER.disable(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS)
