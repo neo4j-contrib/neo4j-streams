@@ -19,9 +19,13 @@ kafka.reindex.batch.size=1000
 kafka.session.timeout.ms=15000
 kafka.connection.timeout.ms=10000
 kafka.replication=1
+kafka.linger.ms=1
+kafka.transaction.id=
 
 kafka.routing.nodes.<TOPIC_NAME>=<PATTERN>
 ----
+
+Note: To use the Kafka transactions please set `kafka.transaction.id` and `kafka.acks` properly
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
 
@@ -211,7 +215,7 @@ We must distinguish two cases:
 |Type
 |Description
 
-|*type*
+|*label*
 |string
 |The relationship type
 
@@ -219,11 +223,11 @@ We must distinguish two cases:
 |Map<K,V>
 |List of properties attached to the relationship, the Key is the property name
 
-|*startNode*
+|*start*
 |Object
 |The starting node of the relationship
 
-|*endNode*
+|*end*
 |Object
 |The ending node of the relationship
 |===
@@ -314,7 +318,7 @@ A node can have a list of constraints attached to it:
 |The label attached to the constraint
 
 |*type*
-|enum["NODE_KEY", "UNIQUENESS"]
+|enum["NODE_KEY", "UNIQUENESS", "RELATIONSHIP_PROPERTY_EXISTENCE", "NODE_PROPERTY_EXISTENCE"]
 |The contraint type
 
 |*properties*

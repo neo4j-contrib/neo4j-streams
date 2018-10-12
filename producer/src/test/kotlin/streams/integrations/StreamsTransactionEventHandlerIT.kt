@@ -4,6 +4,8 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.impl.logging.SimpleLogService
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.StreamsTransactionEventHandler
 import streams.events.NodeChange
@@ -14,16 +16,15 @@ import kotlin.test.assertEquals
 
 class StreamsTransactionEventHandlerIT {
 
-    var db: GraphDatabaseService? = null
-    val router : MockStreamsEventRouter = MockStreamsEventRouter()
+    private var db: GraphDatabaseService? = null
 
     @Before
     fun setUp() {
-        router.reset()
+        MockStreamsEventRouter.reset()
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
+                .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter")
                 .newGraphDatabase()
-        db!!.registerTransactionEventHandler(StreamsTransactionEventHandler(router))
     }
 
     @After
@@ -34,15 +35,15 @@ class StreamsTransactionEventHandlerIT {
     @Test fun testSequence(){
         db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
 
-        assertEquals(2,router.events.size)
-        assertEquals(OperationType.created,router.events[0].meta.operation)
-        assertEquals(OperationType.created,router.events[1].meta.operation)
-        assertEquals(2,router.events[0].meta.txEventsCount)
-        assertEquals(2,router.events[1].meta.txEventsCount)
-        assertEquals(0,router.events[0].meta.txEventId)
-        assertEquals(1,router.events[1].meta.txEventId)
+        assertEquals(2,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.created,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(OperationType.created,MockStreamsEventRouter.events[1].meta.operation)
+        assertEquals(2,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(2,MockStreamsEventRouter.events[1].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+        assertEquals(1,MockStreamsEventRouter.events[1].meta.txEventId)
 
-        router.reset()
+        MockStreamsEventRouter.reset()
 
         db!!.execute("MATCH (o:Person {name:'Omar'}), (a:Person {name:'Andrea'}) " +
                 "SET o:Test " +
@@ -52,27 +53,27 @@ class StreamsTransactionEventHandlerIT {
                 "REMOVE o.name " +
                 "SET a:Marked ")
 
-        assertEquals(2,router.events.size)
-        assertEquals(OperationType.updated,router.events[0].meta.operation)
-        assertEquals(OperationType.updated,router.events[1].meta.operation)
-        assertEquals(2,router.events[0].meta.txEventsCount)
-        assertEquals(2,router.events[1].meta.txEventsCount)
-        assertEquals(0,router.events[0].meta.txEventId)
-        assertEquals(1,router.events[1].meta.txEventId)
+        assertEquals(2,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.updated,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(OperationType.updated,MockStreamsEventRouter.events[1].meta.operation)
+        assertEquals(2,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(2,MockStreamsEventRouter.events[1].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+        assertEquals(1,MockStreamsEventRouter.events[1].meta.txEventId)
 
 
-        router.reset()
+        MockStreamsEventRouter.reset()
 
         db!!.execute("MATCH (o:Marked) DELETE o ")
 
-        assertEquals(1,router.events.size)
-        assertEquals(OperationType.deleted,router.events[0].meta.operation)
-        val before : NodeChange = router.events[0].payload.before as NodeChange
+        assertEquals(1,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted,MockStreamsEventRouter.events[0].meta.operation)
+        val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals(listOf("Person","Marked") , before.labels)
         assertEquals(mapOf("name" to "Andrea", "age" to 31L) , before.properties)
 
-        assertEquals(1,router.events[0].meta.txEventsCount)
-        assertEquals(0,router.events[0].meta.txEventId)
+        assertEquals(1,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
     }
 
 }

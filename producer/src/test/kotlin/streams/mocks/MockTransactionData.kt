@@ -11,7 +11,11 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
                                val assignedLabels: MutableIterable<LabelEntry> = mutableListOf(),
                                val removedLabels: MutableIterable<LabelEntry> = mutableListOf(),
                                val createdNodes : MutableIterable<Node> = mutableListOf(),
-                               val deletedNodes : MutableIterable<Node> = mutableListOf()) : TransactionData {
+                               val deletedNodes : MutableIterable<Node> = mutableListOf(),
+                               val assignedRelationshipProperties: MutableIterable<PropertyEntry<Relationship>> = mutableListOf(),
+                               val removedRelationshipProperties: MutableIterable<PropertyEntry<Relationship>> = mutableListOf(),
+                               val createdRelationships : MutableIterable<Relationship> = mutableListOf(),
+                               val deletedRelationships : MutableIterable<Relationship> = mutableListOf()) : TransactionData {
 
     override fun getTransactionId(): Long {
         return 123
@@ -34,7 +38,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun removedRelationshipProperties(): MutableIterable<PropertyEntry<Relationship>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return removedRelationshipProperties
     }
 
     override fun removedNodeProperties(): MutableIterable<PropertyEntry<Node>> {
@@ -58,7 +62,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun deletedRelationships(): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return deletedRelationships
     }
 
     override fun createdNodes(): MutableIterable<Node> {
@@ -70,11 +74,11 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun createdRelationships(): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return createdRelationships
     }
 
     override fun assignedRelationshipProperties(): MutableIterable<PropertyEntry<Relationship>> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return assignedRelationshipProperties
     }
 }
 
@@ -233,13 +237,85 @@ class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Lab
 
 }
 
-class MockLabelEntry(val label:Label, val node:Node) : LabelEntry{
+class MockLabelEntry(val label:Label, val node:Node) : LabelEntry {
     override fun label(): Label {
         return label
     }
 
     override fun node(): Node {
         return node
+    }
+
+}
+
+class MockRelationship(private val id: Long, private val type: String, private val startNode: Node, private val endNode: Node,
+                       val properties:  MutableMap<String, Any> = mutableMapOf()): Relationship {
+    override fun hasProperty(p0: String?): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getAllProperties(): MutableMap<String, Any> {
+        return properties
+    }
+
+    override fun getGraphDatabase(): GraphDatabaseService {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun setProperty(p0: String?, p1: Any?) {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getId(): Long {
+        return id
+    }
+
+    override fun getType(): RelationshipType {
+        return RelationshipType.withName(type)
+    }
+
+    override fun removeProperty(p0: String?): Any {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getProperties(vararg p0: String?): MutableMap<String, Any> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getProperty(p0: String?): Any {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getProperty(p0: String?, p1: Any?): Any {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getNodes(): Array<Node> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getOtherNode(p0: Node?): Node {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getStartNode(): Node {
+        return startNode
+    }
+
+    override fun isType(p0: RelationshipType?): Boolean {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun getEndNode(): Node {
+        return endNode
+    }
+
+    override fun getPropertyKeys(): MutableIterable<String> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun delete() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 
 }

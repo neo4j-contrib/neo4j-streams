@@ -1,5 +1,6 @@
 package streams
 
+import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
@@ -15,8 +16,13 @@ import kotlin.test.assertNull
 
 class StreamsTransactionEventHandlerTest {
 
-    val router : MockStreamsEventRouter = MockStreamsEventRouter()
-    val handler : StreamsTransactionEventHandler = StreamsTransactionEventHandler(router)
+    private val handler : StreamsTransactionEventHandler = StreamsTransactionEventHandler(MockStreamsEventRouter())
+
+
+    @Before
+    fun setUp() {
+        MockStreamsEventRouter.reset()
+    }
 
     @Test
     fun afterCreatedNodes() {
@@ -26,12 +32,12 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.created, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.before)
-        assertNotNull(router.events[0].payload.after)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.created, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.before)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.after)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
     }
 
@@ -41,19 +47,19 @@ class StreamsTransactionEventHandlerTest {
         val node = MockNode(nodeId = 1, labels = mutableListOf(Label.label("Test")))
         val createdNodes = mutableListOf<Node>(node)
 
-        val labels = mapOf<Long, List<String>>(1L to listOf("Test"))
+        val labels = mapOf<String, List<String>>("1" to listOf("Test"))
 
         val txd = MockTransactionData(createdNodes = createdNodes)
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.created, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.before)
-        assertNotNull(router.events[0].payload.after)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
-        val after : NodeChange = router.events[0].payload.after as NodeChange
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.created, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.before)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.after)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
+        val after : NodeChange = MockStreamsEventRouter.events[0].payload.after as NodeChange
         assertEquals(listOf("Test"), after.labels)
     }
 
@@ -67,13 +73,13 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.created, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.before)
-        assertNotNull(router.events[0].payload.after)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
-        val after : NodeChange = router.events[0].payload.after as NodeChange
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.created, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.before)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.after)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
+        val after : NodeChange = MockStreamsEventRouter.events[0].payload.after as NodeChange
         assertEquals("Omar",after.properties!!["name"])
     }
 
@@ -85,12 +91,12 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)// PreviousTransactionData(nodeProperties = emptyMap(), nodeLabels = emptyMap(), createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.deleted, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.after)
-        assertNotNull(router.events[0].payload.before)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.after)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.before)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
     }
 
@@ -100,7 +106,7 @@ class StreamsTransactionEventHandlerTest {
         val node = MockNode(nodeId = 1)
         val deletedNodes = mutableListOf<Node>(node)
 
-        val labels = mapOf<Long, List<String>>(1L to listOf("Test"))
+        val labels = mapOf("1" to listOf("Test"))
 
         val labelsEntries = mutableListOf<LabelEntry>(MockLabelEntry(
                 Label.label("Test"),
@@ -110,13 +116,13 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd) // PreviousTransactionData(nodeProperties = emptyMap(), nodeLabels = labels, createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.deleted, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.after)
-        assertNotNull(router.events[0].payload.before)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
-        val before : NodeChange = router.events[0].payload.before as NodeChange
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.after)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.before)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
+        val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals(listOf("Test"), before.labels)
     }
 
@@ -130,16 +136,16 @@ class StreamsTransactionEventHandlerTest {
         val removedProps = mutableListOf<PropertyEntry<Node>>(MockPropertyEntry<Node>(node, "name", null, "Omar"))
 
         val txd = MockTransactionData(deletedNodes = deletedNodes, removedNodeProperties = removedProps )
-        val previous = handler.beforeCommit(txd)//PreviousTransactionData(nodeProperties = mapOf(1L to props), nodeLabels = emptyMap(), createdPayload = emptyList(), deletedPayload = emptyList())
+        val previous = handler.beforeCommit(txd)//PreviousTransactionData(nodeProperties = mapOf("1" to props), nodeLabels = emptyMap(), createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.deleted, router.events[0].meta.operation)
-        assertNull(router.events[0].payload.after)
-        assertNotNull(router.events[0].payload.before)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
-        val before : NodeChange = router.events[0].payload.before as NodeChange
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted, MockStreamsEventRouter.events[0].meta.operation)
+        assertNull(MockStreamsEventRouter.events[0].payload.after)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.before)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
+        val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals("Omar",before.properties!!["name"])
     }
 
@@ -156,17 +162,17 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.updated, router.events[0].meta.operation)
-        assertNotNull(router.events[0].payload.after)
-        assertNotNull(router.events[0].payload.before)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.updated, MockStreamsEventRouter.events[0].meta.operation)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.after)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.before)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
-        val before : NodeChange = router.events[0].payload.before as NodeChange
+        val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals(listOf("PreTest"),before.labels)
 
-        val after : NodeChange = router.events[0].payload.after as NodeChange
+        val after : NodeChange = MockStreamsEventRouter.events[0].payload.after as NodeChange
         assertEquals(listOf("PreTest","Test"),after.labels)
 
     }
@@ -183,17 +189,17 @@ class StreamsTransactionEventHandlerTest {
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
-        assertEquals(1, router.events.size)
-        assertEquals(OperationType.updated, router.events[0].meta.operation)
-        assertNotNull(router.events[0].payload.after)
-        assertNotNull(router.events[0].payload.before)
-        assertEquals(1, router.events[0].payload.id)
-        assertEquals(EntityType.node, router.events[0].payload.type)
+        assertEquals(1, MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.updated, MockStreamsEventRouter.events[0].meta.operation)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.after)
+        assertNotNull(MockStreamsEventRouter.events[0].payload.before)
+        assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
+        assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
-        val before : NodeChange = router.events[0].payload.before as NodeChange
+        val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals(prevProps,before.properties)
 
-        val after : NodeChange = router.events[0].payload.after as NodeChange
+        val after : NodeChange = MockStreamsEventRouter.events[0].payload.after as NodeChange
         assertEquals(afterProps,after.properties)
 
     }
@@ -212,7 +218,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("PreTest", previous.nodeLabels[1]!![0])
 
         assertEquals(1, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
     }
 
     @Test
@@ -230,7 +236,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("Test", previous.nodeLabels[1]!![1])
 
         assertEquals(1, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
     }
 
     @Test
@@ -243,7 +249,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals(0, previous.nodeProperties.size)
 
         assertEquals(1, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
     }
 
     @Test
@@ -257,7 +263,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 
         assertEquals(1, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
 
     }
 
@@ -272,7 +278,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 
         assertEquals(1, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
     }
 
 
@@ -292,7 +298,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 
         assertEquals(2, previous.updatedPayloads.size)
-        assertEquals (1L, previous.updatedPayloads[0].id)
-        assertEquals (2L, previous.updatedPayloads[1].id)
+        assertEquals ("1", previous.updatedPayloads[0].id)
+        assertEquals ("2", previous.updatedPayloads[1].id)
     }
 }

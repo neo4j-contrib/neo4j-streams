@@ -60,7 +60,7 @@ private fun isRelationshipType(name: String, streamsEvent: StreamsEvent): Boolea
         return false
     }
     val relationshipChange = streamsEvent.payload as RelationshipPayload
-    return relationshipChange.name == name
+    return relationshipChange.label == name
 }
 
 private fun filterProperties(recordChange: RecordChange?, routingConfiguration: RoutingConfiguration): Map<String, Any>? {
@@ -111,13 +111,21 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                     }
                     .map {
                         val nodePayload = streamsEvent.payload as NodePayload
-                        val recordBefore = nodePayload.before as NodeChange
-                        val recordAfter = nodePayload.after as NodeChange
+                        val newRecordBefore: RecordChange? = if (nodePayload.before != null) {
+                            val recordBefore = nodePayload.before as NodeChange
+                            recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
+                                    labels = recordBefore.labels)
+                        } else {
+                            null
+                        }
+                        val newRecordAfter: RecordChange? = if (nodePayload.after != null) {
+                            val recordAfter = nodePayload.after as NodeChange
+                            recordAfter.copy(properties = filterProperties(streamsEvent.payload.after!!, it),
+                                    labels = recordAfter.labels)
+                        } else {
+                            null
+                        }
 
-                        val newRecordBefore = recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
-                                labels = recordBefore.labels)
-                        val newRecordAfter = recordAfter.copy(properties = filterProperties(streamsEvent.payload.after!!, it),
-                                labels = recordBefore.labels)
                         val newNodePayload = nodePayload.copy(id = nodePayload.id,
                                 before = newRecordBefore,
                                 after = newRecordAfter)
@@ -168,19 +176,28 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                     }
                     .map {
                         val relationshipPayload = streamsEvent.payload as RelationshipPayload
-                        val recordBefore = relationshipPayload.before as RelationshipChange
-                        val recordAfter = relationshipPayload.after as RelationshipChange
 
-                        val newRecordBefore = recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
-                                sourceNode = recordBefore.sourceNode,
-                                endNode = recordBefore.endNode)
-                        val newRecordAfter = recordAfter.copy(properties = filterProperties(streamsEvent.payload.after!!, it),
-                                sourceNode = recordAfter.sourceNode,
-                                endNode = recordAfter.endNode)
+                        val newRecordBefore: RecordChange? = if (relationshipPayload.before != null) {
+                            val recordBefore = relationshipPayload.before as RelationshipChange
+                            recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
+                                    start = recordBefore.start,
+                                    end = recordBefore.end)
+                        } else {
+                            null
+                        }
+                        val newRecordAfter: RecordChange? = if (relationshipPayload.after != null) {
+                            val recordAfter = relationshipPayload.after as RelationshipChange
+                            recordAfter.copy(properties = filterProperties(streamsEvent.payload.after, it),
+                                    start = recordAfter.start,
+                                    end = recordAfter.end)
+                        } else {
+                            null
+                        }
+
                         val newRelationshipPayload = relationshipPayload.copy(id = relationshipPayload.id,
                                 before = newRecordBefore,
                                 after = newRecordAfter,
-                                name = relationshipPayload.name)
+                                label = relationshipPayload.label)
 
                         val newStreamsEvent = streamsEvent.copy(schema = streamsEvent.schema,
                                 meta = streamsEvent.meta,

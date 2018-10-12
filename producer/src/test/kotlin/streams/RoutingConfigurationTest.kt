@@ -203,11 +203,11 @@ class RoutingConfigurationTest {
                 .withSchema(SchemaBuilder().build())
                 .withPayload(RelationshipPayloadBuilder()
                         .withBefore(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3),
-                                sourceNode = RelationshipNodeChange(id = 1, labels = listOf("Label1", "Label2")),
-                                endNode = RelationshipNodeChange(id = 2, labels = listOf("Label1", "Label2"))))
+                                start = RelationshipNodeChange(id = "1", labels = listOf("Label1", "Label2")),
+                                end = RelationshipNodeChange(id = "2", labels = listOf("Label1", "Label2"))))
                         .withAfter(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4),
-                                sourceNode = RelationshipNodeChange(id = 1, labels = listOf("Label1", "Label2")),
-                                endNode = RelationshipNodeChange(id = 2, labels = listOf("Label1", "Label2"))))
+                                start = RelationshipNodeChange(id = "1", labels = listOf("Label1", "Label2")),
+                                end = RelationshipNodeChange(id = "2", labels = listOf("Label1", "Label2"))))
                         .withName("KNOWS")
                         .build())
                 .build()

@@ -4,7 +4,7 @@ import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
 import streams.events.*
 
-class StreamsTransactionEventHandler(val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
+class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
 
     override fun afterCommit(txd: TransactionData, previous: PreviousTransactionData) {
 
@@ -92,7 +92,7 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
                     .build()
 
             val payload = NodePayloadBuilder()
-                    .withId(it.id)
+                    .withId(it.id.toString())
                     .withAfter(afterNode)
                     .build()
 
@@ -123,7 +123,7 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter) : Transact
                     .build()
 
             val payload = NodePayloadBuilder()
-                    .withId(it.id)
+                    .withId(it.id.toString())
                     .withBefore(beforeNode)
                     .build()
 

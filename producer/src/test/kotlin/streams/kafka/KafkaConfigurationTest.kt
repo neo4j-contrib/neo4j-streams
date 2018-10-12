@@ -1,14 +1,14 @@
-package streams
+package streams.kafka
 
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class StreamsConfigurationTest {
+class KafkaConfigurationTest {
 
     @Test
     fun shouldCreateDefaultConfiguration() {
-        val configuration = StreamsConfiguration.from(emptyMap())
+        val configuration = KafkaConfiguration.from(emptyMap())
 
         assertEquals(1, configuration.nodeRouting.size)
         assertEquals("neo4j", configuration.nodeRouting[0].topic)

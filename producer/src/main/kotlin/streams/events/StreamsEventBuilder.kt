@@ -74,11 +74,11 @@ class NodeChangeBuilder(){
 
 class NodePayloadBuilder(){
 
-    private var id : Long = 0
+    private var id : String = "0"
     private var after : NodeChange? = null
     private var before : NodeChange? = null
 
-    fun withId(id : Long) : NodePayloadBuilder{
+    fun withId(id : String) : NodePayloadBuilder{
         this.id = id
         return this
     }
@@ -99,12 +99,12 @@ class NodePayloadBuilder(){
 }
 
 class RelationshipPayloadBuilder() {
-    private var id: Long = 0
+    private var id: String = "0"
     private var after: RelationshipChange? = null
     private var before: RelationshipChange? = null
     private var name: String? = null
 
-    fun withId(id: Long): RelationshipPayloadBuilder {
+    fun withId(id: String): RelationshipPayloadBuilder {
         this.id = id
         return this
     }

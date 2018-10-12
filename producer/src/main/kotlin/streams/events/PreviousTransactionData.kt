@@ -26,7 +26,7 @@ class PreviousTransactionDataBuilder(){
         val createdIds = createdPayload.map { it.id }
 
         val updatedPayloads = updatedNodes
-                .filter { ! createdIds.contains(it.id) }
+                .filter { ! createdIds.contains(it.id.toString()) }
                 .map { it ->
             val labelsBefore = nodeLabels.getOrDefault(it.id, listOf())
             val propsBefore = nodeProperties.getOrDefault(it.id, mapOf())
@@ -44,7 +44,7 @@ class PreviousTransactionDataBuilder(){
                     .build()
 
             val payload = NodePayloadBuilder()
-                    .withId(it.id)
+                    .withId(it.id.toString())
                     .withBefore(beforeNode)
                     .withAfter(afterNode)
                     .build()
