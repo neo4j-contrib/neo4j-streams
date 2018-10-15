@@ -6,7 +6,6 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.LongSerializer
 import streams.NodeRoutingConfiguration
 import streams.RelationshipRoutingConfiguration
-import streams.RoutingConfigurationConstants
 import streams.RoutingConfigurationFactory
 import streams.events.EntityType
 import streams.serialization.JacksonUtil
@@ -18,6 +17,11 @@ private fun <T> filterMap(config: Map<String, String>, routingPrefix: String, cl
     return config
             .filterKeys { it.startsWith(routingPrefix) }
             .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.key.replace(routingPrefix, StringUtils.EMPTY) , it.value, EntityType.node) as List<T> }
+}
+
+private object KafkaRoutingConfigurationConstants {
+    const val NODE_ROUTING_KEY_PREFIX: String = "kafka.routing.nodes."
+    const val REL_ROUTING_KEY_PREFIX: String = "kafka.routing.relationships."
 }
 
 data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
@@ -37,10 +41,10 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val relRouting : List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration())){
     companion object {
         fun from(config: Map<String, String>) : KafkaConfiguration {
-            val nodeRouting = filterMap(config = config, routingPrefix = RoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
+            val nodeRouting = filterMap(config = config, routingPrefix = KafkaRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
                     clazz = NodeRoutingConfiguration::class.java)
 
-            val relRouting = filterMap(config = config, routingPrefix = RoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
+            val relRouting = filterMap(config = config, routingPrefix = KafkaRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
                     clazz = RelationshipRoutingConfiguration::class.java)
 
             val default = KafkaConfiguration()
