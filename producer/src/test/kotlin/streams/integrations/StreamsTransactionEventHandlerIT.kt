@@ -4,14 +4,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
-import org.neo4j.kernel.impl.logging.SimpleLogService
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
-import streams.StreamsTransactionEventHandler
 import streams.events.NodeChange
 import streams.events.OperationType
 import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
 
 class StreamsTransactionEventHandlerIT {
@@ -42,6 +40,8 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(2,MockStreamsEventRouter.events[1].meta.txEventsCount)
         assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
         assertEquals(1,MockStreamsEventRouter.events[1].meta.txEventId)
+        assertNotNull(MockStreamsEventRouter.events[0].meta.source["hostname"])
+        assertNotNull(MockStreamsEventRouter.events[1].meta.source["hostname"])
 
         MockStreamsEventRouter.reset()
 

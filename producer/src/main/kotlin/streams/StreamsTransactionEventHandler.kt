@@ -3,6 +3,7 @@ package streams
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
 import streams.events.*
+import java.net.InetAddress
 
 class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
 
@@ -22,6 +23,7 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
                     .withUsername(txd.username())
                     .withTimestamp(txd.commitTime)
                     .withTransactionId(txd.transactionId)
+                    .withHostname(InetAddress.getLocalHost().hostName)
                     .build()
             val schema = SchemaBuilder().build()
 
@@ -42,6 +44,7 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
                     .withUsername(txd.username())
                     .withTimestamp(txd.commitTime)
                     .withTransactionId(txd.transactionId)
+                    .withHostname(InetAddress.getLocalHost().hostName)
                     .build()
 
             val schema = SchemaBuilder().build()
@@ -63,6 +66,7 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
                     .withUsername(txd.username())
                     .withTimestamp(txd.commitTime)
                     .withTransactionId(txd.transactionId)
+                    .withHostname(InetAddress.getLocalHost().hostName)
                     .build()
 
             val schema = SchemaBuilder().build()
