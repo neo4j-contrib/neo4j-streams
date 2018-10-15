@@ -23,34 +23,39 @@ class PreviousTransactionDataBuilder(){
 
     fun build() : PreviousTransactionData{
 
-        val createdIds = createdPayload.map { it.id }
+        var createdIds = hashSetOf<String>()
+        createdPayload.forEach({
+            createdIds.add(it.id)
+        })
+
+        //val createdIds = createdPayload.map { it.id }.toSet()
 
         val updatedPayloads = updatedNodes
                 .filter { ! createdIds.contains(it.id.toString()) }
                 .map { it ->
-            val labelsBefore = nodeLabels.getOrDefault(it.id, listOf())
-            val propsBefore = nodeProperties.getOrDefault(it.id, mapOf())
+                    val labelsBefore = nodeLabels.getOrDefault(it.id, emptyList())
+                    val propsBefore = nodeProperties.getOrDefault(it.id, emptyMap())
 
-            val beforeNode = NodeChangeBuilder()
-                    .withLabels(labelsBefore)
-                    .withProperites(propsBefore)
-                    .build()
+                    val beforeNode = NodeChangeBuilder()
+                            .withLabels(labelsBefore)
+                            .withProperites(propsBefore)
+                            .build()
 
-            val labelsAfter = it.labels.map { it.name() }
+                    val labelsAfter = it.labels.map { it.name() }
 
-            val afterNode = NodeChangeBuilder()
-                    .withLabels(labelsAfter)
-                    .withProperites(it.allProperties)
-                    .build()
+                    val afterNode = NodeChangeBuilder()
+                            .withLabels(labelsAfter)
+                            .withProperites(it.allProperties)
+                            .build()
 
-            val payload = NodePayloadBuilder()
-                    .withId(it.id.toString())
-                    .withBefore(beforeNode)
-                    .withAfter(afterNode)
-                    .build()
+                    val payload = NodePayloadBuilder()
+                            .withId(it.id.toString())
+                            .withBefore(beforeNode)
+                            .withAfter(afterNode)
+                            .build()
 
-            payload
-        }
+                    payload
+                }
 
 
         return PreviousTransactionData(nodeProperties, nodeLabels , updatedPayloads,createdPayload, deletedPayload)
