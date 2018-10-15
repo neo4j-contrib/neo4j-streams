@@ -61,9 +61,13 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
         assertEquals(1,MockStreamsEventRouter.events[1].meta.txEventId)
 
+        val beforeOmarSet : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
+        assertEquals(mapOf("name" to "Omar", "age" to 30L) , beforeOmarSet.properties)
+
+        val beforeAndreaSet : NodeChange = MockStreamsEventRouter.events[1].payload.before as NodeChange
+        assertEquals(mapOf("name" to "Andrea", "age" to 31L) , beforeAndreaSet.properties)
 
         MockStreamsEventRouter.reset()
-
         db!!.execute("MATCH (o:Marked) DELETE o ")
 
         assertEquals(1,MockStreamsEventRouter.events.size)
@@ -74,6 +78,7 @@ class StreamsTransactionEventHandlerIT {
 
         assertEquals(1,MockStreamsEventRouter.events[0].meta.txEventsCount)
         assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+
     }
 
 }

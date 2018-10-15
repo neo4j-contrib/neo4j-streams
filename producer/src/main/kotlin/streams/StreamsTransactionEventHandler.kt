@@ -134,9 +134,10 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
             payload
         }
 
+        //don't change the order of the with methods
         val builder = PreviousTransactionDataBuilder()
-                .withNodeProperties(txd.assignedNodeProperties(),removedNodeProperties)
                 .withLabels(txd.assignedLabels(),removedLabels)
+                .withNodeProperties(txd.assignedNodeProperties(),removedNodeProperties)
                 .withCreatedPayloads(createdPayload)
                 .withDeletedPayloads(deletedPayload)
 
