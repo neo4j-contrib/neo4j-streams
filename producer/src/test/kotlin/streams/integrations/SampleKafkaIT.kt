@@ -1,7 +1,9 @@
-package kafka
+package streams.integrations
 
+import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.codehaus.jackson.map.ObjectMapper
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.LongDeserializer
 import org.junit.After
 import org.junit.Before
 import org.junit.ClassRule
@@ -9,9 +11,11 @@ import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.kafka.KafkaConfiguration
+import streams.serialization.JacksonUtil
 import kotlin.test.assertEquals
 
-class SampleKafkaIntegrationTest {
+class SampleKafkaIT {
 
     companion object {
         /**
@@ -29,12 +33,8 @@ class SampleKafkaIntegrationTest {
         private const val confluentPlatformVersion = "4.0.2"
         @ClassRule @JvmField
         val kafka = KafkaContainer(confluentPlatformVersion)
-
-        // This can be static
-        val mapper = ObjectMapper()
     }
 
-    // TODO: maybe for a "full" integration test we can also use a Neo4j container
     var db: GraphDatabaseService? = null
 
     @Before
@@ -49,23 +49,36 @@ class SampleKafkaIntegrationTest {
         db?.shutdown()
     }
 
+    private fun createNode() {
+        db!!.execute("CREATE (:Person {name:'John Doe', age:42})").close()
+    }
+
     @Test
-    fun createNodes() {
-        val config = KafkaConfiguration(kafkaHosts = kafka.bootstrapServers)
+    fun testCreateNode() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
 
         val props = config.asProperties()
+        props.put("group.id", "neo4j")
         props.put("enable.auto.commit", "true");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java)
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer::class.java)
         val consumer = KafkaConsumer<Long, ByteArray>(props)
-        consumer.subscribe(config.topics)
+        consumer.subscribe(listOf("neo4j"))
         Thread {
-            db!!.execute("CREATE (:Person {name:'John Doe', age:42})").close()
+            Thread.sleep(1000)
+            createNode()
         }.start()
         val records = consumer.poll(5000)
-        records.forEach { println("offset = ${it.offset()}, key = ${it.key()}, value = ${mapper.readValue(it.value(), Object::class.java)}") }
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            mapper.readValue(it.value(), Map::class.java).let {
-                it["labels"] == listOf("Person") && it["data"] == mapOf("name" to "John Doe", "age" to 42) && it["state"] == "created"
+            JacksonUtil.getMapper().readValue(it.value(), Map::class.java).let {
+                val map = it["value"] as Map<String, Any>
+                var payload = map["payload"] as Map<String, Any?>
+                val after = payload["after"] as Map<String, Any?>
+                val labels = after["labels"] as List<String>
+                val propertiesAfter = after["properties"] as Map<String, Any?>
+                val meta = map["meta"] as Map<String, Any?>
+                labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42) && meta["operation"] == "created"
             }
         })
     }
