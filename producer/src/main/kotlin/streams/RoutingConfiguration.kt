@@ -3,10 +3,6 @@ package streams
 import org.apache.kafka.common.internals.Topic
 import streams.events.*
 
-object RoutingConfigurationConstants {
-    const val NODE_ROUTING_KEY_PREFIX: String = "kafka.routing.nodes."
-    const val REL_ROUTING_KEY_PREFIX: String = "kafka.routing.relationships."
-}
 
 private val PATTERN_REG: Regex = "^(\\w+\\s*(?::\\s*(?:[\\w|\\*]+)\\s*)*)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
 private val PATTERN_COLON_REG = "\\s*:\\s*".toRegex()
