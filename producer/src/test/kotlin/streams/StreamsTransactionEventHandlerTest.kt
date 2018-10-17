@@ -13,6 +13,7 @@ import streams.mocks.*
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 class StreamsTransactionEventHandlerTest {
 
@@ -212,7 +213,7 @@ class StreamsTransactionEventHandlerTest {
 
         val txd = MockTransactionData(assignedLabels = labels)
         val previous = handler.beforeCommit(txd)
-        assertEquals(0, previous.nodeProperties.size)
+        assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
         assertEquals(1, previous.nodeLabels[1]!!.size)
         assertEquals("PreTest", previous.nodeLabels[1]!![0])
@@ -229,7 +230,7 @@ class StreamsTransactionEventHandlerTest {
 
         val txd = MockTransactionData(removedLabels = labels)
         val previous = handler.beforeCommit(txd)
-        assertEquals(0, previous.nodeProperties.size)
+        assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
         assertEquals(2, previous.nodeLabels[1]!!.size)
         assertEquals("PreTest", previous.nodeLabels[1]!![0])
@@ -246,7 +247,8 @@ class StreamsTransactionEventHandlerTest {
         props.add(MockPropertyEntry<Node>(node, "p1", "value", null))
         val txd = MockTransactionData(assignedNodeProperties = props)
         val previous = handler.beforeCommit(txd)
-        assertEquals(0, previous.nodeProperties.size)
+        assertEquals(1, previous.nodeProperties.size)
+        assertTrue { previous.nodeProperties[1]!!.isEmpty() }
 
         assertEquals(1, previous.updatedPayloads.size)
         assertEquals ("1", previous.updatedPayloads[0].id)
@@ -269,13 +271,17 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitSetProperty() {
-        val props = mutableListOf<PropertyEntry<Node>>()
-        val node = MockNode(nodeId = 1)
-        props.add(MockPropertyEntry<Node>(node, "p1", "value1", "value0"))
+        val node = MockNode(nodeId = 1, properties = mutableMapOf("p1" to "value1", "p2" to "value2", "p3" to "value4"))
+        val props = mutableListOf<PropertyEntry<Node>>(
+                MockPropertyEntry<Node>(node, "p1", "value1", "value0"),
+                MockPropertyEntry<Node>(node, "p3", "value4", "value3")
+        )
         val txd = MockTransactionData(assignedNodeProperties = props)
         val previous = handler.beforeCommit(txd)
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
+        assertEquals("value2", previous.nodeProperties[1]!!["p2"])
+        assertEquals("value3", previous.nodeProperties[1]!!["p3"])
 
         assertEquals(1, previous.updatedPayloads.size)
         assertEquals ("1", previous.updatedPayloads[0].id)
@@ -294,11 +300,11 @@ class StreamsTransactionEventHandlerTest {
 
         val txd = MockTransactionData(assignedNodeProperties = props, assignedLabels = labels)
         val previous = handler.beforeCommit(txd)
-        assertEquals(1, previous.nodeProperties.size)
+        assertEquals(2, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 
         assertEquals(2, previous.updatedPayloads.size)
-        assertEquals ("1", previous.updatedPayloads[0].id)
-        assertEquals ("2", previous.updatedPayloads[1].id)
+        assertEquals (1, previous.updatedPayloads.filter { it.id == "1" }.size)
+        assertEquals (1, previous.updatedPayloads.filter { it.id == "2" }.size)
     }
 }
