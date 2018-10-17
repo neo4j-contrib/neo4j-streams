@@ -1,5 +1,6 @@
 package streams
 
+import org.neo4j.graphdb.Node
 import org.neo4j.helpers.Service
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.extension.KernelExtensionFactory
@@ -43,4 +44,8 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
         fun log(): LogService
         fun config(): Config
     }
+}
+
+fun Node.labelNames() : List<String> {
+    return this.labels.map { it.name() }
 }

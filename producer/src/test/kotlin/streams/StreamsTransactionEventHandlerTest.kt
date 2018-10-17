@@ -182,7 +182,7 @@ class StreamsTransactionEventHandlerTest {
     fun afterUpdatePropertiesNodes() {
         val prevProps = hashMapOf<String,Any>("name" to "Omar")
         val afterProps = hashMapOf<String,Any>("name" to "Andrea")
-        val updateNodes = mutableListOf<Node>(MockNode(nodeId = 1,properties = afterProps))
+        val updateNodes = mutableListOf<Node>(MockNode(nodeId = 1,properties = afterProps,labels = mutableListOf(Label.label("Test"))))
 
 
         val txd = MockTransactionData(assignedNodeProperties = mutableListOf<PropertyEntry<Node>>(MockPropertyEntry<Node>(updateNodes[0], "name", "Andrea", "Omar")))
@@ -199,9 +199,11 @@ class StreamsTransactionEventHandlerTest {
 
         val before : NodeChange = MockStreamsEventRouter.events[0].payload.before as NodeChange
         assertEquals(prevProps,before.properties)
+        assertEquals(listOf("Test"),before.labels)
 
         val after : NodeChange = MockStreamsEventRouter.events[0].payload.after as NodeChange
         assertEquals(afterProps,after.properties)
+        assertEquals(listOf("Test"),after.labels)
 
     }
 
@@ -212,7 +214,7 @@ class StreamsTransactionEventHandlerTest {
                 MockNode(nodeId = 1, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
 
         val txd = MockTransactionData(assignedLabels = labels)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
         assertEquals(1, previous.nodeLabels[1]!!.size)
@@ -229,7 +231,7 @@ class StreamsTransactionEventHandlerTest {
                 MockNode(nodeId = 1, labels = mutableListOf(Label.label("PreTest")))))
 
         val txd = MockTransactionData(removedLabels = labels)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
         assertEquals(2, previous.nodeLabels[1]!!.size)
@@ -246,7 +248,7 @@ class StreamsTransactionEventHandlerTest {
         val node = MockNode(1)
         props.add(MockPropertyEntry<Node>(node, "p1", "value", null))
         val txd = MockTransactionData(assignedNodeProperties = props)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertTrue { previous.nodeProperties[1]!!.isEmpty() }
 
@@ -260,7 +262,7 @@ class StreamsTransactionEventHandlerTest {
         val node = MockNode(nodeId = 1)
         props.add(MockPropertyEntry<Node>(node, "p1", "value0", "value0"))
         val txd = MockTransactionData(removedNodeProperties = props)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 
@@ -277,7 +279,7 @@ class StreamsTransactionEventHandlerTest {
                 MockPropertyEntry<Node>(node, "p3", "value4", "value3")
         )
         val txd = MockTransactionData(assignedNodeProperties = props)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
         assertEquals("value2", previous.nodeProperties[1]!!["p2"])
@@ -299,7 +301,7 @@ class StreamsTransactionEventHandlerTest {
                 MockNode(nodeId = 2, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
 
         val txd = MockTransactionData(assignedNodeProperties = props, assignedLabels = labels)
-        val previous = handler.beforeCommit(txd)
+        val previous = handler.beforeCommit(txd).nodeData
         assertEquals(2, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
 

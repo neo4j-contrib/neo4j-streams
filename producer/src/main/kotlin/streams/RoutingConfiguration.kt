@@ -175,17 +175,13 @@ data class RelationshipRoutingConfiguration(val name: String = "",
 
                         val newRecordBefore: RecordChange? = if (relationshipPayload.before != null) {
                             val recordBefore = relationshipPayload.before as RelationshipChange
-                            recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it),
-                                    start = recordBefore.start,
-                                    end = recordBefore.end)
+                            recordBefore.copy(properties = filterProperties(streamsEvent.payload.before, it))
                         } else {
                             null
                         }
                         val newRecordAfter: RecordChange? = if (relationshipPayload.after != null) {
                             val recordAfter = relationshipPayload.after as RelationshipChange
-                            recordAfter.copy(properties = filterProperties(streamsEvent.payload.after, it),
-                                    start = recordAfter.start,
-                                    end = recordAfter.end)
+                            recordAfter.copy(properties = filterProperties(streamsEvent.payload.after, it))
                         } else {
                             null
                         }
