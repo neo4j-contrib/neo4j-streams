@@ -82,20 +82,38 @@ class PreviousTransactionDataBuilder(){
                 .toSet() )
 
         nodeLabels = assignedPreviousLabels.plus(removedPreviousLabels)
+
+        val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
+        updatedNodes.forEach({
+            allProps.putIfAbsent(it.id, it.allProperties)
+        })
+
+        nodeProperties = nodeProperties.plus(allProps)
+
         return this
     }
 
     fun withNodeProperties(assignedNodeProperties: Iterable<PropertyEntry<Node>>, removedNodeProperties: Iterable<PropertyEntry<Node>>): PreviousTransactionDataBuilder {
-        val assignedPreviousProps = assignedNodeProperties
-                .filter { it -> it.previouslyCommitedValue() != null }
-                .map { it -> Pair(it.entity().id, Pair(it.key(), it.previouslyCommitedValue())) }
-                .groupBy({it.first},{it.second}) // { nodeId -> [(k,v)] }
-                .mapValues { it -> it.value.toMap() }
+        val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
+        assignedNodeProperties.filter { it -> it.previouslyCommitedValue() == null }
+                .forEach({
+                    var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
+                    props.remove(it.key())
+                    allProps.putIfAbsent(it.entity().id, props)
+                })
 
-        val removedPreviousProps = removedNodeProperties
-                .map { it -> Pair(it.entity().id, Pair(it.key(), it.previouslyCommitedValue())) }
-                .groupBy({it.first},{it.second}) // { nodeId -> [(k,v)] }
-                .mapValues { it -> it.value.toMap() }
+        assignedNodeProperties.filter { it -> it.previouslyCommitedValue() != null }
+                .forEach({
+                    var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
+                    props.put(it.key(), it.previouslyCommitedValue())
+                    allProps.putIfAbsent(it.entity().id, props)
+                })
+
+        removedNodeProperties.forEach({
+            var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
+            props.put(it.key(), it.previouslyCommitedValue())
+            allProps.putIfAbsent(it.entity().id, props)
+        })
 
         updatedNodes = updatedNodes.plus(assignedNodeProperties
                 .map { it.entity() }
@@ -105,7 +123,7 @@ class PreviousTransactionDataBuilder(){
                 .map { it.entity() }
                 .toSet() )
 
-        nodeProperties = removedPreviousProps.plus(assignedPreviousProps)
+        nodeProperties = nodeProperties.plus(allProps)
 
         return this
     }

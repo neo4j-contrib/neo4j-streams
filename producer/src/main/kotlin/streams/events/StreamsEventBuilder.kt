@@ -46,6 +46,11 @@ class StreamsEventMetaBuilder(){
         return this
     }
 
+    fun withHostname(host : String) : StreamsEventMetaBuilder{
+        this.source.put("hostname", host)
+        return this
+    }
+
     fun build() : Meta{
         return Meta(timestamp!!, username!!, txId!!, txEventId!!, txEventsCount!!, operation!!, source)
     }
