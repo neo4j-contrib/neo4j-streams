@@ -4,63 +4,11 @@ Is the transaction event handler events that sends data to a Kafka topic
 
 === Configuration
 
-You can set the following configuration values in your `neo4j.conf`, here are the defaults.
-
-.neo4j.conf
-----
-kafka.zookeeper.connect=localhost:2181
-kafka.bootstrap.servers=localhost:9092
-kafka.acks=1
-kafka.num.partitions=1
-kafka.retries=2
-kafka.batch.size=16384
-kafka.buffer.memory=33554432
-kafka.reindex.batch.size=1000
-kafka.session.timeout.ms=15000
-kafka.connection.timeout.ms=10000
-kafka.replication=1
-kafka.linger.ms=1
-kafka.transaction.id=
-
-kafka.routing.nodes.<TOPIC_NAME>=<PATTERN>
-----
-
-Note: To use the Kafka transactions please set `kafka.transaction.id` and `kafka.acks` properly
-
-See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+include::configuration.adoc[]
 
 === Patterns
 
-To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
-
-You can chose Labels and properties for inclusion or exclusion, with `+*+` meaning *all*.
-
-Patterns are separated by semicolons `;`.
-
-The basic syntax is:
-
-----
-Label{*};Label1{prop1, prop2};Label3{-prop1,-prop2}
-----
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| Label{*}
-| all nodes with this label with all their properties go to the related topic
-
-| Label1:Label2
-| nodes with these two labels are sent to the related topic
-
-| Label{prop1,prop2}
-| the prop1, prop2 of all nodes with this label are sent to the related topic
-
-| Label{-prop1,-prop2}
-| properties of the node with prop1, prop2 excluded, with the label are sent to the related topic
-
-|===
+include::patterns.adoc[]
 
 === Events
 
