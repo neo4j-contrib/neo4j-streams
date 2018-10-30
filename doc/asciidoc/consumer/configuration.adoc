@@ -1,0 +1,13 @@
+You can set the following Kafka configuration values in your `neo4j.conf`, here are the defaults.
+
+.neo4j.conf
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.auto.offset.reset=earliest
+kafka.group.id=neo4j
+streams.sink.polling.interval=<The time, in milliseconds, spent waiting in poll if data is not available in the buffer. default=Long.MAX_VALUE>
+streams.sink.topic.<TOPIC_NAME>=<CYPHER_QUERY>
+----
+
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

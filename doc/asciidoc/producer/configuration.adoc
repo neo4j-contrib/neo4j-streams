@@ -1,0 +1,24 @@
+You can set the following configuration values in your `neo4j.conf`, here are the defaults.
+
+.neo4j.conf
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.acks=1
+kafka.num.partitions=1
+kafka.retries=2
+kafka.batch.size=16384
+kafka.buffer.memory=33554432
+kafka.reindex.batch.size=1000
+kafka.session.timeout.ms=15000
+kafka.connection.timeout.ms=10000
+kafka.replication=1
+kafka.linger.ms=1
+kafka.transaction.id=
+
+kafka.routing.nodes.<TOPIC_NAME>=<PATTERN>
+----
+
+Note: To use the Kafka transactions please set `kafka.transaction.id` and `kafka.acks` properly
+
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

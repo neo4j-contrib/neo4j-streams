@@ -42,7 +42,7 @@ class KafkaEventRouter: StreamsEventRouter {
         producer.initTransactions()
         log.info("Kafka initialization successful")
         val topics = kafkaConfig.nodeRouting.map { it.topic }.toMutableSet() + kafkaConfig.relRouting.map { it.topic }.toMutableSet()
-        AdminClient.create(kafkaConfig.asProperties()).use { client -> client.createTopics(
+        AdminClient.create(props).use { client -> client.createTopics(
                 topics.map { topic -> NewTopic(topic, kafkaConfig.numPartitions, kafkaConfig.replication.toShort()) }) }
         log.info("Kafka Connector started.")
     }

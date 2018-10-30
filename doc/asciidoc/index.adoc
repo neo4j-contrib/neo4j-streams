@@ -24,3 +24,6 @@ mvn clean install
 
 
 include::producer/index.adoc[]
+
+
+include::consumer/index.adoc[]

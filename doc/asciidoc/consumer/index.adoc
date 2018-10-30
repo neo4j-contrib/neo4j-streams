@@ -1,0 +1,43 @@
+== Neo4j Streams Consumer
+
+Is the Kafka Sink that ingest the data directly into Neo4j
+
+=== How it works
+
+It works with template Cypher queries stored into properties with the following format:
+
+----
+streams.sink.topic.<TOPIC_NAME>=<CYPHER_QUERY>
+----
+
+Each Cypher template must refer to an *event* object that will be injected by the Sink
+
+Following an example:
+
+.neo4j.conf
+----
+streams.sink.topic.my-topic=MERGE (n:Label {id: event.id}) \
+    ON CREATE SET n += event.properties
+----
+
+Under the hood the Sink inject the event object in this way
+
+----
+UNWIND {batch} AS event
+MERGE (n:Label {id: event.id})
+    ON CREATE SET n += event.properties
+----
+
+Where {batch} is a json list, so continuing with the example above a possible full representation could be:
+
+----
+WITH [{id:"alice@example.com",properties:{name:"Alice",age:32}},
+    {id:"bob@example.com",properties:{name:"Bob",age:42}}] AS batch
+UNWIND batch AS event
+MERGE (n:Label {id: event.id})
+    ON CREATE SET n += event.properties
+----
+
+=== Configuration
+
+include::configuration.adoc[]
