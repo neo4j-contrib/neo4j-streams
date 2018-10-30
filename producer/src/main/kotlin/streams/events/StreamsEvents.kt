@@ -22,9 +22,7 @@ abstract class RecordChange{ abstract val properties: Map<String, Any>? }
 data class NodeChange(override val properties: Map<String, Any>?,
                       val labels: List<String>?): RecordChange()
 
-data class RelationshipChange(override val properties: Map<String, Any>?,
-                              val start: RelationshipNodeChange,
-                              val end: RelationshipNodeChange): RecordChange()
+data class RelationshipChange(override val properties: Map<String, Any>?): RecordChange()
 
 abstract class Payload {
     abstract val id: String
@@ -38,6 +36,8 @@ data class NodePayload(override val id: String,
                        override val type: EntityType = EntityType.node): Payload()
 
 data class RelationshipPayload(override val id: String,
+                               val start: RelationshipNodeChange,
+                               val end: RelationshipNodeChange,
                                override val before: RecordChange?,
                                override val after: RecordChange?,
                                val label: String,

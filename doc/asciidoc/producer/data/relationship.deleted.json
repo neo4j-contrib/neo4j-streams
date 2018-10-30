@@ -14,18 +14,18 @@
     "id": "123",
     "type": "relationship",
     "label": "KNOWS",
+    "start": {
+      "labels": ["Person"],
+      "id": "123"
+    },
+    "end": {
+      "labels": ["Person"],
+      "id": "456"
+    },
     "before": {
       "properties": {
         "since": "2018-04-05T12:34:00[Europe/Berlin]",
         "to": "2019-04-05T23:00:00[Europe/Berlin]"
-      },
-      "start": {
-        "labels": ["Person"],
-        "id": "123"
-      },
-      "end": {
-        "labels": ["Person"],
-        "id": "456"
       }
     }
   },

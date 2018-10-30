@@ -7,6 +7,7 @@ import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.events.NodeChange
 import streams.events.OperationType
+import streams.events.RelationshipPayload
 import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -30,7 +31,7 @@ class StreamsTransactionEventHandlerIT {
         db?.shutdown()
     }
 
-    @Test fun testSequence(){
+    @Test fun testNodes(){
         db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
 
         assertEquals(2,MockStreamsEventRouter.events.size)
@@ -81,4 +82,57 @@ class StreamsTransactionEventHandlerIT {
 
     }
 
+    @Test fun testRelationships() {
+        db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
+        MockStreamsEventRouter.reset()
+
+        db!!.execute("MATCH (o:Person {name:'Omar', age: 30}), (a:Person {name:'Andrea', age: 31}) " +
+                "CREATE (o)-[r:KNOWS]->(a)")
+
+        assertEquals(1,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.created,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(1,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+
+        MockStreamsEventRouter.reset()
+        db!!.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
+                "SET r.touched = true")
+
+        assertEquals(1,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.updated,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(1,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+
+        MockStreamsEventRouter.reset()
+        db!!.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
+                "DELETE r")
+
+        assertEquals(1,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(1,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+    }
+
+    @Test fun testDetachDelete() {
+        db!!.execute("CREATE (o:Person:Start {name:'Omar', age: 30})-[r:KNOWS {since: datetime()}]->(a:Person:End {name:'Andrea', age: 31})")
+        MockStreamsEventRouter.reset()
+        db!!.execute("MATCH (n) DETACH DELETE n")
+
+        assertEquals(3,MockStreamsEventRouter.events.size)
+        assertEquals(OperationType.deleted,MockStreamsEventRouter.events[0].meta.operation)
+        assertEquals(3,MockStreamsEventRouter.events[0].meta.txEventsCount)
+        assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
+
+        assertEquals(OperationType.deleted,MockStreamsEventRouter.events[1].meta.operation)
+        assertEquals(3,MockStreamsEventRouter.events[1].meta.txEventsCount)
+        assertEquals(1,MockStreamsEventRouter.events[1].meta.txEventId)
+
+        assertEquals(OperationType.deleted,MockStreamsEventRouter.events[2].meta.operation)
+        assertEquals(3,MockStreamsEventRouter.events[2].meta.txEventsCount)
+        assertEquals(2,MockStreamsEventRouter.events[2].meta.txEventId)
+
+        val relPayload : RelationshipPayload  = MockStreamsEventRouter.events[2].payload as RelationshipPayload
+        assertEquals(listOf("Person","Start"),relPayload.start.labels)
+        assertEquals(listOf("Person","End"),relPayload.end.labels)
+    }
 }

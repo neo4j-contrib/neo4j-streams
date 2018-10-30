@@ -67,7 +67,7 @@ class NodeChangeBuilder(){
         return this
     }
 
-    fun withProperites(properties : Map<String, Any>) : NodeChangeBuilder{
+    fun withProperties(properties : Map<String, Any>) : NodeChangeBuilder{
         this.properties = properties
         return this
     }
@@ -103,11 +103,37 @@ class NodePayloadBuilder(){
     }
 }
 
+class RelationshipChangeBuilder(){
+
+    private var properties :  Map<String, Any> = mapOf()
+
+    fun withProperties(properties : Map<String, Any>) : RelationshipChangeBuilder{
+        this.properties = properties
+        return this
+    }
+
+    fun build() : RelationshipChange{
+        return RelationshipChange(properties= properties)
+    }
+}
+
 class RelationshipPayloadBuilder() {
     private var id: String = "0"
     private var after: RelationshipChange? = null
     private var before: RelationshipChange? = null
     private var name: String? = null
+    private var startNode : RelationshipNodeChange ? = null
+    private var endNode : RelationshipNodeChange ? = null
+
+    fun withStartNode(id: String, labels: List<String>): RelationshipPayloadBuilder{
+        this.startNode = RelationshipNodeChange(id, labels)
+        return this
+    }
+
+    fun withEndNode(id: String, labels: List<String>): RelationshipPayloadBuilder{
+        this.endNode = RelationshipNodeChange(id, labels)
+        return this
+    }
 
     fun withId(id: String): RelationshipPayloadBuilder {
         this.id = id
@@ -130,7 +156,7 @@ class RelationshipPayloadBuilder() {
     }
 
     fun build(): RelationshipPayload {
-        return RelationshipPayload(id, before, after, name!!)
+        return RelationshipPayload(id = id, before = before, after = after, label = name!!, start = startNode!!, end = endNode!! )
     }
 }
 

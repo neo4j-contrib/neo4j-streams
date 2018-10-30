@@ -26,7 +26,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun isDeleted(node: Node?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        return deletedNodes.contains(node)
     }
 
     override fun isDeleted(relationship: Relationship?): Boolean {
