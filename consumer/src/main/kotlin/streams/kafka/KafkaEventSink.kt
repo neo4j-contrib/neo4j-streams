@@ -1,16 +1,14 @@
 package streams.kafka
 
-import kotlinx.coroutines.experimental.Dispatchers
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.Job
-import kotlinx.coroutines.experimental.launch
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.errors.WakeupException
-import org.apache.kafka.common.internals.Topic
 import org.codehaus.jackson.map.ObjectMapper
 import org.neo4j.kernel.configuration.Config
-import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.StreamsEventSink

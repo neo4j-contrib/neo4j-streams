@@ -1,9 +1,9 @@
 package integrations
 
-import kotlinx.coroutines.experimental.GlobalScope
-import kotlinx.coroutines.experimental.delay
-import kotlinx.coroutines.experimental.launch
-import kotlinx.coroutines.experimental.runBlocking
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -14,12 +14,10 @@ import org.apache.kafka.common.serialization.LongSerializer
 import org.codehaus.jackson.map.ObjectMapper
 import org.junit.*
 import org.junit.rules.TestName
-import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
-import streams.StreamsEventSinkExtensionFactory
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 import kotlin.test.assertEquals
