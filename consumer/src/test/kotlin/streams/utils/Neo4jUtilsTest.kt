@@ -27,14 +27,8 @@ class Neo4jUtilsTest {
 
     @Test
     fun shouldCheckIfIsWriteableInstance() {
-        val isWriteableIntance = Neo4jUtils.isWriteableInstance(db)
-        assertTrue { isWriteableIntance != null && isWriteableIntance!! }
-    }
-
-    @Test
-    fun shouldGetLogService() {
-        val logService = Neo4jUtils.getLogService(db)
-        assertTrue { logService is LogService }
+        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
+        assertTrue { isWriteableInstance }
     }
 
 }

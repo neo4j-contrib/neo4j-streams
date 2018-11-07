@@ -46,11 +46,20 @@ class KafkaEventSink: StreamsEventSink {
             log.info("No topic configuration found under streams.sink.topic.*, Kafka Sink will not stared")
             return
         }
-        this.kafkaConsumer = KafkaConsumer(kafkaConfig.asProperties())
         this.queryExecution = StreamsEventSinkQueryExecution(this.streamsTopicService!!, db)
-        kafkaConsumer.subscribe(streamsTopicService!!.getTopics())
+        createConsumer();
         job = createJob()
         log.info("Kafka Sink Connector started.")
+    }
+
+    private fun createConsumer() {
+        this.kafkaConsumer = KafkaConsumer(kafkaConfig.asProperties())
+        kafkaConsumer.subscribe(streamsTopicService!!.getTopics())
+        if (log.isDebugEnabled) {
+            log.debug("Subscribing topics: ${streamsTopicService!!.getAll()}")
+        } else {
+            log.info("Subscribing topics: ${streamsTopicService!!.getTopics()}")
+        }
     }
 
     private fun createJob(): Job {
@@ -75,14 +84,18 @@ class KafkaEventSink: StreamsEventSink {
 
     private fun consume(records: ConsumerRecords<Long, ByteArray>) {
         streamsTopicService!!.getTopics().forEach {
-            log.debug("Reading data from topic $it")
+            if (log.isDebugEnabled) {
+                log.debug("Reading data from topic $it")
+            }
             val list = records.records(it)
                     .map {
                         objectMapper.readValue(it.value(), Map::class.java)
                                 .mapKeys { it.key.toString() }
                     }
             if (list.isNotEmpty()) {
-                log.debug("Sending data to topic $it, with data $list")
+                if (log.isDebugEnabled) {
+                    log.debug("Reading data from topic $it, with data $list")
+                }
                 queryExecution.execute(it, list)
             }
         }

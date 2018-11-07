@@ -34,14 +34,15 @@ class StreamsTopicServiceTest {
         db.shutdown()
     }
 
-    private fun assertProperty(it: Map.Entry<String, String>) {
-        assertEquals(it.value, streamsTopicService.get(it.key))
-        assertTrue { graphProperties.hasProperty("streams.sink.topic.${it.key}") }
+    private fun assertProperty(entry: Map.Entry<String, String>) {
+        assertEquals(entry.value, streamsTopicService.get(entry.key))
+        db.beginTx().use { assertTrue { graphProperties.hasProperty("streams.sink.topic.${entry.key}") } }
+
     }
 
     @Test
     fun shouldStoreTopicAndCypherTemplate() {
-        kafkaConfig.streamsSinkConfiguration.topics.forEach { this::assertProperty }
+        kafkaConfig.streamsSinkConfiguration.topics.forEach { assertProperty(it) }
     }
 
     @Test
@@ -51,7 +52,7 @@ class StreamsTopicServiceTest {
         streamsTopicService.setAll(map)
 
         val allTopics = map.plus(kafkaConfig.streamsSinkConfiguration.topics)
-        allTopics.forEach { this::assertProperty }
+        allTopics.forEach { assertProperty(it) }
 
         assertEquals(allTopics, streamsTopicService.getAll())
 
