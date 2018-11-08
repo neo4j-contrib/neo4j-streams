@@ -25,7 +25,7 @@ class KafkaSinkConfigurationTest {
     fun shouldReturnConfigurationFromMap() {
         val pollingInterval = "10"
         val topic = "topic-neo"
-        val topicKey = "streams.sink.topic.$topic"
+        val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val zookeeper = "zookeeper:2181"
         val bootstrap = "bootstrap:9092"
