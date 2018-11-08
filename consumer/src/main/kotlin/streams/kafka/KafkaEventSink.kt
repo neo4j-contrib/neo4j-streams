@@ -46,8 +46,10 @@ class KafkaEventSink: StreamsEventSink {
             log.info("No topic configuration found under streams.sink.topic.*, Kafka Sink will not stared")
             return
         }
-        this.queryExecution = StreamsEventSinkQueryExecution(this.streamsTopicService!!, db)
+
+        this.queryExecution = StreamsEventSinkQueryExecution(this.streamsTopicService!!, db, log)
         createConsumer();
+
         job = createJob()
         log.info("Kafka Sink Connector started.")
     }

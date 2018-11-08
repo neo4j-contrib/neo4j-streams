@@ -5,6 +5,7 @@ import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import org.neo4j.logging.NullLog
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.kafka.KafkaSinkConfiguration
 import kotlin.test.assertEquals
@@ -21,7 +22,7 @@ class StreamsEventSinkQueryExecutionTest {
         val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties")))
         val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI, kafkaConfig.streamsSinkConfiguration)
-        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI)
+        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI, NullLog.getInstance())
     }
 
     @After

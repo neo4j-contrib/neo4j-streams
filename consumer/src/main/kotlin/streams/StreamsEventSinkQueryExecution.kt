@@ -3,7 +3,7 @@ package streams
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 
-class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTopicService, private val db: GraphDatabaseAPI) {
+class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTopicService, private val db: GraphDatabaseAPI, val log: Log) {
 
     private val UNWIND: String = "UNWIND {events} AS event"
 
@@ -12,6 +12,7 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
         if (cypherQuery == null) {
             return
         }
+        log.info("UNWIND ${params.size} events from Kafka")
         db.execute("$UNWIND $cypherQuery", mapOf("events" to params)).close()
     }
 
