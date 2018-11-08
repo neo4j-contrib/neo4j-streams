@@ -38,7 +38,9 @@ class StreamsTopicService(private val db: GraphDatabaseAPI, private val streamsS
         val key = "$STREAMS_TOPIC_KEY$topic"
         return db.beginTx().use {
             if (!properties.hasProperty(key)) {
-                log.debug("No query registered for topic $topic")
+                if (log.isDebugEnabled) {
+                    log.debug("No query registered for topic $topic")
+                }
                 return null
             }
             return properties.getProperty(key).toString()

@@ -57,7 +57,7 @@ object JacksonUtil {
     private val OBJECT_MAPPER: ObjectMapper = ObjectMapper()
 
     init {
-        val module = SimpleModule("Neo4jKakfaSerializer", Version(1, 0, 0, ""))
+        val module = SimpleModule("Neo4jKafkaSerializer", Version(1, 0, 0, ""))
         module.addSerializer(Point::class.java, PointSerializer())
         module.addSerializer(TemporalAccessor::class.java, TemporalAccessorSerializer())
         OBJECT_MAPPER.registerModule(module)

@@ -2,6 +2,7 @@ package streams.utils
 
 import org.junit.Test
 import java.lang.RuntimeException
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class StreamsUtilsTest {
@@ -13,7 +14,7 @@ class StreamsUtilsTest {
         val data = StreamsUtils.ignoreExceptions({
             foo
         }, RuntimeException::class.java)
-        assertTrue { data != null && data!! == foo }
+        assertTrue { data != null && data == foo }
     }
 
     @Test
@@ -21,12 +22,12 @@ class StreamsUtilsTest {
         val data = StreamsUtils.ignoreExceptions({
             throw RuntimeException()
         }, RuntimeException::class.java)
-        assertTrue { data == null }
+        assertNull(data)
     }
 
     @Test(expected = IllegalArgumentException::class)
     fun shouldNotIgnoreTheException() {
-        val data = StreamsUtils.ignoreExceptions({
+        StreamsUtils.ignoreExceptions({
             throw IllegalArgumentException()
         }, RuntimeException::class.java)
     }

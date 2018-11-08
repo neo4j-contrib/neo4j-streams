@@ -8,7 +8,7 @@ import kotlin.test.assertTrue
 class StreamsSinkConfigurationTest {
 
     @Test
-    fun shoulReturnDefaultConfiguration() {
+    fun shouldReturnDefaultConfiguration() {
         val default = StreamsSinkConfiguration()
         testDefaultConf(default)
     }

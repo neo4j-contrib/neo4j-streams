@@ -53,17 +53,25 @@ class KafkaEventRouter: StreamsEventRouter {
             EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, kafkaConfig.relRouting)
         }
         try {
-            log.debug("Trying to send the event with txId ${event.meta.txId} to kafka")
+            if (log.isDebugEnabled) {
+                log.debug("Trying to send the event with txId ${event.meta.txId} to kafka")
+            }
             producer.beginTransaction()
             events.forEach {
                 val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
                 val producerRecord = ProducerRecord(it.key, partition, System.currentTimeMillis(), it.value.meta.txId + it.value.meta.txEventId,
                         JacksonUtil.getMapper().writeValueAsBytes(it))
                 producer.send(producerRecord,
-                        { meta: RecordMetadata?, error: Exception? -> log.warn("sending record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error) })
+                        { meta: RecordMetadata?, error: Exception? ->
+                            if (log.isDebugEnabled) {
+                                log.debug("sending record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
+                            }
+                        })
             }
             producer.commitTransaction()
-            log.debug("Event with txId ${event.meta.txId} sent successfully")
+            if (log.isDebugEnabled) {
+                log.debug("Event with txId ${event.meta.txId} sent successfully")
+            }
         } catch (e: ProducerFencedException) {
             log.error("Another producer with the same transactional.id has been started. Stack trace is:", e)
             producer.close()

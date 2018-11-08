@@ -8,13 +8,13 @@ import java.lang.reflect.InvocationTargetException
 object Neo4jUtils {
     fun isWriteableInstance(db: GraphDatabaseAPI): Boolean {
         try {
-            var isSlave = StreamsUtils.ignoreExceptions(
+            val isSlave = StreamsUtils.ignoreExceptions(
                     {
                         val hadb = Class.forName("org.neo4j.kernel.ha.HighlyAvailableGraphDatabase")
                         hadb.isInstance(db) && !(hadb.getMethod("isMaster").invoke(db) as Boolean)
                     }, ClassNotFoundException::class.java, IllegalAccessException::class.java,
                     InvocationTargetException::class.java, NoSuchMethodException::class.java)
-            if (isSlave != null && isSlave!!) {
+            if (isSlave != null && isSlave) {
                 return false
             }
 
