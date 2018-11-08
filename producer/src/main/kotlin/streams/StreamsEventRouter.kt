@@ -7,7 +7,7 @@ import streams.events.StreamsEvent
 
 abstract class StreamsEventRouter(val logService: LogService?, val config: Config?) {
 
-    abstract fun sendEvent(event : StreamsEvent)
+    abstract fun sendEvents(events : List<StreamsEvent>)
 
 }
 

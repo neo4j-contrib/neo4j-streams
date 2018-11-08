@@ -7,8 +7,8 @@ import streams.events.StreamsEvent
 
 class MockStreamsEventRouter(logService: LogService? = null, config: Config? = null): StreamsEventRouter(logService, config) {
 
-    override fun sendEvent(event: StreamsEvent) {
-        events.add(event)
+    override fun sendEvents(streamsEvents: List<StreamsEvent>) {
+        events.addAll(streamsEvents)
     }
 
     companion object {
