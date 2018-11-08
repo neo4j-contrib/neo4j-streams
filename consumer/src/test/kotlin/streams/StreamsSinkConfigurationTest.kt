@@ -17,7 +17,7 @@ class StreamsSinkConfigurationTest {
     fun shouldReturnConfigurationFromMap() {
         val pollingInterval = "10"
         val topic = "topic-neo"
-        val topicKey = "streams.sink.topic.$topic"
+        val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val config = Config.builder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)

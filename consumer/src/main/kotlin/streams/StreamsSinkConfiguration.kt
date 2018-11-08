@@ -5,7 +5,7 @@ import org.neo4j.kernel.configuration.Config
 
 
 private const val streamsConfigPrefix = "streams."
-private const val streamsSinkTopicPrefix = "sink.topic."
+private const val streamsSinkTopicPrefix = "sink.topic.cypher."
 
 data class StreamsSinkConfiguration(val sinkPollingInterval: Long = Long.MAX_VALUE,
                                     val topics: Map<String, String> = emptyMap()) {

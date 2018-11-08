@@ -71,7 +71,7 @@ class KafkaEventSinkIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.sink.topic.shouldWriteCypherQuery", cypherQueryTemplate)
+            graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
         }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
