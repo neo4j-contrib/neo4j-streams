@@ -28,13 +28,5 @@
         "to": "2019-04-05T23:00:00[Europe/Berlin]"
       }
     }
-  },
-  "schema": {
-    "before": {
-      "properties": {
-        "since": "datetime",
-        "to": "datetime"
-      }
-    }
   }
 }

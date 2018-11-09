@@ -30,34 +30,5 @@
         "geo":[0.123, 46.2222, 32.11111]
       }
     }
-  },
-  "schema": {
-    "before": {
-      "constraints": [{
-        "label": "Person",
-        "type": "NODE_KEY",
-        "properties": ["first_name", "last_name"]
-      }],
-      "properties": {
-        "id": "integer",
-        "last_name": "string",
-        "email": "string",
-        "first_name": "string"
-      }
-    },
-    "after": {
-      "constraints": [{
-        "label": "Person",
-        "type": "NODE_KEY",
-        "properties": ["first_name", "last_name"]
-      }],
-      "properties": {
-        "id": "integer",
-        "last_name": "string",
-        "email": "string",
-        "first_name": "string",
-        "geo": "point3d"
-      }
-    }
   }
 }
