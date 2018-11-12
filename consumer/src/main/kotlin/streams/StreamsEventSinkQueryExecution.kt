@@ -12,7 +12,10 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
         if (cypherQuery == null) {
             return
         }
-        log.info("UNWIND ${params.size} events from Kafka")
+        if(log.isDebugEnabled){
+
+            log.debug("Processing ${params.size} events from Kafka")
+        }
         db.execute("$UNWIND $cypherQuery", mapOf("events" to params)).close()
     }
 

@@ -2,13 +2,17 @@ import argparse
 import configparser
 import uuid
 import time
+import csv
+import sys
+import statistics
 import matplotlib.pyplot as plt
 
 from py2neo import Graph
 
 parser = argparse.ArgumentParser(description='Performance Test suite for neo4j-streams')
 
-parser.add_argument('--out', help='output file', dest='out')
+parser.add_argument('--plot-out', help='output image of plot file', dest='plotout')
+parser.add_argument('--csv-out', help='output csv results file', dest='csvout')
 parser.add_argument('--start', nargs='*', metavar=('msg','repeats'), help='print the reference time (avg repeats * msg), in order to find the [unit] values')
 parser.add_argument('--baseline', nargs='+', metavar='pow', help='runs the [unit] * pow')
 
@@ -56,6 +60,21 @@ def executeTest(nodes):
 
 	return (received_time - creation_time) / nodes
 
+def writeCSV(writer, repeats, nodeslist, series):
+	csvHeader = ["Nodes","avg","min","max","median","stdev"]+list(range(int(repeats)))
+	writer.writerow(csvHeader)
+	node_index = 0
+	for ser in series:		
+		avg = statistics.mean(ser)
+		mini = min(ser)
+		maxi = max(ser)
+		medi = statistics.median(ser)
+		stdev = statistics.stdev(ser)
+		
+		csvRow = [nodeslist[node_index],avg,mini,maxi,medi,stdev]+ser	
+		writer.writerow(csvRow)
+		node_index += 1
+
 if args.start is not None:
 	msg = unit['nodes'] 
 	repeats = unit['repeat'] 
@@ -72,11 +91,20 @@ if args.start is not None:
 	ax1.set_ylabel('ms per node')
 	ax1.set_xlabel("nodes x %d"%nodes)
 	ax1.boxplot(series)	
-	
-	if args.out is not None:
-		fig1.savefig(args.out)
+
+	if args.csvout is not None:
+		with open(args.csvout, 'w') as filecsv:
+			writer = csv.writer(filecsv)
+			writeCSV(writer, repeats, [nodes], [series])
 	else:
-		plt.show()	
+		writer = csv.writer(sys.stdout)
+		writeCSV(writer, repeats, [nodes], [series])
+
+	if args.plotout is not None:
+		fig1.savefig(args.plotout)
+	else:
+		plt.show()		
+
 
 if args.baseline is not None:
 	pows = args.baseline
@@ -84,14 +112,16 @@ if args.baseline is not None:
 	repeats = int(unit['repeat'])
 
 	all_series = []
+	nodes_list = []
 	for p in pows:
 		power = int(p)
 		print("Execution of ",power)
 		currentNodes = nodes * power
+		nodes_list.append(currentNodes)
 		series = [executeTest(currentNodes) for i in range(int(repeats))]
 		all_series.append(series)
 
-		series = [executeTest(nodes) for i in range(int(repeats))]
+		#series = [executeTest(nodes) for i in range(int(repeats))]
 
 	fig1, ax1 = plt.subplots()
 	ax1.set_title("Baselines (repeats for %d times)"%repeats)
@@ -100,8 +130,16 @@ if args.baseline is not None:
 
 	ax1.boxplot(all_series)	
 	plt.xticks(range(1,len(all_series)+1), args.baseline)
+
+	if args.csvout is not None:
+		with open(args.csvout, 'w') as filecsv:
+			writer = csv.writer(filecsv)
+			writeCSV(writer, repeats, nodes_list, all_series)
+	else:
+		writer = csv.writer(sys.stdout)
+		writeCSV(writer, repeats, nodes_list, all_series)
 	
-	if args.out is not None:
-		fig1.savefig(args.out)
+	if args.plotout is not None:
+		fig1.savefig(args.plotout)
 	else:
 		plt.show()	
