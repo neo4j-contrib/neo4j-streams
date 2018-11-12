@@ -37,41 +37,40 @@ class KafkaEventRouter: StreamsEventRouter {
         log.info("Initializing Kafka Connector")
         kafkaConfig = KafkaConfiguration.from(config.raw.filterKeys { it.startsWith(configPrefix) }.mapKeys { it.key.substring(configPrefix.length) })
         val props = kafkaConfig.asProperties()
-
         producer = Neo4jKafkaProducer<Long, ByteArray>(props)
         producer.initTransactions()
         log.info("Kafka initialization successful")
         val topics = kafkaConfig.nodeRouting.map { it.topic }.toMutableSet() + kafkaConfig.relRouting.map { it.topic }.toMutableSet()
         AdminClient.create(props).use { client -> client.createTopics(
                 topics.map { topic -> NewTopic(topic, kafkaConfig.numPartitions, kafkaConfig.replication.toShort()) }) }
-        log.info("Kafka Connector started.")
+        log.info("Kafka Connector started")
     }
 
-    override fun sendEvent(event: StreamsEvent) {
-        val events = when (event.payload.type) {
-            EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, kafkaConfig.nodeRouting)
-            EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, kafkaConfig.relRouting)
-        }
+    override fun sendEvents(events: List<StreamsEvent>) {
         try {
-            if (log.isDebugEnabled) {
-                log.debug("Trying to send the event with txId ${event.meta.txId} to kafka")
-            }
             producer.beginTransaction()
             events.forEach {
-                val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
-                val producerRecord = ProducerRecord(it.key, partition, System.currentTimeMillis(), it.value.meta.txId + it.value.meta.txEventId,
-                        JacksonUtil.getMapper().writeValueAsBytes(it))
-                producer.send(producerRecord,
-                        { meta: RecordMetadata?, error: Exception? ->
-                            if (log.isDebugEnabled) {
-                                log.debug("sending record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
-                            }
-                        })
+                val event = it
+                val eventMap = when (event.payload.type) {
+                    EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, kafkaConfig.nodeRouting)
+                    EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, kafkaConfig.relRouting)
+                }
+                eventMap.forEach {
+                    val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
+                    if (log.isDebugEnabled) {
+                        log.debug("Trying to send the event with txId ${it.value.meta.txId} and txEventId ${it.value.meta.txEventId} to kafka")
+                    }
+                    val producerRecord = ProducerRecord(it.key, partition, System.currentTimeMillis(), it.value.meta.txId + it.value.meta.txEventId,
+                            JacksonUtil.getMapper().writeValueAsBytes(it))
+                    producer.send(producerRecord,
+                            { meta: RecordMetadata?, error: Exception? ->
+                                if (log.isDebugEnabled) {
+                                    log.debug("sending record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
+                                }
+                            })
+                }
             }
             producer.commitTransaction()
-            if (log.isDebugEnabled) {
-                log.debug("Event with txId ${event.meta.txId} sent successfully")
-            }
         } catch (e: ProducerFencedException) {
             log.error("Another producer with the same transactional.id has been started. Stack trace is:", e)
             producer.close()
