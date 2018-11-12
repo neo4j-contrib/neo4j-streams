@@ -36,12 +36,8 @@ Please note that GitHub issues are only meant for bug reports/feature requests. 
 
 Currently used versions
 
-### Apoc/Streams
+### Versions
 
-  - Version:
   - OS:
-
-### Neo4j
-
-  - Version:
-  - OS:
+  - Neo4j:
+  - Neo4j-Streams:
