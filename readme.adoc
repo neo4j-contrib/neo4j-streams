@@ -37,6 +37,10 @@ include::doc/asciidoc/producer/patterns.adoc[]
 
 include::doc/asciidoc/consumer/configuration.adoc[]
 
+== Docker
+
+include::doc/asciidoc/docker/index.adoc[]
+
 == Kafka Connect Neo4j Integration (by Confluent)
 
 Source, Documentation and Support is currently not available from Confluent.
