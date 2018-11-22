@@ -10,7 +10,54 @@ include::configuration.adoc[]
 
 include::patterns.adoc[]
 
-=== Events
+=== Procedures
+
+The producer comes out with a list of procedures.
+Because of they use internal Neo4j API you must allow them with the following configuration paramater
+
+ dbms.security.procedures.unrestricted=streams.*
+
+If you are using them via Docker, pass this simple environment parameter:
+
+ NEO4J_dbms_security_procedures_unrestricted: streams.*
+
+
+== streams.publish
+
+This procedure allows custom message streaming from Neo4j to the configured environment
+
+Uses:
+
+`CALL streams.publish('my-topic', 'Hello World from Neo4j!`')`
+
+The message retrived from the Consumer is the following:
+
+`{"payload":"Hello world from Neo4j!"}`
+
+Input Parameters:
+
+[cols="3*",options="header"]
+|===
+|Variable Name
+|Type
+|Description
+`
+|`topic
+|String
+|The topic where you want to publish the data
+
+|`payload`
+|Object
+|The data that you want to stream
+
+|===
+
+
+=== Transaction Event Handler
+
+The transaction event handler is the core of the Stream Producer and allows to stream database changes.
+
+==== Events
 
 The Producer streams three kind of events:
 
@@ -18,7 +65,7 @@ The Producer streams three kind of events:
 * *updated*: when a node/relation/property is updated
 * *deleted*: when a node/relation/property is deleted
 
-==== Created
+===== Created
 
 Following an example of the node creation event:
 
@@ -30,7 +77,7 @@ include::data/node.created.json[]
 include::data/relationship.created.json[]
 ```
 
-==== Updated
+===== Updated
 
 Following an example of the node update event:
 
@@ -42,7 +89,7 @@ include::data/node.updated.json[]
 include::data/relationship.updated.json[]
 ```
 
-==== Deleted
+===== Deleted
 
 Following an example of the node creation event:
 
@@ -54,7 +101,7 @@ include::data/node.deleted.json[]
 include::data/relationship.deleted.json[]
 ```
 
-=== Meta
+==== Meta
 
 The *meta* field contains the metadata related to the transaction event:
 
@@ -93,7 +140,7 @@ The *meta* field contains the metadata related to the transaction event:
 |Contains the information about the source
 |===
 
-==== Source
+===== Source
 
 [cols="3*",options="header"]
 |===
@@ -107,7 +154,7 @@ The *meta* field contains the metadata related to the transaction event:
 |===
 
 
-=== Payload
+==== Payload
 
 The *payload* field contains the information about the the data related to the event
 
@@ -134,11 +181,11 @@ The *payload* field contains the information about the the data related to the e
 |The data after the transaction event
 |===
 
-==== Payload: before and after
+===== Payload: before and after
 
 We must distinguish two cases:
 
-===== Nodes
+====== Nodes
 
 [cols="3*",options="header"]
 |===
@@ -155,7 +202,7 @@ We must distinguish two cases:
 |List of properties attached to the node, the Key is the property name
 |===
 
-===== Relationships
+====== Relationships
 
 [cols="3*",options="header"]
 |===
@@ -198,7 +245,7 @@ We must distinguish two cases:
 |===
 
 
-=== Schema
+==== Schema
 
 [cols="3*",options="header"]
 |===
@@ -215,7 +262,7 @@ We must distinguish two cases:
 |The schema after the transaction event
 |===
 
-==== Schema: before and after
+===== Schema: before and after
 
 [cols="3*",options="header"]
 |===
@@ -234,7 +281,7 @@ We must distinguish two cases:
 
 We must distinguish two cases:
 
-===== Nodes
+====== Nodes
 
 [cols="3*",options="header"]
 |===
@@ -253,8 +300,9 @@ We must distinguish two cases:
 
 ====== Constraints
 
-A node can have a list of constraints attached to it:
+Nodes and Relationships can have a list of constraints attached to them:
 
+.Node Constraints
 [cols="3*",options="header"]
 |===
 |Field
@@ -274,8 +322,7 @@ A node can have a list of constraints attached to it:
 |List of node properties involved in the constraint
 |===
 
-===== Relationships
-
+.Relationship constraints
 [cols="3*",options="header"]
 |===
 |Field

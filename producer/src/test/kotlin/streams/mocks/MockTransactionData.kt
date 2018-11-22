@@ -105,10 +105,10 @@ data class MockPropertyEntry<T : PropertyContainer>(val entity: T,
 
 }
 
-class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf(), val properties:  MutableMap<String, Any> = mutableMapOf() ) : Node {
+class MockNode(private var id : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf(), val properties:  MutableMap<String, Any> = mutableMapOf() ) : Node {
 
     override fun getId(): Long {
-        return nodeId
+        return id
     }
 
     override fun hasProperty(key: String?): Boolean {
@@ -315,6 +315,45 @@ class MockRelationship(private val id: Long, private val type: String, private v
     }
 
     override fun delete() {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+}
+
+class MockPath(private val startNode: Node, private val endNode: Node, private val relationship: Relationship): Path {
+    override fun length(): Int {
+        return 1
+    }
+
+    override fun endNode(): Node {
+        return endNode
+    }
+
+    override fun nodes(): MutableIterable<Node> {
+        return mutableListOf(startNode, endNode)
+    }
+
+    override fun startNode(): Node {
+        return startNode
+    }
+
+    override fun reverseRelationships(): MutableIterable<Relationship> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun iterator(): MutableIterator<PropertyContainer> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun lastRelationship(): Relationship {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun relationships(): MutableIterable<Relationship> {
+        return mutableListOf(relationship)
+    }
+
+    override fun reverseNodes(): MutableIterable<Node> {
         TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
     }
 

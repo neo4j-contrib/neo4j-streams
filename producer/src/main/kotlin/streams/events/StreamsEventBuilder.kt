@@ -189,7 +189,7 @@ class StreamsEventBuilder(){
         return this
     }
 
-    fun build() : StreamsEvent{
-        return StreamsEvent(meta!!, payload!!, schema!!)
+    fun build() : StreamsTransactionEvent{
+        return StreamsTransactionEvent(meta!!, payload!!, schema!!)
     }
 }

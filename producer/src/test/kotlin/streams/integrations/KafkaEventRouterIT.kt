@@ -1,6 +1,8 @@
 package streams.integrations
 
+import kotlinx.coroutines.*
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.LongDeserializer
@@ -8,14 +10,17 @@ import org.junit.After
 import org.junit.Before
 import org.junit.ClassRule
 import org.junit.Test
-import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.impl.proc.Procedures
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
 import streams.kafka.KafkaConfiguration
+import streams.procedures.StreamsProcedures
 import streams.serialization.JacksonUtil
+import kotlin.concurrent.timer
 import kotlin.test.assertEquals
 
-class SampleKafkaIT {
+class KafkaEventRouterIT {
 
     companion object {
         /**
@@ -35,51 +40,69 @@ class SampleKafkaIT {
         val kafka = KafkaContainer(confluentPlatformVersion)
     }
 
-    var db: GraphDatabaseService? = null
+    lateinit var db: GraphDatabaseAPI
 
     @Before
     fun setUp() {
         db = TestGraphDatabaseFactory().newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
-                .newGraphDatabase()
+                .newGraphDatabase() as GraphDatabaseAPI
+        db.dependencyResolver.resolveDependency(Procedures::class.java)
+                .registerProcedure(StreamsProcedures::class.java, true)
     }
 
     @After
     fun tearDown() {
-        db?.shutdown()
-    }
-
-    private fun createNode() {
-        db!!.execute("CREATE (:Person {name:'John Doe', age:42})").close()
+        db.shutdown()
     }
 
     @Test
     fun testCreateNode() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-
-        val props = config.asProperties()
-        props.put("group.id", "neo4j")
-        props.put("enable.auto.commit", "true");
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, LongDeserializer::class.java)
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, ByteArrayDeserializer::class.java)
-        val consumer = KafkaConsumer<Long, ByteArray>(props)
+        val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
-        Thread {
-            Thread.sleep(1000)
-            createNode()
-        }.start()
+        db.execute("CREATE (:Person {name:'John Doe', age:42})").close()
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
             JacksonUtil.getMapper().readValue(it.value(), Map::class.java).let {
-                val map = it["value"] as Map<String, Any>
-                var payload = map["payload"] as Map<String, Any?>
+                var payload = it["payload"] as Map<String, Any?>
                 val after = payload["after"] as Map<String, Any?>
                 val labels = after["labels"] as List<String>
                 val propertiesAfter = after["properties"] as Map<String, Any?>
-                val meta = map["meta"] as Map<String, Any?>
+                val meta = it["meta"] as Map<String, Any?>
                 labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42) && meta["operation"] == "created"
             }
         })
+        consumer.close()
     }
+
+    private fun createConsumer(config: KafkaConfiguration): KafkaConsumer<Long, ByteArray> {
+        val props = config.asProperties()
+        props["group.id"] = "neo4j"
+        props["enable.auto.commit"] = "true"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = LongDeserializer::class.java
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
+        props["auto.offset.reset"] = "earliest"
+        return KafkaConsumer(props)
+    }
+
+    @Test
+    fun testProcedure() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf("neo4j"))
+        val message = "Hello World"
+        db.execute("CALL streams.publish('neo4j', '$message')").close()
+        val records = consumer.poll(5000)
+        assertEquals(1, records.count())
+        assertEquals(true, records.all {
+            JacksonUtil.getMapper().readValue(it.value(), Map::class.java).let {
+                val payload = it as Map<String, String>
+                message == payload["payload"]
+            }
+        })
+        consumer.close()
+    }
+
 }

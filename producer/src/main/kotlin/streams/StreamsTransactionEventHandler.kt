@@ -16,12 +16,12 @@ data class EventAccumulator(private var startValue: Int = 0) {
     }
 }
 
-class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : TransactionEventHandler<PreviousTransactionData> {
+class StreamsTransactionEventHandler(val router : StreamsEventRouter, val configuration: StreamsEventRouterConfiguration) : TransactionEventHandler<PreviousTransactionData> {
 
     /**
-     * Wrap the payload into a StreamsEvent for the eventId
+     * Wrap the payload into a StreamsTransactionEvent for the eventId
      */
-    private fun payloadToEvent(operation: OperationType, payload: Payload, txd: TransactionData, eventId: Int, eventCount: Int) : StreamsEvent{
+    private fun payloadToEvent(operation: OperationType, payload: Payload, txd: TransactionData, eventId: Int, eventCount: Int) : StreamsTransactionEvent{
         val meta = StreamsEventMetaBuilder()
                 .withOperation(operation)
                 .withTransactionEventId(eventId)
@@ -42,7 +42,7 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
     }
 
 
-    private fun mapToStreamsEvent(operation: OperationType, payloads: List<Payload>, txd: TransactionData, totalEventsCount: Int, accumulator: EventAccumulator) : List<StreamsEvent> {
+    private fun mapToStreamsEvent(operation: OperationType, payloads: List<Payload>, txd: TransactionData, totalEventsCount: Int, accumulator: EventAccumulator) : List<StreamsTransactionEvent> {
         return payloads.map {
             accumulator.inc()
             payloadToEvent(operation, it, txd, accumulator.value(), totalEventsCount)
@@ -169,14 +169,25 @@ class StreamsTransactionEventHandler(private val router : StreamsEventRouter) : 
                 relPrevious.createdPayload.size + relPrevious.deletedPayload.size + relPrevious.updatedPayloads.size
 
         val eventAcc = EventAccumulator(-1)
-        val events = mutableListOf<StreamsEvent>()
+        val events = mutableListOf<StreamsTransactionEvent>()
         events.addAll(mapToStreamsEvent(OperationType.created, nodePrevious.createdPayload, txd, totalEventsCount, eventAcc))
         events.addAll(mapToStreamsEvent(OperationType.deleted, nodePrevious.deletedPayload, txd, totalEventsCount, eventAcc))
         events.addAll(mapToStreamsEvent(OperationType.updated, nodePrevious.updatedPayloads, txd, totalEventsCount, eventAcc))
         events.addAll(mapToStreamsEvent(OperationType.created, relPrevious.createdPayload, txd, totalEventsCount, eventAcc))
         events.addAll(mapToStreamsEvent(OperationType.deleted, relPrevious.deletedPayload, txd, totalEventsCount, eventAcc))
         events.addAll(mapToStreamsEvent(OperationType.updated, relPrevious.updatedPayloads, txd, totalEventsCount, eventAcc))
-        router.sendEvents(events)
+        val topicEventsMap = events.flatMap { event ->
+                    val map  = when (event.payload.type) {
+                        EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, configuration.nodeRouting)
+                        EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, configuration.relRouting)
+                    }
+            map.map { it.key to it.value }
+                }
+                .groupBy({ it.first }, { it.second })
+
+        topicEventsMap.forEach {
+            router.sendEvents(it.key, it.value)
+        }
     }
 
     override fun beforeCommit(txd: TransactionData): PreviousTransactionData {

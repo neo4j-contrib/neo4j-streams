@@ -153,7 +153,7 @@ class RoutingConfigurationTest {
 
         //When
         val events = NodeRoutingConfiguration.prepareEvent(
-                streamsEvent = streamsEvent,
+                streamsTransactionEvent = streamsEvent,
                 routingConf = routingConf)
 
         // Then
@@ -218,7 +218,7 @@ class RoutingConfigurationTest {
 
         //When
         val events = RelationshipRoutingConfiguration.prepareEvent(
-                streamsEvent = streamsEvent,
+                streamsTransactionEvent = streamsEvent,
                 routingConf = routingConf)
 
         // Then

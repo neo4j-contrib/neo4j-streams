@@ -7,7 +7,11 @@ import streams.events.StreamsEvent
 
 abstract class StreamsEventRouter(val logService: LogService?, val config: Config?) {
 
-    abstract fun sendEvents(events : List<StreamsEvent>)
+    abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>)
+
+    abstract fun start()
+
+    abstract fun stop()
 
 }
 

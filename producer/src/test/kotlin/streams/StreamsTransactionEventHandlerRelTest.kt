@@ -15,7 +15,7 @@ import kotlin.test.assertNull
 
 class StreamsTransactionEventHandlerRelTest {
 
-    private val handler : StreamsTransactionEventHandler = StreamsTransactionEventHandler(MockStreamsEventRouter())
+    private val handler : StreamsTransactionEventHandler = StreamsTransactionEventHandler(MockStreamsEventRouter(), StreamsEventRouterConfiguration())
 
 
     @Before
@@ -29,8 +29,8 @@ class StreamsTransactionEventHandlerRelTest {
         val createdRels = mutableListOf<MockRelationship>(MockRelationship(
                 id=1,
                 type="REL",
-                startNode=MockNode(nodeId = 1, labels = mutableListOf(Label.label("Start"))),
-                endNode = MockNode(nodeId = 2, labels = mutableListOf(Label.label("End"))),
+                startNode=MockNode(id = 1, labels = mutableListOf(Label.label("Start"))),
+                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("End"))),
                 properties = mutableMapOf("p1" to 1, "p2" to "2")))
         val txd = MockTransactionData(createdRelationships = createdRels)
         val previous = handler.beforeCommit(txd).relData
@@ -58,8 +58,8 @@ class StreamsTransactionEventHandlerRelTest {
         val delRel = MockRelationship(
                 id=1,
                 type="REL",
-                startNode=MockNode(nodeId = 1, labels = mutableListOf(Label.label("Start"))),
-                endNode = MockNode(nodeId = 2, labels = mutableListOf(Label.label("End"))))
+                startNode=MockNode(id = 1, labels = mutableListOf(Label.label("Start"))),
+                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("End"))))
         val removedProps = mutableListOf<PropertyEntry<Relationship>>(MockPropertyEntry<Relationship>( delRel,"p1", null, 1),
                 MockPropertyEntry<Relationship>( delRel,"p2", null, "2"))
 
@@ -91,8 +91,8 @@ class StreamsTransactionEventHandlerRelTest {
         val createdRels = mutableListOf<MockRelationship>(MockRelationship(
                 id = 1,
                 type = "REL",
-                startNode = MockNode(nodeId = 1, labels = mutableListOf(Label.label("Start"))),
-                endNode = MockNode(nodeId = 2, labels = mutableListOf(Label.label("End"))),
+                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Start"))),
+                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("End"))),
                 properties = mutableMapOf("p1" to 1, "p2" to "2")))
         val txd = MockTransactionData(createdRelationships = createdRels)
         val prev = handler.beforeCommit(txd)
@@ -112,8 +112,8 @@ class StreamsTransactionEventHandlerRelTest {
         val delRel = MockRelationship(
                 id=1,
                 type="REL",
-                startNode=MockNode(nodeId = 1, labels = mutableListOf(Label.label("Start"))),
-                endNode = MockNode(nodeId = 2, labels = mutableListOf(Label.label("End"))))
+                startNode=MockNode(id = 1, labels = mutableListOf(Label.label("Start"))),
+                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("End"))))
         val removedProps = mutableListOf<PropertyEntry<Relationship>>(MockPropertyEntry<Relationship>( delRel,"p1", null, 1),
                 MockPropertyEntry<Relationship>( delRel,"p2", null, "2"))
 
@@ -136,8 +136,8 @@ class StreamsTransactionEventHandlerRelTest {
         val relation = MockRelationship(
                 id=1,
                 type="REL",
-                startNode=MockNode(nodeId = 1, labels = mutableListOf(Label.label("Start"))),
-                endNode = MockNode(nodeId = 2, labels = mutableListOf(Label.label("End"))),
+                startNode=MockNode(id = 1, labels = mutableListOf(Label.label("Start"))),
+                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("End"))),
                 properties = mutableMapOf("p1" to 1, "p2" to "2"))
 
         val createdRels = mutableListOf<MockRelationship>(relation)
