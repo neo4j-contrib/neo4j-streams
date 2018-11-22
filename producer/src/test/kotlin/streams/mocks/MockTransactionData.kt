@@ -358,3 +358,42 @@ class MockPath(private val startNode: Node, private val endNode: Node, private v
     }
 
 }
+
+class MockPath(private val startNode: Node, private val endNode: Node, private val relationship: Relationship): Path {
+    override fun length(): Int {
+        return 1
+    }
+
+    override fun endNode(): Node {
+        return endNode
+    }
+
+    override fun nodes(): MutableIterable<Node> {
+        return mutableListOf(startNode, endNode)
+    }
+
+    override fun startNode(): Node {
+        return startNode
+    }
+
+    override fun reverseRelationships(): MutableIterable<Relationship> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun iterator(): MutableIterator<PropertyContainer> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun lastRelationship(): Relationship {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+    override fun relationships(): MutableIterable<Relationship> {
+        return mutableListOf(relationship)
+    }
+
+    override fun reverseNodes(): MutableIterable<Node> {
+        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+    }
+
+}
