@@ -22,7 +22,7 @@ If you are using them via Docker, pass this simple environment parameter:
  NEO4J_dbms_security_procedures_unrestricted: streams.*
 
 
-== streams.publish
+==== streams.publish
 
 This procedure allows custom message streaming from Neo4j to the configured environment
 
