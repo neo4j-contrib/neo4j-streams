@@ -50,4 +50,5 @@ data class Constraint(val label: String?,
 data class Schema(val properties: List<String> = emptyList(),
                   val constraints: List<Constraint>? = null)
 
-data class StreamsEvent(val meta: Meta, val payload: Payload, val schema: Schema)
+open class StreamsEvent(open val payload: Any)
+data class StreamsTransactionEvent(val meta: Meta, override val payload: Payload, val schema: Schema): StreamsEvent(payload)

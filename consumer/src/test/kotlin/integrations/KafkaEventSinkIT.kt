@@ -10,7 +10,7 @@ import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.LongSerializer
+import org.apache.kafka.common.serialization.StringSerializer
 import org.codehaus.jackson.map.ObjectMapper
 import org.junit.*
 import org.junit.rules.TestName
@@ -59,7 +59,7 @@ class KafkaEventSinkIT {
 
     private val kafkaProperties = Properties()
 
-    private lateinit var kafkaProducer: KafkaProducer<Long, ByteArray>
+    private lateinit var kafkaProducer: KafkaProducer<String, ByteArray>
 
     // Test data
     private val dataProperties = mapOf("prop1" to "foo", "bar" to 1)
@@ -77,7 +77,7 @@ class KafkaEventSinkIT {
 
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
         kafkaProperties["group.id"] = "neo4j"
-        kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = LongSerializer::class.java
+        kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
 
         AdminClient.create(kafkaProperties).use { client -> client.createTopics(
@@ -94,7 +94,8 @@ class KafkaEventSinkIT {
     fun shouldWriteDataFromSink() = runBlocking {
         val job = GlobalScope.launch {
             var partition = ThreadLocalRandom.current().nextInt(1)
-            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(), 1L,
+            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(),
+                    UUID.randomUUID().toString(),
                     objectMapper.writeValueAsBytes(data))
             kafkaProducer.send(producerRecord).get()
             delay(5000)
@@ -126,7 +127,8 @@ class KafkaEventSinkIT {
     fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
         val job = GlobalScope.launch {
             var partition = ThreadLocalRandom.current().nextInt(1)
-            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(), 1L,
+            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(),
+                    UUID.randomUUID().toString(),
                     objectMapper.writeValueAsBytes(data))
             kafkaProducer.send(producerRecord).get()
             delay(5000)

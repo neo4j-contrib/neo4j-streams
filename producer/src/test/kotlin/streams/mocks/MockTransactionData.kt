@@ -30,7 +30,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun isDeleted(relationship: Relationship?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun removedLabels(): MutableIterable<LabelEntry> {
@@ -58,7 +58,7 @@ data class MockTransactionData(val assignedNodeProperties: MutableIterable<Prope
     }
 
     override fun metaData(): MutableMap<String, Any> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun deletedRelationships(): MutableIterable<Relationship> {
@@ -105,14 +105,14 @@ data class MockPropertyEntry<T : PropertyContainer>(val entity: T,
 
 }
 
-class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf(), val properties:  MutableMap<String, Any> = mutableMapOf() ) : Node {
+class MockNode(private var id : Long = 0, @JvmField var labels : MutableIterable<Label> = mutableListOf(), val properties:  MutableMap<String, Any> = mutableMapOf() ) : Node {
 
     override fun getId(): Long {
-        return nodeId
+        return id
     }
 
     override fun hasProperty(key: String?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getLabels(): MutableIterable<Label> {
@@ -124,115 +124,115 @@ class MockNode(var nodeId : Long = 0, @JvmField var labels : MutableIterable<Lab
     }
 
     override fun addLabel(label: Label?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getGraphDatabase(): GraphDatabaseService {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun setProperty(key: String?, value: Any?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasLabel(label: Label?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getDegree(): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getDegree(type: RelationshipType?): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getDegree(direction: Direction?): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getDegree(type: RelationshipType?, direction: Direction?): Int {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationships(): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationships(vararg types: RelationshipType?): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationships(direction: Direction?, vararg types: RelationshipType?): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationships(dir: Direction?): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationships(type: RelationshipType?, dir: Direction?): MutableIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun removeLabel(label: Label?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun removeProperty(key: String?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperties(vararg keys: String?): MutableMap<String, Any> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperty(key: String?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperty(key: String?, defaultValue: Any?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getSingleRelationship(type: RelationshipType?, dir: Direction?): Relationship {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationshipTypes(): MutableIterable<RelationshipType> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun createRelationshipTo(otherNode: Node?, type: RelationshipType?): Relationship {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getPropertyKeys(): MutableIterable<String> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasRelationship(): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasRelationship(vararg types: RelationshipType?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasRelationship(direction: Direction?, vararg types: RelationshipType?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasRelationship(dir: Direction?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun hasRelationship(type: RelationshipType?, dir: Direction?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun delete() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
 }
@@ -251,7 +251,7 @@ class MockLabelEntry(val label:Label, val node:Node) : LabelEntry {
 class MockRelationship(private val id: Long, private val type: String, private val startNode: Node, private val endNode: Node,
                        val properties:  MutableMap<String, Any> = mutableMapOf()): Relationship {
     override fun hasProperty(p0: String?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllProperties(): MutableMap<String, Any> {
@@ -259,11 +259,11 @@ class MockRelationship(private val id: Long, private val type: String, private v
     }
 
     override fun getGraphDatabase(): GraphDatabaseService {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun setProperty(p0: String?, p1: Any?) {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getId(): Long {
@@ -275,27 +275,27 @@ class MockRelationship(private val id: Long, private val type: String, private v
     }
 
     override fun removeProperty(p0: String?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperties(vararg p0: String?): MutableMap<String, Any> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperty(p0: String?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getProperty(p0: String?, p1: Any?): Any {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getNodes(): Array<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getOtherNode(p0: Node?): Node {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getStartNode(): Node {
@@ -303,7 +303,7 @@ class MockRelationship(private val id: Long, private val type: String, private v
     }
 
     override fun isType(p0: RelationshipType?): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getEndNode(): Node {
@@ -311,11 +311,50 @@ class MockRelationship(private val id: Long, private val type: String, private v
     }
 
     override fun getPropertyKeys(): MutableIterable<String> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun delete() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
+    }
+
+}
+
+class MockPath(private val startNode: Node, private val endNode: Node, private val relationship: Relationship): Path {
+    override fun length(): Int {
+        return 1
+    }
+
+    override fun endNode(): Node {
+        return endNode
+    }
+
+    override fun nodes(): MutableIterable<Node> {
+        return mutableListOf(startNode, endNode)
+    }
+
+    override fun startNode(): Node {
+        return startNode
+    }
+
+    override fun reverseRelationships(): MutableIterable<Relationship> {
+        TODO("not implemented")
+    }
+
+    override fun iterator(): MutableIterator<PropertyContainer> {
+        TODO("not implemented")
+    }
+
+    override fun lastRelationship(): Relationship {
+        TODO("not implemented")
+    }
+
+    override fun relationships(): MutableIterable<Relationship> {
+        return mutableListOf(relationship)
+    }
+
+    override fun reverseNodes(): MutableIterable<Node> {
+        TODO("not implemented")
     }
 
 }

@@ -4,25 +4,12 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.LongSerializer
-import streams.NodeRoutingConfiguration
-import streams.RelationshipRoutingConfiguration
-import streams.RoutingConfigurationFactory
-import streams.events.EntityType
+import org.apache.kafka.common.serialization.StringSerializer
+import streams.getInt
 import streams.serialization.JacksonUtil
 import java.util.*
 
-fun Map<String,String>.getInt(name:String, defaultValue: Int) = this.get(name)?.toInt() ?: defaultValue
-
-private fun <T> filterMap(config: Map<String, String>, routingPrefix: String, clazz: Class<T>): List<T> {
-    return config
-            .filterKeys { it.startsWith(routingPrefix) }
-            .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.key.replace(routingPrefix, StringUtils.EMPTY) , it.value, EntityType.node) as List<T> }
-}
-
-private object StreamsRoutingConfigurationConstants { // TODO move to a StreamConfiguration class as we do in the Sink
-    const val NODE_ROUTING_KEY_PREFIX: String = "streams.source.topic.nodes."
-    const val REL_ROUTING_KEY_PREFIX: String = "streams.source.topic.relationships."
-}
+private val configPrefix = "kafka."
 
 data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val bootstrapServers: String = "localhost:9092",
@@ -36,16 +23,10 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val connectionTimeoutMs: Int = 10 * 1000,
                               val replication: Int = 1,
                               val transactionalId: String = StringUtils.EMPTY,
-                              val lingerMs: Int = 1,
-                              val nodeRouting : List<NodeRoutingConfiguration> = listOf(NodeRoutingConfiguration()),
-                              val relRouting : List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration())){
+                              val lingerMs: Int = 1){
     companion object {
-        fun from(config: Map<String, String>) : KafkaConfiguration {
-            val nodeRouting = filterMap(config = config, routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
-                    clazz = NodeRoutingConfiguration::class.java)
-
-            val relRouting = filterMap(config = config, routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
-                    clazz = RelationshipRoutingConfiguration::class.java)
+        fun from(cfg: Map<String, String>) : KafkaConfiguration {
+            val config = cfg.filterKeys { it.startsWith(configPrefix) }.mapKeys { it.key.substring(configPrefix.length) }
 
             val default = KafkaConfiguration()
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
@@ -60,9 +41,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     connectionTimeoutMs = config.getInt("connection.timeout.ms", default.connectionTimeoutMs),
                     replication = config.getInt("replication", default.replication),
                     transactionalId = config.getOrDefault("transactional.id", default.transactionalId),
-                    lingerMs = config.getInt("linger.ms", default.lingerMs),
-                    nodeRouting = if (nodeRouting.isEmpty()) default.nodeRouting else nodeRouting,
-                    relRouting = if (relRouting.isEmpty()) default.relRouting else relRouting
+                    lingerMs = config.getInt("linger.ms", default.lingerMs)
             )
         }
     }
@@ -85,7 +64,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
 
     private fun addSerializers() : Properties {
         val props = Properties()
-        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  LongSerializer::class.java
+        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  StringSerializer::class.java
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
         return props
     }
