@@ -27,7 +27,7 @@ class KafkaEventSink: StreamsEventSink {
 
     private lateinit var job: Job
     private lateinit var queryExecution: StreamsEventSinkQueryExecution
-    private lateinit var kafkaConsumer: KafkaConsumer<Long, ByteArray>
+    private lateinit var kafkaConsumer: KafkaConsumer<String, ByteArray>
 
     override var streamsTopicService: StreamsTopicService? = null
 
@@ -84,7 +84,7 @@ class KafkaEventSink: StreamsEventSink {
         }
     }
 
-    private fun consume(records: ConsumerRecords<Long, ByteArray>) {
+    private fun consume(records: ConsumerRecords<String, ByteArray>) {
         streamsTopicService!!.getTopics().forEach {
             if (log.isDebugEnabled) {
                 log.debug("Reading data from topic $it")

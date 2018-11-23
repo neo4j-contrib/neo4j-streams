@@ -25,139 +25,139 @@ import java.util.function.Supplier
 
 class MockGraphDatabaseAPI(private val dependencyResolver: MockDependencyResolver = MockDependencyResolver()) : GraphDatabaseAPI {
     override fun createNode(): Node {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun createNode(vararg labels: Label?): Node {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun <T : Any?> unregisterTransactionEventHandler(handler: TransactionEventHandler<T>?): TransactionEventHandler<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun index(): IndexManager {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun bidirectionalTraversalDescription(): BidirectionalTraversalDescription {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun registerKernelEventHandler(handler: KernelEventHandler?): KernelEventHandler {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getNodeById(id: Long): Node {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun beginTransaction(type: Transaction.Type?, loginContext: LoginContext?): InternalTransaction {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun beginTransaction(type: Transaction.Type?, loginContext: LoginContext?, timeout: Long, unit: TimeUnit?): InternalTransaction {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllLabels(): ResourceIterable<Label> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun beginTx(): org.neo4j.graphdb.Transaction {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun beginTx(timeout: Long, unit: TimeUnit?): org.neo4j.graphdb.Transaction {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllNodes(): ResourceIterable<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllLabelsInUse(): ResourceIterable<Label> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllRelationshipTypes(): ResourceIterable<RelationshipType> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getStoreDir(): File {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllRelationships(): ResourceIterable<Relationship> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun findNodes(label: Label?, key: String?, value: Any?): ResourceIterator<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun findNodes(label: Label?): ResourceIterator<Node> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun <T : Any?> registerTransactionEventHandler(handler: TransactionEventHandler<T>?): TransactionEventHandler<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun createNodeId(): Long {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun traversalDescription(): TraversalDescription {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun execute(query: String?): Result {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun execute(query: String?, timeout: Long, unit: TimeUnit?): Result {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun execute(query: String?, parameters: MutableMap<String, Any>?): Result {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun execute(query: String?, parameters: MutableMap<String, Any>?, timeout: Long, unit: TimeUnit?): Result {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun shutdown() {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getRelationshipById(id: Long): Relationship {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun findNode(label: Label?, key: String?, value: Any?): Node {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllPropertyKeys(): ResourceIterable<String> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun validateURLAccess(url: URL?): URL {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun unregisterKernelEventHandler(handler: KernelEventHandler?): KernelEventHandler {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun schema(): Schema {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun isAvailable(timeout: Long): Boolean {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getDependencyResolver(): DependencyResolver {
@@ -165,11 +165,11 @@ class MockGraphDatabaseAPI(private val dependencyResolver: MockDependencyResolve
     }
 
     override fun storeId(): StoreId {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun getAllRelationshipTypesInUse(): ResourceIterable<RelationshipType> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
 }
@@ -188,15 +188,15 @@ class MockDependencyResolver(private val nodeRouting: List<NodeRoutingConfigurat
     }
 
     override fun <T : Any?> resolveDependency(type: Class<T>?, selector: DependencyResolver.SelectionStrategy?): T {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun <T : Any?> provideDependency(type: Class<T>?, selector: DependencyResolver.SelectionStrategy?): Supplier<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
     override fun <T : Any?> provideDependency(type: Class<T>?): Supplier<T> {
-        TODO("not implemented") //To change body of created functions use File | Settings | File Templates.
+        TODO("not implemented")
     }
 
 }

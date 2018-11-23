@@ -29,7 +29,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Producer<Long, ByteArray>
+    private lateinit var producer: Producer<String, ByteArray>
     private val kafkaConfig: KafkaConfiguration
 
 
@@ -41,7 +41,7 @@ class KafkaEventRouter: StreamsEventRouter {
 
     override fun start() {
         val props = kafkaConfig.asProperties()
-        producer = Neo4jKafkaProducer<Long, ByteArray>(props)
+        producer = Neo4jKafkaProducer<String, ByteArray>(props)
         producer.initTransactions()
         log.info("Kafka Connector started")
     }
@@ -50,7 +50,7 @@ class KafkaEventRouter: StreamsEventRouter {
         producer.close()
     }
 
-    private fun send(producerRecord: ProducerRecord<Long, ByteArray>) {
+    private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
         producer.send(producerRecord,
                 { meta: RecordMetadata?, error: Exception? ->
                     if (log.isDebugEnabled) {
@@ -63,7 +63,8 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), event.hashCode().toLong(),
+        val uuid = UUID.randomUUID().toString()
+        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), uuid,
                 JacksonUtil.getMapper().writeValueAsBytes(event))
         send(producerRecord)
     }
@@ -72,7 +73,7 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), event.meta.txId + event.meta.txEventId,
+        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
                 JacksonUtil.getMapper().writeValueAsBytes(event))
         send(producerRecord)
     }

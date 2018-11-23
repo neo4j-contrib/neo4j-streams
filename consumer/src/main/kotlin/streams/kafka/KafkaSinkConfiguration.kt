@@ -3,6 +3,7 @@ package streams.kafka
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.LongDeserializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.codehaus.jackson.map.ObjectMapper
 import org.neo4j.kernel.configuration.Config
 import streams.StreamsSinkConfiguration
@@ -67,7 +68,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
     private fun addDeserializers() : Properties {
         val props = Properties()
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = LongDeserializer::class.java
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
         return props
     }

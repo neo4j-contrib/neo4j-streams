@@ -41,8 +41,7 @@ Input Parameters:
 |Variable Name
 |Type
 |Description
-`
-|`topic
+|`topic`
 |String
 |The topic where you want to publish the data
 
