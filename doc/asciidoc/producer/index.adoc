@@ -28,9 +28,9 @@ This procedure allows custom message streaming from Neo4j to the configured envi
 
 Uses:
 
-`CALL streams.publish('my-topic', 'Hello World from Neo4j!`')`
+`CALL streams.publish('my-topic', 'Hello World from Neo4j!')`
 
-The message retrived from the Consumer is the following:
+The message retrieved from the Consumer is the following:
 
 `{"payload":"Hello world from Neo4j!"}`
 
@@ -52,6 +52,7 @@ Input Parameters:
 
 |===
 
+You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
 
 === Transaction Event Handler
 
