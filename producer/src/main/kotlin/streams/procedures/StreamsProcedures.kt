@@ -58,7 +58,7 @@ class StreamsProcedures {
                 mapOf("length" to length, "rels" to rels, "nodes" to nodes)
             }
             is Map<*, *> -> {
-                payload.mapValues { buildPayload(topic, it) }
+                payload.mapValues { buildPayload(topic, it.value) }
             }
             is List<*> -> {
                 payload.map { buildPayload(topic, it) }
