@@ -1,13 +1,12 @@
 package streams
 
-import org.apache.commons.lang3.StringUtils
 import streams.events.EntityType
 
 
 private fun <T> filterMap(config: Map<String, String>, routingPrefix: String): List<T> {
     return config
             .filterKeys { it.startsWith(routingPrefix) }
-            .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.key.replace(routingPrefix, StringUtils.EMPTY) , it.value, EntityType.node) as List<T> }
+            .flatMap { RoutingConfigurationFactory.getRoutingConfiguration(it.key.replace(routingPrefix, "") , it.value, EntityType.node) as List<T> }
 }
 
 private object StreamsRoutingConfigurationConstants {
