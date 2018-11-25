@@ -10,7 +10,6 @@ The project is composed by 2 parts:
 == Installation
 
 Build locally
-// TODO release
 
 ----
 mvn clean install
@@ -19,38 +18,16 @@ mvn clean install
 2. Copy `<producer_or_consumer_dir>/target/neo4j-streams-*.jar` into `$NEO4J_HOME/plugins`
 3. Restart Neo4j
 
-// TODO provide a compose-file for quick testing
-
 == Streams Producer
 
-=== Configuration
+### link:doc/asciidoc/producer/configuration.adoc[Configuration]
 
-include::doc/asciidoc/producer/configuration.adoc[]
-
-=== Patterns
-
-include::doc/asciidoc/producer/patterns.adoc[]
+### link:doc/asciidoc/producer/patterns.adoc[Patterns]
 
 == Streams Consumer
 
-=== Configuration
-
-include::doc/asciidoc/consumer/configuration.adoc[]
+### link:doc/asciidoc/consumer/configuration.adoc[Configuration]
 
 == Docker
 
-include::doc/asciidoc/docker/index.adoc[]
-
-== Kafka Connect Neo4j Integration (by Confluent)
-
-Source, Documentation and Support is currently not available from Confluent.
-
-https://www.confluent.io/connector/kafka-connect-neo4j/
-
-We haven't checked configuration/scalability yet.
-
-Download Link is a bit hard to find, here you go: https://www.confluent.io/connector/kafka-connect-neo4j/#download[Download] 
-
-----
-confluent-hub install confluentinc/kafka-connect-neo4j:1.0.0-preview
-----
+### link:doc/asciidoc/docker/index.adoc[Docker]

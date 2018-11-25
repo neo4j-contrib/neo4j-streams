@@ -9,6 +9,7 @@ import org.neo4j.graphdb.traversal.BidirectionalTraversalDescription
 import org.neo4j.graphdb.traversal.TraversalDescription
 import org.neo4j.internal.kernel.api.Transaction
 import org.neo4j.internal.kernel.api.security.LoginContext
+import org.neo4j.kernel.AvailabilityGuard
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.coreapi.InternalTransaction
 import org.neo4j.kernel.impl.logging.LogService

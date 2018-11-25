@@ -129,7 +129,7 @@ class RoutingConfigurationTest {
     fun shouldFilterAndRouteNodeEvents() {
         // TODO add more tests like a Label removed
         // Given
-        val streamsEvent = StreamsEventBuilder()
+        val streamsEvent = StreamsTransactionEventBuilder()
                 .withMeta(StreamsEventMetaBuilder()
                         .withOperation(OperationType.created)
                         .withTimestamp(System.currentTimeMillis())
@@ -191,7 +191,7 @@ class RoutingConfigurationTest {
     @Test
     fun shouldFilterAndRouteRelationshipEvents() {
         // Given
-        val streamsEvent = StreamsEventBuilder()
+        val streamsEvent = StreamsTransactionEventBuilder()
                 .withMeta(StreamsEventMetaBuilder()
                         .withOperation(OperationType.created)
                         .withTimestamp(System.currentTimeMillis())

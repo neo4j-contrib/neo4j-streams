@@ -1,5 +1,12 @@
 package streams.events
 
+import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.Path
+import org.neo4j.graphdb.Relationship
+import streams.NodeRoutingConfiguration
+import streams.RelationshipRoutingConfiguration
+import streams.toMap
+
 
 class StreamsEventMetaBuilder(){
 
@@ -168,28 +175,98 @@ class SchemaBuilder() {
     }
 }
 
-class StreamsEventBuilder(){
+class StreamsTransactionEventBuilder {
 
     private var meta: Meta? = null
     private var payload: Payload? = null
     private var schema: Schema? = null
 
-    fun withMeta(meta : Meta): StreamsEventBuilder{
+    fun withMeta(meta : Meta): StreamsTransactionEventBuilder {
         this.meta = meta
         return this
     }
 
-    fun withPayload(payload : Payload) : StreamsEventBuilder{
+    fun withPayload(payload : Payload): StreamsTransactionEventBuilder {
         this.payload = payload
         return this
     }
 
-    fun withSchema(schema : Schema) : StreamsEventBuilder{
+    fun withSchema(schema : Schema): StreamsTransactionEventBuilder {
         this.schema = schema
         return this
     }
 
-    fun build() : StreamsTransactionEvent{
+    fun build(): StreamsTransactionEvent {
         return StreamsTransactionEvent(meta!!, payload!!, schema!!)
     }
+}
+
+class StreamsEventBuilder {
+
+    private lateinit var payload: Any
+    private lateinit var topic: String
+    private var nodeRoutingConfiguration: NodeRoutingConfiguration? = null
+    private var relationshipRoutingConfiguration: RelationshipRoutingConfiguration? = null
+
+    fun withPayload(payload: Any): StreamsEventBuilder {
+        this.payload = payload
+        return this
+    }
+
+    fun withTopic(topic: String): StreamsEventBuilder {
+        this.topic = topic
+        return this
+    }
+
+    fun withNodeRoutingConfiguration(nodeRoutingConfiguration: NodeRoutingConfiguration?): StreamsEventBuilder {
+        this.nodeRoutingConfiguration = nodeRoutingConfiguration
+        return this
+    }
+
+    fun withRelationshipRoutingConfiguration(relationshipRoutingConfiguration: RelationshipRoutingConfiguration?): StreamsEventBuilder {
+        this.relationshipRoutingConfiguration = relationshipRoutingConfiguration
+        return this
+    }
+
+    private fun buildPayload(topic: String, payload: Any?): Any? {
+        if (payload == null) {
+            return null
+        }
+        return when (payload) {
+            is Node -> {
+                if (nodeRoutingConfiguration != null) {
+                    nodeRoutingConfiguration!!.filter(payload)
+                } else {
+                    payload.toMap()
+                }
+            }
+            is Relationship -> {
+                if (relationshipRoutingConfiguration != null) {
+                    relationshipRoutingConfiguration!!.filter(payload)
+                } else {
+                    payload.toMap()
+                }
+            }
+            is Path -> {
+                val length = payload.length()
+                val rels = payload.relationships().map { buildPayload(topic, it) }
+                val nodes = payload.nodes().map { buildPayload(topic, it) }
+                mapOf("length" to length, "rels" to rels, "nodes" to nodes)
+            }
+            is Map<*, *> -> {
+                payload.mapValues { buildPayload(topic, it.value) }
+            }
+            is List<*> -> {
+                payload.map { buildPayload(topic, it) }
+            }
+            else -> {
+                payload
+            }
+        }
+    }
+
+    fun build(): StreamsEvent {
+        return StreamsEvent(buildPayload(topic, payload)!!)
+    }
+
 }
