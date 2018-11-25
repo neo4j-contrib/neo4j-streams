@@ -33,7 +33,7 @@ class StreamsTransactionEventHandler(val router : StreamsEventRouter, val config
                 .build()
         val schema = SchemaBuilder().build()
 
-        val builder = StreamsEventBuilder()
+        val builder = StreamsTransactionEventBuilder()
                 .withMeta(meta)
                 .withPayload(payload)
                 .withSchema(schema)

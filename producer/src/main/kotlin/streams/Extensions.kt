@@ -17,3 +17,7 @@ fun Relationship.toMap(): Map<String, Any?> {
             "end" to RelationshipNodeChange(endNode.id.toString(), endNode.labelNames()),
             "type" to EntityType.relationship)
 }
+
+fun Node.labelNames() : List<String> {
+    return this.labels.map { it.name() }
+}
