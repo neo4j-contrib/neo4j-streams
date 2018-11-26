@@ -21,3 +21,7 @@ fun Relationship.toMap(): Map<String, Any?> {
 fun Node.labelNames() : List<String> {
     return this.labels.map { it.name() }
 }
+
+fun String.toPointCase(): String {
+    return this.split("(?<=[a-z])(?=[A-Z])".toRegex()).joinToString(separator = ".").toLowerCase()
+}

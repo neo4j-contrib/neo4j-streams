@@ -61,8 +61,8 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                 .mapKeys { it.key.toPointCase() }
         props.putAll(map)
         props.putAll(extraProperties)
-        props.putAll(addDeserializers())
-        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = true
+        props.putAll(addDeserializers()) // Fixed deserializers
+        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = true // Fixed autocommit
         return props
     }
 

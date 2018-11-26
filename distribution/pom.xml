@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.neo4j</groupId>
+    <artifactId>neo4j-streams-distribution</artifactId>
+    <name>Neo4j Streams - Distribution</name>
+    <description>Neo4j Streams - Distribution Package</description>
+    <packaging>pom</packaging>
+
+    <parent>
+        <groupId>org.neo4j</groupId>
+        <artifactId>neo4j-streams-parent</artifactId>
+        <version>3.4.7.1</version>
+    </parent>
+
+    <!-- Include here all the required dependencies of the final package -->
+    <dependencies>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-streams-producer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-streams-consumer</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.4</version>
+                <executions>
+                    <execution>
+                        <id>streams-assembly</id>
+                        <phase>package</phase> <!-- create assembly in package phase (invoke 'single' goal on assemby plugin)-->
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <descriptors>
+                                <descriptor>assembly/assembly.xml</descriptor>
+                            </descriptors>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <finalName>neo4j-streams-${project.version}</finalName>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <outputDirectory>../target</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -11,8 +11,14 @@ abstract class StreamsEventSink(private val config: Config,
 
     abstract fun stop()
 
+    abstract fun start()
+
     override fun unavailable() {
         stop()
+    }
+
+    override fun available() {
+        start()
     }
 
 }

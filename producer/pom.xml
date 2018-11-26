@@ -6,7 +6,6 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-producer</artifactId>
-    <version>3.4.7.1</version>
     <name>Neo4j Streams - Producer</name>
     <description>Neo4j Streams - Kafka Producer</description>
     <packaging>jar</packaging>
@@ -16,6 +15,5 @@
         <artifactId>neo4j-streams-parent</artifactId>
         <version>3.4.7.1</version>
     </parent>
-
 
 </project>

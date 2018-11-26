@@ -45,12 +45,16 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
     }
 
     fun registerTransactionEventHandler() {
-        txHandler = StreamsTransactionEventHandler(streamHandler, streamsEventRouterConfiguration)
-        db.registerTransactionEventHandler(txHandler)
+        if (streamsEventRouterConfiguration.enabled) {
+            txHandler = StreamsTransactionEventHandler(streamHandler, streamsEventRouterConfiguration)
+            db.registerTransactionEventHandler(txHandler)
+        }
     }
 
     fun unregisterTransactionEventHandler() {
-        db.unregisterTransactionEventHandler(txHandler)
+        if (streamsEventRouterConfiguration.enabled) {
+            db.unregisterTransactionEventHandler(txHandler)
+        }
     }
 
     override fun stop() {

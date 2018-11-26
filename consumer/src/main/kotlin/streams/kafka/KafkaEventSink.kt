@@ -40,7 +40,7 @@ class KafkaEventSink: StreamsEventSink {
         this.db = db
     }
 
-    override fun available() {
+    override fun start() {
         this.streamsTopicService = StreamsTopicService(this.db, kafkaConfig.streamsSinkConfiguration)
         if (streamsTopicService!!.getTopics().isEmpty()) {
             log.info("No topic configuration found under streams.sink.topic.*, Kafka Sink will not stared")
@@ -48,7 +48,7 @@ class KafkaEventSink: StreamsEventSink {
         }
 
         this.queryExecution = StreamsEventSinkQueryExecution(this.streamsTopicService!!, db, log)
-        createConsumer();
+        createConsumer()
 
         job = createJob()
         log.info("Kafka Sink Connector started.")
