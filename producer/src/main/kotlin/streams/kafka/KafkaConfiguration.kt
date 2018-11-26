@@ -5,8 +5,10 @@ import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
+import org.codehaus.jackson.map.ObjectMapper
 import streams.getInt
 import streams.serialization.JacksonUtil
+import streams.toPointCase
 import java.util.*
 
 private val configPrefix = "kafka."
@@ -23,12 +25,23 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val connectionTimeoutMs: Int = 10 * 1000,
                               val replication: Int = 1,
                               val transactionalId: String = StringUtils.EMPTY,
-                              val lingerMs: Int = 1){
+                              val lingerMs: Int = 1,
+                              val extraProperties: Map<String, String> = emptyMap()) {
+
+    private fun asMap(): Map<String, Any?> {
+        return ObjectMapper().convertValue(this, Map::class.java)
+                .mapKeys { it.key.toString() }
+    }
+
     companion object {
         fun from(cfg: Map<String, String>) : KafkaConfiguration {
             val config = cfg.filterKeys { it.startsWith(configPrefix) }.mapKeys { it.key.substring(configPrefix.length) }
 
             val default = KafkaConfiguration()
+
+            val keys = default.asMap().keys.map { it.toPointCase() }
+            val extraProperties = config.filterKeys { !keys.contains(it) }
+
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
                     bootstrapServers = config.getOrDefault("bootstrap.servers", default.bootstrapServers),
                     acks = config.getOrDefault("acks", default.acks),
@@ -41,24 +54,26 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     connectionTimeoutMs = config.getInt("connection.timeout.ms", default.connectionTimeoutMs),
                     replication = config.getInt("replication", default.replication),
                     transactionalId = config.getOrDefault("transactional.id", default.transactionalId),
-                    lingerMs = config.getInt("linger.ms", default.lingerMs)
+                    lingerMs = config.getInt("linger.ms", default.lingerMs),
+                    extraProperties = extraProperties // for what we don't provide a default configuration
             )
         }
     }
 
     fun asProperties(): Properties {
         val props = Properties()
-        val map = JacksonUtil.getMapper().convertValue(this, Map::class.java)
-                .mapKeys { it.key.toString().split("(?<=[a-z])(?=[A-Z])".toRegex()).joinToString(separator = ".").toLowerCase() }
+        val map = this.asMap()
                 .filter {
-                    if (it.key == "transactional.id") {
+                    if (it.key == "transactionalId") {
                         it.value != StringUtils.EMPTY
                     } else {
-                        it.key != "node.routing" && it.key != "rel.routing"
+                        true
                     }
                 }
+                .mapKeys { it.key.toPointCase() }
         props.putAll(map)
-        props.putAll(addSerializers())
+        props.putAll(extraProperties)
+        props.putAll(addSerializers()) // Fixed serializers
         return props
     }
 

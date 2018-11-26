@@ -12,10 +12,12 @@ private fun <T> filterMap(config: Map<String, String>, routingPrefix: String): L
 private object StreamsRoutingConfigurationConstants {
     const val NODE_ROUTING_KEY_PREFIX: String = "streams.source.topic.nodes."
     const val REL_ROUTING_KEY_PREFIX: String = "streams.source.topic.relationships."
-    const val ENABLED = "streams.produce.enabled"
+    const val ENABLED = "streams.source.enabled"
+    const val PROCEDURES_ENABLED = "streams.procedures.enabled"
 }
 
 data class StreamsEventRouterConfiguration(val enabled: Boolean = true,
+                                           val proceduresEnabled: Boolean = true,
                                            val nodeRouting: List<NodeRoutingConfiguration> = listOf(NodeRoutingConfiguration()),
                                            val relRouting: List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration())) {
     companion object {
@@ -28,6 +30,7 @@ data class StreamsEventRouterConfiguration(val enabled: Boolean = true,
 
             val default = StreamsEventRouterConfiguration()
             return default.copy(enabled = config.getOrDefault(StreamsRoutingConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
+                    proceduresEnabled = config.getOrDefault(StreamsRoutingConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled).toString().toBoolean(),
                     nodeRouting = if (nodeRouting.isEmpty()) default.nodeRouting else nodeRouting,
                     relRouting = if (relRouting.isEmpty()) default.relRouting else relRouting)
         }

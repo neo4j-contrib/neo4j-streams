@@ -23,6 +23,7 @@
         <module>producer</module>
         <module>consumer</module>
         <module>doc</module>
+        <module>distribution</module>
     </modules>
 
     <properties>
@@ -30,7 +31,7 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.3.0</kotlin.version>
         <kotlin.coroutines.version>1.0.0</kotlin.coroutines.version>
-        <neo4j.version>3.4.7</neo4j.version>
+        <neo4j.version>3.4.10</neo4j.version>
         <kafka.version>1.0.1</kafka.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>

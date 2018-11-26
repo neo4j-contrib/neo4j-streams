@@ -2,6 +2,7 @@ package streams.kafka
 
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class KafkaConfigurationTest {
@@ -20,9 +21,16 @@ class KafkaConfigurationTest {
                 "kafka.connection.timeout.ms" to 1,
                 "kafka.replication" to 2,
                 "kafka.transactional.id" to "foo",
-                "kafka.linger.ms" to 10)
+                "kafka.linger.ms" to 10,
+                "kafka.fetch.min.bytes" to 1234)
 
-        val properties = KafkaConfiguration.from(map.mapValues { it.value.toString() }).asProperties()
+        val kafkaConfig = KafkaConfiguration.from(map.mapValues { it.value.toString() })
+
+        assertFalse { kafkaConfig.extraProperties.isEmpty() }
+        assertTrue { kafkaConfig.extraProperties.containsKey("fetch.min.bytes") }
+        assertEquals(1,  kafkaConfig.extraProperties.size)
+
+        val properties = kafkaConfig.asProperties()
 
         assertEquals(map["kafka.zookeeper.connect"], properties["zookeeper.connect"])
         assertEquals(map["kafka.bootstrap.servers"], properties["bootstrap.servers"])
@@ -37,5 +45,6 @@ class KafkaConfigurationTest {
         assertEquals(map["kafka.replication"], properties["replication"])
         assertEquals(map["kafka.transactional.id"], properties["transactional.id"])
         assertEquals(map["kafka.linger.ms"], properties["linger.ms"])
+        assertEquals(map["kafka.fetch.min.bytes"].toString(), properties["fetch.min.bytes"])
     }
 }

@@ -29,7 +29,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
         private val configuration = dependencies.config()
         private var streamsLog = log.getUserLog(StreamsEventLifecycle::class.java)
 
-        lateinit var eventSink: StreamsEventSink
+        private lateinit var eventSink: StreamsEventSink
 
         override fun start() {
             try {

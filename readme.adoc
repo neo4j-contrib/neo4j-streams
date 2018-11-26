@@ -15,7 +15,7 @@ Build locally
 mvn clean install
 ----
 
-2. Copy `<producer_or_consumer_dir>/target/neo4j-streams-*.jar` into `$NEO4J_HOME/plugins`
+2. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
 3. Restart Neo4j
 
 == Streams Producer
