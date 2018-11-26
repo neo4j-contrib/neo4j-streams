@@ -28,6 +28,10 @@ mvn clean install
 
 ### link:doc/asciidoc/consumer/configuration.adoc[Configuration]
 
+== Streams Procedures
+
+### link:doc/asciidoc/procedures/index.adoc[Procedures]
+
 == Docker
 
 ### link:doc/asciidoc/docker/index.adoc[Docker]

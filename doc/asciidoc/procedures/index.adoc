@@ -1,0 +1,45 @@
+== Procedures
+
+The Streams project comes out with a list of procedures.
+
+=== General configuration
+
+You can enable/disable the procedures by changing this variable inside the `neo4j.conf`
+
+.neo4j.conf
+----
+streams.procedures.enable=<true/false, default=true>
+----
+
+=== streams.publish
+
+This procedure allows custom message streaming from Neo4j to the configured environment by using the underlying configured Producer.
+
+Uses:
+
+`CALL streams.publish('my-topic', 'Hello World from Neo4j!')`
+
+The message retrieved from the Consumer is the following:
+
+`{"payload":"Hello world from Neo4j!"}`
+
+Input Parameters:
+
+[cols="3*",options="header"]
+|===
+|Variable Name
+|Type
+|Description
+|`topic`
+|String
+|The topic where you want to publish the data
+
+|`payload`
+|Object
+|The data that you want to stream
+
+|===
+
+You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
+
+In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.

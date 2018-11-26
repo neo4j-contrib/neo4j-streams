@@ -19,7 +19,6 @@ kafka.transaction.id=
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
 streams.source.enable=<true/false, default=true>
-streams.procedures.enable=<true/false, default=true>
 ----
 
 Note: To use the Kafka transactions please set `kafka.transaction.id` and `kafka.acks` properly
