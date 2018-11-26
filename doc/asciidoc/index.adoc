@@ -13,17 +13,17 @@ The project is composed by 2 parts:
 == Installation
 
 Build locally
-// todo release
 
 ----
 mvn clean install
 ----
 
-1. Copy `<producer/consumer dir>/target/neo4j-kafka-*.jar` into `$NEO4J_HOME/plugins`
+1. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
 2. Restart Neo4j
 
 
 include::producer/index.adoc[]
 
-
 include::consumer/index.adoc[]
+
+include::procedures/index.adoc[]
