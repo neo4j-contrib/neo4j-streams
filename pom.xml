@@ -9,7 +9,9 @@
     <version>3.4.0</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
-    <description></description>
+    <description>Neo4j Integration for streaming platforms</description>
+
+    <url>http://github.com/neo4j-contrib/neo4j-streams</url>
 
     <licenses>
         <license>
