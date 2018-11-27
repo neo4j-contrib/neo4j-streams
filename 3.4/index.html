@@ -431,47 +431,51 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="toc" class="toc2">
 <div id="toctitle">Table of Contents</div>
 <ul class="sectlevel1">
+<li><a href="#_motivation">Motivation</a></li>
 <li><a href="#_installation">Installation</a></li>
+<li><a href="#_build_locally">Build locally</a></li>
 <li><a href="#_neo4j_streams_producer">Neo4j Streams Producer</a>
 <ul class="sectlevel2">
 <li><a href="#_configuration">Configuration</a></li>
-<li><a href="#_patterns">Patterns</a></li>
-<li><a href="#_events">Events</a>
+<li><a href="#_patterns">Patterns</a>
 <ul class="sectlevel3">
+<li><a href="#_nodes">Nodes</a></li>
+<li><a href="#_relationships">Relationships</a></li>
+</ul>
+</li>
+<li><a href="#_transaction_event_handler">Transaction Event Handler</a>
+<ul class="sectlevel3">
+<li><a href="#_events">Events</a>
+<ul class="sectlevel4">
 <li><a href="#_created">Created</a></li>
 <li><a href="#_updated">Updated</a></li>
 <li><a href="#_deleted">Deleted</a></li>
 </ul>
 </li>
 <li><a href="#_meta">Meta</a>
-<ul class="sectlevel3">
+<ul class="sectlevel4">
 <li><a href="#_source">Source</a></li>
 </ul>
 </li>
 <li><a href="#_payload">Payload</a>
-<ul class="sectlevel3">
-<li><a href="#_payload_before_and_after">Payload: before and after</a>
 <ul class="sectlevel4">
-<li><a href="#_nodes">Nodes</a></li>
-<li><a href="#_relationships">Relationships</a>
+<li><a href="#_payload_before_and_after">Payload: before and after</a>
 <ul class="sectlevel5">
+<li><a href="#_nodes_2">Nodes</a></li>
+<li><a href="#_relationships_2">Relationships</a></li>
 <li><a href="#_relationships_startnode_and_endnode">Relationships: startNode and endNode</a></li>
 </ul>
 </li>
 </ul>
 </li>
-</ul>
-</li>
 <li><a href="#_schema">Schema</a>
-<ul class="sectlevel3">
-<li><a href="#_schema_before_and_after">Schema: before and after</a>
 <ul class="sectlevel4">
-<li><a href="#_nodes_2">Nodes</a>
+<li><a href="#_schema_before_and_after">Schema: before and after</a>
 <ul class="sectlevel5">
+<li><a href="#_nodes_3">Nodes</a></li>
 <li><a href="#_constraints">Constraints</a></li>
 </ul>
 </li>
-<li><a href="#_relationships_2">Relationships</a></li>
 </ul>
 </li>
 </ul>
@@ -484,17 +488,42 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_configuration_2">Configuration</a></li>
 </ul>
 </li>
+<li><a href="#_procedures">Procedures</a>
+<ul class="sectlevel2">
+<li><a href="#_general_configuration">General configuration</a></li>
+<li><a href="#_streams_publish">streams.publish</a></li>
+</ul>
+</li>
+<li><a href="#docker">Execute with Docker</a>
+<ul class="sectlevel2">
+<li><a href="#_launch_it_locally">Launch it locally</a></li>
+<li><a href="#_producer">Producer</a></li>
+<li><a href="#_consumer">Consumer</a></li>
+</ul>
+</li>
 </ul>
 </div>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="_motivation"><a class="link" href="#_motivation">Motivation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>The project is composed by 2 parts:</p>
+<p>Many user and customers want to integrate Kakfa and other streaming solutions with Neo4j.
+Either to ingest data into the graph from other sources.
+Or to send update events (change data capture - CDC) to the event log for later consumption.</p>
+</div>
+<div class="paragraph">
+<p>This extension was developed to satisfy all these use-cases and more to come.</p>
+</div>
+<div class="paragraph">
+<p>The project is composed of several parts:</p>
 </div>
 <div class="ulist">
 <ul>
+<li>
+<p>Neo4j Streams Procedure: a procedure to send a payload to a topic</p>
+</li>
 <li>
 <p>Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic</p>
 </li>
@@ -503,14 +532,37 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </li>
 </ul>
 </div>
+<div class="paragraph">
+<p>In the next releases we will add Kafka-Connect connectors as well.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_installation"><a class="link" href="#_installation">Installation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Build locally</p>
+<p>Download the latest release jar from <a href="https://github.com/neo4j-contrib/neo4j-streams/releases/latest" class="bare">https://github.com/neo4j-contrib/neo4j-streams/releases/latest</a></p>
 </div>
+<div class="paragraph">
+<p>Copy it into <code>$NEO4J_HOME/plugins</code> and configure the relevant connections.</p>
+</div>
+<div class="paragraph">
+<p>The minimal setup in your <code>neo4j.conf</code> is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>For each module there are additional configs that are explained in the individual sections.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_build_locally"><a class="link" href="#_build_locally">Build locally</a></h2>
+<div class="sectionbody">
 <div class="listingblock">
 <div class="content">
 <pre>mvn clean install</pre>
@@ -519,7 +571,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p>Copy <code>&lt;producer/consumer dir&gt;/target/neo4j-kafka-*.jar</code> into <code>$NEO4J_HOME/plugins</code></p>
+<p>Copy <code>&lt;project_dir&gt;/target/neo4j-streams-&lt;VERSION&gt;.jar</code> into <code>$NEO4J_HOME/plugins</code></p>
 </li>
 <li>
 <p>Restart Neo4j</p>
@@ -556,7 +608,9 @@ kafka.replication=1
 kafka.linger.ms=1
 kafka.transaction.id=
 
-kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
+streams.source.topic.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;
+streams.source.topic.relationships.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;
+streams.source.enable=&lt;true/false, default=true&gt;</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -568,6 +622,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </div>
 <div class="sect2">
 <h3 id="_patterns"><a class="link" href="#_patterns">Patterns</a></h3>
+<div class="sect3">
+<h4 id="_nodes"><a class="link" href="#_nodes">Nodes</a></h4>
 <div class="paragraph">
 <p>To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.</p>
 </div>
@@ -612,20 +668,78 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>Label{prop1,prop2}</code></p></td>
 <td class="tableblock halign-left valign-top"><div><div class="paragraph">
-<p>the prop1, prop2 of all nodes with this label are sent to the related topic</p>
+<p>the <code>prop1</code> and <code>prop2</code> of all nodes with this label are sent to the related topic</p>
 </div></div></td>
 </tr>
 <tr>
 <td class="tableblock halign-left valign-top"><p class="tableblock"><code>Label{-prop1,-prop2}</code></p></td>
 <td class="tableblock halign-left valign-top"><div><div class="paragraph">
-<p>properties of the node with prop1, prop2 excluded, with the label are sent to the related topic</p>
+<p>in the node with label <code>Label</code> properties <code>prop1</code> and <code>prop2</code> are excluded</p>
 </div></div></td>
 </tr>
 </tbody>
 </table>
 </div>
+<div class="sect3">
+<h4 id="_relationships"><a class="link" href="#_relationships">Relationships</a></h4>
+<div class="paragraph">
+<p>To control which relationships are sent to Kafka, and which of their properties you can define relationships-patterns in the config.</p>
+</div>
+<div class="paragraph">
+<p>You can chose Type and properties for inclusion or exclusion, with <code>*</code> meaning <strong>all</strong>.</p>
+</div>
+<div class="paragraph">
+<p>Patterns are separated by semicolons <code>;</code>.</p>
+</div>
+<div class="paragraph">
+<p>The basic syntax is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>KNOWS{*};MEET{prop1, prop2};ANSWER{-prop1,-prop2}</pre>
+</div>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 75%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">pattern</th>
+<th class="tableblock halign-left valign-top">meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>KNOWS{*}</code></p></td>
+<td class="tableblock halign-left valign-top"><div><div class="paragraph">
+<p>all relationship with this label with all their properties go to the related topic</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>KNOWS{prop1,prop2}</code></p></td>
+<td class="tableblock halign-left valign-top"><div><div class="paragraph">
+<p>the <code>prop1</code> and <code>prop2</code> of all relationship with this type are sent to the related topic</p>
+</div></div></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>KNOWS{-prop1,-prop2}</code></p></td>
+<td class="tableblock halign-left valign-top"><div><div class="paragraph">
+<p>in the relationship with type KNOWS properties <code>prop1</code> and <code>prop2</code> are excluded</p>
+</div></div></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
 <div class="sect2">
-<h3 id="_events"><a class="link" href="#_events">Events</a></h3>
+<h3 id="_transaction_event_handler"><a class="link" href="#_transaction_event_handler">Transaction Event Handler</a></h3>
+<div class="paragraph">
+<p>The transaction event handler is the core of the Stream Producer and allows to stream database changes.</p>
+</div>
+<div class="sect3">
+<h4 id="_events"><a class="link" href="#_events">Events</a></h4>
 <div class="paragraph">
 <p>The Producer streams three kind of events:</p>
 </div>
@@ -642,8 +756,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </li>
 </ul>
 </div>
-<div class="sect3">
-<h4 id="_created"><a class="link" href="#_created">Created</a></h4>
+<div class="sect4">
+<h5 id="_created"><a class="link" href="#_created">Created</a></h5>
 <div class="paragraph">
 <p>Following an example of the node creation event:</p>
 </div>
@@ -670,21 +784,6 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>last_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Kretchmar</span><span style="color:#710">&quot;</span></span>,
         <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">annek@noanswer.org</span><span style="color:#710">&quot;</span></span>,
         <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Anne Marie</span><span style="color:#710">&quot;</span></span>
-      }
-    }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>after</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>constraints</span><span style="color:#404">&quot;</span></span>: [{
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>label</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Person</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">NODE_KEY</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: [<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">first_name</span><span style="color:#710">&quot;</span></span>, <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">last_name</span><span style="color:#710">&quot;</span></span>]
-      }],
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>id</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">integer</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>last_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>
       }
     }
   }
@@ -722,20 +821,13 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>since</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">2018-04-05T12:34:00[Europe/Berlin]</span><span style="color:#710">&quot;</span></span>
       }
     }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>after</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>since</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>
-      }
-    }
   }
 }</code></pre>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_updated"><a class="link" href="#_updated">Updated</a></h4>
+<div class="sect4">
+<h5 id="_updated"><a class="link" href="#_updated">Updated</a></h5>
 <div class="paragraph">
 <p>Following an example of the node update event:</p>
 </div>
@@ -773,35 +865,6 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>geo</span><span style="color:#404">&quot;</span></span>:[<span style="color:#60E">0.123</span>, <span style="color:#60E">46.2222</span>, <span style="color:#60E">32.11111</span>]
       }
     }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>before</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>constraints</span><span style="color:#404">&quot;</span></span>: [{
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>label</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Person</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">NODE_KEY</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: [<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">first_name</span><span style="color:#710">&quot;</span></span>, <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">last_name</span><span style="color:#710">&quot;</span></span>]
-      }],
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>id</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">integer</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>last_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>
-      }
-    },
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>after</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>constraints</span><span style="color:#404">&quot;</span></span>: [{
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>label</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Person</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">NODE_KEY</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: [<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">first_name</span><span style="color:#710">&quot;</span></span>, <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">last_name</span><span style="color:#710">&quot;</span></span>]
-      }],
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>id</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">integer</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>last_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>geo</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">point3d</span><span style="color:#710">&quot;</span></span>
-      }
-    }
   }
 }</code></pre>
 </div>
@@ -843,26 +906,13 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>to</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">2019-04-05T23:00:00[Europe/Berlin]</span><span style="color:#710">&quot;</span></span>
       }
     }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>before</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>since</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>
-      }
-    },
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>after</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>since</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>to</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>
-      }
-    }
   }
 }</code></pre>
 </div>
 </div>
 </div>
-<div class="sect3">
-<h4 id="_deleted"><a class="link" href="#_deleted">Deleted</a></h4>
+<div class="sect4">
+<h5 id="_deleted"><a class="link" href="#_deleted">Deleted</a></h5>
 <div class="paragraph">
 <p>Following an example of the node creation event:</p>
 </div>
@@ -890,22 +940,6 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">annek@noanswer.org</span><span style="color:#710">&quot;</span></span>,
         <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Anne Marie</span><span style="color:#710">&quot;</span></span>,
         <span style="color:#606"><span style="color:#404">&quot;</span><span>geo</span><span style="color:#404">&quot;</span></span>:[<span style="color:#60E">0.123</span>, <span style="color:#60E">46.2222</span>, <span style="color:#60E">32.11111</span>]
-      }
-    }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>before</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>constraints</span><span style="color:#404">&quot;</span></span>: [{
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>label</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Person</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">NODE_KEY</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: [<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">first_name</span><span style="color:#710">&quot;</span></span>, <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">last_name</span><span style="color:#710">&quot;</span></span>]
-      }],
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>id</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">integer</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>last_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>email</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>first_name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>geo</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">point3d</span><span style="color:#710">&quot;</span></span>
       }
     }
   }
@@ -944,22 +978,14 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
         <span style="color:#606"><span style="color:#404">&quot;</span><span>to</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">2019-04-05T23:00:00[Europe/Berlin]</span><span style="color:#710">&quot;</span></span>
       }
     }
-  },
-  <span style="color:#606"><span style="color:#404">&quot;</span><span>schema</span><span style="color:#404">&quot;</span></span>: {
-    <span style="color:#606"><span style="color:#404">&quot;</span><span>before</span><span style="color:#404">&quot;</span></span>: {
-      <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>since</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>,
-        <span style="color:#606"><span style="color:#404">&quot;</span><span>to</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">datetime</span><span style="color:#710">&quot;</span></span>
-      }
-    }
   }
 }</code></pre>
 </div>
 </div>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_meta"><a class="link" href="#_meta">Meta</a></h3>
+<div class="sect3">
+<h4 id="_meta"><a class="link" href="#_meta">Meta</a></h4>
 <div class="paragraph">
 <p>The <strong>meta</strong> field contains the metadata related to the transaction event:</p>
 </div>
@@ -1014,8 +1040,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="_source"><a class="link" href="#_source">Source</a></h4>
+<div class="sect4">
+<h5 id="_source"><a class="link" href="#_source">Source</a></h5>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1039,8 +1065,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </table>
 </div>
 </div>
-<div class="sect2">
-<h3 id="_payload"><a class="link" href="#_payload">Payload</a></h3>
+<div class="sect3">
+<h4 id="_payload"><a class="link" href="#_payload">Payload</a></h4>
 <div class="paragraph">
 <p>The <strong>payload</strong> field contains the information about the the data related to the event</p>
 </div>
@@ -1080,13 +1106,13 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="_payload_before_and_after"><a class="link" href="#_payload_before_and_after">Payload: before and after</a></h4>
+<div class="sect4">
+<h5 id="_payload_before_and_after"><a class="link" href="#_payload_before_and_after">Payload: before and after</a></h5>
 <div class="paragraph">
 <p>We must distinguish two cases:</p>
 </div>
-<div class="sect4">
-<h5 id="_nodes"><a class="link" href="#_nodes">Nodes</a></h5>
+<div class="sect5">
+<h6 id="_nodes_2"><a class="link" href="#_nodes_2">Nodes</a></h6>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1114,8 +1140,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tbody>
 </table>
 </div>
-<div class="sect4">
-<h5 id="_relationships"><a class="link" href="#_relationships">Relationships</a></h5>
+<div class="sect5">
+<h6 id="_relationships_2"><a class="link" href="#_relationships_2">Relationships</a></h6>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1152,6 +1178,7 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="sect5">
 <h6 id="_relationships_startnode_and_endnode"><a class="link" href="#_relationships_startnode_and_endnode">Relationships: startNode and endNode</a></h6>
 <table class="tableblock frame-all grid-all spread">
@@ -1183,9 +1210,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </div>
 </div>
 </div>
-</div>
-<div class="sect2">
-<h3 id="_schema"><a class="link" href="#_schema">Schema</a></h3>
+<div class="sect3">
+<h4 id="_schema"><a class="link" href="#_schema">Schema</a></h4>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1212,8 +1238,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
-<div class="sect3">
-<h4 id="_schema_before_and_after"><a class="link" href="#_schema_before_and_after">Schema: before and after</a></h4>
+<div class="sect4">
+<h5 id="_schema_before_and_after"><a class="link" href="#_schema_before_and_after">Schema: before and after</a></h5>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1243,8 +1269,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 <div class="paragraph">
 <p>We must distinguish two cases:</p>
 </div>
-<div class="sect4">
-<h5 id="_nodes_2"><a class="link" href="#_nodes_2">Nodes</a></h5>
+<div class="sect5">
+<h6 id="_nodes_3"><a class="link" href="#_nodes_3">Nodes</a></h6>
 <table class="tableblock frame-all grid-all spread">
 <colgroup>
 <col style="width: 33.3333%;">
@@ -1271,12 +1297,14 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
+</div>
 <div class="sect5">
 <h6 id="_constraints"><a class="link" href="#_constraints">Constraints</a></h6>
 <div class="paragraph">
-<p>A node can have a list of constraints attached to it:</p>
+<p>Nodes and Relationships can have a list of constraints attached to them:</p>
 </div>
 <table class="tableblock frame-all grid-all spread">
+<caption class="title">Table 1. Node Constraints</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -1307,11 +1335,8 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
-</div>
-</div>
-<div class="sect4">
-<h5 id="_relationships_2"><a class="link" href="#_relationships_2">Relationships</a></h5>
 <table class="tableblock frame-all grid-all spread">
+<caption class="title">Table 2. Relationship constraints</caption>
 <colgroup>
 <col style="width: 33.3333%;">
 <col style="width: 33.3333%;">
@@ -1332,6 +1357,7 @@ kafka.routing.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;</pre>
 </tr>
 </tbody>
 </table>
+</div>
 </div>
 </div>
 </div>
@@ -1401,8 +1427,10 @@ MERGE (n:Label {id: event.id})
 kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
 kafka.group.id=neo4j
+
 streams.sink.polling.interval=&lt;The time, in milliseconds, spent waiting in poll if data is not available in the buffer. default=Long.MAX_VALUE&gt;
-streams.sink.topic.&lt;TOPIC_NAME&gt;=&lt;CYPHER_QUERY&gt;</pre>
+streams.sink.topic.cypher.&lt;TOPIC_NAME&gt;=&lt;CYPHER_QUERY&gt;
+streams.sink.enable=&lt;true/false, default=true&gt;</pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1411,10 +1439,291 @@ streams.sink.topic.&lt;TOPIC_NAME&gt;=&lt;CYPHER_QUERY&gt;</pre>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="_procedures"><a class="link" href="#_procedures">Procedures</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>The Streams project comes out with a list of procedures.</p>
+</div>
+<div class="sect2">
+<h3 id="_general_configuration"><a class="link" href="#_general_configuration">General configuration</a></h3>
+<div class="paragraph">
+<p>You can enable/disable the procedures by changing this variable inside the <code>neo4j.conf</code></p>
+</div>
+<div class="listingblock">
+<div class="title">neo4j.conf</div>
+<div class="content">
+<pre>streams.procedures.enable=&lt;true/false, default=true&gt;</pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_streams_publish"><a class="link" href="#_streams_publish">streams.publish</a></h3>
+<div class="paragraph">
+<p>This procedure allows custom message streaming from Neo4j to the configured environment by using the underlying configured Producer.</p>
+</div>
+<div class="paragraph">
+<p>Uses:</p>
+</div>
+<div class="paragraph">
+<p><code>CALL streams.publish('my-topic', 'Hello World from Neo4j!')</code></p>
+</div>
+<div class="paragraph">
+<p>The message retrieved from the Consumer is the following:</p>
+</div>
+<div class="paragraph">
+<p><code>{"payload":"Hello world from Neo4j!"}</code></p>
+</div>
+<div class="paragraph">
+<p>If you use a local <a href="#docker">docker (compose) setup</a>, you can check for these messages with:</p>
+</div>
+<div class="paragraph">
+<p><code>docker exec -it kafka kafka-console-consumer --topic my-topic --bootstrap-server kafka:9092</code></p>
+</div>
+<div class="paragraph">
+<p>Input Parameters:</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Variable Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>topic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The topic where you want to publish the data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>payload</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Object</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The data that you want to stream</p></td>
+</tr>
+</tbody>
+</table>
+<div class="paragraph">
+<p>You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.</p>
+</div>
+<div class="paragraph">
+<p>In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="docker"><a class="link" href="#docker">Execute with Docker</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Following you&#8217;ll find a lightweight Docker Compose file that allows you to test the application in your local environment</p>
+</div>
+<div class="paragraph">
+<p>Prerequisites:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Docker</p>
+</li>
+<li>
+<p>Docker Compose</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Here the instruction about how to configure <a href="https://docs.docker.com/compose/install/">Docker and Docker-Compose</a></p>
+</div>
+<div class="sect2">
+<h3 id="_launch_it_locally"><a class="link" href="#_launch_it_locally">Launch it locally</a></h3>
+<div class="paragraph">
+<p>Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper in order to test the application.</p>
+</div>
+<div class="paragraph">
+<p>Before starting please change the volume directory according to yours, inside the &lt;plugins&gt; dir you must put Streams jar</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yml"><span style="color:#606">volumes</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">$HOME/neo4j/3.4/plugins:/plugins</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>From the same directory where the compose file is, you can launch this command:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>$ docker-compose up -d</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Please note that the Neo4j Docker image use a naming convention; you can override every neo4j.conf property by prefix it with <code>NEO4J_</code> and using the following transformations:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>single underscore is converted in double underscore: <code>_ &#8594; __</code></p>
+</li>
+<li>
+<p>point is converted in single underscore: <code>.</code> &#8594; <code>_</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Example:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>dbms.memory.heap.max_size=8G</code> &#8594; <code>NEO4J_dbms_memory_heap_max__size: 8G</code></p>
+</li>
+<li>
+<p><code>dbms.logs.debug.level=DEBUG</code> &#8594; <code>NEO4J_dbms_logs_debug_level: DEBUG</code></p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_producer"><a class="link" href="#_producer">Producer</a></h3>
+<div class="paragraph">
+<p>In case you are testing the producer you can execute a consumer that subscribes the topic <code>neo4j</code> by executing this command:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>$ docker exec kafka kafka-console-consumer --bootstrap-server kafka:19092 --topic neo4j --from-beginning</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Then directly from the Neo4j browser you can generate some random data with this query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">UNWIND range(1,100) as id
+CREATE (p:Person {id:id, name: &quot;Name &quot; + id, age: id % 3}) WITH collect(p) as people
+UNWIND people as p1
+UNWIND range(1,10) as friend
+WITH p1, people[(p1.id + friend) % size(people)] as p2
+CREATE (p1)-[:KNOWS {years: abs(p2.id - p1.id)}]-&gt;(p2)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>And if you go back to your consumer you&#8217;ll see something like this:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="bash">{&quot;key&quot;:&quot;neo4j&quot;,&quot;value&quot;:{&quot;meta&quot;:{&quot;timestamp&quot;:1542047038549,&quot;username&quot;:&quot;neo4j&quot;,&quot;txId&quot;:12,&quot;txEventId&quot;:107,&quot;txEventsCount&quot;:110,&quot;operation&quot;:&quot;created&quot;,&quot;source&quot;:{&quot;hostname&quot;:&quot;neo4j&quot;}},&quot;payload&quot;:{&quot;id&quot;:&quot;99&quot;,&quot;start&quot;:{&quot;id&quot;:&quot;9&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;end&quot;:{&quot;id&quot;:&quot;0&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;before&quot;:null,&quot;after&quot;:{&quot;properties&quot;:{&quot;years&quot;:9}},&quot;label&quot;:&quot;KNOWS&quot;,&quot;type&quot;:&quot;relationship&quot;},&quot;schema&quot;:{&quot;properties&quot;:[],&quot;constraints&quot;:null}}}
+{&quot;key&quot;:&quot;neo4j&quot;,&quot;value&quot;:{&quot;meta&quot;:{&quot;timestamp&quot;:1542047038549,&quot;username&quot;:&quot;neo4j&quot;,&quot;txId&quot;:12,&quot;txEventId&quot;:108,&quot;txEventsCount&quot;:110,&quot;operation&quot;:&quot;created&quot;,&quot;source&quot;:{&quot;hostname&quot;:&quot;neo4j&quot;}},&quot;payload&quot;:{&quot;id&quot;:&quot;96&quot;,&quot;start&quot;:{&quot;id&quot;:&quot;9&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;end&quot;:{&quot;id&quot;:&quot;7&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;before&quot;:null,&quot;after&quot;:{&quot;properties&quot;:{&quot;years&quot;:2}},&quot;label&quot;:&quot;KNOWS&quot;,&quot;type&quot;:&quot;relationship&quot;},&quot;schema&quot;:{&quot;properties&quot;:[],&quot;constraints&quot;:null}}}
+{&quot;key&quot;:&quot;neo4j&quot;,&quot;value&quot;:{&quot;meta&quot;:{&quot;timestamp&quot;:1542047038549,&quot;username&quot;:&quot;neo4j&quot;,&quot;txId&quot;:12,&quot;txEventId&quot;:109,&quot;txEventsCount&quot;:110,&quot;operation&quot;:&quot;created&quot;,&quot;source&quot;:{&quot;hostname&quot;:&quot;neo4j&quot;}},&quot;payload&quot;:{&quot;id&quot;:&quot;97&quot;,&quot;start&quot;:{&quot;id&quot;:&quot;9&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;end&quot;:{&quot;id&quot;:&quot;8&quot;,&quot;labels&quot;:[&quot;Person&quot;]},&quot;before&quot;:null,&quot;after&quot;:{&quot;properties&quot;:{&quot;years&quot;:1}},&quot;label&quot;:&quot;KNOWS&quot;,&quot;type&quot;:&quot;relationship&quot;},&quot;schema&quot;:{&quot;properties&quot;:[],&quot;constraints&quot;:null}}}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_consumer"><a class="link" href="#_consumer">Consumer</a></h3>
+<div class="paragraph">
+<p>In case of you are using the Sink you can define your topic/cypher-query combination as it follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml">    <span style="color:#606">environment</span>:
+      <span style="color:#606">NEO4J_streams_sink_topic_neo4j</span>:
+        <span style="color:#F00;background-color:#FAA">&quot;WITH event.value.payload AS payload, event.value.meta AS meta</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation &lt;&gt; 'deleted' and payload.after.labels[0] = 'Question' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (n:Question{neo_id: toInteger(payload.id)}) ON CREATE</span>
+            <span style="color:#F00;background-color:#FAA">SET n += payload.after.properties</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation &lt;&gt; 'deleted' and payload.after.labels[0] = 'Answer' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (n:Answer{neo_id: toInteger(payload.id)}) ON CREATE</span>
+            <span style="color:#F00;background-color:#FAA">SET n += payload.after.properties</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation &lt;&gt; 'deleted' and payload.after.labels[0] = 'User' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (n:User{neo_id: toInteger(payload.id)}) ON CREATE</span>
+            <span style="color:#F00;background-color:#FAA">SET n += payload.after.properties</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation &lt;&gt; 'deleted' and payload.after.labels[0] = 'Tag' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (n:Tag{neo_id: toInteger(payload.id)}) ON CREATE</span>
+            <span style="color:#F00;background-color:#FAA">SET n += payload.after.properties</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation &lt;&gt; 'deleted' and payload.label = 'ANSWERS' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (s:Answer{neo_id: toInteger(payload.start.id)})</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (e:Question{neo_id: toInteger(payload.end.id)})</span>
+          <span style="color:#F00;background-color:#FAA">CREATE (s)-[:ANSWERS{neo_id: toInteger(payload.id)}]-&gt;(e)</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation &lt;&gt; 'deleted' and payload.label = 'TAGGED' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (s:Question{neo_id: toInteger(payload.start.id)})</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (e:Tag{neo_id: toInteger(payload.end.id)})</span>
+          <span style="color:#F00;background-color:#FAA">CREATE (s)-[:TAGGED{neo_id: toInteger(payload.id)}]-&gt;(e)</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation &lt;&gt; 'deleted' and payload.label = 'PROVIDED' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (s:User{neo_id: toInteger(payload.start.id)})</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (e:Answer{neo_id: toInteger(payload.end.id)})</span>
+          <span style="color:#F00;background-color:#FAA">CREATE (s)-[:PROVIDED{neo_id: toInteger(payload.id)}]-&gt;(e)</span>
+        <span style="color:#F00;background-color:#FAA">)</span>
+        <span style="color:#F00;background-color:#FAA">FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation &lt;&gt; 'deleted' and payload.label = 'ASKED' THEN [1] ELSE [] END |</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (s:User{neo_id: toInteger(payload.start.id)})</span>
+          <span style="color:#F00;background-color:#FAA">MERGE (e:Question{neo_id: toInteger(payload.end.id)})</span>
+          <span style="color:#F00;background-color:#FAA">CREATE (s)-[:ASKED{neo_id: toInteger(payload.id)}]-&gt;(e)</span>
+        <span style="color:#F00;background-color:#FAA">)&quot;</span></code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="title">docker-compose.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span style="color:#606">version</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'3'</span></span>
+<span style="color:#606">services</span>:
+  <span style="color:#606">neo4j</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j:3.4</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">7474:7474</span><span style="color:#710">&quot;</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">7687:7687</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">kafka</span></span>
+    <span style="color:#606">volumes</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">$HOME/neo4j/3.4/plugins:/plugins</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">NEO4J_AUTH</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j/streams</span></span>
+      <span style="color:#606">NEO4J_dbms_logs_debug_level</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">DEBUG</span></span>
+      <span style="color:#777"># KAFKA related configuration</span>
+      <span style="color:#606">NEO4J_kafka_zookeeper_connect</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper:12181</span></span>
+      <span style="color:#606">NEO4J_kafka_bootstrap_servers</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">kafka:19092</span></span>
+
+  <span style="color:#606">zookeeper</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-zookeeper:latest</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">12181:12181</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">ZOOKEEPER_CLIENT_PORT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">12181</span></span>
+
+  <span style="color:#606">kafka</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-kafka:latest</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">kafka</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">kafka</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">19092:19092</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">KAFKA_ZOOKEEPER_CONNECT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper:12181</span></span>
+      <span style="color:#606">KAFKA_ADVERTISED_LISTENERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">PLAINTEXT://kafka:19092</span></span></code></pre>
+</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-10-31 01:56:29 MEZ
+Last updated 2018-11-27 11:30:56 MEZ
 </div>
 </div>
 </body>
