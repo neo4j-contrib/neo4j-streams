@@ -151,6 +151,7 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
             <version>1.9.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
