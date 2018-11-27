@@ -3,12 +3,10 @@ package streams.kafka
 import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.codehaus.jackson.map.ObjectMapper
-import streams.getInt
-import streams.serialization.JacksonUtil
-import streams.toPointCase
+import streams.extensions.getInt
+import streams.extensions.toPointCase
 import java.util.*
 
 private val configPrefix = "kafka."

@@ -7,7 +7,7 @@ Is the Kafka Sink that ingest the data directly into Neo4j
 It works with template Cypher queries stored into properties with the following format:
 
 ----
-streams.sink.topic.<TOPIC_NAME>=<CYPHER_QUERY>
+streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 ----
 
 Each Cypher template must refer to an *event* object that will be injected by the Sink
@@ -16,7 +16,7 @@ Following an example:
 
 .neo4j.conf
 ----
-streams.sink.topic.my-topic=MERGE (n:Label {id: event.id}) \
+streams.sink.topic.cypher.my-topic=MERGE (n:Label {id: event.id}) \
     ON CREATE SET n += event.properties
 ----
 
@@ -28,7 +28,7 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-Where {batch} is a json list, so continuing with the example above a possible full representation could be:
+Where `{batch}` is a json list, so continuing with the example above a possible full representation could be:
 
 ----
 WITH [{id:"alice@example.com",properties:{name:"Alice",age:32}},

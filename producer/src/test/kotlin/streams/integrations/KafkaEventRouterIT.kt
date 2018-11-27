@@ -1,11 +1,8 @@
 package streams.integrations
 
-import kotlinx.coroutines.*
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.LongDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.After
 import org.junit.Before
@@ -17,8 +14,7 @@ import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
-import streams.serialization.JacksonUtil
-import kotlin.concurrent.timer
+import streams.serialization.JSONUtils
 import kotlin.test.assertEquals
 
 class KafkaEventRouterIT {
@@ -66,7 +62,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JacksonUtil.getMapper().readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue(it.value(), Map::class.java).let {
                 var payload = it["payload"] as Map<String, Any?>
                 val after = payload["after"] as Map<String, Any?>
                 val labels = after["labels"] as List<String>
@@ -98,7 +94,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JacksonUtil.getMapper().readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue(it.value(), Map::class.java).let {
                 val payload = it as Map<String, String>
                 message == payload["payload"]
             }
