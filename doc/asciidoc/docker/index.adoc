@@ -1,3 +1,4 @@
+[[docker]]
 == Execute with Docker
 
 Following you'll find a lightweight Docker Compose file that allows you to test the application in your local environment
@@ -64,7 +65,8 @@ And if you go back to your consumer you'll see something like this:
 
 In case of you are using the Sink you can define your topic/cypher-query combination as it follows:
 
-```yml
+[source,yaml]
+----
     environment:
       NEO4J_streams_sink_topic_neo4j:
         "WITH event.value.payload AS payload, event.value.meta AS meta
@@ -104,9 +106,10 @@ In case of you are using the Sink you can define your topic/cypher-query combina
           MERGE (e:Question{neo_id: toInteger(payload.end.id)})
           CREATE (s)-[:ASKED{neo_id: toInteger(payload.id)}]->(e)
         )"
-``
+----
 
 .docker-compose.yml
-```yml
+[source,yaml]
+----
 include::data/docker-compose.yml[]
-```
+----

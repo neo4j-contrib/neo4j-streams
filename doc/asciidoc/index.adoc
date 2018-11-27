@@ -52,3 +52,5 @@ include::producer/index.adoc[]
 include::consumer/index.adoc[]
 
 include::procedures/index.adoc[]
+
+include::docker/index.adoc[]
