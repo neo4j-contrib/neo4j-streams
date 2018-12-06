@@ -46,6 +46,7 @@ class KafkaEventRouterIT {
                 .newGraphDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
+
     }
 
     @After
@@ -55,7 +56,8 @@ class KafkaEventRouterIT {
 
     @Test
     fun testCreateNode() {
-        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers,
+                zookeeperConnect = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]!!)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
         db.execute("CREATE (:Person {name:'John Doe', age:42})").close()

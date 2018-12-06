@@ -3,6 +3,7 @@ package streams
 import org.junit.Test
 import org.neo4j.kernel.configuration.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class StreamsSinkConfigurationTest {
@@ -22,9 +23,11 @@ class StreamsSinkConfigurationTest {
         val config = Config.builder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
+                .withSetting("streams.sink.enabled", "false")
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, pollingInterval, topic, topicValue)
+        assertFalse { streamsConfig.enabled }
     }
 
     companion object {

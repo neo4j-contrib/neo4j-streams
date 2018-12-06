@@ -17,7 +17,7 @@ class StreamsProcedures {
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?) {
         checkEnabled()
-        if (topic == null || topic == StringUtils.EMPTY) {
+        if (topic.isNullOrEmpty()) {
             log?.info("Topic empty, no message sent")
             return
         }

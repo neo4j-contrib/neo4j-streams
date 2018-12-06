@@ -34,6 +34,7 @@ Input Parameters:
 |Variable Name
 |Type
 |Description
+
 |`topic`
 |String
 |The topic where you want to publish the data
@@ -47,3 +48,55 @@ Input Parameters:
 You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
 
 In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.
+
+=== streams.consume
+
+This procedure allows to consume messages from a given topic.
+
+Uses:
+
+`CALL streams.consume('my-topic', {<config>}) YIELD event RETURN event`
+
+Example:
+Imagine you have a producer that publish events like this `{"name": "Andrea", "surname": "Santurbano"}`), we can create user nodes in this way:
+
+```
+CALL streams.consume('my-topic', {<config>}) YIELD event
+CREATE (p:Person{firstName: event.name, lastName: event.surname})
+```
+
+Input Parameters:
+
+[cols="3*",options="header"]
+|===
+|Variable Name
+|Type
+|Description
+
+|`topic`
+|String
+|The topic where you want to publish the data
+
+|`config`
+|Object
+|The configuration parameters
+
+|===
+
+==== Available configuration parameters
+
+[cols="3*",options="header"]
+|===
+|Variable Name
+|Type
+|Description
+
+|`timeout`
+|Long
+|It's the value passed to Kafka https://kafka.apache.org/10/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html#poll-long-[`Consumer#poll`] method (milliseconds). Default 1000
+
+|`from`
+|String
+|It's the Kafka configuration parameter `auto.offset.reset`
+
+|===

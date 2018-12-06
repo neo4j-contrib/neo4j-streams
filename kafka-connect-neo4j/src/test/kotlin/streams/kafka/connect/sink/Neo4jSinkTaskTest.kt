@@ -1,6 +1,5 @@
 package streams.kafka.connect.sink
 
-import com.github.jcustenborder.kafka.connect.utils.VersionUtil
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.SchemaBuilder
 import org.apache.kafka.connect.data.Struct

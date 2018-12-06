@@ -24,7 +24,11 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
     companion object {
 
         fun from(cfg: Config) : KafkaSinkConfiguration {
-            val config = cfg.raw
+            return from(cfg.raw)
+        }
+
+        fun from(cfg: Map<String, String>) : KafkaSinkConfiguration {
+            val config = cfg
                     .filterKeys { it.startsWith(kafkaConfigPrefix) }
                     .mapKeys { it.key.substring(kafkaConfigPrefix.length) }
             val default = KafkaSinkConfiguration()

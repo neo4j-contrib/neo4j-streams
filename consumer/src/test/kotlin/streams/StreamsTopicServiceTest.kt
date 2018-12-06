@@ -25,7 +25,7 @@ class StreamsTopicServiceTest {
                 .newGraphDatabase() as GraphDatabaseAPI
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties")))
-        streamsTopicService = StreamsTopicService(db, kafkaConfig.streamsSinkConfiguration)
+        streamsTopicService = StreamsTopicService(db, kafkaConfig.streamsSinkConfiguration.topics)
         graphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     }
 
