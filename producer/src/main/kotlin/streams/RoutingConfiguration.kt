@@ -4,8 +4,6 @@ import org.apache.kafka.common.internals.Topic
 import org.neo4j.graphdb.Entity
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
-import org.neo4j.values.VirtualValue
-import org.neo4j.values.virtual.VirtualNodeValue
 import streams.events.*
 
 

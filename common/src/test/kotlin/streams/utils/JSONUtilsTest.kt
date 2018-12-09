@@ -9,7 +9,7 @@ import org.neo4j.values.storable.Values.pointValue
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
 
-class JacksonUtilTest {
+class JSONUtilsTest {
 
     @Test
     fun shouldSerializeGeometryAndTemporalDataTypes() {
@@ -27,7 +27,7 @@ class JacksonUtilTest {
                 "dateTime" to datetime(date( 2017, 12, 17), time( 17, 14, 35, 123456789, UTC)))
 
         // When
-        val jsonString = JacksonUtil.getMapper().writeValueAsString(map)
+        val jsonString = JSONUtils.writeValueAsString(map)
 
         // Then
         assertEquals(expected, jsonString)

@@ -5,10 +5,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.neo4j</groupId>
-    <artifactId>neo4j-streams-producer</artifactId>
+    <artifactId>neo4j-streams-common</artifactId>
+    <name>Neo4j Streams - Common</name>
+    <description>Neo4j Streams - Commons Package</description>
     <version>3.4.0</version>
-    <name>Neo4j Streams - Producer</name>
-    <description>Neo4j Streams - Kafka Producer</description>
     <packaging>jar</packaging>
 
     <parent>
@@ -16,13 +16,5 @@
         <artifactId>neo4j-streams-parent</artifactId>
         <version>3.4.0</version>
     </parent>
-
-    <dependencies>
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-streams-common</artifactId>
-            <version>3.4.0</version>
-        </dependency>
-    </dependencies>
 
 </project>

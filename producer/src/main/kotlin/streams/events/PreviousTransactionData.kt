@@ -4,7 +4,7 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
-import streams.labelNames
+import streams.extensions.labelNames
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
                                    val nodeLabels: Map<Long, List<String>>,

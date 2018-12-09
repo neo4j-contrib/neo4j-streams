@@ -1,7 +1,5 @@
 package streams.kafka
 
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -13,18 +11,12 @@ import org.apache.kafka.common.errors.ProducerFencedException
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.logging.Log
-import streams.NodeRoutingConfiguration
-import streams.RelationshipRoutingConfiguration
 import streams.StreamsEventRouter
-import streams.StreamsEventRouterConfiguration
-import streams.events.EntityType
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
-import streams.serialization.JacksonUtil
-import java.lang.Exception
+import streams.serialization.JSONUtils
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
-
 
 
 class KafkaEventRouter: StreamsEventRouter {
@@ -51,12 +43,11 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
-        producer.send(producerRecord,
-                { meta: RecordMetadata?, error: Exception? ->
-                    if (log.isDebugEnabled) {
-                        log.debug("Sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
-                    }
-                })
+        producer.send(producerRecord) { meta: RecordMetadata?, error: Exception? ->
+            if (log.isDebugEnabled) {
+                log.debug("Sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
+            }
+        }
     }
 
     private fun sendEvent(partition: Int, topic: String, event: StreamsEvent) {
@@ -65,7 +56,7 @@ class KafkaEventRouter: StreamsEventRouter {
         }
         val uuid = UUID.randomUUID().toString()
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), uuid,
-                JacksonUtil.getMapper().writeValueAsBytes(event))
+                JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
 
@@ -74,7 +65,7 @@ class KafkaEventRouter: StreamsEventRouter {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
-                JacksonUtil.getMapper().writeValueAsBytes(event))
+                JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
 

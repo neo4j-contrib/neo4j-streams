@@ -1,0 +1,91 @@
+# Build it locally
+
+Build the project by running the following command:
+
+    $ mvn clean install
+
+Inside the directory <neo4j-streams>/kafka-connect-neo4j/target` you'll find a file named `kafka-connect-neo4j-<VERSION>.tar.gz`
+
+
+# Configuring the stack
+
+Create a directory `plugins` at the same level of the compose file and unzip the file `kafka-connect-neo4j-<VERSION>.tar.gz` inside it, then start the compose file
+
+    $ docker-compose up -d
+
+Create the Sink instance:
+
+We'll define the Sink configuration as follows:
+
+[source,json]
+----
+include::contrib.sink.neo4j.json[]
+----
+
+In particular this line:
+
+----
+"neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
+----
+
+defines that all the data that comes from the topic `neo4j` will be unpacked by the Sink into Neo4j with the following Cypher query:
+
+[source,cypher]
+----
+MERGE (p:Person{name: event.name, surname: event.surname})
+MERGE (f:Family{name: event.surname})
+MERGE (p)-[:BELONGS_TO]->(f)
+----
+
+
+Under the hood the Sink inject the event object in this way
+
+[source,cypher]
+----
+UNWIND {batch} AS event
+MERGE (p:Person{name: event.name, surname: event.surname})
+MERGE (f:Family{name: event.surname})
+MERGE (p)-[:BELONGS_TO]->(f)
+----
+
+Where `{batch}` is a list of event objects.
+
+You can change the query or remove the property and add your own, but you must follow the following convention:
+
+[source,javascript]
+----
+"neo4j.topic.cypher.<YOUR_TOPIC>": "<YOUR_CYPHER_QUERY>"
+----
+
+Let's load the configuration into the Confluent Platform with this REST call:
+
+[source,shell]
+----
+curl -X POST http://localhost:8083/connectors \
+  -H 'Content-Type:application/json' \
+  -H 'Accept:application/json' \
+  -d @contrib.sink.avro.neo4j.json
+----
+
+The file `contrib.sink.string-json.neo4j.json` contains a configuration that manage a simple JSON producer example
+
+Please check that everything is fine by going into:
+
+http://localhost:9021/management/connect
+
+and click to the **Sink** tab. You must find a table just like this:
+
+[cols="4*",options="header"]
+|===
+|Status
+|Active Tasks
+|Name
+|Topics
+
+|Running
+|1
+|Neo4jSinkConnector
+|my-topic
+|===
+
+Now you can send your AVRO data to the `my-topic` topic

@@ -2,20 +2,16 @@ package streams.kafka
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.LongDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.codehaus.jackson.map.ObjectMapper
 import org.neo4j.kernel.configuration.Config
 import streams.StreamsSinkConfiguration
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import java.util.*
 
 
 
 private const val kafkaConfigPrefix = "kafka."
-
-private fun String.toPointCase(): String {
-    return this.split("(?<=[a-z])(?=[A-Z])".toRegex()).joinToString(separator = ".").toLowerCase()
-}
 
 data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181",
                                   val bootstrapServers: String = "localhost:9092",
@@ -25,11 +21,6 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                                   // val enableAutoCommit: String = true,
                                   val extraProperties: Map<String, String> = emptyMap()) {
 
-    private fun asMap(): Map<String, Any?> {
-        return ObjectMapper().convertValue(this, Map::class.java)
-                .mapKeys { it.key.toString() }
-    }
-
     companion object {
 
         fun from(cfg: Config) : KafkaSinkConfiguration {
@@ -38,7 +29,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                     .mapKeys { it.key.substring(kafkaConfigPrefix.length) }
             val default = KafkaSinkConfiguration()
 
-            val keys = default.asMap().keys.map { it.toPointCase() }
+            val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
             val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg)
@@ -56,7 +47,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
     fun asProperties(): Properties {
         val props = Properties()
-        val map = this.asMap()
+        val map = JSONUtils.asMap(this)
                 .filterKeys { it != "extraProperties" && it != "streamsSinkConfiguration" }
                 .mapKeys { it.key.toPointCase() }
         props.putAll(map)
