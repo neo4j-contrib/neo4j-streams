@@ -21,7 +21,7 @@ class StreamsEventSinkQueryExecutionTest {
                 .newGraphDatabase()
         val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties")))
-        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI, kafkaConfig.streamsSinkConfiguration)
+        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI, kafkaConfig.streamsSinkConfiguration.topics)
         streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI, NullLog.getInstance())
     }
 

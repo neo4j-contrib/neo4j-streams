@@ -1,7 +1,5 @@
 package integrations
 
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -9,18 +7,20 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.*
 import org.junit.rules.TestName
-import org.neo4j.graphdb.Node
+import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
 
-class KafkaEventSinkIT {
+class StreamsSinkProceduresIT {
     companion object {
         /**
          * Kafka TestContainers uses Confluent OSS images.
@@ -51,6 +51,7 @@ class KafkaEventSinkIT {
     var testName = TestName()
 
     private val EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX = "WithNoTopicLoaded"
+    private val EXCLUDE_SINK_METHOD_SUFFIX = "WithSinkDisabled"
 
     private val kafkaProperties = Properties()
 
@@ -60,6 +61,7 @@ class KafkaEventSinkIT {
     private val dataProperties = mapOf("prop1" to "foo", "bar" to 1)
     private val data = mapOf("id" to 1, "properties" to dataProperties)
 
+
     @Before
     fun setUp() {
         var graphDatabaseBuilder = TestGraphDatabaseFactory()
@@ -68,7 +70,12 @@ class KafkaEventSinkIT {
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
         }
+        if (testName.methodName.endsWith(EXCLUDE_SINK_METHOD_SUFFIX)) {
+            graphDatabaseBuilder.setConfig("streams.sink.enabled", "false")
+        }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db.dependencyResolver.resolveDependency(Procedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
 
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
         kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
@@ -85,39 +92,35 @@ class KafkaEventSinkIT {
         kafkaProducer.close()
     }
 
+
     @Test
-    fun shouldWriteDataFromSink() = runBlocking {
-        val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
-        kafkaProducer.send(producerRecord).get()
-        delay(5000)
-        val props = data
-                .flatMap {
-                    if (it.key == "properties") {
-                        val map = it.value as Map<String, Any>
-                        map.entries.map { it.key to it.value }
-                    } else {
-                        listOf(it.key to it.value)
-                    }
-                }
-                .toMap()
-        db.execute("MATCH (n:Label) WHERE properties(n) = {props} RETURN count(*) AS count", mapOf("props" to props))
-                .columnAs<Long>("count").use {
-                    assertTrue { it.hasNext() }
-                    val count = it.next()
-                    assertEquals(1, count)
-                    assertFalse { it.hasNext() }
-                }
+    fun shouldConsumeDataFromProcedureWithSinkDisabled() {
+        val topic = "bar"
+        testProcedure(topic)
     }
 
     @Test
-    fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
-        val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+    fun shouldConsumeDataFromProcedure() {
+        val topic = "foo"
+        testProcedure(topic)
+    }
+
+    private fun testProcedure(topic: String) {
+        val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        delay(5000)
-        db.execute("MATCH (n:Label) RETURN n")
-                .columnAs<Node>("n").use {
-                    assertFalse { it.hasNext() }
-                }
+        val result = db.execute("CALL streams.consume('$topic', {timeout: 5000}) YIELD event RETURN event")
+        assertTrue { result.hasNext() }
+        val resultMap = result.next()
+        assertTrue { resultMap.containsKey("event") }
+        assertNotNull(resultMap["event"], "should contain event")
+        val event = resultMap["event"] as Map<String, Any?>
+        assertEquals(data, event)
+    }
+
+    @Test
+    fun shouldTimeout() {
+        val result = db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event")
+        assertFalse { result.hasNext() }
     }
 
 }

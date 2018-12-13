@@ -12,7 +12,10 @@ object StreamsUtils {
         return try {
             action()
         } catch (e: Throwable) {
-            when (e::class.java) {
+            if (toIgnore.isEmpty()) {
+                return null
+            }
+            return when (e::class.java) {
                 in toIgnore -> null
                 else -> throw e
             }
