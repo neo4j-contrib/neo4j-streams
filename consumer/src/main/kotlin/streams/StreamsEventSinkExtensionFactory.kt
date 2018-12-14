@@ -1,17 +1,19 @@
 package streams
 
-import org.neo4j.kernel.AvailabilityGuard
+import org.neo4j.kernel.availability.AvailabilityGuard
+import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.KernelExtensionFactory
-import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.kernel.impl.spi.KernelContext
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
+import org.neo4j.logging.internal.LogService
 import streams.procedures.StreamsSinkProcedures
 import streams.utils.StreamsUtils
 
-class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>("Streams.Consumer") {
+class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Consumer") {
 
     override fun newInstance(context: KernelContext, dependencies: Dependencies): Lifecycle {
         return StreamsEventLifecycle(dependencies)
@@ -34,7 +36,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
         override fun start() {
             try {
-                dependencies.availabilityGuard().addListener(object: AvailabilityGuard.AvailabilityListener {
+                dependencies.availabilityGuard().addListener(object: AvailabilityListener {
                     override fun unavailable() {}
 
                     override fun available() {
