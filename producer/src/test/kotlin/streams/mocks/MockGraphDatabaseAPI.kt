@@ -9,22 +9,24 @@ import org.neo4j.graphdb.traversal.BidirectionalTraversalDescription
 import org.neo4j.graphdb.traversal.TraversalDescription
 import org.neo4j.internal.kernel.api.Transaction
 import org.neo4j.internal.kernel.api.security.LoginContext
-import org.neo4j.kernel.AvailabilityGuard
+import org.neo4j.io.layout.DatabaseLayout
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.impl.coreapi.InternalTransaction
-import org.neo4j.kernel.impl.logging.LogService
-import org.neo4j.kernel.impl.logging.NullLogService
-import org.neo4j.kernel.impl.store.StoreId
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.logging.NullLog
+import org.neo4j.logging.internal.LogService
+import org.neo4j.logging.internal.NullLogService
+import org.neo4j.storageengine.api.StoreId
 import streams.*
 import java.io.File
-import java.lang.IllegalArgumentException
 import java.net.URL
 import java.util.concurrent.TimeUnit
 import java.util.function.Supplier
 
 class MockGraphDatabaseAPI(private val dependencyResolver: MockDependencyResolver = MockDependencyResolver()) : GraphDatabaseAPI {
+    override fun databaseLayout(): DatabaseLayout {
+        TODO("not implemented")
+    }
+
     override fun createNode(): Node {
         TODO("not implemented")
     }
@@ -82,10 +84,6 @@ class MockGraphDatabaseAPI(private val dependencyResolver: MockDependencyResolve
     }
 
     override fun getAllRelationshipTypes(): ResourceIterable<RelationshipType> {
-        TODO("not implemented")
-    }
-
-    override fun getStoreDir(): File {
         TODO("not implemented")
     }
 

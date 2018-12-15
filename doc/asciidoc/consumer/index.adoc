@@ -6,34 +6,51 @@ Is the Kafka Sink that ingest the data directly into Neo4j
 
 It works with template Cypher queries stored into properties with the following format:
 
+[source,ini]
 ----
-streams.sink.topic.<TOPIC_NAME>=<CYPHER_QUERY>
+streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 ----
 
 Each Cypher template must refer to an *event* object that will be injected by the Sink
 
 Following an example:
 
-.neo4j.conf
+For this event
+
+[source,javascript]
 ----
-streams.sink.topic.my-topic=MERGE (n:Label {id: event.id}) \
+{
+ "id": 42,
+ "properties": {
+ "title": "Answer to anyting",
+ "description": "It depends."}
+}
+----
+
+.neo4j.conf
+[source,ini]
+----
+streams.sink.topic.cypher.my-topic=MERGE (n:Label {id: event.id}) \
     ON CREATE SET n += event.properties
 ----
 
-Under the hood the Sink inject the event object in this way
+Under the hood the Sink inject the event object as a parameter in this way
 
+[source,cypher]
 ----
-UNWIND {batch} AS event
+UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-Where {batch} is a json list, so continuing with the example above a possible full representation could be:
+Where `{batch}` is a json list, so continuing with the example above a possible full representation could be:
 
+[source,cypher]
 ----
-WITH [{id:"alice@example.com",properties:{name:"Alice",age:32}},
-    {id:"bob@example.com",properties:{name:"Bob",age:42}}] AS batch
-UNWIND batch AS event
+:params events => [{id:"alice@example.com",properties:{name:"Alice",age:32}},
+    {id:"bob@example.com",properties:{name:"Bob",age:42}}]
+
+UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----

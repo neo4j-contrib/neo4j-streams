@@ -3,6 +3,7 @@ package streams
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
 import streams.events.*
+import streams.extensions.labelNames
 import java.net.InetAddress
 
 

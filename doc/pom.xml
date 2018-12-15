@@ -5,10 +5,16 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.neo4j</groupId>
-    <artifactId>graph-streams-docs</artifactId>
-    <version>3.4.0</version>
+    <artifactId>neo4j-streams-docs</artifactId>
+    <version>3.5.0</version>
     <name>Neo4j Streams - Docs</name>
     <description>Neo4j Streams - Documentation</description>
+
+    <parent>
+        <groupId>org.neo4j</groupId>
+        <artifactId>neo4j-streams-parent</artifactId>
+        <version>3.5.0</version>
+    </parent>
 
     <properties>
         <docsversion>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</docsversion>

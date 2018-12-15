@@ -52,7 +52,7 @@ class TemporalAccessorSerializer : JsonSerializer<TemporalAccessor>() {
 }
 
 
-object JacksonUtil {
+object JSONUtils {
 
     private val OBJECT_MAPPER: ObjectMapper = ObjectMapper()
 
@@ -64,8 +64,24 @@ object JacksonUtil {
         OBJECT_MAPPER.disable(SerializationConfig.Feature.FAIL_ON_EMPTY_BEANS)
     }
 
-    fun getMapper(): ObjectMapper {
+    fun getObjectMapper(): ObjectMapper {
         return OBJECT_MAPPER
     }
 
+    fun asMap(any: Any): Map<String, Any?> {
+        return OBJECT_MAPPER.convertValue(any, Map::class.java)
+                .mapKeys { it.key.toString() }
+    }
+
+    fun writeValueAsString(any: Any): String {
+        return OBJECT_MAPPER.writeValueAsString(any)
+    }
+
+    fun writeValueAsBytes(any: Any): ByteArray {
+        return OBJECT_MAPPER.writeValueAsBytes(any)
+    }
+
+    fun <T> readValue(value: ByteArray, clazz: Class<T>): T {
+        return OBJECT_MAPPER.readValue(value, clazz)
+    }
 }

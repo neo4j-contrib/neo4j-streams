@@ -1,26 +1,23 @@
 package integrations
 
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.codehaus.jackson.map.ObjectMapper
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.serialization.JSONUtils
 import java.util.*
-import java.util.concurrent.ThreadLocalRandom
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 
 class KafkaEventSinkIT {
@@ -44,8 +41,6 @@ class KafkaEventSinkIT {
     }
 
     private lateinit var db: GraphDatabaseAPI
-
-    private val objectMapper: ObjectMapper = ObjectMapper()
 
     private val cypherQueryTemplate = "MERGE (n:Label {id: event.id}) ON CREATE SET n += event.properties"
 
@@ -76,31 +71,25 @@ class KafkaEventSinkIT {
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
+        kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
         kafkaProperties["group.id"] = "neo4j"
         kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
 
-        AdminClient.create(kafkaProperties).use { client -> client.createTopics(
-                topics.map { topic -> NewTopic(topic, 1, 1.toShort()) }) }
         kafkaProducer = KafkaProducer(kafkaProperties)
     }
 
     @After
     fun tearDown() {
         db.shutdown()
+        kafkaProducer.close()
     }
 
     @Test
     fun shouldWriteDataFromSink() = runBlocking {
-        val job = GlobalScope.launch {
-            var partition = ThreadLocalRandom.current().nextInt(1)
-            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(),
-                    UUID.randomUUID().toString(),
-                    objectMapper.writeValueAsBytes(data))
-            kafkaProducer.send(producerRecord).get()
-            delay(5000)
-        }
-        job.join()
+        val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        delay(5000)
         val props = data
                 .flatMap {
                     if (it.key == "properties") {
@@ -111,36 +100,24 @@ class KafkaEventSinkIT {
                     }
                 }
                 .toMap()
-        db.beginTx().use {
-            db.execute("MATCH (n:Label) WHERE properties(n) = {props} RETURN count(*) AS count", mapOf("props" to props))
-                    .columnAs<Long>("count").use {
-                        assertEquals(true, it.hasNext())
-                        val count = it.next()
-                        assertEquals(1, count)
-                        assertEquals(false, it.hasNext())
-                    }
-            it.success()
-        }
+        db.execute("MATCH (n:Label) WHERE properties(n) = {props} RETURN count(*) AS count", mapOf("props" to props))
+                .columnAs<Long>("count").use {
+                    assertTrue { it.hasNext() }
+                    val count = it.next()
+                    assertEquals(1, count)
+                    assertFalse { it.hasNext() }
+                }
     }
 
     @Test
     fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
-        val job = GlobalScope.launch {
-            var partition = ThreadLocalRandom.current().nextInt(1)
-            var producerRecord = ProducerRecord(topics[0], partition, System.currentTimeMillis(),
-                    UUID.randomUUID().toString(),
-                    objectMapper.writeValueAsBytes(data))
-            kafkaProducer.send(producerRecord).get()
-            delay(5000)
-        }
-        job.join()
-        db.beginTx().use {
-            db.execute("MATCH (n:Label) RETURN n")
-                    .columnAs<Node>("n").use {
-                        assertEquals(false, it.hasNext()) // No records
-                    }
-            it.success()
-        }
+        val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        delay(5000)
+        db.execute("MATCH (n:Label) RETURN n")
+                .columnAs<Node>("n").use {
+                    assertFalse { it.hasNext() }
+                }
     }
 
 }

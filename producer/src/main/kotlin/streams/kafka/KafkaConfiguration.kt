@@ -3,12 +3,10 @@ package streams.kafka
 import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.LongSerializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.codehaus.jackson.map.ObjectMapper
-import streams.getInt
-import streams.serialization.JacksonUtil
-import streams.toPointCase
+import streams.extensions.getInt
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import java.util.*
 
 private val configPrefix = "kafka."
@@ -28,18 +26,13 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val lingerMs: Int = 1,
                               val extraProperties: Map<String, String> = emptyMap()) {
 
-    private fun asMap(): Map<String, Any?> {
-        return ObjectMapper().convertValue(this, Map::class.java)
-                .mapKeys { it.key.toString() }
-    }
-
     companion object {
         fun from(cfg: Map<String, String>) : KafkaConfiguration {
             val config = cfg.filterKeys { it.startsWith(configPrefix) }.mapKeys { it.key.substring(configPrefix.length) }
 
             val default = KafkaConfiguration()
 
-            val keys = default.asMap().keys.map { it.toPointCase() }
+            val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
@@ -62,7 +55,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
 
     fun asProperties(): Properties {
         val props = Properties()
-        val map = this.asMap()
+        val map = JSONUtils.asMap(this)
                 .filter {
                     if (it.key == "transactionalId") {
                         it.value != StringUtils.EMPTY
