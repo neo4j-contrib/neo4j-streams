@@ -8,9 +8,24 @@ import kotlin.test.assertTrue
 
 class RoutingConfigurationTest {
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test
     fun badPatternShouldThrowIllegalArgumentException() {
-        RoutingConfigurationFactory.getRoutingConfiguration("topic1", "Label(1,2)", EntityType.node)
+        val topic = "topic1"
+        assertIllegalArgumentException(topic, "Label(1,2)", EntityType.node)
+        assertIllegalArgumentException(topic, "Label{}", EntityType.node)
+        assertIllegalArgumentException(topic, "KNOWS{}", EntityType.relationship)
+    }
+
+    private fun assertIllegalArgumentException(topic: String, pattern: String, entityType: EntityType) {
+        var hasException = false
+        try {
+            RoutingConfigurationFactory.getRoutingConfiguration(topic, pattern, entityType)
+        } catch (e: Exception) {
+            assertTrue { e is IllegalArgumentException }
+            assertEquals("The pattern $pattern for topic $topic is invalid", e.message)
+            hasException = true
+        }
+        assertTrue { hasException }
     }
 
     @Test
