@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>3.4.0</version>
+    <version>3.5.0</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -111,6 +111,12 @@
         <dependency>
             <groupId>org.neo4j.test</groupId>
             <artifactId>neo4j-harness</artifactId>
+            <version>${neo4j.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.neo4j.community</groupId>
+            <artifactId>it-test-support</artifactId>
             <version>${neo4j.version}</version>
             <scope>test</scope>
         </dependency>
