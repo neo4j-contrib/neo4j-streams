@@ -19,6 +19,9 @@ class StreamsTopicService(private val db: GraphDatabaseAPI, private val topicMap
     }
 
     fun clear() {
+        if (!Neo4jUtils.isWriteableInstance(db)) {
+            return
+        }
         return db.beginTx().use {
             val keys = properties.allProperties
                     .filterKeys { it.startsWith(STREAMS_TOPIC_KEY) }
@@ -31,6 +34,9 @@ class StreamsTopicService(private val db: GraphDatabaseAPI, private val topicMap
     }
 
     fun remove(topic: String) {
+        if (!Neo4jUtils.isWriteableInstance(db)) {
+            return
+        }
         val key = "$STREAMS_TOPIC_KEY$topic"
         return db.beginTx().use {
             if (!properties.hasProperty(key)) {

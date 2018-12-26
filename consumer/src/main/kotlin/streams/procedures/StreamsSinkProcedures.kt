@@ -1,6 +1,5 @@
 package streams.procedures
 
-import org.apache.commons.lang3.StringUtils
 import org.neo4j.logging.Log
 import org.neo4j.procedure.*
 import streams.StreamsEventConsumerFactory
@@ -8,7 +7,7 @@ import streams.StreamsEventSinkConfigMapper
 import streams.StreamsSinkConfiguration
 import java.util.stream.Stream
 
-class StreamResult(@JvmField val event: Any)
+class StreamResult(@JvmField val event: Map<String, *>)
 
 class StreamsSinkProcedures {
 
@@ -16,7 +15,7 @@ class StreamsSinkProcedures {
     var log: Log? = null
 
     @Procedure(mode = Mode.SCHEMA, name = "streams.consume")
-    @Description("streams.consume(topic, config) - Allows to subscribe custom topics")
+    @Description("streams.consume(topic, {timeout: <long value>, from: <string>}) YIELD event - Allows to consume custom topics")
     fun consume(@Name("topic") topic: String?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamResult> {
         checkEnabled()
@@ -33,13 +32,20 @@ class StreamsSinkProcedures {
                 .createStreamsEventConsumer(configuration, log!!)
                 .withTopics(setOf(topic))
         consumer.start()
-        val data = consumer.read()
+        val data = try {
+            consumer.read()
+        } catch (e: Exception) {
+            if (log?.isDebugEnabled!!) {
+                log?.error("Error while consuming data", e)
+            }
+            emptyMap<String, List<Any>>()
+        }
         consumer.stop()
 
         if (log?.isDebugEnabled!!) {
-            log?.debug("Data retrieved after ${configuration["streams.sink.polling.interval"]} milliseconds: $data")
+            log?.debug("Data retrieved from topic $topic after ${configuration["streams.sink.polling.interval"]} milliseconds: $data")
         }
-        return data?.values?.flatMap { list -> list.map { StreamResult(it) } }?.stream() ?: Stream.empty()
+        return data?.values?.flatMap { list -> list.map { StreamResult(mapOf("data" to it)) } }?.stream() ?: Stream.empty()
     }
 
     private fun checkEnabled() {

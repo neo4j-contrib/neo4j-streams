@@ -33,7 +33,7 @@ class StreamsSinkConfigurationTest {
     companion object {
         fun testDefaultConf(default: StreamsSinkConfiguration) {
             assertEquals(emptyMap(), default.topics)
-            assertEquals(Long.MAX_VALUE, default.sinkPollingInterval)
+            assertEquals(10000, default.sinkPollingInterval)
         }
         fun testFromConf(streamsConfig: StreamsSinkConfiguration, pollingInterval: String, topic: String, topicValue: String) {
             assertEquals(pollingInterval.toLong(), streamsConfig.sinkPollingInterval)
