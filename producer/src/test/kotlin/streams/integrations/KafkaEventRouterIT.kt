@@ -1,5 +1,7 @@
 package streams.integrations
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
@@ -39,6 +41,7 @@ class KafkaEventRouterIT {
 
     private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
+    private val MULTI_NODE_PATTERN_TEST: String = "MultiTopicPatternConfig"
 
     @Rule
     @JvmField
@@ -55,8 +58,14 @@ class KafkaEventRouterIT {
         if (testName.methodName.endsWith(WITH_NODE_ROUTING_METHOD_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.source.topic.nodes.person", "Person{*}")
         }
+        if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
+                    .setConfig("streams.source.topic.nodes.neo4j-color", "Color{*}")
+                    .setConfig("streams.source.topic.nodes.neo4j-basket", "Basket{*}")
+                    .setConfig("streams.source.topic.relationships.neo4j-isin", "IS_IN{month,day}")
+                    .setConfig("streams.source.topic.relationships.neo4j-hascolor", "HAS_COLOR{*}")
+        }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
 
@@ -155,6 +164,35 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
+    }
+
+    private fun getRecordCount(config: KafkaConfiguration, topic: String): Int {
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf(topic))
+        val count = consumer.poll(5000).count()
+        consumer.close()
+        return count
+    }
+
+    @Test
+    fun testMultiTopicPatternConfig() = runBlocking {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        db.execute("""
+            CREATE (p:Product{id: "A1", code: "X1", name: "Name X1", price: 1000})-[:IS_IN{month:4, day:4, year:2018}]->(b:Basket{name:"Basket-A", created: "20181228"}),
+	            (p)-[:HAS_COLOR]->(c:Color{name: "Red"})
+        """.trimIndent()).close()
+
+        val recordsProduct = async { getRecordCount(config, "neo4j-product") }
+        val recordsColor = async { getRecordCount(config, "neo4j-color") }
+        val recordsBasket = async { getRecordCount(config, "neo4j-basket") }
+        val recordsIsIn = async { getRecordCount(config, "neo4j-isin") }
+        val recordsHasColor = async { getRecordCount(config, "neo4j-hascolor") }
+
+        assertEquals(1, recordsProduct.await())
+        assertEquals(1, recordsColor.await())
+        assertEquals(1, recordsBasket.await())
+        assertEquals(1, recordsIsIn.await())
+        assertEquals(1, recordsHasColor.await())
     }
 
 }
