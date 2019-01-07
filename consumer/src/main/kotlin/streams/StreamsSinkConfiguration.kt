@@ -13,7 +13,7 @@ private object StreamsSinkConfigurationConstants {
 
 data class StreamsSinkConfiguration(val enabled: Boolean = true,
                                     val proceduresEnabled: Boolean = true,
-                                    val sinkPollingInterval: Long = Long.MAX_VALUE,
+                                    val sinkPollingInterval: Long = 10000,
                                     val topics: Map<String, String> = emptyMap()) {
 
     companion object {

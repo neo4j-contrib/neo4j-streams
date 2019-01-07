@@ -58,11 +58,11 @@ Uses:
 `CALL streams.consume('my-topic', {<config>}) YIELD event RETURN event`
 
 Example:
-Imagine you have a producer that publish events like this `{"name": "Andrea", "surname": "Santurbano"}`), we can create user nodes in this way:
+Imagine you have a producer that publish events like this `{"name": "Andrea", "surname": "Santurbano"}`, we can create user nodes in this way:
 
 ```
 CALL streams.consume('my-topic', {<config>}) YIELD event
-CREATE (p:Person{firstName: event.name, lastName: event.surname})
+CREATE (p:Person{firstName: event.data.name, lastName: event.data.surname})
 ```
 
 Input Parameters:

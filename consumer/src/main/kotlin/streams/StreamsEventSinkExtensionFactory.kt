@@ -9,6 +9,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import streams.procedures.StreamsSinkProcedures
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
 class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>("Streams.Consumer") {
@@ -26,9 +27,9 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
     class StreamsEventLifecycle(private val dependencies: StreamsEventSinkExtensionFactory.Dependencies): LifecycleAdapter() {
         private val db = dependencies.graphdatabaseAPI()
-        private val log = dependencies.log()
+        private val logService = dependencies.log()
         private val configuration = dependencies.config()
-        private var streamsLog = log.getUserLog(StreamsEventLifecycle::class.java)
+        private var streamsLog = logService.getUserLog(StreamsEventLifecycle::class.java)
 
         private lateinit var eventSink: StreamsEventSink
 
@@ -38,17 +39,31 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                     override fun unavailable() {}
 
                     override fun available() {
+                        streamsLog.info("Initialising the Streams Sink module")
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
                         val streamsTopicService = StreamsTopicService(db, streamsSinkConfiguration.topics)
-                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, log.getUserLog(StreamsEventSinkQueryExecution::class.java))
-                        StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
-                        eventSink = StreamsEventSinkFactory.getStreamsEventSink(configuration,
-                                streamsQueryExecution,
-                                streamsTopicService,
-                                log.getUserLog(StreamsEventSinkFactory::class.java))
+                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java))
+
+                        // Create and start the Sink
+                        eventSink = StreamsEventSinkFactory
+                                .getStreamsEventSink(configuration,
+                                        streamsQueryExecution,
+                                        streamsTopicService,
+                                        logService.getUserLog(StreamsEventSinkFactory::class.java))
                         eventSink.start()
+                        if (Neo4jUtils.isWriteableInstance(db)) {
+                            if (streamsLog.isDebugEnabled) {
+                                streamsLog.debug("Subscribed topics with queries: $${streamsTopicService.getAll()}")
+                            } else {
+                                streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
+                            }
+                        }
+
+                        // Register required services for the Procedures
+                        StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                         StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
                         StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                        streamsLog.info("Streams Sink module initialised")
                     }
 
                 })

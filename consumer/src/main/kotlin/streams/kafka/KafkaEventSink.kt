@@ -1,11 +1,7 @@
 package streams.kafka
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.common.errors.WakeupException
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.Log
 import streams.*
@@ -49,17 +45,15 @@ class KafkaEventSink(private val config: Config,
                 .createStreamsEventConsumer(config.raw, log)
                 .withTopics(topics.keys)
         this.eventConsumer.start()
-        if (log.isDebugEnabled) {
-            log.debug("Subscribed topics with queries: $topics")
-        }
         this.job = createJob()
         log.info("Kafka Sink started")
     }
 
-    override fun stop() {
+    override fun stop() = runBlocking {
         log.info("Stopping Sink daemon Job")
-        this.eventConsumer.stop()
-        StreamsUtils.ignoreExceptions({ job.cancel() }, UninitializedPropertyAccessException::class.java)
+        try {
+            job.cancelAndJoin()
+        } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
     }
 
     override fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper {
@@ -78,7 +72,7 @@ class KafkaEventSink(private val config: Config,
         log.info("Creating Sink daemon Job")
         return GlobalScope.launch(Dispatchers.IO) {
             try {
-                while (true) {
+                while (isActive) {
                     val data= eventConsumer.read()
                     data?.forEach {
                         if (log.isDebugEnabled) {
@@ -87,6 +81,7 @@ class KafkaEventSink(private val config: Config,
                         queryExecution.execute(it.key, it.value)
                     }
                 }
+                eventConsumer.stop()
             } catch (e: Throwable) {
                 val message = e.message ?: "Generic error, please check the stack trace: "
                 log.error(message, e)
@@ -114,20 +109,18 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
             return
         }
         this.consumer.subscribe(topics)
-        log.info("Subscribing topics: $topics")
     }
 
     override fun stop() {
         StreamsUtils.ignoreExceptions({ consumer.close() }, UninitializedPropertyAccessException::class.java)
     }
 
-    override fun read(): Map<String, List<Map<String, Any?>>>? {
+    override fun read(): Map<String, List<Any>>? {
         val records = consumer.poll(config.sinkPollingInterval)
         if (records != null && !records.isEmpty) {
             return records
                     .map {
-                        it.topic()!! to JSONUtils.readValue(it.value(), Map::class.java)
-                                .mapKeys { it.key.toString() }
+                        it.topic()!! to JSONUtils.readValue(it.value(), Any::class.java)
                     }
                     .groupBy({ it.first }, { it.second })
         }
