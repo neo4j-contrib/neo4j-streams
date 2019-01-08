@@ -117,7 +117,7 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
         fun prepareEvent(streamsTransactionEvent: StreamsTransactionEvent, routingConf: List<NodeRoutingConfiguration>): Map<String, StreamsTransactionEvent> {
             return routingConf
                     .filter {
-                        it.all || it.labels.any { hasLabel(it, streamsTransactionEvent) }
+                        it.labels.isEmpty() || it.labels.any { hasLabel(it, streamsTransactionEvent) }
                     }
                     .map {
                         val nodePayload = streamsTransactionEvent.payload as NodePayload
@@ -192,7 +192,7 @@ data class RelationshipRoutingConfiguration(val name: String = "",
         fun prepareEvent(streamsTransactionEvent: StreamsTransactionEvent, routingConf: List<RelationshipRoutingConfiguration>): Map<String, StreamsTransactionEvent> {
             return routingConf
                     .filter {
-                        it.all || isRelationshipType(it.name, streamsTransactionEvent)
+                        it.name.isNullOrBlank() || isRelationshipType(it.name, streamsTransactionEvent)
                     }
                     .map {
                         val relationshipPayload = streamsTransactionEvent.payload as RelationshipPayload
