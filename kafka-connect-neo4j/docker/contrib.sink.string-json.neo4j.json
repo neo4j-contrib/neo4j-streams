@@ -1,6 +1,9 @@
 {
-  "name": "Neo4jSinkConnector",
+  "name": "Neo4jSinkConnectorJSON",
   "config": {
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false,
     "topics": "my-topic",
     "connector.class": "streams.kafka.connect.sink.Neo4jSinkConnector",
     "errors.retry.timeout": "-1",
