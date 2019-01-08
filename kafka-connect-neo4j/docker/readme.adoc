@@ -19,7 +19,7 @@ We'll define the Sink configuration as follows:
 
 [source,json]
 ----
-include::contrib.sink.neo4j.json[]
+include::contrib.sink.avro.neo4j.json[]
 ----
 
 In particular this line:
