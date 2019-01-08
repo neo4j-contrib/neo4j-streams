@@ -15,6 +15,6 @@
     "neo4j.authentication.basic.username": "neo4j",
     "neo4j.authentication.basic.password": "connect",
     "neo4j.encryption.enabled": false,
-    "neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
+    "neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname, from: 'JSON'}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
   }
 }
