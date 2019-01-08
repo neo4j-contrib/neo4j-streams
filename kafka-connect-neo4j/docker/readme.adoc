@@ -1,17 +1,17 @@
-# Build it locally
+= Build it locally
 
 Build the project by running the following command:
 
-    $ mvn clean install
+    mvn clean install
 
 Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target` you'll find a file named `kafka-connect-neo4j-<VERSION>.tar.gz`
 
 
-# Configuring the stack
+= Configuring the stack
 
 Create a directory `plugins` at the same level of the compose file and unzip the file `kafka-connect-neo4j-<VERSION>.tar.gz` inside it, then start the compose file
 
-    $ docker-compose up -d
+    docker-compose up -d
 
 Create the Sink instance:
 
@@ -88,4 +88,39 @@ and click to the **Sink** tab. You must find a table just like this:
 |my-topic
 |===
 
-Now you can send your AVRO data to the `my-topic` topic
+= Use the data generator
+
+You can download and use the https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar[neo4j-streams-sink-tester-1.0.jar] in order to generate a sample dataset.
+
+This package sends records to the Neo4j Kafka Sink by using the following in two data formats:
+
+- JSON, example:
+```json
+{"name": "Name", "surname": "Surname"}
+```
+
+- AVRO, with the schema:
+
+```json
+{
+ "type":"record",
+ "name":"User",
+ "fields":[{"name":"name","type":"string"}, {"name":"surname","type":"string"}]
+}
+```
+
+Please type:
+
+    java -jar neo4j-streams-sink-tester-1.0.jar -h
+
+to print the option list with default values.
+
+In order to choose the data format please use the `-f` flag: `-f AVRO` or `-f JSON` (the default value).
+So:
+
+    java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO
+
+Will send data in AVRO format.
+
+For a complete overview of the **Neo4j Steams Sink Tester** please refer to https://github.com/conker84/neo4j-streams-sink-tester[this repo]
+
