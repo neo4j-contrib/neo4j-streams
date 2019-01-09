@@ -94,31 +94,38 @@ You can download and use the https://github.com/conker84/neo4j-streams-sink-test
 
 This package sends records to the Neo4j Kafka Sink by using the following in two data formats:
 
-- JSON, example:
-```json
+JSON example:
+
+[source,json]
+----
 {"name": "Name", "surname": "Surname"}
-```
+----
 
-- AVRO, with the schema:
+AVRO, with the schema:
 
-```json
+[source,json]
+----
 {
  "type":"record",
  "name":"User",
  "fields":[{"name":"name","type":"string"}, {"name":"surname","type":"string"}]
 }
-```
+----
 
 Please type:
 
-    java -jar neo4j-streams-sink-tester-1.0.jar -h
+----
+java -jar neo4j-streams-sink-tester-1.0.jar -h
+----
 
 to print the option list with default values.
 
 In order to choose the data format please use the `-f` flag: `-f AVRO` or `-f JSON` (the default value).
 So:
 
-    java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO
+----
+java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO
+----
 
 Will send data in AVRO format.
 
