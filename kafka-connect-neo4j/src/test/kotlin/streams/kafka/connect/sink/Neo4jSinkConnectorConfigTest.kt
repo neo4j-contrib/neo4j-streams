@@ -8,7 +8,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class Neo4jSinkConnectorConfigSinkTest {
+class Neo4jSinkConnectorConfigTest {
 
    @Test(expected = RuntimeException::class)
    fun `should throw a RuntimeException`() {
@@ -27,6 +27,7 @@ class Neo4jSinkConnectorConfigSinkTest {
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
                 "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})",
                 Neo4jSinkConnectorConfig.SERVER_URI to "bolt://neo4j:7687",
+                Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
         val config = Neo4jSinkConnectorConfig(originals)
@@ -34,6 +35,7 @@ class Neo4jSinkConnectorConfigSinkTest {
         assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topicMap["foo"])
         assertTrue { config.encryptionEnabled }
         assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
+        assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
         assertEquals(AuthenticationType.BASIC, config.authenticationType)
         assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME], config.authenticationUsername)
