@@ -29,8 +29,8 @@
         <kotlin.coroutines.version>1.0.0</kotlin.coroutines.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <easymock.version>4.0.1</easymock.version>
-        <neo4j.version>3.5.0</neo4j.version>
-        <neo4j.streams.version>3.5.0</neo4j.streams.version>
+        <neo4j.version>3.4.7</neo4j.version>
+        <neo4j.streams.version>3.4.0</neo4j.streams.version>
     </properties>
 
     <organization>

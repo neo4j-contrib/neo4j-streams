@@ -1,16 +1,15 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
-import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.KernelExtensionFactory
+import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.kernel.impl.spi.KernelContext
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
-import org.neo4j.logging.internal.LogService
 import streams.procedures.StreamsProcedures
 
-class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
+class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.Dependencies>("Streams.Producer") {
     override fun newInstance(context: KernelContext, dependencies: Dependencies): Lifecycle {
         val db = dependencies.graphdatabaseAPI()
         val log = dependencies.log()

@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>3.5.0</version>
+    <version>3.4.0</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -35,7 +35,7 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.3.0</kotlin.version>
         <kotlin.coroutines.version>1.0.0</kotlin.coroutines.version>
-        <neo4j.version>3.5.0</neo4j.version>
+        <neo4j.version>3.4.10</neo4j.version>
         <kafka.version>1.0.1</kafka.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
     </properties>
@@ -111,12 +111,6 @@
         <dependency>
             <groupId>org.neo4j.test</groupId>
             <artifactId>neo4j-harness</artifactId>
-            <version>${neo4j.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j.community</groupId>
-            <artifactId>it-test-support</artifactId>
             <version>${neo4j.version}</version>
             <scope>test</scope>
         </dependency>

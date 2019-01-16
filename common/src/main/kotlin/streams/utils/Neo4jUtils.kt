@@ -1,8 +1,8 @@
 package streams.utils
 
 import org.neo4j.graphdb.QueryExecutionException
+import org.neo4j.kernel.impl.logging.LogService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.logging.internal.LogService
 import java.lang.reflect.InvocationTargetException
 
 object Neo4jUtils {
