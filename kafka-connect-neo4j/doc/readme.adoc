@@ -4,12 +4,11 @@ Build the project by running the following command:
 
     mvn clean install
 
-Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target` you'll find a file named `kafka-connect-neo4j-<VERSION>.tar.gz`
-
+Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`
 
 = Configuring the stack
 
-Create a directory `plugins` at the same level of the compose file and unzip the file `kafka-connect-neo4j-<VERSION>.tar.gz` inside it, then start the compose file
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it, then start the compose file
 
     docker-compose up -d
 
