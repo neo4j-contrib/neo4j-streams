@@ -15,8 +15,6 @@ class Neo4jSinkTask : SinkTask() {
     private lateinit var config: Neo4jSinkConnectorConfig
     private lateinit var neo4jService: Neo4jService
 
-    private val converter = ValueConverter()
-
     override fun version(): String {
         return VersionUtil.version(this.javaClass as Class<*>)
     }
@@ -31,33 +29,12 @@ class Neo4jSinkTask : SinkTask() {
             return@runBlocking
         }
 
-        val mapTopicRecords = collection.groupBy { it.topic() }
-
-        if (log.isDebugEnabled) {
-            mapTopicRecords.forEach { topic, records -> log.debug("For topic: $topic record size is ${records.size}") }
-        }
-
         // TODO define a retry policy in that case we must throw `RetriableException`
-        val data = mapTopicRecords
-                .filterKeys {topic ->
-                    val isValidTopic = config.topicMap.containsKey(topic)
-                    if (!isValidTopic && log.isDebugEnabled) {
-                        log.debug("Topic $topic not present")
-                    }
-                    isValidTopic
-                }
-                .mapKeys { it -> "${StreamsUtils.UNWIND} ${config.topicMap[it.key]}" }
-                .mapValues { it ->
-                    val value = it.value
-                    val chunks = value.chunked(config.batchSize)
-                    if (log.isDebugEnabled) {
-                        log.debug("Data chunked in ${chunks.size} chunks")
-                    }
-                    val result = chunks.map {
-                        it.map { mapOf("events" to converter.convert(it.value())) }
-                    }
-                    result
-                }
+        val data = EventBuilder()
+                .withBatchSize(config.batchSize)
+                .withTopics(config.topicMap.keys)
+                .withSinkRecords(collection)
+                .build()
         neo4jService.writeData(data)
 
     }
