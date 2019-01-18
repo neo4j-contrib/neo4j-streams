@@ -35,3 +35,8 @@ mvn clean install
 == Docker
 
 ### link:doc/asciidoc/docker/index.adoc[Docker]
+
+== Kafka Connect
+
+### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Plugin]
+

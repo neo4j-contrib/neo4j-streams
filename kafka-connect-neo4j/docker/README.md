@@ -12,4 +12,4 @@ Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packa
 
 # Run with docker
 
-Please refer to this file [readme.adoc](docker/readme.adoc)
+Please refer to this file [readme.adoc](doc/readme.adoc)

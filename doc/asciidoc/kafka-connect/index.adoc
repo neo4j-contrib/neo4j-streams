@@ -1,0 +1,20 @@
+== Kafka Connect
+
+Kafka Connect, an open source component of Apache Kafka, is a framework for connecting Kafka with external systems such as databases, key-value stores, search indexes, and file systems.
+
+The Neo4j Streams project provides a Kafka Connect plugin that can be installed into the Confluent Platform enabling:
+
+- Ingest data from Kafka topics directly into Neo4j via templated Cypher queries;
+- Stream Neo4j transaction events (*coming soon*).
+
+=== Docker compose file
+
+Inside the directory `/kafka-connect-neo4j/docker` you'll find a compose file that allows you to start the whole testing environment:
+
+.docker-compose.yml
+[source,yaml]
+----
+include::../../../kafka-connect-neo4j/docker/docker-compose.yml[]
+----
+
+include::../../../kafka-connect-neo4j/docker/readme.adoc[]
