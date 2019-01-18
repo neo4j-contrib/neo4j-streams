@@ -86,9 +86,9 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
-                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
-                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
-                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 43),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 44),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 45),
                 SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43))
         task.put(input)
         db.graph().beginTx().use {

@@ -5,16 +5,20 @@ import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
+import org.apache.kafka.connect.sink.SinkRecord
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
+
+    private val converter = ValueConverter()
 
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
@@ -59,8 +63,10 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun write(query: String, data: Map<String, Any>) {
+    private fun write(topic: String, records: List<SinkRecord>) {
         val session = driver.session()
+        val query = "${StreamsUtils.UNWIND} ${config.topicMap[topic]}"
+        val data = mapOf<String, Any>("events" to records.map { converter.convert(it.value()) })
         session.writeTransaction {
             try {
                 it.run(query, data)
@@ -79,12 +85,13 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         session.close()
     }
 
-    suspend fun writeData(data: Map<String, List<List<Map<String, Any>>>>) = coroutineScope {
+    suspend fun writeData(data: Map<String, List<List<SinkRecord>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
-        val deferredList = data.flatMap { (query, events) ->
-            events.flatMap { it.map { async { write(query, it) } } }
-        }
+        val deferredList = data
+                .flatMap { (topic, records) ->
+                    records.map { async { write(topic, it) } }
+                }
         whileSelect {
             ticker.onReceive {
                 if (log.isDebugEnabled) {
