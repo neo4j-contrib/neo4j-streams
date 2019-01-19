@@ -1,42 +1,53 @@
 = Neo4j Streaming Data Integrations
 
+This project integrates Neo4j with streaming data solutions.
+Currently it provides an integration with Apache Kafka and the Confluent Platform.
+
 == Description
 
-The project is composed by 2 parts:
+The project is composed of these parts:
 
-* Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
-* Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
+* Neo4j Kafka Connector: a Kafka Connect plugin that allows to ingest events from Kafka to Neo4j via templated Cypher statements
+* Neo4j Extension:
+** Neo4j Streams Producer (Source): a transaction event handler events that sends data to a Kafka topic
+** Neo4j Streams Consumer (Sink): a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher statements
+* Neo4j Streams Procedures (Read & Write): Procedures to write to and read from topics interactively/programmatically
+
 
 == Installation
 
-Build locally
+1. Download the jar-file from the https://github.com/neo4j-contrib/neo4j-streams/releases/latest[latest release]
+2. Copy `neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
+3. Restart Neo4j
+
+=== Build locally
 
 ----
 mvn clean install
 ----
 
-2. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
-3. Restart Neo4j
+You'll find the build artifact in `<project_dir>/target/neo4j-streams-<VERSION>.jar`
 
-== Streams Producer
+== Documentation Links
+
+=== Kafka Connect Plugin
+
+### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Plugin]
+
+=== Streams Producer
 
 ### link:doc/asciidoc/producer/configuration.adoc[Configuration]
 
 ### link:doc/asciidoc/producer/patterns.adoc[Patterns]
 
-== Streams Consumer
+=== Streams Consumer
 
 ### link:doc/asciidoc/consumer/configuration.adoc[Configuration]
 
-== Streams Procedures
+=== Streams Procedures
 
 ### link:doc/asciidoc/procedures/index.adoc[Procedures]
 
-== Docker
+=== Docker
 
 ### link:doc/asciidoc/docker/index.adoc[Docker]
-
-== Kafka Connect
-
-### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Plugin]
-
