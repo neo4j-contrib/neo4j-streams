@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-docs</artifactId>
-    <version>3.4.0</version>
+    <version>${project.parent.version}</version>
     <name>Neo4j Streams - Docs</name>
     <description>Neo4j Streams - Documentation</description>
 
