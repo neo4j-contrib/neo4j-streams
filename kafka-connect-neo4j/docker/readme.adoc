@@ -12,6 +12,16 @@ Create a directory `plugins` at the same level of the compose file and unzip the
 
     docker-compose up -d
 
+You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+
+The insertion is sped up, if you create these two indexes:
+
+[source,cypher]
+----
+CREATE INDEX ON :Person(surname);
+CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
+----
+
 Create the Sink instance:
 
 We'll define the Sink configuration as follows:
@@ -71,6 +81,8 @@ The file `contrib.sink.string-json.neo4j.json` contains a configuration that man
 Please check that everything is fine by going into:
 
 http://localhost:9021/management/connect
+
+(or on 0.0.0.0 instead of localhost depending on your Docker environment)
 
 and click to the **Sink** tab. You must find a table just like this:
 
