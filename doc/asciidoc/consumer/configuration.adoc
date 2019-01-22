@@ -10,6 +10,9 @@ kafka.group.id=neo4j
 streams.sink.polling.interval=<The time, in milliseconds, spent waiting in poll if data is not available in the buffer. default=Long.MAX_VALUE>
 streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 streams.sink.enable=<true/false, default=true>
+streams.sink.batch.size=<The max size of the batch managed by the Cypher query, default=1000>
+streams.sink.batch.timeout=<The timeout after that the batched data will be returned if the size is not achieved, default=30000>
+streams.sink.query.timeout=<The execution timeout for the cypher query, default=50000>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

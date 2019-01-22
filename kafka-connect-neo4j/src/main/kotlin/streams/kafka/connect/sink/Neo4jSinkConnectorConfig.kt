@@ -36,6 +36,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
     val loadBalancingStrategy: Config.LoadBalancingStrategy
     val batchTimeout: Long
     val batchSize: Int
+    val queryTimeout: Long
 
     val topicMap: Map<String, String>
 
@@ -64,6 +65,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
         loadBalancingStrategy = ConfigUtils
                 .getEnum(Config.LoadBalancingStrategy::class.java, this, CONNECTION_LOAD_BALANCE_STRATEGY) as Config.LoadBalancingStrategy
         batchTimeout = getLong(BATCH_TIMEOUT_MSEC)
+        queryTimeout = getLong(QUERY_TIMEOUT_MSEC)
         batchSize = getInt(BATCH_SIZE)
 
         topicMap = originals
@@ -86,6 +88,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
         const val AUTHENTICATION_TYPE = "neo4j.authentication.type"
         const val BATCH_SIZE = "neo4j.batch.size"
         const val BATCH_TIMEOUT_MSEC = "neo4j.batch.timeout.msec"
+        const val QUERY_TIMEOUT_MSEC = "neo4j.query.timeout.msec"
         const val AUTHENTICATION_BASIC_USERNAME = "neo4j.authentication.basic.username"
         const val AUTHENTICATION_BASIC_PASSWORD = "neo4j.authentication.basic.password"
         const val AUTHENTICATION_BASIC_REALM = "neo4j.authentication.basic.realm"
@@ -101,9 +104,11 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
         const val GROUP_ENCRYPTION = "Encryption"
         const val GROUP_CONNECTION = "Connection"
+        const val GROUP_DATA_MANAGEMENT = "Data Management"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_MSEC_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
+        val QUERY_TIMEOUT_MSEC_DEFAULT = TimeUnit.SECONDS.toMillis(50L)
         const val BATCH_SIZE_DEFAULT = 1000
 
         fun config(): ConfigDef {
@@ -205,12 +210,17 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
                     .define(ConfigKeyBuilder.of(BATCH_SIZE, ConfigDef.Type.INT)
                             .documentation(BATCH_SIZE)
                             .importance(ConfigDef.Importance.LOW)
-                            .defaultValue(BATCH_SIZE_DEFAULT).group(GROUP_CONNECTION)
+                            .defaultValue(BATCH_SIZE_DEFAULT).group(GROUP_DATA_MANAGEMENT)
                             .build())
                     .define(ConfigKeyBuilder.of(BATCH_TIMEOUT_MSEC, ConfigDef.Type.LONG)
                             .documentation(BATCH_TIMEOUT_MSEC)
                             .importance(ConfigDef.Importance.LOW)
-                            .defaultValue(BATCH_TIMEOUT_MSEC_DEFAULT).group(GROUP_CONNECTION)
+                            .defaultValue(BATCH_TIMEOUT_MSEC_DEFAULT).group(GROUP_DATA_MANAGEMENT)
+                            .validator(ConfigDef.Range.atLeast(1)).build())
+                    .define(ConfigKeyBuilder.of(QUERY_TIMEOUT_MSEC, ConfigDef.Type.LONG)
+                            .documentation(QUERY_TIMEOUT_MSEC)
+                            .importance(ConfigDef.Importance.LOW)
+                            .defaultValue(QUERY_TIMEOUT_MSEC_DEFAULT).group(GROUP_DATA_MANAGEMENT)
                             .validator(ConfigDef.Range.atLeast(1)).build())
         }
     }

@@ -1,12 +1,17 @@
 package streams.kafka
 
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.ticker
+import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.Log
 import streams.*
 import streams.serialization.JSONUtils
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
+import streams.utils.TopicRecordQueue
+import java.util.*
 
 class KafkaEventSink(private val config: Config,
                      private val queryExecution: StreamsEventSinkQueryExecution,
@@ -14,14 +19,15 @@ class KafkaEventSink(private val config: Config,
                      private val log: Log): StreamsEventSink(config, queryExecution, streamsTopicService, log) {
 
     private lateinit var eventConsumer: StreamsEventConsumer<*>
-    private lateinit var job: Job
+    private lateinit var readJob: Job
+    private lateinit var writeJob: Job
+    private lateinit var streamsSinkConfiguration: StreamsSinkConfiguration
+
+    private val topicRecordQueue = TopicRecordQueue<Any>()
 
     private val streamsConfigMap = config.raw.filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
     }.toMap()
-
-    private val mappingKeys = mapOf("timeout" to "streams.sink.polling.interval",
-            "from" to "kafka.auto.offset.reset")
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
@@ -33,9 +39,13 @@ class KafkaEventSink(private val config: Config,
         }
     }
 
+    private val mappingKeys = mapOf("from" to "kafka.auto.offset.reset",
+            "timeout" to "streams.sink.batch.timeout",
+            "batchSize" to "streams.sink.batch.size")
+
     override fun start() {
-        val streamsConfig = StreamsSinkConfiguration.from(config)
-        if (!streamsConfig.enabled) {
+        streamsSinkConfiguration = StreamsSinkConfiguration.from(config)
+        if (!streamsSinkConfiguration.enabled) {
             log.info("The sink will not started, please set the property streams.sink.enabled=true")
             return
         }
@@ -45,15 +55,20 @@ class KafkaEventSink(private val config: Config,
                 .createStreamsEventConsumer(config.raw, log)
                 .withTopics(topics.keys)
         this.eventConsumer.start()
-        this.job = createJob()
+        this.readJob = createReadJob()
+        this.writeJob = createWriteJob()
         log.info("Kafka Sink started")
     }
 
     override fun stop() = runBlocking {
         log.info("Stopping Sink daemon Job")
         try {
-            job.cancelAndJoin()
-        } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
+            readJob.cancelAndJoin()
+        } catch (e: UninitializedPropertyAccessException) { /* ignoring this one only */ }
+        try {
+            writeJob.cancelAndJoin()
+        } catch (e: UninitializedPropertyAccessException) { /* ignoring this one only */ }
+        eventConsumer.stop()
     }
 
     override fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper {
@@ -68,28 +83,53 @@ class KafkaEventSink(private val config: Config,
         }
     }
 
-    private fun createJob(): Job {
-        log.info("Creating Sink daemon Job")
-        return GlobalScope.launch(Dispatchers.IO) {
-            try {
-                while (isActive) {
-                    val data= eventConsumer.read()
-                    data?.forEach {
-                        if (log.isDebugEnabled) {
-                            log.debug("Reading data from topic ${it.key}, with data ${it.value}")
-                        }
-                        queryExecution.execute(it.key, it.value)
-                    }
+    private fun createReadJob(): Job {
+        log.info("Creating Sink read daemon Job")
+        return GlobalScope.launch {
+            while (isActive) {
+                val data = eventConsumer.read()
+                if (data.isNullOrEmpty()) {
+                    continue
                 }
-                eventConsumer.stop()
-            } catch (e: Throwable) {
-                val message = e.message ?: "Generic error, please check the stack trace: "
-                log.error(message, e)
-                eventConsumer.stop()
+                topicRecordQueue.addMap(data)
             }
         }
     }
 
+    private fun createWriteJob(): Job {
+        log.info("Creating Sink write daemon Job")
+        return GlobalScope.launch {
+            while (isActive) {
+                val deferredList = topicRecordQueue
+                        .map { (topic, queue) ->
+                            async {
+                                val data = queue.getBatchOrTimeout(streamsSinkConfiguration.batchSize, streamsSinkConfiguration.batchTimeout)
+                                if (data.isNotEmpty()) {
+                                    queryExecution.execute(topic, data)
+                                }
+                            }
+                        }
+                if (deferredList.isEmpty()) {
+                    continue
+                }
+                val timeout = streamsSinkConfiguration.queryTimeout
+                val ticker = ticker(timeout)
+                whileSelect {
+                    ticker.onReceive {
+                        if (log.isDebugEnabled) {
+                            log.debug("Timeout $timeout occurred while executing queries")
+                        }
+                        deferredList.forEach { deferred -> deferred.cancel() }
+                        false // Stops the whileSelect
+                    }
+                    val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
+                    deferredList.forEach {
+                        it.onAwait { !isAllCompleted } // Stops the whileSelect
+                    }
+                }
+            }
+        }
+    }
 }
 
 class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
@@ -97,6 +137,8 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
                          private val log: Log): StreamsEventConsumer<KafkaConsumer<String, ByteArray>>(consumer, config, log) {
 
     private lateinit var topics: Set<String>
+
+    private var isRunning = false
 
     override fun withTopics(topics: Set<String>): StreamsEventConsumer<KafkaConsumer<String, ByteArray>> {
         this.topics = topics
@@ -109,14 +151,19 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
             return
         }
         this.consumer.subscribe(topics)
+        isRunning = true
     }
 
     override fun stop() {
+        isRunning = false
         StreamsUtils.ignoreExceptions({ consumer.close() }, UninitializedPropertyAccessException::class.java)
     }
 
-    override fun read(): Map<String, List<Any>>? {
-        val records = consumer.poll(config.sinkPollingInterval)
+    override fun read(timeout: Long): Map<String, List<Any>>? {
+        if (!isRunning) {
+            return null
+        }
+        val records = consumer.poll(timeout)
         if (records != null && !records.isEmpty) {
             return records
                     .map {
@@ -125,5 +172,9 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
                     .groupBy({ it.first }, { it.second })
         }
         return null
+    }
+
+    override fun read(): Map<String, List<Any>>? {
+        return read(0L)
     }
 }

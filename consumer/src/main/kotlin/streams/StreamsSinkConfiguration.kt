@@ -13,8 +13,11 @@ private object StreamsSinkConfigurationConstants {
 
 data class StreamsSinkConfiguration(val enabled: Boolean = true,
                                     val proceduresEnabled: Boolean = true,
-                                    val sinkPollingInterval: Long = 10000,
-                                    val topics: Map<String, String> = emptyMap()) {
+                                    val sinkPollingInterval: Long = 0,
+                                    val topics: Map<String, String> = emptyMap(),
+                                    val batchSize: Int = 1000,
+                                    val batchTimeout: Long = 30000,
+                                    val queryTimeout: Long = 50000) {
 
     companion object {
         fun from(cfg: Config): StreamsSinkConfiguration {
@@ -33,7 +36,10 @@ data class StreamsSinkConfiguration(val enabled: Boolean = true,
                     proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
                             .toString().toBoolean(),
                     sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
-                    topics = topics)
+                    topics = topics,
+                    batchSize = config.getOrDefault("sink.batch.size", default.batchSize).toString().toInt(),
+                    batchTimeout = config.getOrDefault("sink.batch.timeout", default.batchTimeout).toString().toLong(),
+                    queryTimeout = config.getOrDefault("sink.query.timeout", default.queryTimeout).toString().toLong())
         }
     }
 

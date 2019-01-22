@@ -31,6 +31,8 @@ class KafkaSinkConfigurationTest {
         val bootstrap = "bootstrap:9092"
         val group = "foo"
         val autoOffsetReset = "latest"
+        val batchSize = "84"
+        val batchTimeout = "1984"
         val config = Config.builder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
@@ -38,9 +40,11 @@ class KafkaSinkConfigurationTest {
                 .withSetting("kafka.bootstrap.servers", bootstrap)
                 .withSetting("kafka.auto.offset.reset", autoOffsetReset)
                 .withSetting("kafka.group.id", group)
+                .withSetting("streams.sink.batch.size", batchSize)
+                .withSetting("streams.sink.batch.timeout", batchTimeout)
                 .build()
         val kafkaSinkConfiguration = KafkaSinkConfiguration.from(config)
-        StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue)
+        StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue, batchSize, batchTimeout)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
         assertEquals(bootstrap, kafkaSinkConfiguration.bootstrapServers)
