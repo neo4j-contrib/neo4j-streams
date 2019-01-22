@@ -9,7 +9,6 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.*
 import org.junit.rules.TestName
-import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
@@ -51,6 +50,7 @@ class KafkaEventSinkIT {
     var testName = TestName()
 
     private val EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX = "WithNoTopicLoaded"
+    private val BATCH_SIZE_METHOD_SUFFIX = "WithBatchSize"
 
     private val kafkaProperties = Properties()
 
@@ -65,14 +65,20 @@ class KafkaEventSinkIT {
         var graphDatabaseBuilder = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
+
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+        }
+        if (testName.methodName.endsWith(BATCH_SIZE_METHOD_SUFFIX)) {
+            graphDatabaseBuilder.setConfig("streams.sink.batch.size", "5")
+        } else {
+            graphDatabaseBuilder.setConfig("streams.sink.batch.timeout", "100")
         }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
         kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        kafkaProperties["group.id"] = "neo4j"
+//        kafkaProperties["acks"] = "all"
         kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
 
@@ -89,7 +95,7 @@ class KafkaEventSinkIT {
     fun shouldWriteDataFromSink() = runBlocking {
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        delay(5000)
+        delay(1000)
         val props = data
                 .flatMap {
                     if (it.key == "properties") {
@@ -100,24 +106,42 @@ class KafkaEventSinkIT {
                     }
                 }
                 .toMap()
-        db.execute("MATCH (n:Label) WHERE properties(n) = {props} RETURN count(*) AS count", mapOf("props" to props))
-                .columnAs<Long>("count").use {
-                    assertTrue { it.hasNext() }
-                    val count = it.next()
-                    assertEquals(1, count)
-                    assertFalse { it.hasNext() }
-                }
+        val result = db.execute("MATCH (n:Label) WHERE properties(n) = {props} RETURN count(*) AS count", mapOf("props" to props))
+                .columnAs<Long>("count")
+        assertTrue { result.hasNext() }
+        assertEquals(1L, result.next())
     }
 
     @Test
     fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        delay(5000)
-        db.execute("MATCH (n:Label) RETURN n")
-                .columnAs<Node>("n").use {
-                    assertFalse { it.hasNext() }
-                }
+        delay(1000)
+        val result = db.execute("MATCH (n:Label) RETURN n")
+        assertFalse { result.hasNext() }
     }
 
+    @Test
+    fun shouldWriteDataWithBatchSize() = runBlocking {
+        // batchTimeout default (30000), batchSize 5
+        val mutableData = data.toMutableMap()
+        repeat(5) {
+            mutableData["id"] = it
+            kafkaProducer.send(ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(mutableData))).get()
+            if (it < 4) { // test the data written
+                delay(1000)
+                val result = db.execute("MATCH (n:Label) RETURN COUNT(n) AS count")
+                val resultMap = result.next()
+                assertTrue { resultMap.containsKey("count") }
+                assertEquals(0L, resultMap["count"])
+            }
+
+        }
+        delay(1000)
+        // after the 5th event the batch size is satisfied so the data should be written
+        val result = db.execute("MATCH (n:Label) WHERE n.prop1 = {prop1} AND n.bar = {bar} RETURN count(*) AS count", dataProperties)
+                .columnAs<Long>("count")
+        assertTrue { result.hasNext() }
+        assertEquals(5L, result.next())
+    }
 }

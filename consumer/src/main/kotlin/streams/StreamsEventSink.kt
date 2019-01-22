@@ -18,7 +18,7 @@ abstract class StreamsEventSink(private val config: Config,
 
 }
 
-abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsSinkConfiguration, private val log: Log) {
+abstract class StreamsEventConsumer<T>(private val consumer: T, private val config: StreamsSinkConfiguration, private val log: Log) {
 
     abstract fun stop()
 
@@ -27,6 +27,8 @@ abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsS
     abstract fun start()
 
     abstract fun read(): Map<String, List<Any>>?
+
+    abstract fun read(timeout: Long): Map<String, List<Any>>?
 
 }
 

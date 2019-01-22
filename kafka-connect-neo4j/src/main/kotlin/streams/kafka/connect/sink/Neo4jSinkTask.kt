@@ -1,8 +1,6 @@
 package streams.kafka.connect.sink
 
 import com.github.jcustenborder.kafka.connect.utils.VersionUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.slf4j.Logger
@@ -24,19 +22,12 @@ class Neo4jSinkTask : SinkTask() {
         this.neo4jService = Neo4jService(this.config)
     }
 
-    override fun put(collection: Collection<SinkRecord>) = runBlocking(Dispatchers.IO) {
+    override fun put(collection: Collection<SinkRecord>) {
         if (collection.isEmpty()) {
-            return@runBlocking
+            return
         }
-
         // TODO define a retry policy in that case we must throw `RetriableException`
-        val data = EventBuilder()
-                .withBatchSize(config.batchSize)
-                .withTopics(config.topicMap.keys)
-                .withSinkRecords(collection)
-                .build()
-        neo4jService.writeData(data)
-
+        neo4jService.addToQueue(collection.groupBy { it.topic() })
     }
 
     override fun stop() {

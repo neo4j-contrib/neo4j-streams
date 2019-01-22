@@ -51,6 +51,7 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
         assertEquals(Config.LoadBalancingStrategy.LEAST_CONNECTED, config.loadBalancingStrategy)
         assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSEC_DEFAULT, config.batchTimeout)
+        assertEquals(Neo4jSinkConnectorConfig.QUERY_TIMEOUT_MSEC_DEFAULT, config.queryTimeout)
     }
 
 }

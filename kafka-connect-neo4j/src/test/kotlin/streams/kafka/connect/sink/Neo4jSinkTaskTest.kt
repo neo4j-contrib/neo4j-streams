@@ -1,5 +1,8 @@
 package streams.kafka.connect.sink
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.SchemaBuilder
 import org.apache.kafka.connect.data.Struct
@@ -57,7 +60,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
             .build()
 
     @Test
-    fun `should insert data into Neo4j`() {
+    fun `should insert data into Neo4j`() = runBlocking {
         val firstTopic = "neotopic"
         val secondTopic = "foo"
         val props = mutableMapOf<String, String>()
@@ -65,7 +68,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
-        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 10.toString()
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
 
         val struct= Struct(PERSON_SCHEMA)
@@ -88,15 +91,18 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 43),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 44),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 45),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 46),
                 SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43))
         task.put(input)
+        delay(1000)
+        task.put(input)
+        delay(1000)
+        task.stop()
         db.graph().beginTx().use {
             val personCount = db.graph().execute("MATCH (p:Person) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
-            val expectedPersonCount = input.filter { it.topic() == secondTopic }.size
-            assertEquals(expectedPersonCount, personCount.toInt())
+            assertEquals(2, personCount.toInt())
             val personExtCount = db.graph().execute("MATCH (p:PersonExt) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
-            val expectedPersonExtCount = input.filter { it.topic() == firstTopic }.size
-            assertEquals(expectedPersonExtCount, personExtCount.toInt())
+            assertEquals(10, personExtCount.toInt())
         }
     }
 
@@ -118,6 +124,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
+        task.stop()
         db.graph().beginTx().use {
             val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }

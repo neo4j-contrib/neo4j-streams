@@ -1,5 +1,8 @@
 package integrations
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -77,7 +80,6 @@ class StreamsSinkProceduresIT {
 
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
         kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        kafkaProperties["group.id"] = "neo4j"
         kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = StringSerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
 
@@ -133,11 +135,10 @@ class StreamsSinkProceduresIT {
             UNWIND event.data AS data
             CREATE (t:TEST) SET t += data.properties
         """.trimIndent()).close()
-        val searchResult = db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties))
-        assertTrue { searchResult.hasNext() }
-        val searchResultMap = searchResult.next()
-        assertTrue { searchResultMap.containsKey("count") }
-        assertEquals(2L, searchResultMap["count"])
+        val result = db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties))
+                .columnAs<Long>("count")
+        assertTrue { result.hasNext() }
+        assertEquals(2L, result.next())
     }
 
     @Test
@@ -166,7 +167,6 @@ class StreamsSinkProceduresIT {
         val searchResultMap = searchResult.next()
         assertTrue { searchResultMap.containsKey("count") }
         assertEquals(3L, searchResultMap["count"])
-
     }
 
 }

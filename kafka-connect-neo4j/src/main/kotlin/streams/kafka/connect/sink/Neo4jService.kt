@@ -1,9 +1,9 @@
 package streams.kafka.connect.sink
 
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ticker
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.selects.whileSelect
+import org.apache.commons.lang3.time.StopWatch
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkRecord
 import org.neo4j.driver.v1.AuthTokens
@@ -12,7 +12,10 @@ import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.utils.RecordQueue
 import streams.utils.StreamsUtils
+import streams.utils.TopicRecordQueue
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 
@@ -23,6 +26,10 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
+
+    private val job: Job
+
+    private val topicQueue: TopicRecordQueue<SinkRecord>
 
     init {
         val configBuilder = Config.build()
@@ -57,9 +64,46 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         configBuilder.withLoadBalancingStrategy(this.config.loadBalancingStrategy)
         val neo4jConfig = configBuilder.toConfig()
         this.driver = GraphDatabase.driver(this.config.serverUri, authToken, neo4jConfig)
+
+        this.topicQueue = TopicRecordQueue()
+        job = createJob()
     }
 
-    fun close() {
+    private fun createJob(): Job {
+        return GlobalScope.launch {
+            while (isActive) {
+                val deferredList = topicQueue.map { (topic, queue) ->
+                    async {
+                        val data = queue.getBatchOrTimeout(config.batchSize, config.batchTimeout)
+                        if (data.isNotEmpty()) {
+                            write(topic, data)
+                        }
+                    }
+                }
+                if (deferredList.isEmpty()) {
+                    continue
+                }
+                val timeout = config.queryTimeout
+                val ticker = ticker(timeout)
+                whileSelect {
+                    ticker.onReceive {
+                        if (log.isDebugEnabled) {
+                            log.debug("Timeout $timeout occurred while executing queries")
+                        }
+                        deferredList.forEach { deferred -> deferred.cancel() }
+                        false // Stops the whileSelect
+                    }
+                    val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
+                    deferredList.forEach {
+                        it.onAwait { !isAllCompleted } // Stops the whileSelect
+                    }
+                }
+            }
+        }
+    }
+
+    fun close() = runBlocking {
+        job.cancelAndJoin()
         driver.close()
     }
 
@@ -85,28 +129,8 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         session.close()
     }
 
-    suspend fun writeData(data: Map<String, List<List<SinkRecord>>>) = coroutineScope {
-        val timeout = config.batchTimeout
-        val ticker = ticker(timeout)
-        val deferredList = data
-                .flatMap { (topic, records) ->
-                    records.map { async { write(topic, it) } }
-                }
-        whileSelect {
-            ticker.onReceive {
-                if (log.isDebugEnabled) {
-                    log.debug("Timeout $timeout occurred while executing queries")
-                }
-                deferredList.forEach { deferred -> deferred.cancel() }
-                false // Stops the whileSelect
-            }
-            val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
-            deferredList.forEach {
-                it.onAwait { !isAllCompleted } // Stops the whileSelect
-            }
-        }
+    fun addToQueue(map: Map<String, List<SinkRecord>>) {
+        topicQueue.addMap(map)
     }
-
-
 
 }

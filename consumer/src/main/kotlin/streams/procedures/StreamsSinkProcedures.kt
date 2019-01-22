@@ -32,8 +32,9 @@ class StreamsSinkProcedures {
                 .createStreamsEventConsumer(configuration, log!!)
                 .withTopics(setOf(topic))
         consumer.start()
+        val timeout = configuration.getOrDefault("streams.sink.batch.timeout", 1000).toString().toLong()
         val data = try {
-            consumer.read()
+            consumer.read(timeout)
         } catch (e: Exception) {
             if (log?.isDebugEnabled!!) {
                 log?.error("Error while consuming data", e)
