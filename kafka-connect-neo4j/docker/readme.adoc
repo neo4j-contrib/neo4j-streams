@@ -37,7 +37,7 @@ In particular this line:
 "neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
 ----
 
-defines that all the data that comes from the topic `neo4j` will be unpacked by the Sink into Neo4j with the following Cypher query:
+defines that all the data that comes from the topic `my-topic` will be unpacked by the Sink into Neo4j with the following Cypher query:
 
 [source,cypher]
 ----
