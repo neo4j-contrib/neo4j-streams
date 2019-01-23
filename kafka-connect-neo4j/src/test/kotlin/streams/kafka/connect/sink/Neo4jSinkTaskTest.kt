@@ -61,7 +61,6 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         val firstTopic = "neotopic"
         val secondTopic = "foo"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
@@ -105,7 +104,6 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
     fun `should not insert data into Neo4j`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()

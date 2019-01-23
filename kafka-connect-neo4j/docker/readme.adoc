@@ -1,3 +1,29 @@
+=== Configuration parameters
+
+You can set the following configuration values via Confluent Connect UI, or via REST endpoint
+
+[cols="3*",options="header"]
+|===
+|Field|Type|Description
+
+|neo4j.server.uri|String|The Bolt URI
+|neo4j.authentication.type|enum[NONE, BASIC, KERBEROS]| The authentication type (default BASIC)
+|neo4j.batch.size|Int|The max number of events processed by the Cypher query (default 1000)
+|neo4j.batch.timeout.msec|Long|The execution timeout for the cypher query (default 30000)
+|neo4j.authentication.basic.username|String| The authentication username
+|neo4j.authentication.basic.password|String| The authentication password
+|neo4j.authentication.basic.realm|String| The authentication realm
+|neo4j.authentication.kerberos.ticket|String| The Kerberos ticket
+|neo4j.encryption.enabled|Boolean| If the encryption is enabled (default false)
+|neo4j.encryption.trust.strategy|enum[TRUST_ALL_CERTIFICATES,TRUST_CUSTOM_CA_SIGNED_CERTIFICATES,TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]| The Neo4j trust strategy (default TRUST_ALL_CERTIFICATES)
+|neo4j.encryption.ca.certificate.path|String| The path of the certificate
+|neo4j.connection.max.lifetime.msecs|Long| The max Neo4j connection lifetime (default 1 hour)
+|neo4j.connection.acquisition.timeout.msecs|Long| The max Neo4j acquisition timeout (default 1 hour)
+|neo4j.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
+|neo4j.connection.max.pool.size|Int| The max pool size (default 100)
+|neo4j.load.balance.strategy|enum[ROUND_ROBIN,LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
+|===
+
 === Build it locally
 
 Build the project by running the following command:
@@ -84,7 +110,7 @@ http://localhost:9021/management/connect
 
 (or on 0.0.0.0 instead of localhost depending on your Docker environment)
 
-and click to the **Sink** tab. You must find a table just like this:
+and click to the **Send data out** (or **Sink** depending on your Confluent Platform Version) tab. You must find a table just like this:
 
 [cols="4*",options="header"]
 |===

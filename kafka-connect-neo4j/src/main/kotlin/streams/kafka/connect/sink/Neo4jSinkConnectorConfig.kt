@@ -182,7 +182,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : AbstractConfig(config(), 
                             .build())
                     .define(ConfigKeyBuilder.of(ENCRYPTION_ENABLED, ConfigDef.Type.BOOLEAN)
                             .documentation(ENCRYPTION_ENABLED)
-                            .importance(ConfigDef.Importance.HIGH).defaultValue(true)
+                            .importance(ConfigDef.Importance.HIGH).defaultValue(false)
                             .group(GROUP_ENCRYPTION).build())
                     .define(
                             ConfigKeyBuilder.of(ENCRYPTION_TRUST_STRATEGY, ConfigDef.Type.STRING)
