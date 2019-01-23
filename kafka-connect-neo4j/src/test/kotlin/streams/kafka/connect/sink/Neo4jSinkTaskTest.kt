@@ -16,6 +16,7 @@ import org.neo4j.graphdb.Node
 import org.neo4j.harness.ServerControls
 import org.neo4j.harness.TestServerBuilders
 import java.util.*
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 
@@ -65,6 +66,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
 
         val struct= Struct(PERSON_SCHEMA)
@@ -82,13 +84,20 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         val task = Neo4jSinkTask()
         task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
         task.start(props)
-        task.put(listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
-                SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43)))
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43))
+        task.put(input)
         db.graph().beginTx().use {
-            val person: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
-            assertTrue{ person != null }
-            val personExt: Node? = db.graph().findNode(Label.label("PersonExt"), "name", "Alex")
-            assertTrue{ personExt != null }
+            val personCount = db.graph().execute("MATCH (p:Person) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
+            val expectedPersonCount = input.filter { it.topic() == secondTopic }.size
+            assertEquals(expectedPersonCount, personCount.toInt())
+            val personExtCount = db.graph().execute("MATCH (p:PersonExt) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
+            val expectedPersonExtCount = input.filter { it.topic() == firstTopic }.size
+            assertEquals(expectedPersonExtCount, personExtCount.toInt())
         }
     }
 

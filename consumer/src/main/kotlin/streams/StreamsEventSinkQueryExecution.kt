@@ -1,6 +1,5 @@
 package streams
 
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.utils.Neo4jUtils
@@ -14,12 +13,16 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
             return
         }
         val query = "${StreamsUtils.UNWIND} $cypherQuery"
-        if(log.isDebugEnabled){
-            log.debug("Processing ${params.size} events with query: $query")
+        if (log.isDebugEnabled) {
+            log.debug("Processing ${params.size} events, for topic $topic with query: $query")
         }
         if (Neo4jUtils.isWriteableInstance(db)) {
             try {
-                db.execute(query, mapOf("events" to params)).close()
+                val result = db.execute(query, mapOf("events" to params))
+                if (log.isDebugEnabled) {
+                    log.debug("Query statistics:\n${result.queryStatistics}")
+                }
+                result.close()
             } catch (e: Exception) {
                 log.error("Error while executing the query", e)
             }

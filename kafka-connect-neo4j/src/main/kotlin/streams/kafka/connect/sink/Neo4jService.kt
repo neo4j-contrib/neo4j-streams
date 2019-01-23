@@ -3,14 +3,15 @@ package streams.kafka.connect.sink
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
-import org.neo4j.driver.v1.*
+import org.neo4j.driver.v1.AuthTokens
+import org.neo4j.driver.v1.Config
+import org.neo4j.driver.v1.Driver
+import org.neo4j.driver.v1.GraphDatabase
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.util.concurrent.TimeUnit
-import kotlin.random.Random
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
@@ -58,21 +59,19 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun debug(message: String) {
-        if (log.isDebugEnabled) {
-            log.debug(message)
-        }
-    }
-
-    private suspend fun write(query: String, data: Map<String, Any>) {
+    private fun write(query: String, data: Map<String, Any>) {
         val session = driver.session()
         session.writeTransaction {
             try {
                 it.run(query, data)
                 it.success()
-                debug("Successfully executed query: `$query`, with data: `$data`")
+                if (log.isDebugEnabled) {
+                    log.debug("Successfully executed query: `$query`, with data: `$data`")
+                }
             } catch (e: Exception) {
-                debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+                if (log.isDebugEnabled) {
+                    log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+                }
                 it.failure()
             }
             it.close()
@@ -80,15 +79,17 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         session.close()
     }
 
-    suspend fun writeData(data: Map<String, Map<String, Any>>) = coroutineScope {
+    suspend fun writeData(data: Map<String, List<List<Map<String, Any>>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
-        val deferredList = data.map { (query, events) ->
-            async { write(query, events) }
+        val deferredList = data.flatMap { (query, events) ->
+            events.flatMap { it.map { async { write(query, it) } } }
         }
         whileSelect {
             ticker.onReceive {
-                debug("Timeout $timeout occurred while executing queries")
+                if (log.isDebugEnabled) {
+                    log.debug("Timeout $timeout occurred while executing queries")
+                }
                 deferredList.forEach { deferred -> deferred.cancel() }
                 false // Stops the whileSelect
             }
@@ -98,5 +99,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
             }
         }
     }
+
+
 
 }

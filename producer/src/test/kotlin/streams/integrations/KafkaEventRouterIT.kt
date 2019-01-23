@@ -1,13 +1,13 @@
 package streams.integrations
 
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
-import org.junit.After
-import org.junit.Before
-import org.junit.ClassRule
-import org.junit.Test
+import org.junit.*
+import org.junit.rules.TestName
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -39,11 +39,33 @@ class KafkaEventRouterIT {
 
     lateinit var db: GraphDatabaseAPI
 
+    private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
+    private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
+    private val MULTI_NODE_PATTERN_TEST: String = "MultiTopicPatternConfig"
+
+    @Rule
+    @JvmField
+    var testName = TestName()
+
     @Before
     fun setUp() {
-        db = TestGraphDatabaseFactory().newImpermanentDatabaseBuilder()
+        var graphDatabaseBuilder = TestGraphDatabaseFactory()
+                .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
-                .newGraphDatabase() as GraphDatabaseAPI
+        if (testName.methodName.endsWith(WITH_REL_ROUTING_METHOD_SUFFIX)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}")
+        }
+        if (testName.methodName.endsWith(WITH_NODE_ROUTING_METHOD_SUFFIX)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.person", "Person{*}")
+        }
+        if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
+                    .setConfig("streams.source.topic.nodes.neo4j-color", "Color{*}")
+                    .setConfig("streams.source.topic.nodes.neo4j-basket", "Basket{*}")
+                    .setConfig("streams.source.topic.relationships.neo4j-isin", "IS_IN{month,day}")
+                    .setConfig("streams.source.topic.relationships.neo4j-hascolor", "HAS_COLOR{*}")
+        }
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
 
@@ -76,6 +98,46 @@ class KafkaEventRouterIT {
         consumer.close()
     }
 
+    @Test
+    fun testCreateRelationshipWithRelRouting() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf("knows"))
+        db.execute("CREATE (:Person {name:'Andrea'})-[:KNOWS{since: 2014}]->(:Person {name:'Michael'})").close()
+        val records = consumer.poll(5000)
+        assertEquals(1, records.count())
+        assertEquals(true, records.all {
+            JSONUtils.readValue(it.value(), Map::class.java).let {
+                var payload = it["payload"] as Map<String, Any?>
+                val after = payload["after"] as Map<String, Any?>
+                val properties = after["properties"] as Map<String, Any?>
+                payload["type"] == "relationship" && payload["label"] == "KNOWS" && properties["since"] == 2014
+            }
+        })
+        consumer.close()
+    }
+
+    @Test
+    fun testCreateNodeWithNodeRouting() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf("person"))
+        db.execute("CREATE (:Person {name:'Andrea'})").close()
+        val records = consumer.poll(5000)
+        assertEquals(1, records.count())
+        assertEquals(true, records.all {
+            JSONUtils.readValue(it.value(), Map::class.java).let {
+                var payload = it["payload"] as Map<String, Any?>
+                val after = payload["after"] as Map<String, Any?>
+                val labels = after["labels"] as List<String>
+                val propertiesAfter = after["properties"] as Map<String, Any?>
+                val meta = it["meta"] as Map<String, Any?>
+                labels == listOf("Person") && propertiesAfter == mapOf("name" to "Andrea") && meta["operation"] == "created"
+            }
+        })
+        consumer.close()
+    }
+
     private fun createConsumer(config: KafkaConfiguration): KafkaConsumer<String, ByteArray> {
         val props = config.asProperties()
         props["group.id"] = "neo4j"
@@ -102,6 +164,35 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
+    }
+
+    private fun getRecordCount(config: KafkaConfiguration, topic: String): Int {
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf(topic))
+        val count = consumer.poll(5000).count()
+        consumer.close()
+        return count
+    }
+
+    @Test
+    fun testMultiTopicPatternConfig() = runBlocking {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        db.execute("""
+            CREATE (p:Product{id: "A1", code: "X1", name: "Name X1", price: 1000})-[:IS_IN{month:4, day:4, year:2018}]->(b:Basket{name:"Basket-A", created: "20181228"}),
+	            (p)-[:HAS_COLOR]->(c:Color{name: "Red"})
+        """.trimIndent()).close()
+
+        val recordsProduct = async { getRecordCount(config, "neo4j-product") }
+        val recordsColor = async { getRecordCount(config, "neo4j-color") }
+        val recordsBasket = async { getRecordCount(config, "neo4j-basket") }
+        val recordsIsIn = async { getRecordCount(config, "neo4j-isin") }
+        val recordsHasColor = async { getRecordCount(config, "neo4j-hascolor") }
+
+        assertEquals(1, recordsProduct.await())
+        assertEquals(1, recordsColor.await())
+        assertEquals(1, recordsBasket.await())
+        assertEquals(1, recordsIsIn.await())
+        assertEquals(1, recordsHasColor.await())
     }
 
 }

@@ -30,29 +30,31 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
 class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: StreamsEventRouter,
                                   val streamsEventRouterConfiguration: StreamsEventRouterConfiguration,
                                   private val log: LogService): LifecycleAdapter() {
-    private val streamsLog = log.getUserLog(StreamsExtensionFactory::class.java)
+    private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
     private lateinit var txHandler: StreamsTransactionEventHandler
 
     override fun start() {
         try {
+            streamsLog.info("Initialising the Streams Source module")
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()
             registerTransactionEventHandler()
+            streamsLog.info("Streams Source module initialised")
         } catch (e: Exception) {
             e.printStackTrace()
             streamsLog.error("Error initializing the streaming producer", e)
         }
     }
 
-    fun registerTransactionEventHandler() {
+    private fun registerTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
             txHandler = StreamsTransactionEventHandler(streamHandler, streamsEventRouterConfiguration)
             db.registerTransactionEventHandler(txHandler)
         }
     }
 
-    fun unregisterTransactionEventHandler() {
+    private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
             db.unregisterTransactionEventHandler(txHandler)
         }

@@ -26,7 +26,7 @@ abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsS
 
     abstract fun start()
 
-    abstract fun read(): Map<String, List<Map<String, Any?>>>?
+    abstract fun read(): Map<String, List<Any>>?
 
 }
 

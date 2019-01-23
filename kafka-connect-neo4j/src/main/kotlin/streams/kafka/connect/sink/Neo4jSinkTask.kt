@@ -2,16 +2,12 @@ package streams.kafka.connect.sink
 
 import com.github.jcustenborder.kafka.connect.utils.VersionUtil
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
-import org.slf4j.LoggerFactory
 import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import streams.utils.StreamsUtils
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.CountDownLatch
 
 
 class Neo4jSinkTask : SinkTask() {
@@ -37,8 +33,13 @@ class Neo4jSinkTask : SinkTask() {
 
         val mapTopicRecords = collection.groupBy { it.topic() }
 
+        if (log.isDebugEnabled) {
+            mapTopicRecords.forEach { topic, records -> log.debug("For topic: $topic record size is ${records.size}") }
+        }
+
         // TODO define a retry policy in that case we must throw `RetriableException`
-        val data = mapTopicRecords.filterKeys {topic ->
+        val data = mapTopicRecords
+                .filterKeys {topic ->
                     val isValidTopic = config.topicMap.containsKey(topic)
                     if (!isValidTopic && log.isDebugEnabled) {
                         log.debug("Topic $topic not present")
@@ -46,7 +47,17 @@ class Neo4jSinkTask : SinkTask() {
                     isValidTopic
                 }
                 .mapKeys { it -> "${StreamsUtils.UNWIND} ${config.topicMap[it.key]}" }
-                .mapValues { it -> mapOf("events" to it.value.map { converter.convert(it.value()) }) }
+                .mapValues { it ->
+                    val value = it.value
+                    val chunks = value.chunked(config.batchSize)
+                    if (log.isDebugEnabled) {
+                        log.debug("Data chunked in ${chunks.size} chunks")
+                    }
+                    val result = chunks.map {
+                        it.map { mapOf("events" to converter.convert(it.value())) }
+                    }
+                    result
+                }
         neo4jService.writeData(data)
 
     }

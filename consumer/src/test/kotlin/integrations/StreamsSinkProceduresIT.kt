@@ -44,8 +44,6 @@ class StreamsSinkProceduresIT {
 
     private val cypherQueryTemplate = "MERGE (n:Label {id: event.id}) ON CREATE SET n += event.properties"
 
-    private val topics = listOf("shouldWriteCypherQuery")
-
     @Rule
     @JvmField
     var testName = TestName()
@@ -114,13 +112,61 @@ class StreamsSinkProceduresIT {
         assertTrue { resultMap.containsKey("event") }
         assertNotNull(resultMap["event"], "should contain event")
         val event = resultMap["event"] as Map<String, Any?>
-        assertEquals(data, event)
+        val resultData = event["data"] as Map<String, Any?>
+        assertEquals(data, resultData)
     }
 
     @Test
     fun shouldTimeout() {
         val result = db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event")
         assertFalse { result.hasNext() }
+    }
+
+    @Test
+    fun shouldReadArrayOfJson() {
+        val topic = "array-topic"
+        val list = listOf(data, data)
+        val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(list))
+        kafkaProducer.send(producerRecord).get()
+        db.execute("""
+            CALL streams.consume('$topic', {timeout: 5000}) YIELD event
+            UNWIND event.data AS data
+            CREATE (t:TEST) SET t += data.properties
+        """.trimIndent()).close()
+        val searchResult = db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties))
+        assertTrue { searchResult.hasNext() }
+        val searchResultMap = searchResult.next()
+        assertTrue { searchResultMap.containsKey("count") }
+        assertEquals(2L, searchResultMap["count"])
+    }
+
+    @Test
+    fun shouldReadSimpleDataType() {
+        val topic = "simple-data"
+        val simpleInt = 1
+        val simpleBoolean = true
+        val simpleString = "test"
+        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleInt))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleBoolean))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleString))
+        kafkaProducer.send(producerRecord).get()
+        db.execute("""
+            CALL streams.consume('$topic', {timeout: 5000}) YIELD event
+            MERGE (t:LOG{simpleData: event.data})
+            RETURN count(t) AS insert
+        """.trimIndent()).close()
+        val searchResult = db.execute("""
+            MATCH (l:LOG)
+            WHERE l.simpleData IN [$simpleInt, $simpleBoolean, "$simpleString"]
+            RETURN count(l) as count
+        """.trimIndent())
+        assertTrue { searchResult.hasNext() }
+        val searchResultMap = searchResult.next()
+        assertTrue { searchResultMap.containsKey("count") }
+        assertEquals(3L, searchResultMap["count"])
+
     }
 
 }
