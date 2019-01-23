@@ -5,6 +5,7 @@ import org.junit.Test
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -33,7 +34,7 @@ class Neo4jSinkConnectorConfigTest {
         val config = Neo4jSinkConnectorConfig(originals)
 
         assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topicMap["foo"])
-        assertTrue { config.encryptionEnabled }
+        assertFalse { config.encryptionEnabled }
         assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
         assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
