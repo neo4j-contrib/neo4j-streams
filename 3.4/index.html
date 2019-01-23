@@ -492,6 +492,11 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <ul class="sectlevel2">
 <li><a href="#_general_configuration">General configuration</a></li>
 <li><a href="#_streams_publish">streams.publish</a></li>
+<li><a href="#_streams_consume">streams.consume</a>
+<ul class="sectlevel3">
+<li><a href="#_available_configuration_parameters">Available configuration parameters</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="#docker">Execute with Docker</a>
@@ -499,6 +504,16 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#_launch_it_locally">Launch it locally</a></li>
 <li><a href="#_producer">Producer</a></li>
 <li><a href="#_consumer">Consumer</a></li>
+</ul>
+</li>
+<li><a href="#_kafka_connect">Kafka Connect</a>
+<ul class="sectlevel2">
+<li><a href="#_docker_compose_file">Docker compose file</a></li>
+<li><a href="#_configuration_parameters">Configuration parameters</a></li>
+<li><a href="#_build_it_locally">Build it locally</a></li>
+<li><a href="#_configuring_the_stack">Configuring the stack</a></li>
+<li><a href="#_use_the_data_generator">Use the data generator</a></li>
+<li><a href="#_monitor_via_confluent_platform_ui">Monitor via Confluent Platform UI</a></li>
 </ul>
 </li>
 </ul>
@@ -509,7 +524,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="_motivation"><a class="link" href="#_motivation">Motivation</a></h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Many user and customers want to integrate Kakfa and other streaming solutions with Neo4j.
+<p>Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
 Either to ingest data into the graph from other sources.
 Or to send update events (change data capture - CDC) to the event log for later consumption.</p>
 </div>
@@ -530,10 +545,10 @@ Or to send update events (change data capture - CDC) to the event log for later 
 <li>
 <p>Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements</p>
 </li>
+<li>
+<p>Kafka-Connect Plugin: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries.</p>
+</li>
 </ul>
-</div>
-<div class="paragraph">
-<p>In the next releases we will add Kafka-Connect connectors as well.</p>
 </div>
 </div>
 </div>
@@ -606,7 +621,7 @@ kafka.session.timeout.ms=15000
 kafka.connection.timeout.ms=10000
 kafka.replication=1
 kafka.linger.ms=1
-kafka.transaction.id=
+kafka.transactional.id=
 
 streams.source.topic.nodes.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;
 streams.source.topic.relationships.&lt;TOPIC_NAME&gt;=&lt;PATTERN&gt;
@@ -614,7 +629,7 @@ streams.source.enable=&lt;true/false, default=true&gt;</pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Note: To use the Kafka transactions please set <code>kafka.transaction.id</code> and <code>kafka.acks</code> properly</p>
+<p>Note: To use the Kafka transactions please set <code>kafka.transactional.id</code> and <code>kafka.acks</code> properly</p>
 </div>
 <div class="paragraph">
 <p>See the <a href="https://kafka.apache.org/documentation/#brokerconfigs">Apache Kafka documentation</a> for details on these settings.</p>
@@ -1376,7 +1391,7 @@ streams.source.enable=&lt;true/false, default=true&gt;</pre>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>streams.sink.topic.&lt;TOPIC_NAME&gt;=&lt;CYPHER_QUERY&gt;</pre>
+<pre class="CodeRay highlight"><code data-lang="ini">streams.sink.topic.cypher.&lt;TOPIC_NAME&gt;=&lt;CYPHER_QUERY&gt;</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1385,33 +1400,47 @@ streams.source.enable=&lt;true/false, default=true&gt;</pre>
 <div class="paragraph">
 <p>Following an example:</p>
 </div>
+<div class="paragraph">
+<p>For this event</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="javascript">{
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>id</span><span style="color:#404">&quot;</span></span>: <span style="color:#00D">42</span>,
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>properties</span><span style="color:#404">&quot;</span></span>: {
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>title</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Answer to anyting</span><span style="color:#710">&quot;</span></span>,
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>description</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">It depends.</span><span style="color:#710">&quot;</span></span>}
+}</code></pre>
+</div>
+</div>
 <div class="listingblock">
 <div class="title">neo4j.conf</div>
 <div class="content">
-<pre>streams.sink.topic.my-topic=MERGE (n:Label {id: event.id}) \
-    ON CREATE SET n += event.properties</pre>
+<pre class="CodeRay highlight"><code data-lang="ini">streams.sink.topic.cypher.my-topic=MERGE (n:Label {id: event.id}) \
+    ON CREATE SET n += event.properties</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Under the hood the Sink inject the event object in this way</p>
+<p>Under the hood the Sink inject the event object as a parameter in this way</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>UNWIND {batch} AS event
+<pre class="CodeRay highlight"><code data-lang="cypher">UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
-    ON CREATE SET n += event.properties</pre>
+    ON CREATE SET n += event.properties</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>Where {batch} is a json list, so continuing with the example above a possible full representation could be:</p>
+<p>Where <code>{batch}</code> is a json list, so continuing with the example above a possible full representation could be:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre>WITH [{id:"alice@example.com",properties:{name:"Alice",age:32}},
-    {id:"bob@example.com",properties:{name:"Bob",age:42}}] AS batch
-UNWIND batch AS event
+<pre class="CodeRay highlight"><code data-lang="cypher">:params events =&gt; [{id:&quot;alice@example.com&quot;,properties:{name:&quot;Alice&quot;,age:32}},
+    {id:&quot;bob@example.com&quot;,properties:{name:&quot;Bob&quot;,age:42}}]
+
+UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
-    ON CREATE SET n += event.properties</pre>
+    ON CREATE SET n += event.properties</code></pre>
 </div>
 </div>
 </div>
@@ -1514,6 +1543,86 @@ streams.sink.enable=&lt;true/false, default=true&gt;</pre>
 </div>
 <div class="paragraph">
 <p>In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_streams_consume"><a class="link" href="#_streams_consume">streams.consume</a></h3>
+<div class="paragraph">
+<p>This procedure allows to consume messages from a given topic.</p>
+</div>
+<div class="paragraph">
+<p>Uses:</p>
+</div>
+<div class="paragraph">
+<p><code>CALL streams.consume('my-topic', {&lt;config&gt;}) YIELD event RETURN event</code></p>
+</div>
+<div class="paragraph">
+<p>Example:
+Imagine you have a producer that publish events like this <code>{"name": "Andrea", "surname": "Santurbano"}</code>, we can create user nodes in this way:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code>CALL streams.consume('my-topic', {&lt;config&gt;}) YIELD event
+CREATE (p:Person{firstName: event.data.name, lastName: event.data.surname})</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Input Parameters:</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Variable Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>topic</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The topic where you want to publish the data</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>config</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Object</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The configuration parameters</p></td>
+</tr>
+</tbody>
+</table>
+<div class="sect3">
+<h4 id="_available_configuration_parameters"><a class="link" href="#_available_configuration_parameters">Available configuration parameters</a></h4>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Variable Name</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>timeout</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Long</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">It&#8217;s the value passed to Kafka <a href="https://kafka.apache.org/10/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html#poll-long-"><code>Consumer#poll</code></a> method (milliseconds). Default 1000</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock"><code>from</code></p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">It&#8217;s the Kafka configuration parameter <code>auto.offset.reset</code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
 </div>
 </div>
@@ -1720,10 +1829,515 @@ CREATE (p1)-[:KNOWS {years: abs(p2.id - p1.id)}]-&gt;(p2)</code></pre>
 </div>
 </div>
 </div>
+<div class="sect1">
+<h2 id="_kafka_connect"><a class="link" href="#_kafka_connect">Kafka Connect</a></h2>
+<div class="sectionbody">
+<div class="imageblock">
+<div class="content">
+<img src="images/neo4j-loves-confluent.png" alt="Neo4j Loves Confluent">
+</div>
+</div>
+<div class="paragraph">
+<p>Kafka Connect, an open source component of Apache Kafka, is a framework for connecting Kafka with external systems such as databases, key-value stores, search indexes, and file systems.</p>
+</div>
+<div class="paragraph">
+<p>The Neo4j Streams project provides a Kafka Connect plugin that can be installed into the Confluent Platform enabling:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Ingest data from Kafka topics directly into Neo4j via templated Cypher queries;</p>
+</li>
+<li>
+<p>Stream Neo4j transaction events (<strong>coming soon</strong>).</p>
+</li>
+</ul>
+</div>
+<div class="sect2">
+<h3 id="_docker_compose_file"><a class="link" href="#_docker_compose_file">Docker compose file</a></h3>
+<div class="paragraph">
+<p>Inside the directory <code>/kafka-connect-neo4j/docker</code> you&#8217;ll find a compose file that allows you to start the whole testing environment:</p>
+</div>
+<div class="listingblock">
+<div class="title">docker-compose.yml</div>
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="yaml"><span style="color:#f8f;background:#505"><span style="color:#f4f">---</span></span>
+<span style="color:#606">version</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'2'</span></span>
+<span style="color:#606">services</span>:
+  <span style="color:#606">neo4j</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j:3.4-enterprise</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">7474:7474</span><span style="color:#710">&quot;</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">7687:7687</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">NEO4J_kafka_zookeeper_connect</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper:2181</span></span>
+      <span style="color:#606">NEO4J_kafka_bootstrap_servers</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker:9093</span></span>
+      <span style="color:#606">NEO4J_AUTH</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">neo4j/connect</span></span>
+      <span style="color:#606">NEO4J_dbms_memory_heap_max__size</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">8G</span></span>
+      <span style="color:#606">NEO4J_ACCEPT_LICENSE_AGREEMENT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">yes</span></span>
+
+  <span style="color:#606">zookeeper</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-zookeeper</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">2181:2181</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">ZOOKEEPER_CLIENT_PORT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">2181</span></span>
+      <span style="color:#606">ZOOKEEPER_TICK_TIME</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">2000</span></span>
+
+  <span style="color:#606">broker</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-enterprise-kafka</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">9092:9092</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">expose</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">9093</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">KAFKA_ADVERTISED_LISTENERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">PLAINTEXT://broker:9093,OUTSIDE://localhost:9092</span></span>
+      <span style="color:#606">KAFKA_LISTENER_SECURITY_PROTOCOL_MAP</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT</span></span>
+      <span style="color:#606">KAFKA_LISTENERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">PLAINTEXT://0.0.0.0:9093,OUTSIDE://0.0.0.0:9092</span></span>
+      <span style="color:#606">CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker:9093</span></span>
+
+      <span style="color:#777"># workaround if we change to a custom name the schema_registry fails to start</span>
+      <span style="color:#606">KAFKA_INTER_BROKER_LISTENER_NAME</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">PLAINTEXT</span></span>
+
+      <span style="color:#606">KAFKA_BROKER_ID</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">KAFKA_ZOOKEEPER_CONNECT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'zookeeper:2181'</span></span>
+      <span style="color:#606">KAFKA_METRIC_REPORTERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">io.confluent.metrics.reporter.ConfluentMetricsReporter</span></span>
+      <span style="color:#606">KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">0</span></span>
+      <span style="color:#606">CONFLUENT_METRICS_REPORTER_ZOOKEEPER_CONNECT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper:2181</span></span>
+      <span style="color:#606">CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONFLUENT_METRICS_ENABLE</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'true'</span></span>
+      <span style="color:#606">CONFLUENT_SUPPORT_CUSTOMER_ID</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'anonymous'</span></span>
+
+  <span style="color:#606">schema_registry</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-schema-registry</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">schema_registry</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">schema_registry</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">8081:8081</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">SCHEMA_REGISTRY_HOST_NAME</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">schema_registry</span></span>
+      <span style="color:#606">SCHEMA_REGISTRY_KAFKASTORE_CONNECTION_URL</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'zookeeper:2181'</span></span>
+
+  <span style="color:#606">connect</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-kafka-connect</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">connect</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">connect</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">schema_registry</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">8083:8083</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">volumes</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">./plugins:/tmp/connect-plugins</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">CONNECT_BOOTSTRAP_SERVERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'broker:9093'</span></span>
+      <span style="color:#606">CONNECT_REST_ADVERTISED_HOST_NAME</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">connect</span></span>
+      <span style="color:#606">CONNECT_REST_PORT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">8083</span></span>
+      <span style="color:#606">CONNECT_GROUP_ID</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">compose-connect-group</span></span>
+      <span style="color:#606">CONNECT_CONFIG_STORAGE_TOPIC</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">docker-connect-configs</span></span>
+      <span style="color:#606">CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONNECT_OFFSET_FLUSH_INTERVAL_MS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">10000</span></span>
+      <span style="color:#606">CONNECT_OFFSET_STORAGE_TOPIC</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">docker-connect-offsets</span></span>
+      <span style="color:#606">CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONNECT_STATUS_STORAGE_TOPIC</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">docker-connect-status</span></span>
+      <span style="color:#606">CONNECT_STATUS_STORAGE_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONNECT_KEY_CONVERTER</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">io.confluent.connect.avro.AvroConverter</span></span>
+      <span style="color:#606">CONNECT_KEY_CONVERTER_SCHEMA_REGISTRY_URL</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'http://schema_registry:8081'</span></span>
+      <span style="color:#606">CONNECT_VALUE_CONVERTER</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">io.confluent.connect.avro.AvroConverter</span></span>
+      <span style="color:#606">CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'http://schema_registry:8081'</span></span>
+      <span style="color:#606">CONNECT_INTERNAL_KEY_CONVERTER</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">org.apache.kafka.connect.json.JsonConverter</span></span>
+      <span style="color:#606">CONNECT_INTERNAL_VALUE_CONVERTER</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">org.apache.kafka.connect.json.JsonConverter</span></span>
+      <span style="color:#606">CONNECT_ZOOKEEPER_CONNECT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'zookeeper:2181'</span></span>
+      <span style="color:#606">CONNECT_PLUGIN_PATH</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">/usr/share/java,/tmp/connect-plugins</span></span>
+      <span style="color:#606">CONNECT_LOG4J_LOGGERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">org.apache.zookeeper=DEBUG,org.I0Itec.zkclient=DEBUG,org.reflections=ERROR</span></span>
+
+  <span style="color:#606">control-center</span>:
+    <span style="color:#606">image</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">confluentinc/cp-enterprise-control-center</span></span>
+    <span style="color:#606">hostname</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">control-center</span></span>
+    <span style="color:#606">container_name</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">control-center</span></span>
+    <span style="color:#606">depends_on</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">zookeeper</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">broker</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">schema_registry</span></span>
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">connect</span></span>
+    <span style="color:#606">ports</span>:
+    - <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">9021:9021</span><span style="color:#710">&quot;</span></span>
+    <span style="color:#606">environment</span>:
+      <span style="color:#606">CONTROL_CENTER_BOOTSTRAP_SERVERS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'broker:9093'</span></span>
+      <span style="color:#606">CONTROL_CENTER_ZOOKEEPER_CONNECT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'zookeeper:2181'</span></span>
+      <span style="color:#606">CONTROL_CENTER_CONNECT_CLUSTER</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">'connect:8083'</span></span>
+      <span style="color:#606">CONTROL_CENTER_REPLICATION_FACTOR</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">CONFLUENT_METRICS_TOPIC_REPLICATION</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">1</span></span>
+      <span style="color:#606">PORT</span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#D20">9021</span></span></code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuration_parameters"><a class="link" href="#_configuration_parameters">Configuration parameters</a></h3>
+<div class="paragraph">
+<p>You can set the following configuration values via Confluent Connect UI, or via REST endpoint</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 33.3333%;">
+<col style="width: 33.3333%;">
+<col style="width: 33.3334%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Field</th>
+<th class="tableblock halign-left valign-top">Type</th>
+<th class="tableblock halign-left valign-top">Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.server.uri</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Bolt URI</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.authentication.type</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">enum[NONE, BASIC, KERBEROS]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The authentication type (default BASIC)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.batch.size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Int</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The max number of events processed by the Cypher query (default 1000)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.batch.timeout.msec</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Long</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The execution timeout for the cypher query (default 30000)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.authentication.basic.username</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The authentication username</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.authentication.basic.password</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The authentication password</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.authentication.basic.realm</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The authentication realm</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.authentication.kerberos.ticket</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Kerberos ticket</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.encryption.enabled</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Boolean</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">If the encryption is enabled (default false)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.encryption.trust.strategy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">enum[TRUST_ALL_CERTIFICATES,TRUST_CUSTOM_CA_SIGNED_CERTIFICATES,TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Neo4j trust strategy (default TRUST_ALL_CERTIFICATES)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.encryption.ca.certificate.path</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">String</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The path of the certificate</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.connection.max.lifetime.msecs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Long</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The max Neo4j connection lifetime (default 1 hour)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.connection.acquisition.timeout.msecs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Long</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The max Neo4j acquisition timeout (default 1 hour)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.connection.liveness.check.timeout.msecs</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Long</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The max Neo4j liveness check timeout (default 1 hour)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.connection.max.pool.size</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Int</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The max pool size (default 100)</p></td>
+</tr>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">neo4j.load.balance.strategy</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">enum[ROUND_ROBIN,LEAST_CONNECTED]</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">The Neo4j load balance strategy (default LEAST_CONNECTED)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_build_it_locally"><a class="link" href="#_build_it_locally">Build it locally</a></h3>
+<div class="paragraph">
+<p>Build the project by running the following command:</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>mvn clean install</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Inside the directory <code>&lt;neo4j-streams&gt;/kafka-connect-neo4j/target/component/packages</code> you&#8217;ll find a file named <code>neo4j-kafka-connect-neo4j-&lt;VERSION&gt;.zip</code></p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_configuring_the_stack"><a class="link" href="#_configuring_the_stack">Configuring the stack</a></h3>
+<div class="paragraph">
+<p>Create a directory <code>plugins</code> at the same level of the compose file and unzip the file <code>neo4j-kafka-connect-neo4j-&lt;VERSION&gt;.zip</code> inside it, then start the compose file</p>
+</div>
+<div class="literalblock">
+<div class="content">
+<pre>docker-compose up -d</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>You can access your Neo4j instance under: <a href="http://localhost:7474" class="bare">http://localhost:7474</a>, log in with <code>neo4j</code> as username and <code>connect</code> as password (see the docker-compose file to change it).</p>
+</div>
+<div class="paragraph">
+<p>The insertion is sped up, if you create these two indexes:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">CREATE INDEX ON :Person(surname);
+CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Create the Sink instance:</p>
+</div>
+<div class="paragraph">
+<p>We&#8217;ll define the Sink configuration as follows:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+  <span style="color:#606"><span style="color:#404">&quot;</span><span>name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Neo4jSinkConnector</span><span style="color:#710">&quot;</span></span>,
+  <span style="color:#606"><span style="color:#404">&quot;</span><span>config</span><span style="color:#404">&quot;</span></span>: {
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>topics</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">my-topic</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>connector.class</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">streams.kafka.connect.sink.Neo4jSinkConnector</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>errors.retry.timeout</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">-1</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>errors.retry.delay.max.ms</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">1000</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>errors.tolerance</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">all</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>errors.log.enable</span><span style="color:#404">&quot;</span></span>: <span style="color:#088">true</span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>errors.log.include.messages</span><span style="color:#404">&quot;</span></span>: <span style="color:#088">true</span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>neo4j.server.uri</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">bolt://neo4j:7687</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>neo4j.authentication.basic.username</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">neo4j</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>neo4j.authentication.basic.password</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">connect</span><span style="color:#710">&quot;</span></span>,
+    <span style="color:#606"><span style="color:#404">&quot;</span><span>neo4j.topic.cypher.my-topic</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">MERGE (p:Person{name: event.name, surname: event.surname, from: 'AVRO'}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]-&gt;(f)</span><span style="color:#710">&quot;</span></span>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In particular this line:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>"neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]-&gt;(f)"</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>defines that all the data that comes from the topic <code>my-topic</code> will be unpacked by the Sink into Neo4j with the following Cypher query:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">MERGE (p:Person{name: event.name, surname: event.surname})
+MERGE (f:Family{name: event.surname})
+MERGE (p)-[:BELONGS_TO]-&gt;(f)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Under the hood the Sink inject the event object in this way</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">UNWIND {batch} AS event
+MERGE (p:Person{name: event.name, surname: event.surname})
+MERGE (f:Family{name: event.surname})
+MERGE (p)-[:BELONGS_TO]-&gt;(f)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Where <code>{batch}</code> is a list of event objects.</p>
+</div>
+<div class="paragraph">
+<p>You can change the query or remove the property and add your own, but you must follow the following convention:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="javascript"><span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">neo4j.topic.cypher.&lt;YOUR_TOPIC&gt;</span><span style="color:#710">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">&lt;YOUR_CYPHER_QUERY&gt;</span><span style="color:#710">&quot;</span></span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Let&#8217;s load the configuration into the Confluent Platform with this REST call:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="shell">curl -X POST http://localhost:8083/connectors \
+  -H 'Content-Type:application/json' \
+  -H 'Accept:application/json' \
+  -d @contrib.sink.avro.neo4j.json</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The file <code>contrib.sink.string-json.neo4j.json</code> contains a configuration that manage a simple JSON producer example</p>
+</div>
+<div class="paragraph">
+<p>Please check that everything is fine by going into:</p>
+</div>
+<div class="paragraph">
+<p><a href="http://localhost:9021/management/connect" class="bare">http://localhost:9021/management/connect</a></p>
+</div>
+<div class="paragraph">
+<p>(or on 0.0.0.0 instead of localhost depending on your Docker environment)</p>
+</div>
+<div class="paragraph">
+<p>and click to the <strong>Send data out</strong> (or <strong>Sink</strong> depending on your Confluent Platform Version) tab. You must find a table just like this:</p>
+</div>
+<table class="tableblock frame-all grid-all spread">
+<colgroup>
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+<col style="width: 25%;">
+</colgroup>
+<thead>
+<tr>
+<th class="tableblock halign-left valign-top">Status</th>
+<th class="tableblock halign-left valign-top">Active Tasks</th>
+<th class="tableblock halign-left valign-top">Name</th>
+<th class="tableblock halign-left valign-top">Topics</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Running</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">1</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">Neo4jSinkConnector</p></td>
+<td class="tableblock halign-left valign-top"><p class="tableblock">my-topic</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="sect2">
+<h3 id="_use_the_data_generator"><a class="link" href="#_use_the_data_generator">Use the data generator</a></h3>
+<div class="paragraph">
+<p>You can download and use the <a href="https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar">neo4j-streams-sink-tester-1.0.jar</a> in order to generate a sample dataset.</p>
+</div>
+<div class="paragraph">
+<p>This package sends records to the Neo4j Kafka Sink by using the following in two data formats:</p>
+</div>
+<div class="paragraph">
+<p>JSON example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{<span style="color:#606"><span style="color:#404">&quot;</span><span>name</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Name</span><span style="color:#710">&quot;</span></span>, <span style="color:#606"><span style="color:#404">&quot;</span><span>surname</span><span style="color:#404">&quot;</span></span>: <span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">Surname</span><span style="color:#710">&quot;</span></span>}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>AVRO, with the schema:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="json">{
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">record</span><span style="color:#710">&quot;</span></span>,
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>name</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">User</span><span style="color:#710">&quot;</span></span>,
+ <span style="color:#606"><span style="color:#404">&quot;</span><span>fields</span><span style="color:#404">&quot;</span></span>:[{<span style="color:#606"><span style="color:#404">&quot;</span><span>name</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">name</span><span style="color:#710">&quot;</span></span>,<span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>}, {<span style="color:#606"><span style="color:#404">&quot;</span><span>name</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">surname</span><span style="color:#710">&quot;</span></span>,<span style="color:#606"><span style="color:#404">&quot;</span><span>type</span><span style="color:#404">&quot;</span></span>:<span style="background-color:hsla(0,100%,50%,0.05)"><span style="color:#710">&quot;</span><span style="color:#D20">string</span><span style="color:#710">&quot;</span></span>}]
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p><em>Note</em>: Before start using the data generator please create the following indexes on Neo4j (in order to speed-up the import process):</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">CREATE INDEX ON :Person(name)</code></pre>
+</div>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="CodeRay highlight"><code data-lang="cypher">CREATE INDEX ON :Family(surname)</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Please type:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>java -jar neo4j-streams-sink-tester-1.0.jar -h</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>to print the option list with default values.</p>
+</div>
+<div class="paragraph">
+<p>In order to choose the data format please use the <code>-f</code> flag: <code>-f AVRO</code> or <code>-f JSON</code> (the default value).
+So:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre>java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO</pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Will send data in AVRO format.</p>
+</div>
+<div class="paragraph">
+<p>For a complete overview of the <strong>Neo4j Steams Sink Tester</strong> please refer to <a href="https://github.com/conker84/neo4j-streams-sink-tester">this repo</a></p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_monitor_via_confluent_platform_ui"><a class="link" href="#_monitor_via_confluent_platform_ui">Monitor via Confluent Platform UI</a></h3>
+<div class="paragraph">
+<p>The Kafka Monitoring UI can be found at <a href="http://&lt;localhost&gt;:9021/management/connect" class="bare">http://&lt;localhost&gt;:9021/management/connect</a></p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/confluent-metrics.jpg" alt="Confluent Importing Metrics">
+</div>
+</div>
+<div class="paragraph">
+<p>They show up properly in my topic, and then are added to Neo4j via the sink.</p>
+</div>
+<div class="paragraph">
+<p>Below you see the data that has been ingested into Neo4j. During my testing I got up to more than 2M events.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="images/confluent-imported-data.jpg" alt="Confluent Platform Management">
+</div>
+</div>
+</div>
+</div>
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2018-11-27 11:30:56 MEZ
+Last updated 2019-01-21 02:36:58 MEZ
 </div>
 </div>
 </body>
