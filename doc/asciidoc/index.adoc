@@ -1,7 +1,7 @@
 = Neo4j Streaming Data Integrations User Guide v{docs-version}
 :toc: left
 :experimental:
-:toclevels: 10
+:toclevels: 2
 :sectid:
 :sectlinks:
 
