@@ -4,6 +4,7 @@
 :toclevels: 2
 :sectid:
 :sectlinks:
+:img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
 
 == Motivation
 
