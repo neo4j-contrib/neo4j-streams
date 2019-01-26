@@ -107,7 +107,8 @@
                             <documentationUrl>https://neo4j-contrib.github.io/neo4j-streams/</documentationUrl>
                             <description>It's a basic Apache Kafka Connect SinkConnector which allows moving data from Kafka topics into Neo4j via Cypher templated queries.</description>
                             <logo>assets/neo4j-logo.png</logo>
-                            <supportSummary>Support provided through community involvement.</supportSummary>
+                            <supportSummary><![CDATA[Support through <a href="https://neo4j.com/labs/">Neo4j Labs</a>]]></supportSummary>
+                            <sourceUrl>https://github.com/neo4j-contrib/neo4j-streams/tree/master/kafka-connect-neo4j</sourceUrl>
                             <supportUrl>${project.issueManagement.url}</supportUrl>
                             <confluentControlCenterIntegration>true</confluentControlCenterIntegration>
                             <tags>
