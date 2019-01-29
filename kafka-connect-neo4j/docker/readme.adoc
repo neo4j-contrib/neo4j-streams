@@ -24,7 +24,19 @@ You can set the following configuration values via Confluent Connect UI, or via 
 |neo4j.load.balance.strategy|enum[ROUND_ROBIN,LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
 |===
 
-=== Build it locally
+=== Configuring the stack
+
+Start the compose file
+
+    docker-compose up -d
+
+You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+
+==== Plugin installation
+
+You can choose your preferred way in order to install the plugin
+
+===== Build it locally
 
 Build the project by running the following command:
 
@@ -32,21 +44,51 @@ Build the project by running the following command:
 
 Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`
 
-=== Configuring the stack
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
 
-Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it, then start the compose file
+===== Download the zip from the Confluent Hub
 
-    docker-compose up -d
+Please go to the Confluent Hub page of the plugin:
 
-You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+https://www.confluent.io/connector/kafka-connect-neo4j-sink/
 
-The insertion is sped up, if you create these two indexes:
+And click to the **Download Connector** button.
+
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
+
+===== Download and install the plugin via Confluent Hub client
+
+If you are using the provided compose file you can easily install the plugin by using the Confluent Hub.
+
+Once the compose file is up and running you can install the plugin by executing the following command:
+
+[source,bash]
+----
+docker exec -it connect confluent-hub install neo4j/kafka-connect-neo4j:1.0.0
+----
+
+When the installation will ask:
+
+[source,bash]
+----
+The component can be installed in any of the following Confluent Platform installations:
+----
+
+Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
+
+At the end of the process the plugin is automatically installed.
+
+==== Configure Neo4j
+
+In order to speed up the import process please create these two indexes:
 
 [source,cypher]
 ----
 CREATE INDEX ON :Person(surname);
 CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
 ----
+
+==== Create the Sink Instance
 
 Create the Sink instance:
 
@@ -71,7 +113,6 @@ MERGE (p:Person{name: event.name, surname: event.surname})
 MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
-
 
 Under the hood the Sink inject the event object in this way
 
@@ -125,7 +166,7 @@ and click to the **Send data out** (or **Sink** depending on your Confluent Plat
 |my-topic
 |===
 
-=== Use the data generator
+==== Use the data generator
 
 You can download and use the https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar[neo4j-streams-sink-tester-1.0.jar] in order to generate a sample dataset.
 
