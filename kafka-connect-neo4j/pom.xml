@@ -174,7 +174,6 @@
                             <ownerType>organization</ownerType>
                             <ownerName>Neo4j, Inc.</ownerName>
                             <ownerUrl>https://neo4j.com/</ownerUrl>
-
                             <title>Kafka Connect Neo4j Sink</title>
                             <documentationUrl>https://neo4j-contrib.github.io/neo4j-streams/#_kafka_connect</documentationUrl>
                             <description>It's a basic Apache Kafka Connect SinkConnector which allows moving data from Kafka topics into Neo4j via Cypher templated queries.</description>

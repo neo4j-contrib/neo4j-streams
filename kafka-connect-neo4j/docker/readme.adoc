@@ -1,17 +1,94 @@
-# Build it locally
+
+=== Configuration parameters
+
+You can set the following configuration values via Confluent Connect UI, or via REST endpoint
+
+[cols="3*",options="header"]
+|===
+|Field|Type|Description
+
+|neo4j.server.uri|String|The Bolt URI
+|neo4j.authentication.type|enum[NONE, BASIC, KERBEROS]| The authentication type (default BASIC)
+|neo4j.batch.size|Int|The max number of events processed by the Cypher query (default 1000)
+|neo4j.batch.timeout.msec|Long|The execution timeout for the cypher query (default 30000)
+|neo4j.authentication.basic.username|String| The authentication username
+|neo4j.authentication.basic.password|String| The authentication password
+|neo4j.authentication.basic.realm|String| The authentication realm
+|neo4j.authentication.kerberos.ticket|String| The Kerberos ticket
+|neo4j.encryption.enabled|Boolean| If the encryption is enabled (default false)
+|neo4j.encryption.trust.strategy|enum[TRUST_ALL_CERTIFICATES,TRUST_CUSTOM_CA_SIGNED_CERTIFICATES,TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]| The Neo4j trust strategy (default TRUST_ALL_CERTIFICATES)
+|neo4j.encryption.ca.certificate.path|String| The path of the certificate
+|neo4j.connection.max.lifetime.msecs|Long| The max Neo4j connection lifetime (default 1 hour)
+|neo4j.connection.acquisition.timeout.msecs|Long| The max Neo4j acquisition timeout (default 1 hour)
+|neo4j.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
+|neo4j.connection.max.pool.size|Int| The max pool size (default 100)
+|neo4j.load.balance.strategy|enum[ROUND_ROBIN,LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
+|===
+
+=== Configuring the stack
+
+Start the compose file
+
+    docker-compose up -d
+
+You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+
+==== Plugin installation
+
+You can choose your preferred way in order to install the plugin
+
+===== Build it locally
 
 Build the project by running the following command:
 
     $ mvn clean install
 
-Inside the directory <neo4j-streams>/kafka-connect-neo4j/target` you'll find a file named `kafka-connect-neo4j-<VERSION>.tar.gz`
 
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
 
-# Configuring the stack
+===== Download the zip from the Confluent Hub
 
-Create a directory `plugins` at the same level of the compose file and unzip the file `kafka-connect-neo4j-<VERSION>.tar.gz` inside it, then start the compose file
+Please go to the Confluent Hub page of the plugin:
 
-    $ docker-compose up -d
+https://www.confluent.io/connector/kafka-connect-neo4j-sink/
+
+And click to the **Download Connector** button.
+
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
+
+===== Download and install the plugin via Confluent Hub client
+
+If you are using the provided compose file you can easily install the plugin by using the Confluent Hub.
+
+Once the compose file is up and running you can install the plugin by executing the following command:
+
+[source,bash]
+----
+docker exec -it connect confluent-hub install neo4j/kafka-connect-neo4j:1.0.0
+----
+
+When the installation will ask:
+
+[source,bash]
+----
+The component can be installed in any of the following Confluent Platform installations:
+----
+
+Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
+
+At the end of the process the plugin is automatically installed.
+
+==== Configure Neo4j
+
+In order to speed up the import process please create these two indexes:
+
+[source,cypher]
+----
+CREATE INDEX ON :Person(surname);
+CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
+----
+
+==== Create the Sink Instance
 
 Create the Sink instance:
 
@@ -36,7 +113,6 @@ MERGE (p:Person{name: event.name, surname: event.surname})
 MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
-
 
 Under the hood the Sink inject the event object in this way
 
@@ -88,4 +164,59 @@ and click to the **Sink** tab. You must find a table just like this:
 |my-topic
 |===
 
-Now you can send your AVRO data to the `my-topic` topic
+
+==== Use the data generator
+
+You can download and use the https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar[neo4j-streams-sink-tester-1.0.jar] in order to generate a sample dataset.
+
+This package sends records to the Neo4j Kafka Sink by using the following in two data formats:
+
+JSON example:
+
+[source,json]
+----
+{"name": "Name", "surname": "Surname"}
+----
+
+AVRO, with the schema:
+
+[source,json]
+----
+{
+ "type":"record",
+ "name":"User",
+ "fields":[{"name":"name","type":"string"}, {"name":"surname","type":"string"}]
+}
+----
+
+_Note_: Before start using the data generator please create the following indexes on Neo4j (in order to speed-up the import process):
+
+[source,cypher]
+----
+CREATE INDEX ON :Person(name)
+----
+
+[source,cypher]
+----
+CREATE INDEX ON :Family(surname)
+----
+
+Please type:
+
+----
+java -jar neo4j-streams-sink-tester-1.0.jar -h
+----
+
+to print the option list with default values.
+
+In order to choose the data format please use the `-f` flag: `-f AVRO` or `-f JSON` (the default value).
+So:
+
+----
+java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO
+----
+
+Will send data in AVRO format.
+
+For a complete overview of the **Neo4j Steams Sink Tester** please refer to https://github.com/conker84/neo4j-streams-sink-tester[this repo]
+
