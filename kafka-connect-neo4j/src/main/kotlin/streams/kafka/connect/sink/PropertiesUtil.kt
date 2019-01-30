@@ -12,7 +12,8 @@ class PropertiesUtil {
         private var VERSION: String? = null
         init {
             properties = Properties()
-            properties!!.load(PropertiesUtil::class.java.getResourceAsStream("/kafka-connect-neo4j.properties"))
+            properties!!.load(PropertiesUtil::class.java.getResourceAsStream("/kafka-connect-version.properties"))
+            properties!!.load(PropertiesUtil::class.java.getResourceAsStream("/kafka-connect-sink.properties"))
             VERSION = try {
                 properties!!.getProperty("version", DEFAULT_VERSION).trim()
             } catch (e: Exception) {
@@ -23,6 +24,10 @@ class PropertiesUtil {
 
         fun getVersion(): String {
             return VERSION!!
+        }
+
+        fun getProperty(key: String): String {
+            return properties!!.getProperty(key)
         }
     }
 }

@@ -7,7 +7,6 @@ import org.neo4j.driver.v1.Config
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 
 class Neo4jSinkConnectorConfigTest {
 
@@ -50,7 +49,7 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals(Neo4jSinkConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
         assertEquals(Config.LoadBalancingStrategy.LEAST_CONNECTED, config.loadBalancingStrategy)
-        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSEC_DEFAULT, config.batchTimeout)
+        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
     }
 
 }
