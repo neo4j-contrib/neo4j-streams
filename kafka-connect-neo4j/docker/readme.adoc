@@ -36,26 +36,6 @@ You can access your Neo4j instance under: http://localhost:7474, log in with `ne
 
 You can choose your preferred way in order to install the plugin
 
-===== Build it locally
-
-Build the project by running the following command:
-
-    mvn clean install
-
-Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`
-
-Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
-
-===== Download the zip from the Confluent Hub
-
-Please go to the Confluent Hub page of the plugin:
-
-https://www.confluent.io/connector/kafka-connect-neo4j-sink/
-
-And click to the **Download Connector** button.
-
-Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
-
 ===== Download and install the plugin via Confluent Hub client
 
 If you are using the provided compose file you can easily install the plugin by using the Confluent Hub.
@@ -77,6 +57,34 @@ The component can be installed in any of the following Confluent Platform instal
 Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
 
 At the end of the process the plugin is automatically installed.
+
+===== Download the zip from the Confluent Hub
+
+Please go to the Confluent Hub page of the plugin:
+
+https://www.confluent.io/connector/kafka-connect-neo4j-sink/
+
+And click to the **Download Connector** button.
+
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
+
+===== Build it locally
+
+Download the project from Github:
+
+    git clone https://github.com/neo4j-contrib/neo4j-streams.git
+
+Go into the `neo4j-streams` directory:
+
+    cd neo4j-streams
+
+Starting from the project project root, run the following command:
+
+    mvn clean install
+
+Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`
+
+Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
 
 ==== Configure Neo4j
 
