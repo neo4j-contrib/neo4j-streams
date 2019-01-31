@@ -1,4 +1,4 @@
-package streams.kafka.connect.sink
+package streams.kafka.connect.utils
 
 import org.slf4j.LoggerFactory
 import java.util.*

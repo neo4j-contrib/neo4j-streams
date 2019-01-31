@@ -5,6 +5,7 @@ import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.sink.SinkConnector
 import org.slf4j.LoggerFactory
+import streams.kafka.connect.utils.PropertiesUtil
 
 @Title("Neo4j Sink Connector")
 @Description("The Neo4j Sink connector reads data from Kafka and and writes the data to Neo4j using a Cypher Template")
