@@ -6,7 +6,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
-import org.apache.kafka.connect.sink.SinkRecord
+import org.apache.kafka.connect.errors.ConnectException
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
@@ -15,13 +15,14 @@ import org.neo4j.driver.v1.exceptions.ClientException
 import org.neo4j.driver.v1.exceptions.TransientException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.service.StreamsSinkService
+import streams.service.TopicType
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
-import org.apache.kafka.connect.errors.ConnectException
 import java.util.concurrent.TimeUnit
 
 
-class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
+class Neo4jService(private val config: Neo4jSinkConnectorConfig): StreamsSinkService() {
 
     private val converter = ValueConverter()
 
@@ -69,37 +70,51 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun write(topic: String, records: List<SinkRecord>) {
-        val query = "${StreamsUtils.UNWIND} ${config.topicMap[topic]}"
-        val data = mapOf<String, Any>("events" to records.map { converter.convert(it.value()) })
-        driver.session().use { session ->
-            try {
-                runBlocking {
-                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-                            retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                        session.writeTransaction {
-                            val result = it.run(query, data)
-                            if (log.isDebugEnabled) {
-                                log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                if (log.isDebugEnabled) {
-                    log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
-                }
-                throw e
-            }
+    override fun getTopicType(topic: String): TopicType? {
+        return if (config.cdcMergeTopics.contains(topic)) {
+            TopicType.CDC_MERGE
+        } else if (config.cypherTopics.containsKey(topic)) {
+            TopicType.CYPHER
+        } else {
+            null
         }
     }
 
-    suspend fun writeData(data: Map<String, List<List<SinkRecord>>>) = coroutineScope {
+    override fun getCypherTemplate(topic: String): String? {
+        return "${StreamsUtils.UNWIND} ${config.cypherTopics[topic]}"
+    }
+
+    override fun write(query: String, events: Collection<Any>) {
+        val session = driver.session()
+        val records = events as List<Any>
+        val data = mapOf<String, Any>("events" to records.map { converter.convert(it) })
+        try {
+            runBlocking {
+                retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+                        retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                    session.writeTransaction {
+                        val result = it.run(query, data)
+                        if (log.isDebugEnabled) {
+                            log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            if (log.isDebugEnabled) {
+                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+            }
+            throw e
+        }
+    }
+
+
+    suspend fun writeData(data: Map<String, List<List<Any>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
         val deferredList = data
                 .flatMap { (topic, records) ->
-                    records.map { async { write(topic, it) } }
+                    records.map { async { writeForTopic(topic, it) } }
                 }
         whileSelect {
             ticker.onReceive {

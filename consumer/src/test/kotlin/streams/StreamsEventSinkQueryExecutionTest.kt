@@ -19,9 +19,10 @@ class StreamsEventSinkQueryExecutionTest {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .newGraphDatabase()
-        val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
+        val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties")))
-        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI, kafkaConfig.streamsSinkConfiguration.topics)
+        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI)
+        streamsTopicService.setAllCypherTemplates(kafkaConfig.streamsSinkConfiguration.cypherTopics)
         streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI, NullLog.getInstance())
     }
 
@@ -32,7 +33,7 @@ class StreamsEventSinkQueryExecutionTest {
 
     @Test
     fun shouldWriteCypherQuery() {
-        streamsEventSinkQueryExecution.execute("shouldWriteCypherQuery", listOf(mapOf("id" to "1", "properties" to mapOf("a" to 1)),
+        streamsEventSinkQueryExecution.writeForTopic("shouldWriteCypherQuery", listOf(mapOf("id" to "1", "properties" to mapOf("a" to 1)),
                 mapOf("id" to "2", "properties" to mapOf("a" to 1))))
 
         db.execute("MATCH (n:Label) RETURN count(n) AS count").columnAs<Long>("count").use {

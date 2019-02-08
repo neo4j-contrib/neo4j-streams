@@ -4,6 +4,13 @@ Is the Kafka Sink that ingest the data directly into Neo4j
 
 === How it works
 
+It works in two ways:
+
+* by providing a Cypher template
+* by ingesting the events emitted from another Neo4j instance via the Change Data Capture module
+
+==== Cypher Template
+
 It works with template Cypher queries stored into properties with the following format:
 
 [source,ini]
@@ -54,6 +61,41 @@ UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
+
+==== Change Data Capture Event
+
+It works by unpacking the events emitted by a Change Data Capture coming from another Neo4j instance,
+you can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.merge=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.merge=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+include::../producer/data/node.created.json[]
+----
+
+will be persisted as the following node:
+
+```
+Person:StreamsEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", streams_id: "1004"}
+```
+
+as you can notice, ingested event has been projected with two peculiarities:
+
+* the `id` field has transformed into `streams_id`;
+* the node has an additional label `StreamsEvent`
+
+these two fields will be used in order to match the node/relationship for future updates/deletes
 
 === Configuration
 

@@ -100,7 +100,12 @@ CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
 
 Create the Sink instance:
 
-We'll define the Sink configuration as follows:
+We'll define the Sink configuration in two ways:
+
+* by providing a Cypher query;
+* by unpacking the events emitted by a Change Data Capture.
+
+===== Cypher query
 
 [source,json]
 ----
@@ -173,6 +178,57 @@ and click to the **Send data out** (or **Sink** depending on your Confluent Plat
 |Neo4jSinkConnector
 |my-topic
 |===
+
+===== Change Data Capture Event
+
+You can set the CDC topics in the following way:
+
+[source,javascript]
+----
+"neo4j.topic.cypher.cdc.merge": "<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>"
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "created",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": "1004",
+    "type": "node",
+    "after": {
+      "labels": ["Person"],
+      "properties": {
+        "last_name": "Kretchmar",
+        "email": "annek@noanswer.org",
+        "first_name": "Anne Marie"
+      }
+    }
+  }
+}
+----
+
+will be persisted as the following node:
+
+```
+Person:StreamsEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", streams_id: "1004"}
+```
+
+as you can notice, ingested event has been projected with two peculiarities:
+
+* the `id` field has transformed into `streams_id`;
+* the node has an additional label `StreamsEvent`
 
 ==== Use the data generator
 
