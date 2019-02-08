@@ -13,6 +13,7 @@ import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.events.*
 import streams.serialization.JSONUtils
 import java.util.*
 import kotlin.test.assertEquals
@@ -51,6 +52,7 @@ class KafkaEventSinkIT {
     var testName = TestName()
 
     private val EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX = "WithNoTopicLoaded"
+    private val WITH_CDC_TOPIC_METHOD_SIFFIX = "WithCDCTopic"
 
     private val kafkaProperties = Properties()
 
@@ -66,7 +68,11 @@ class KafkaEventSinkIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+            if (testName.methodName.endsWith(WITH_CDC_TOPIC_METHOD_SIFFIX)) {
+                graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.merge", "cdctopic")
+            } else {
+                graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+            }
         }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
@@ -116,6 +122,68 @@ class KafkaEventSinkIT {
         delay(5000)
         db.execute("MATCH (n:Label) RETURN n")
                 .columnAs<Node>("n").use {
+                    assertFalse { it.hasNext() }
+                }
+    }
+
+
+    @Test
+    fun shouldWriteDataFromSinkWithCDCTopic() = runBlocking {
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                    username = "user",
+                    txId = 1,
+                    txEventId = 0,
+                    txEventsCount = 3,
+                    operation = OperationType.created
+                ),
+                payload = NodePayload(id = "0",
+                    before = null,
+                    after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+                ),
+                schema = Schema()
+        )
+        val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                    username = "user",
+                    txId = 1,
+                    txEventId = 1,
+                    txEventsCount = 3,
+                    operation = OperationType.created
+                ),
+                payload = NodePayload(id = "1",
+                    before = null,
+                    after = NodeChange(properties = mapOf("name" to "Michael", "comp@ny" to "Neo4j"), labels = listOf("User Ext"))
+                ),
+                schema = Schema()
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                    username = "user",
+                    txId = 1,
+                    txEventId = 2,
+                    txEventsCount = 3,
+                    operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                    id = "3",
+                    start = RelationshipNodeChange(id = "0", labels = listOf("User")),
+                    end = RelationshipNodeChange(id = "1", labels = listOf("User Ext")),
+                    after = RelationshipChange(properties = mapOf("since" to 2014)),
+                    before = null,
+                    label = "KNOWS WHO"
+                ),
+                schema = Schema()
+        )
+        var producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataStart))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataEnd))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataRelationship))
+        kafkaProducer.send(producerRecord).get()
+        delay(5000)
+        db.execute("MATCH p = (s:User{name:'Andrea', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:`User Ext`{name:'Michael', `comp@ny`:'Neo4j'}) RETURN count(p) AS count")
+                .columnAs<Long>("count").use {
+                    assertTrue { it.hasNext() }
+                    val count = it.next()
+                    assertEquals(1, count)
                     assertFalse { it.hasNext() }
                 }
     }

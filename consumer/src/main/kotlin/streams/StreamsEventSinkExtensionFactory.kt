@@ -41,7 +41,10 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                     override fun available() {
                         streamsLog.info("Initialising the Streams Sink module")
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
-                        val streamsTopicService = StreamsTopicService(db, streamsSinkConfiguration.topics)
+                        val streamsTopicService = StreamsTopicService(db)
+                        streamsTopicService.clearAll()
+                        streamsTopicService.setAllCypherTemplates(streamsSinkConfiguration.cypherTopics)
+                        streamsTopicService.setAllCDCTopics(streamsSinkConfiguration.cdcMergeTopics)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java))
 
                         // Create and start the Sink
@@ -53,7 +56,8 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                         eventSink.start()
                         if (Neo4jUtils.isWriteableInstance(db)) {
                             if (streamsLog.isDebugEnabled) {
-                                streamsLog.debug("Subscribed topics with queries: $${streamsTopicService.getAll()}")
+                                streamsLog.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
+                                streamsLog.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
                             } else {
                                 streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
                             }

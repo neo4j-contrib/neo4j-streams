@@ -17,4 +17,13 @@
         <version>3.4.1</version>
     </parent>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.neo4j.driver</groupId>
+            <artifactId>neo4j-java-driver</artifactId>
+            <version>${neo4j.java.driver.version}</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
+
 </project>

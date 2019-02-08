@@ -86,7 +86,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue<Map<String, Any>>(it.value()).let {
                 var payload = it["payload"] as Map<String, Any?>
                 val after = payload["after"] as Map<String, Any?>
                 val labels = after["labels"] as List<String>
@@ -107,7 +107,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue<Map<String, Any>>(it.value()).let {
                 var payload = it["payload"] as Map<String, Any?>
                 val after = payload["after"] as Map<String, Any?>
                 val properties = after["properties"] as Map<String, Any?>
@@ -126,7 +126,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue<Map<String, Any>>(it.value()).let {
                 var payload = it["payload"] as Map<String, Any?>
                 val after = payload["after"] as Map<String, Any?>
                 val labels = after["labels"] as List<String>
@@ -158,7 +158,7 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
+            JSONUtils.readValue<Map<String, Any>>(it.value()).let {
                 val payload = it as Map<String, String>
                 message == payload["payload"]
             }

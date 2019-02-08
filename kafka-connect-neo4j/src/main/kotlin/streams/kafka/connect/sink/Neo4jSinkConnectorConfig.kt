@@ -55,7 +55,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val batchTimeout: Long
     val batchSize: Int
 
-    val topicMap: Map<String, String>
+    val cdcMergeTopics: Set<String>
+
+    val cypherTopics: Map<String, String>
+
 
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -87,24 +90,43 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         batchTimeout = getLong(BATCH_TIMEOUT_MSECS)
         batchSize = getInt(BATCH_SIZE)
 
-        topicMap = getTopics(originals)
+        cypherTopics = getCypherTopics(originals)
+        cdcMergeTopics = getCDCTopics()
+
+        validateAllTopics(originals)
     }
 
-    private fun getTopics(originals: Map<*, *>): Map<String, String> {
-        val topicMap = originals
-                .filterKeys { it.toString().startsWith(TOPIC_CYPHER_PREFIX) }
-                .mapKeys { it.key.toString().replace(TOPIC_CYPHER_PREFIX, "") }
-                .mapValues { it.value.toString() }
-
+    private fun validateAllTopics(originals: Map<*, *>) {
+        val crossDefinedTopics = cdcMergeTopics.intersect(cypherTopics.keys)
+        if (crossDefinedTopics.isNotEmpty()) {
+            throw ConfigException("The following topics are cross defined between Cypher template configuration and CDC configuration: $crossDefinedTopics")
+        }
         val topics = if (originals.containsKey(SinkTask.TOPICS_CONFIG)) {
             originals["topics"].toString().split(",").map { it.trim() }.toSet()
         } else { // TODO manage regexp
             emptySet()
         }
-        if (topics != topicMap.keys.toSet()) {
-            throw ConfigException("There is a mismatch between provided Cypher queries (${topicMap.keys}) and configured topics ($topics)")
+        if (topics != getAllTopics()) {
+            throw ConfigException("There is a mismatch between provided Cypher queries (${cypherTopics.keys}) and configured topics ($topics)")
         }
-        return topicMap
+    }
+
+    fun getAllTopics() = cypherTopics.keys.toSet() + cdcMergeTopics
+
+    private fun getCDCTopics(): Set<String> {
+        val cdcTopicsString = getString(TOPIC_CDC)
+        return if (cdcTopicsString == "") {
+            emptySet()
+        } else {
+            cdcTopicsString.split(";").toSet()
+        }
+    }
+
+    private fun getCypherTopics(originals: Map<*, *>): Map<String, String> {
+        return originals
+                .filterKeys { it.toString().startsWith(TOPIC_CYPHER_PREFIX) }
+                .mapKeys { it.key.toString().replace(TOPIC_CYPHER_PREFIX, "") }
+                .mapValues { it.value.toString() }
     }
 
     companion object {
@@ -133,6 +155,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val RETRY_MAX_ATTEMPTS = "neo4j.retry.max.attemps"
 
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
+        const val TOPIC_CDC = "neo4j.topic.cdc.merge"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
@@ -286,6 +309,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .defaultValue(RETRY_MAX_ATTEMPTS_DEFAULT)
                             .group(ConfigGroup.RETRY)
                             .validator(ConfigDef.Range.atLeast(1)).build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC, ConfigDef.Type.STRING)
+                            .documentation(TOPIC_CDC).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
         }
     }
 }

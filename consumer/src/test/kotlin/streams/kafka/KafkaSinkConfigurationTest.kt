@@ -49,8 +49,8 @@ class KafkaSinkConfigurationTest {
 
         val streamsConfig = StreamsSinkConfiguration.from(config)
         assertEquals(pollingInterval.toLong(), streamsConfig.sinkPollingInterval)
-        assertTrue { streamsConfig.topics.containsKey(topic) }
-        assertEquals(topicValue, streamsConfig.topics[topic])
+        assertTrue { streamsConfig.cypherTopics.containsKey(topic) }
+        assertEquals(topicValue, streamsConfig.cypherTopics[topic])
     }
 
 }

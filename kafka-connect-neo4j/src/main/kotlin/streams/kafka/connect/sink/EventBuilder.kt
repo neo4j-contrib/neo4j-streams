@@ -26,7 +26,7 @@ class EventBuilder {
         return this
     }
 
-    fun build(): Map<String, List<List<SinkRecord>>> { // <Topic, List<List<SinkRecord>>
+    fun build(): Map<String, List<List<Any>>> { // <Topic, List<List<SinkRecord>>
         return this.sinkRecords
                 .groupBy { it.topic() }
                 .filterKeys {topic ->
@@ -36,8 +36,8 @@ class EventBuilder {
                     }
                     isValidTopic
                 }
-                .mapValues { it ->
-                    val value = it.value
+                .mapValues {
+                    val value = it.value.mapNotNull { it.value() }
                     value.chunked(this.batchSize!!)
                 }
     }
