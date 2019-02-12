@@ -12,6 +12,7 @@ import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
+import streams.kafka.connect.utils.PropertiesUtil
 import java.io.File
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -26,6 +27,7 @@ object ConfigGroup {
     const val AUTHENTICATION = "Authentication"
     const val TOPIC_CYPHER_MAPPING = "Topic Cypher Mapping"
     const val BATCH = "Batch Management"
+    const val RETRY = "Retry Strategy"
     const val DEPRECATED = "Deprecated Properties (please check the documentation)"
 }
 
@@ -46,6 +48,9 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val connectionPoolMaxSize: Int
     val connectionAcquisitionTimeout: Long
     val loadBalancingStrategy: Config.LoadBalancingStrategy
+
+    val retryBackoff: Long
+    val retryMaxAttempts: Int
 
     val batchTimeout: Long
     val batchSize: Int
@@ -75,6 +80,9 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         connectionAcquisitionTimeout = getLong(CONNECTION_MAX_CONNECTION_ACQUISITION_TIMEOUT_MSECS)
         loadBalancingStrategy = ConfigUtils
                 .getEnum(Config.LoadBalancingStrategy::class.java, this, CONNECTION_LOAD_BALANCE_STRATEGY)
+
+        retryBackoff = getLong(RETRY_BACKOFF_MSECS)
+        retryMaxAttempts = getInt(RETRY_MAX_ATTEMPTS)
 
         batchTimeout = getLong(BATCH_TIMEOUT_MSECS)
         batchSize = getInt(BATCH_SIZE)
@@ -121,11 +129,16 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val BATCH_SIZE = "neo4j.batch.size"
         const val BATCH_TIMEOUT_MSECS = "neo4j.batch.timeout.msecs"
 
+        const val RETRY_BACKOFF_MSECS = "neo4j.retry.backoff.msecs"
+        const val RETRY_MAX_ATTEMPTS = "neo4j.retry.max.attemps"
+
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val BATCH_SIZE_DEFAULT = 1000
+        val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
+        const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
 
         fun config(): ConfigDef {
             return ConfigDef()
@@ -257,6 +270,21 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .importance(ConfigDef.Importance.LOW)
                             .defaultValue(BATCH_TIMEOUT_DEFAULT)
                             .group(ConfigGroup.BATCH)
+                            .validator(ConfigDef.Range.atLeast(1)).build())
+                    .define(ConfigKeyBuilder
+                            .of(RETRY_BACKOFF_MSECS, ConfigDef.Type.LONG)
+                            .documentation(PropertiesUtil.getProperty(RETRY_BACKOFF_MSECS))
+                            .importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(RETRY_BACKOFF_DEFAULT)
+                            .group(ConfigGroup.RETRY)
+                            .validator(ConfigDef.Range.atLeast(1))
+                            .build())
+                    .define(ConfigKeyBuilder
+                            .of(RETRY_MAX_ATTEMPTS, ConfigDef.Type.INT)
+                            .documentation(PropertiesUtil.getProperty(RETRY_MAX_ATTEMPTS))
+                            .importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(RETRY_MAX_ATTEMPTS_DEFAULT)
+                            .group(ConfigGroup.RETRY)
                             .validator(ConfigDef.Range.atLeast(1)).build())
         }
     }

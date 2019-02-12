@@ -3,14 +3,22 @@ package streams.kafka.connect.sink
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
+import org.neo4j.driver.v1.exceptions.ClientException
+import org.neo4j.driver.v1.exceptions.TransientException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+
+import streams.utils.StreamsUtils
+import streams.utils.retryForException
+import org.apache.kafka.connect.errors.ConnectException
+import org.apache.kafka.connect.sink.SinkRecord
 import java.util.concurrent.TimeUnit
 
 
@@ -51,6 +59,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         configBuilder.withMaxConnectionLifetime(this.config.connectionMaxConnectionLifetime, TimeUnit.MILLISECONDS)
         configBuilder.withConnectionAcquisitionTimeout(this.config.connectionAcquisitionTimeout, TimeUnit.MILLISECONDS)
         configBuilder.withLoadBalancingStrategy(this.config.loadBalancingStrategy)
+        configBuilder.withMaxTransactionRetryTime(config.retryBackoff, TimeUnit.MILLISECONDS)
         val neo4jConfig = configBuilder.toConfig()
         this.driver = GraphDatabase.driver(this.config.serverUri, authToken, neo4jConfig)
     }
@@ -59,24 +68,30 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun write(query: String, data: Map<String, Any>) {
-        val session = driver.session()
-        session.writeTransaction {
+
+    private fun write(topic: String, records: List<SinkRecord>) {
+        val query = "${StreamsUtils.UNWIND} ${config.topicMap[topic]}"
+        val data = mapOf<String, Any>("events" to records.map { converter.convert(it.value()) })
+        driver.session().use { session ->
             try {
-                it.run(query, data)
-                it.success()
-                if (log.isDebugEnabled) {
-                    log.debug("Successfully executed query: `$query`, with data: `$data`")
+                runBlocking {
+                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+                            retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                        session.writeTransaction {
+                            val result = it.run(query, data)
+                            if (log.isDebugEnabled) {
+                                log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
                 if (log.isDebugEnabled) {
                     log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
                 }
-                it.failure()
+                throw e
             }
-            it.close()
         }
-        session.close()
     }
 
     suspend fun writeData(data: Map<String, List<List<Map<String, Any>>>>) = coroutineScope {
@@ -98,8 +113,12 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
                 it.onAwait { !isAllCompleted } // Stops the whileSelect
             }
         }
+        val exceptionMessages = deferredList
+                .mapNotNull { it.getCompletionExceptionOrNull() }
+                .map { it.message }
+                .joinToString("\n")
+        if (exceptionMessages.isNotBlank()) {
+            throw ConnectException(exceptionMessages)
+        }
     }
-
-
-
 }
