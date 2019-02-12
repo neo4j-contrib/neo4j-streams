@@ -29,14 +29,12 @@ class Neo4jSinkTask : SinkTask() {
             return@runBlocking
         }
 
-        // TODO define a retry policy in that case we must throw `RetriableException`
         val data = EventBuilder()
                 .withBatchSize(config.batchSize)
                 .withTopics(config.topicMap.keys)
                 .withSinkRecords(collection)
                 .build()
         neo4jService.writeData(data)
-
     }
 
     override fun stop() {
