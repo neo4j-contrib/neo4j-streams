@@ -32,7 +32,6 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
                 result.close()
             } catch (e: Exception) {
                 log.error("Error while executing the query", e)
-                println(e.message)
             }
         } else {
             if (log.isDebugEnabled) {

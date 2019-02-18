@@ -48,7 +48,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
 
     private fun registerTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
-            txHandler = StreamsTransactionEventHandler(streamHandler, streamsEventRouterConfiguration)
+            txHandler = StreamsTransactionEventHandler(db, streamHandler, streamsEventRouterConfiguration)
             db.registerTransactionEventHandler(txHandler)
         }
     }

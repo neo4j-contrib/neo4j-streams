@@ -1,22 +1,30 @@
 package streams
 
-import org.apache.commons.lang3.StringUtils
 import org.neo4j.kernel.configuration.Config
+import streams.service.TopicType
 
 
 private object StreamsSinkConfigurationConstants {
     const val STREAMS_CONFIG_PREFIX: String = "streams."
-    const val STREAMS_SINK_TOPIC_CYPHER_PREFIX: String = "sink.topic.cypher."
-    const val STREAMS_SINK_TOPIC_CDC: String = "sink.topic.cdc.merge"
     const val ENABLED = "sink.enabled"
     const val PROCEDURES_ENABLED = "procedures.enabled"
+}
+
+private fun getCDCTopicFromConfig(type: TopicType, config: Map<String, String>): Set<String> {
+    val cdcTopic = config[type.key.replace(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX, "")].orEmpty()
+    return if (cdcTopic == "") {
+        emptySet()
+    } else {
+        cdcTopic.split(";").toSet()
+    }
 }
 
 data class StreamsSinkConfiguration(val enabled: Boolean = true,
                                     val proceduresEnabled: Boolean = true,
                                     val sinkPollingInterval: Long = 10000,
                                     val cypherTopics: Map<String, String> = emptyMap(),
-                                    val cdcMergeTopics: Set<String> = emptySet()) {
+                                    val cdcTopics: Map<TopicType, Set<String>> = emptyMap()) {
+
 
     companion object {
         fun from(cfg: Config): StreamsSinkConfiguration {
@@ -29,19 +37,23 @@ data class StreamsSinkConfiguration(val enabled: Boolean = true,
                     .filterKeys { it.startsWith(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX) }
                     .mapKeys { it.key.substring(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX.length) }
 
+            val cypherTopicPrefix = TopicType.CYPHER.key.replace(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX, "")
+
+            val cypherPrefix = "$cypherTopicPrefix."
             val cypherTopics = config
-                    .filterKeys { it.startsWith(StreamsSinkConfigurationConstants.STREAMS_SINK_TOPIC_CYPHER_PREFIX) }
-                    .mapKeys { it.key.replace(StreamsSinkConfigurationConstants.STREAMS_SINK_TOPIC_CYPHER_PREFIX, StringUtils.EMPTY) }
-            val cdcTopicsString = config[StreamsSinkConfigurationConstants.STREAMS_SINK_TOPIC_CDC]
-                    .orEmpty()
-            val cdcTopics = if (cdcTopicsString == "") {
-                emptySet()
-            } else {
-                cdcTopicsString.split(";").toSet()
-            }
-            val crossDefinedTopics = cdcTopics.intersect(cypherTopics.keys)
+                    .filterKeys { it.startsWith(cypherPrefix) }
+                    .mapKeys { it.key.replace(cypherPrefix, "") }
+            val cdcMergeTopics = getCDCTopicFromConfig(TopicType.CDC_MERGE, config)
+            val cdcSchemaTopics = getCDCTopicFromConfig(TopicType.CDC_SCHEMA, config)
+
+            val crossDefinedTopics = (cdcMergeTopics + cdcSchemaTopics).intersect(cypherTopics.keys)
             if (crossDefinedTopics.isNotEmpty()) {
                 throw RuntimeException("The following topics are cross defined between Cypher template configuration and CDC configuration: $crossDefinedTopics")
+            }
+
+            val cdcCrossDefinedTopics = cdcMergeTopics.intersect(cdcSchemaTopics)
+            if (cdcCrossDefinedTopics.isNotEmpty()) {
+                throw RuntimeException("The following topics are cross defined between CDC Merge and CDC Schema configuration: $cdcCrossDefinedTopics")
             }
 
             return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
@@ -49,7 +61,7 @@ data class StreamsSinkConfiguration(val enabled: Boolean = true,
                             .toString().toBoolean(),
                     sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     cypherTopics = cypherTopics,
-                    cdcMergeTopics = cdcTopics)
+                    cdcTopics = mapOf(TopicType.CDC_MERGE to cdcMergeTopics, TopicType.CDC_SCHEMA to cdcSchemaTopics))
         }
     }
 

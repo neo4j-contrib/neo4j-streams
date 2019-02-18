@@ -126,11 +126,13 @@ object JSONUtils {
         return getObjectMapper().convertValue(value)
     }
 
+    @Suppress("UNCHECKED_CAST")
     fun asStreamsTransactionEvent(obj: Any): StreamsTransactionEvent {
         val value = when (obj) {
-            is String -> readValue<Map<String, Map<String, Any>>>(obj)
             is Map<*, *> -> obj as Map<String, Map<String, Any>>
-            else -> convertValue<Map<String, Map<String, Any>>>(obj)
+            is String -> readValue(obj)
+            is ByteArray -> readValue(obj)
+            else -> convertValue(obj)
         }
         val meta = convertValue<Meta>(value.getValue("meta"))
 

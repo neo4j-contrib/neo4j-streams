@@ -13,6 +13,7 @@ import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
 import streams.kafka.connect.utils.PropertiesUtil
+import streams.service.TopicType
 import java.io.File
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -55,7 +56,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val batchTimeout: Long
     val batchSize: Int
 
-    val cdcMergeTopics: Set<String>
+    val cdcTopics: Map<TopicType, Set<String>>
 
     val cypherTopics: Map<String, String>
 
@@ -91,15 +92,22 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         batchSize = getInt(BATCH_SIZE)
 
         cypherTopics = getCypherTopics(originals)
-        cdcMergeTopics = getCDCTopics()
+        cdcTopics = getCDCTopics()
 
         validateAllTopics(originals)
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
-        val crossDefinedTopics = cdcMergeTopics.intersect(cypherTopics.keys)
+        val cdcSchemaTopics = this.cdcTopics[TopicType.CDC_SCHEMA].orEmpty()
+        val cdcMergeTopics = this.cdcTopics[TopicType.CDC_MERGE].orEmpty()
+        val allCdcTopics = cdcSchemaTopics + cdcMergeTopics
+        val crossDefinedTopics = allCdcTopics.intersect(cypherTopics.keys)
         if (crossDefinedTopics.isNotEmpty()) {
             throw ConfigException("The following topics are cross defined between Cypher template configuration and CDC configuration: $crossDefinedTopics")
+        }
+        val cdcCrossDefinedTopics = cdcMergeTopics.intersect(cdcSchemaTopics)
+        if (cdcCrossDefinedTopics.isNotEmpty()) {
+            throw ConfigException("The following topics are cross defined between CDC Merge and CDC Schema configuration: $cdcCrossDefinedTopics")
         }
         val topics = if (originals.containsKey(SinkTask.TOPICS_CONFIG)) {
             originals["topics"].toString().split(",").map { it.trim() }.toSet()
@@ -111,15 +119,23 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         }
     }
 
-    fun getAllTopics() = cypherTopics.keys.toSet() + cdcMergeTopics
+    fun getAllTopics() = cypherTopics.keys.toSet() + cdcTopics.values.flatten()
 
-    private fun getCDCTopics(): Set<String> {
-        val cdcTopicsString = getString(TOPIC_CDC)
-        return if (cdcTopicsString == "") {
+    private fun getCDCTopics(): Map<TopicType, Set<String>> {
+        val cdcMergeTopicsString = getString(TOPIC_CDC_MERGE)
+        val cdcMergeTopics = if (cdcMergeTopicsString == "") {
             emptySet()
         } else {
-            cdcTopicsString.split(";").toSet()
+            cdcMergeTopicsString.split(";").toSet()
         }
+        val cdcSchemaTopicsString = getString(TOPIC_CDC_SCHEMA)
+        val cdcSchemaTopics = if (cdcSchemaTopicsString == "") {
+            emptySet()
+        } else {
+            cdcSchemaTopicsString.split(";").toSet()
+        }
+
+        return mapOf(TopicType.CDC_MERGE to cdcMergeTopics, TopicType.CDC_SCHEMA to cdcSchemaTopics)
     }
 
     private fun getCypherTopics(originals: Map<*, *>): Map<String, String> {
@@ -155,7 +171,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val RETRY_MAX_ATTEMPTS = "neo4j.retry.max.attemps"
 
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
-        const val TOPIC_CDC = "neo4j.topic.cdc.merge"
+        const val TOPIC_CDC_MERGE = "neo4j.topic.cdc.merge"
+        const val TOPIC_CDC_SCHEMA = "neo4j.topic.cdc.schema"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
@@ -309,8 +326,12 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .defaultValue(RETRY_MAX_ATTEMPTS_DEFAULT)
                             .group(ConfigGroup.RETRY)
                             .validator(ConfigDef.Range.atLeast(1)).build())
-                    .define(ConfigKeyBuilder.of(TOPIC_CDC, ConfigDef.Type.STRING)
-                            .documentation(TOPIC_CDC).importance(ConfigDef.Importance.HIGH)
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_MERGE, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_MERGE)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_SCHEMA, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SCHEMA)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
                             .build())
         }

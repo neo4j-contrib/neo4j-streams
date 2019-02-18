@@ -44,7 +44,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                         val streamsTopicService = StreamsTopicService(db)
                         streamsTopicService.clearAll()
                         streamsTopicService.setAllCypherTemplates(streamsSinkConfiguration.cypherTopics)
-                        streamsTopicService.setAllCDCTopics(streamsSinkConfiguration.cdcMergeTopics)
+                        streamsTopicService.setAllCDCTopics(streamsSinkConfiguration.cdcTopics)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java))
 
                         // Create and start the Sink

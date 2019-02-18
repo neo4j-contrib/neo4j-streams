@@ -179,16 +179,129 @@ and click to the **Send data out** (or **Sink** depending on your Confluent Plat
 |my-topic
 |===
 
-===== Change Data Capture Event
+==== Change Data Capture Event
 
-You can set the CDC topics in the following way:
+This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
 
-[source,javascript]
+ * The `Merge` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID
+ * The `Schema` strategy which merges the nodes/relationships by the constraints (UNIQUENESS, NODE_KEY) defined in your graph model
+
+===== The `Merge` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
 ----
-"neo4j.topic.cypher.cdc.merge": "<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>"
+streams.sink.topic.cdc.merge=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.merge=my-topic;my-other.topic
 ----
 
 Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+include::../producer/data/node.created.json[]
+----
+
+will be persisted as the following node:
+
+```
+Person:StreamsEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", streams_id: "1004"}
+```
+
+as you can notice, ingested event has been projected with two peculiarities:
+
+* the `id` field has transformed into `streams_id`;
+* the node has an additional label `StreamsEvent`
+
+these two fields will be used in order to match the node/relationship for future updates/deletes
+
+===== The `Schema` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "created",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": "123",
+    "type": "relationship",
+    "label": "KNOWS",
+    "start": {
+      "labels": ["Person"],
+      "id": "123",
+      "ids": {
+        "last_name": "Andrea",
+        "first_name": "Santurbano"
+      }
+    },
+    "end": {
+      "labels": ["Person"],
+      "id": "456",
+      "ids": {
+        "last_name": "Michael",
+        "first_name": "Hunger"
+      }
+    },
+    "after": {
+      "properties": {
+        "since": "2018-04-05T12:34:00[Europe/Berlin]"
+      }
+    }
+  },
+  "schema": {
+    "properties": {
+      "since": "ZonedDateTime"
+    },
+    "constraints": [{
+      "label": "KNOWS",
+      "properties": ["since"],
+      "type": "RELATIONSHIP_PROPERTY_EXISTENCE"
+    },{
+      "label": "Person",
+      "properties": ["first_name", "last_name"],
+      "type": "NODE_KEY"
+    }]
+  }
+}
+----
+
+will be persisted as the following node:
+
+```
+Person{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org"}
+```
+
+The `Schema` strategy leverages the `schema` field in order to insert/update the nodes so no extra fields will be created.
+
+In case of relationship
 
 [source,json]
 ----
@@ -210,25 +323,28 @@ Each streams event will be projected into the related graph entity, for instance
     "after": {
       "labels": ["Person"],
       "properties": {
-        "last_name": "Kretchmar",
         "email": "annek@noanswer.org",
+        "last_name": "Kretchmar",
         "first_name": "Anne Marie"
       }
     }
+  },
+  "schema": {
+    "properties": {
+      "last_name": "String",
+      "email": "String",
+      "first_name": "String"
+    },
+    "constraints": [{
+      "label": "Person",
+      "properties": ["first_name", "last_name"],
+      "type": "NODE_KEY"
+    }]
   }
 }
 ----
 
-will be persisted as the following node:
-
-```
-Person:StreamsEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", streams_id: "1004"}
-```
-
-as you can notice, ingested event has been projected with two peculiarities:
-
-* the `id` field has transformed into `streams_id`;
-* the node has an additional label `StreamsEvent`
+the `Schema` strategy leverages the `ids` fields in order to insert/update the relationships so no extra fields will be created.
 
 ==== Use the data generator
 

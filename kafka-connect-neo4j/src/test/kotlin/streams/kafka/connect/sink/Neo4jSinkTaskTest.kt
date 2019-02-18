@@ -7,10 +7,10 @@ import org.apache.kafka.connect.data.Timestamp
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
-import org.easymock.EasyMockSupport
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
 import org.neo4j.harness.ServerControls
@@ -22,7 +22,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-class Neo4jSinkTaskTest: EasyMockSupport() {
+class Neo4jSinkTaskTest {
 
     private lateinit var db: ServerControls
 
@@ -83,7 +83,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
                 .put("modified", Date(1474661402123L))
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
@@ -107,7 +107,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         val firstTopic = "neotopic"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
-        props["${Neo4jSinkConnectorConfig.TOPIC_CDC}"] = firstTopic
+        props["${Neo4jSinkConnectorConfig.TOPIC_CDC_MERGE}"] = firstTopic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = firstTopic
 
@@ -146,8 +146,8 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
             ),
             payload = RelationshipPayload(
                 id = "2",
-                start = RelationshipNodeChange(id = "0", labels = listOf("User")),
-                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext")),
+                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
                 after = RelationshipChange(properties = mapOf("since" to 2014)),
                 before = null,
                 label = "KNOWS WHO"
@@ -156,7 +156,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         )
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
@@ -191,7 +191,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         val firstTopic = "neotopic"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
-        props["${Neo4jSinkConnectorConfig.TOPIC_CDC}"] = firstTopic
+        props["${Neo4jSinkConnectorConfig.TOPIC_CDC_MERGE}"] = firstTopic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = firstTopic
 
@@ -219,8 +219,8 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
             ),
             payload = RelationshipPayload(
                 id = "2",
-                start = RelationshipNodeChange(id = "0", labels = listOf("User")),
-                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext")),
+                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
                 after = RelationshipChange(properties = mapOf("since" to 2014, "foo" to "bar")),
                 before = RelationshipChange(properties = mapOf("since" to 2014)),
                 label = "KNOWS WHO"
@@ -229,7 +229,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         )
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 43))
@@ -263,7 +263,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         val firstTopic = "neotopic"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
-        props["${Neo4jSinkConnectorConfig.TOPIC_CDC}"] = firstTopic
+        props["${Neo4jSinkConnectorConfig.TOPIC_CDC_MERGE}"] = firstTopic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = firstTopic
 
@@ -282,7 +282,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
             schema = Schema()
         )
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42))
         task.put(input)
@@ -315,7 +315,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
                 .put("longitude", -122.3255254.toFloat())
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
         db.graph().beginTx().use {

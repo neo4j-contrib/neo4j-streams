@@ -2,6 +2,7 @@ package streams
 
 import org.junit.Test
 import org.neo4j.kernel.configuration.Config
+import streams.service.TopicType
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -30,7 +31,7 @@ class StreamsSinkConfigurationTest {
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, pollingInterval, topic, topicValue)
         assertFalse { streamsConfig.enabled }
-        assertTrue { streamsConfig.cdcMergeTopics.size == 1 && streamsConfig.cdcMergeTopics.contains(cdctopic) }
+        assertTrue { streamsConfig.cdcTopics[TopicType.CDC_MERGE]!!.size == 1 && streamsConfig.cdcTopics[TopicType.CDC_MERGE]!!.contains(cdctopic) }
     }
 
     @Test(expected = RuntimeException::class)
@@ -44,6 +45,19 @@ class StreamsSinkConfigurationTest {
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.merge", topic)
+                .build()
+        StreamsSinkConfiguration.from(config)
+    }
+
+    @Test(expected = RuntimeException::class)
+    fun shouldFailWithCrossDefinedCDCTopics() {
+        val pollingInterval = "10"
+        val topic = "topic-neo"
+        val config = Config.builder()
+                .withSetting("streams.sink.polling.interval", pollingInterval)
+                .withSetting("streams.sink.enabled", "false")
+                .withSetting("streams.sink.topic.cdc.merge", topic)
+                .withSetting("streams.sink.topic.cdc.schema", topic)
                 .build()
         StreamsSinkConfiguration.from(config)
     }

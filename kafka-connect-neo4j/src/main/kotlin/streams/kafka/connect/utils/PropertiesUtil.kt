@@ -27,7 +27,7 @@ class PropertiesUtil {
         }
 
         fun getProperty(key: String): String {
-            return properties!!.getProperty(key)
+            return properties!!.getProperty(key, key)
         }
     }
 }

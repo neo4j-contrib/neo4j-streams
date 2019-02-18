@@ -2,7 +2,15 @@ package streams.service
 
 import streams.serialization.JSONUtils
 
-enum class TopicType { CDC_MERGE, CYPHER }
+
+const val STREAMS_TOPIC_KEY: String = "streams.sink.topic"
+const val STREAMS_TOPIC_CDC_KEY: String = "streams.sink.topic.cdc"
+
+enum class TopicType(val isCDC: Boolean = false, val key: String) {
+    CDC_MERGE(true, "$STREAMS_TOPIC_CDC_KEY.merge"),
+    CYPHER(key = "$STREAMS_TOPIC_KEY.cypher"),
+    CDC_SCHEMA(true, "$STREAMS_TOPIC_CDC_KEY.schema")
+}
 
 abstract class StreamsSinkService {
 
@@ -30,6 +38,7 @@ abstract class StreamsSinkService {
         when (getTopicType(topic)) {
             TopicType.CYPHER -> writeWithCypherTemplate(topic, params)
             TopicType.CDC_MERGE -> writeCDCTopic(params, MergeCDCQueryStrategy())
+            TopicType.CDC_SCHEMA -> writeCDCTopic(params, SchemaCDCQueryStrategy())
             else -> throw RuntimeException("Unknown topic type")
         }
     }

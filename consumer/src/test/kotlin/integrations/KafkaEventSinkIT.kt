@@ -10,6 +10,7 @@ import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
@@ -20,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-
+@Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventSinkIT {
     companion object {
         /**
@@ -52,7 +53,8 @@ class KafkaEventSinkIT {
     var testName = TestName()
 
     private val EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX = "WithNoTopicLoaded"
-    private val WITH_CDC_TOPIC_METHOD_SIFFIX = "WithCDCTopic"
+    private val WITH_CDC_TOPIC_METHOD_SUFFIX = "WithCDCTopic"
+    private val WITH_CDC_SCHEMA_TOPIC_METHOD_SUFFIX = "WithCDCSchemaTopic"
 
     private val kafkaProperties = Properties()
 
@@ -68,8 +70,10 @@ class KafkaEventSinkIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
         if (!testName.methodName.endsWith(EXCLUDE_LOAD_TOPIC_METHOD_SUFFIX)) {
-            if (testName.methodName.endsWith(WITH_CDC_TOPIC_METHOD_SIFFIX)) {
+            if (testName.methodName.endsWith(WITH_CDC_TOPIC_METHOD_SUFFIX)) {
                 graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.merge", "cdctopic")
+            } else if (testName.methodName.endsWith(WITH_CDC_SCHEMA_TOPIC_METHOD_SUFFIX)) {
+                graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", "cdctopic")
             } else {
                 graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
             }
@@ -126,7 +130,6 @@ class KafkaEventSinkIT {
                 }
     }
 
-
     @Test
     fun shouldWriteDataFromSinkWithCDCTopic() = runBlocking {
         val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
@@ -164,8 +167,8 @@ class KafkaEventSinkIT {
                 ),
                 payload = RelationshipPayload(
                     id = "3",
-                    start = RelationshipNodeChange(id = "0", labels = listOf("User")),
-                    end = RelationshipNodeChange(id = "1", labels = listOf("User Ext")),
+                    start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                    end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
                     after = RelationshipChange(properties = mapOf("since" to 2014)),
                     before = null,
                     label = "KNOWS WHO"
@@ -184,6 +187,100 @@ class KafkaEventSinkIT {
                     assertTrue { it.hasNext() }
                     val count = it.next()
                     assertEquals(1, count)
+                    assertFalse { it.hasNext() }
+                }
+    }
+
+    @Test
+    fun shouldWriteDataFromSinkWithCDCSchemaTopic() = runBlocking {
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
+                constraints = listOf(Constraint(label = "User", type = ConstraintType.NODE_KEY, properties = setOf("name", "surname"))))
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 0,
+                txEventsCount = 3,
+                operation = OperationType.created
+        ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 1,
+                txEventsCount = 3,
+                operation = OperationType.created
+        ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger", "comp@ny" to "Neo4j"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 2,
+                txEventsCount = 3,
+                operation = OperationType.created
+        ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "KNOWS WHO"
+                ),
+                schema = Schema()
+        )
+        var producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataStart))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataEnd))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataRelationship))
+        kafkaProducer.send(producerRecord).get()
+        delay(5000)
+        db.execute("MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'}) RETURN count(p) AS count")
+                .columnAs<Long>("count").use {
+                    assertTrue { it.hasNext() }
+                    val count = it.next()
+                    assertEquals(1, count)
+                    assertFalse { it.hasNext() }
+                }
+    }
+
+    @Test
+    fun shouldDeleteDataFromSinkWithCDCSchemaTopic() = runBlocking {
+        db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})").close()
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
+                constraints = listOf(Constraint(label = "User", type = ConstraintType.NODE_KEY, properties = setOf("name", "surname"))))
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 0,
+                txEventsCount = 3,
+                operation = OperationType.deleted
+        ),
+                payload = NodePayload(id = "0",
+                        after = null,
+                        before = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+
+        var producerRecord = ProducerRecord("cdctopic", UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataStart))
+        kafkaProducer.send(producerRecord).get()
+        delay(5000)
+        db.execute("MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'}) RETURN count(p) AS count")
+                .columnAs<Long>("count").use {
+                    assertTrue { it.hasNext() }
+                    val count = it.next()
+                    assertEquals(0, count)
                     assertFalse { it.hasNext() }
                 }
     }

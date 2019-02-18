@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
+@Suppress("UNCHECKED_CAST")
 class RoutingConfigurationTest {
 
     @Test
@@ -144,6 +145,10 @@ class RoutingConfigurationTest {
     fun shouldFilterAndRouteNodeEvents() {
         // TODO add more tests like a Label removed
         // Given
+        val payload = NodePayloadBuilder()
+                .withBefore(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3), labels = listOf("Label1", "Label2")))
+                .withAfter(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4), labels = listOf("Label1", "Label2")))
+                .build()
         val streamsEvent = StreamsTransactionEventBuilder()
                 .withMeta(StreamsEventMetaBuilder()
                         .withOperation(OperationType.created)
@@ -153,11 +158,8 @@ class RoutingConfigurationTest {
                         .withUsername("user")
                         .withTransactionId(1)
                         .build())
-                .withSchema(SchemaBuilder().build())
-                .withPayload(NodePayloadBuilder()
-                        .withBefore(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3), labels = listOf("Label1", "Label2")))
-                        .withAfter(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4), labels = listOf("Label1", "Label2")))
-                        .build())
+                .withSchema(SchemaBuilder().withConstraints(emptySet()).withPayload(payload).build())
+                .withPayload(payload)
                 .build()
 
         val routingConf = mutableListOf<NodeRoutingConfiguration>()
@@ -206,6 +208,13 @@ class RoutingConfigurationTest {
     @Test
     fun shouldFilterAndRouteRelationshipEvents() {
         // Given
+        val payload = RelationshipPayloadBuilder()
+                .withBefore(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3)))
+                .withAfter(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4)))
+                .withStartNode("1", listOf("Label1", "Label2"), emptyMap())
+                .withEndNode("2", listOf("Label1", "Label2"), emptyMap())
+                .withName("KNOWS")
+                .build()
         val streamsEvent = StreamsTransactionEventBuilder()
                 .withMeta(StreamsEventMetaBuilder()
                         .withOperation(OperationType.created)
@@ -215,14 +224,8 @@ class RoutingConfigurationTest {
                         .withUsername("user")
                         .withTransactionId(1)
                         .build())
-                .withSchema(SchemaBuilder().build())
-                .withPayload(RelationshipPayloadBuilder()
-                        .withBefore(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3)))
-                        .withAfter(RelationshipChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4)))
-                        .withStartNode("1",listOf("Label1", "Label2"))
-                        .withEndNode("2",listOf("Label1", "Label2"))
-                        .withName("KNOWS")
-                        .build())
+                .withSchema(SchemaBuilder().withConstraints(emptySet()).withPayload(payload).build())
+                .withPayload(payload)
                 .build()
 
         val routingConf = mutableListOf<RelationshipRoutingConfiguration>()

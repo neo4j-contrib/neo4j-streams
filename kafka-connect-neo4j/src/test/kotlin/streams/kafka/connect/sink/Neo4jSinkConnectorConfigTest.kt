@@ -29,7 +29,7 @@ class Neo4jSinkConnectorConfigTest {
             val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
                     "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})",
                     "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}bar" to "CREATE (p:Person{name: event.firsName})",
-                    "${Neo4jSinkConnectorConfig.TOPIC_CDC}" to "foo")
+                    "${Neo4jSinkConnectorConfig.TOPIC_CDC_MERGE}" to "foo")
             Neo4jSinkConnectorConfig(originals)
         } catch (e: ConfigException) {
             assertEquals("The following topics are cross defined between Cypher template configuration and CDC configuration: [foo]", e.message)

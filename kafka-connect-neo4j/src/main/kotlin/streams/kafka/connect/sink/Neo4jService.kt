@@ -71,8 +71,12 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig): StreamsSinkSer
     }
 
     override fun getTopicType(topic: String): TopicType? {
-        return if (config.cdcMergeTopics.contains(topic)) {
+        val isCDCMerge = config.cdcTopics[TopicType.CDC_MERGE]?.contains(topic) ?: false
+        val isCDCSchema = config.cdcTopics[TopicType.CDC_SCHEMA]?.contains(topic) ?: false
+        return if (isCDCMerge) {
             TopicType.CDC_MERGE
+        } else if (isCDCSchema) {
+            TopicType.CDC_SCHEMA
         } else if (config.cypherTopics.containsKey(topic)) {
             TopicType.CYPHER
         } else {

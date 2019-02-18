@@ -8,7 +8,7 @@ import streams.RelationshipRoutingConfiguration
 import streams.toMap
 
 
-class StreamsEventMetaBuilder(){
+class StreamsEventMetaBuilder {
 
     private var timestamp: Long? = null
     private var username: String? = null
@@ -64,7 +64,7 @@ class StreamsEventMetaBuilder(){
 
 }
 
-class NodeChangeBuilder(){
+class NodeChangeBuilder {
 
     private var labels : List<String> = listOf()
     private var properties :  Map<String, Any> = mapOf()
@@ -84,7 +84,7 @@ class NodeChangeBuilder(){
     }
 }
 
-class NodePayloadBuilder(){
+class NodePayloadBuilder {
 
     private var id : String = "0"
     private var after : NodeChange? = null
@@ -110,7 +110,7 @@ class NodePayloadBuilder(){
     }
 }
 
-class RelationshipChangeBuilder(){
+class RelationshipChangeBuilder {
 
     private var properties :  Map<String, Any> = mapOf()
 
@@ -124,7 +124,7 @@ class RelationshipChangeBuilder(){
     }
 }
 
-class RelationshipPayloadBuilder() {
+class RelationshipPayloadBuilder {
     private var id: String = "0"
     private var after: RelationshipChange? = null
     private var before: RelationshipChange? = null
@@ -132,13 +132,13 @@ class RelationshipPayloadBuilder() {
     private var startNode : RelationshipNodeChange ? = null
     private var endNode : RelationshipNodeChange ? = null
 
-    fun withStartNode(id: String, labels: List<String>): RelationshipPayloadBuilder{
-        this.startNode = RelationshipNodeChange(id, labels)
+    fun withStartNode(id: String, labels: List<String>, ids: Map<String, Any>): RelationshipPayloadBuilder{
+        this.startNode = RelationshipNodeChange(id, labels, ids)
         return this
     }
 
-    fun withEndNode(id: String, labels: List<String>): RelationshipPayloadBuilder{
-        this.endNode = RelationshipNodeChange(id, labels)
+    fun withEndNode(id: String, labels: List<String>, ids: Map<String, Any>): RelationshipPayloadBuilder{
+        this.endNode = RelationshipNodeChange(id, labels, ids)
         return this
     }
 
@@ -167,11 +167,36 @@ class RelationshipPayloadBuilder() {
     }
 }
 
-class SchemaBuilder() {
+class SchemaBuilder {
 
-    fun build() : Schema{
-        //FIXME implement
-        return Schema()
+    private lateinit var payload: Payload
+    private lateinit var constraints: Set<Constraint>
+
+    fun withPayload(payload: Payload): SchemaBuilder {
+        this.payload = payload
+        return this
+    }
+
+    fun withConstraints(constraints: Set<Constraint>): SchemaBuilder {
+        this.constraints = constraints
+        return this
+    }
+
+    private fun mapPropertiesToTypes(properties: RecordChange?): Map<String, String> {
+        return properties?.properties
+                ?.mapValues {
+                    val clazz = it.value::class
+                    if (clazz.java.isArray) {
+                        "${it.value::class.java.componentType}[]"
+                    } else {
+                        it.value::class.java.simpleName
+                    }
+                }
+                .orEmpty()
+    }
+
+    fun build(): Schema {
+        return Schema(mapPropertiesToTypes(payload.after ?: payload.before), constraints.toList())
     }
 }
 

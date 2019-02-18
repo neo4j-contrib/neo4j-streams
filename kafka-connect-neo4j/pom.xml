@@ -5,7 +5,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>kafka-connect-neo4j</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Kafka Connect Neo4j</name>
@@ -18,7 +18,6 @@
     </parent>
 
     <properties>
-        <easymock.version>4.0.1</easymock.version>
         <confluent.serializer.version>5.0.0</confluent.serializer.version>
         <confluent.connect.plugin.version>0.11.1</confluent.connect.plugin.version>
         <mvn.assembly.plugin.version>3.1.0</mvn.assembly.plugin.version>
@@ -69,13 +68,6 @@
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-values</artifactId>
             <version>${neo4j.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.easymock</groupId>
-            <artifactId>easymock</artifactId>
-            <version>${easymock.version}</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
