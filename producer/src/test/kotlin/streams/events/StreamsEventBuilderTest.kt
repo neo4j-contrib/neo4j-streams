@@ -1,14 +1,10 @@
 package streams.events
 
 import org.junit.Test
-import org.neo4j.graphdb.Label
-import org.neo4j.graphdb.Node
-import org.neo4j.graphdb.Relationship
+import org.mockito.Mockito
+import org.neo4j.graphdb.*
 import streams.NodeRoutingConfiguration
 import streams.RelationshipRoutingConfiguration
-import streams.mocks.MockNode
-import streams.mocks.MockPath
-import streams.mocks.MockRelationship
 import streams.toMap
 import kotlin.test.assertEquals
 
@@ -32,8 +28,10 @@ class StreamsEventBuilderTest {
     @Test
     fun shouldCreateNode() {
         // Given
-        val payload = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                properties = mutableMapOf("prop" to "foo", "prop1" to "bar"))
+        val payload = Mockito.mock(Node::class.java)
+        Mockito.`when`(payload.id).thenReturn(1)
+        Mockito.`when`(payload.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -49,8 +47,10 @@ class StreamsEventBuilderTest {
     fun shouldCreateNodeWithIncludedProperties() {
         // Given
         val nodeRouting = NodeRoutingConfiguration(all = false, labels = listOf("Foo"), include = listOf("prop1"))
-        val payload = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                properties = mutableMapOf("prop" to "foo", "prop1" to "bar"))
+        val payload = Mockito.mock(Node::class.java)
+        Mockito.`when`(payload.id).thenReturn(1)
+        Mockito.`when`(payload.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -61,7 +61,7 @@ class StreamsEventBuilderTest {
 
         // Then
         val payloadAsMap = payload.toMap().toMutableMap()
-        payloadAsMap["properties"] = payload.properties.filter { nodeRouting.include.contains(it.key) }
+        payloadAsMap["properties"] = payload.allProperties.filter { nodeRouting.include.contains(it.key) }
         val expected = payloadAsMap.toMap()
         assertEquals(expected, result.payload)
     }
@@ -70,8 +70,10 @@ class StreamsEventBuilderTest {
     fun shouldCreateNodeWithoutExcludedProperties() {
         // Given
         val nodeRouting = NodeRoutingConfiguration(all = false, labels = listOf("Foo"), exclude = listOf("prop1"))
-        val payload = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                properties = mutableMapOf("prop" to "foo", "prop1" to "bar"))
+        val payload = Mockito.mock(Node::class.java)
+        Mockito.`when`(payload.id).thenReturn(1)
+        Mockito.`when`(payload.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -82,7 +84,7 @@ class StreamsEventBuilderTest {
 
         // Then
         val payloadAsMap = payload.toMap().toMutableMap()
-        payloadAsMap["properties"] = payload.properties.filter { !nodeRouting.exclude.contains(it.key) }
+        payloadAsMap["properties"] = payload.allProperties.filter { !nodeRouting.exclude.contains(it.key) }
         val expected = payloadAsMap.toMap()
         assertEquals(expected, result.payload)
     }
@@ -90,11 +92,20 @@ class StreamsEventBuilderTest {
     @Test
     fun shouldCreateRelationship() {
         // Given
-        val payload = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val payload = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(payload.id).thenReturn(10)
+        Mockito.`when`(payload.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(payload.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(payload.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -110,11 +121,20 @@ class StreamsEventBuilderTest {
     fun shouldCreateRelationshipWithIncludedProperties() {
         // Given
         val relRouting = RelationshipRoutingConfiguration(all = false, name = "KNOWS", include = listOf("prop1"))
-        val payload = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val payload = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(payload.id).thenReturn(10)
+        Mockito.`when`(payload.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(payload.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(payload.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -125,7 +145,7 @@ class StreamsEventBuilderTest {
 
         // Then
         val payloadAsMap = payload.toMap().toMutableMap()
-        payloadAsMap["properties"] = payload.properties.filter { relRouting.include.contains(it.key) }
+        payloadAsMap["properties"] = payload.allProperties.filter { relRouting.include.contains(it.key) }
         assertEquals(payloadAsMap.toMap(), result.payload)
     }
 
@@ -133,11 +153,20 @@ class StreamsEventBuilderTest {
     fun shouldCreateRelationshipWithoutExcludedProperties() {
         // Given
         val relRouting = RelationshipRoutingConfiguration(all = false, name = "KNOWS", exclude = listOf("prop1"))
-        val payload = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val payload = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(payload.id).thenReturn(10)
+        Mockito.`when`(payload.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(payload.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(payload.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(payload.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
 
         // When
         val result = StreamsEventBuilder()
@@ -148,7 +177,7 @@ class StreamsEventBuilderTest {
 
         // Then
         val payloadAsMap = payload.toMap().toMutableMap()
-        payloadAsMap["properties"] = payload.properties.filter { !relRouting.exclude.contains(it.key) }
+        payloadAsMap["properties"] = payload.allProperties.filter { !relRouting.exclude.contains(it.key) }
         assertEquals(payloadAsMap.toMap(), result.payload)
     }
 
@@ -185,14 +214,29 @@ class StreamsEventBuilderTest {
     @Test
     fun shouldReturnMapWithComplexTypes() {
         // Given
-        val node = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                properties = mutableMapOf("prop" to "foo", "prop1" to "bar"))
-        val relationship = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
-        val payload = mapOf("node" to node, "relationship" to relationship, "prop" to listOf(1, "two", null, mapOf("foo" to "bar")))
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val relationship = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(relationship.id).thenReturn(10)
+        Mockito.`when`(relationship.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(relationship.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(relationship.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(relationship.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+
+        val node = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(10)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("FooNode"), Label.label("BarNode")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "fooNode", "prop1" to "barNode"))
+
+        val payload = mapOf("node" to node,
+                "relationship" to relationship,
+                "prop" to listOf(1, "two", null, mapOf("foo" to "bar")))
 
         // When
         val result = StreamsEventBuilder()
@@ -212,14 +256,29 @@ class StreamsEventBuilderTest {
         // Given
         val nodeRouting = NodeRoutingConfiguration(all = false, labels = listOf("Foo"), include = listOf("prop1"))
         val relRouting = RelationshipRoutingConfiguration(all = false, name = "KNOWS", include = listOf("prop1"))
-        val node = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                properties = mutableMapOf("prop" to "foo", "prop1" to "bar"))
-        val relationship = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
-        val payload = mapOf("node" to node, "relationship" to relationship, "prop" to listOf(1, "two", null, mapOf("foo" to "bar")))
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val relationship = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(relationship.id).thenReturn(10)
+        Mockito.`when`(relationship.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(relationship.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(relationship.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(relationship.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+
+        val node = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(10)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("FooNode"), Label.label("BarNode")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "fooNode", "prop1" to "barNode"))
+
+        val payload = mapOf("node" to node,
+                "relationship" to relationship,
+                "prop" to listOf(1, "two", null, mapOf("foo" to "bar")))
 
         // When
         val resultNode = StreamsEventBuilder()
@@ -249,12 +308,26 @@ class StreamsEventBuilderTest {
     @Test
     fun shouldReturnPath() {
         // Given
-        val relationship = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
-        val payload = MockPath(relationship = relationship, startNode = relationship.startNode, endNode = relationship.endNode)
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val relationship = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(relationship.id).thenReturn(10)
+        Mockito.`when`(relationship.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(relationship.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(relationship.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(relationship.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val payload = Mockito.mock(Path::class.java)
+        Mockito.`when`(payload.relationships()).thenReturn(listOf(relationship))
+        Mockito.`when`(payload.nodes()).thenReturn(listOf(mockedStartNode, mockedEndNode))
+        Mockito.`when`(payload.startNode()).thenReturn(mockedStartNode)
+        Mockito.`when`(payload.endNode()).thenReturn(mockedEndNode)
+        Mockito.`when`(payload.length()).thenReturn(1)
 
         // When
         val result = StreamsEventBuilder()
@@ -284,12 +357,26 @@ class StreamsEventBuilderTest {
         // Given
         val nodeRouting = NodeRoutingConfiguration(all = false, labels = listOf("Foo"), include = listOf("prop1"))
         val relRouting = RelationshipRoutingConfiguration(all = false, name = "KNOWS", include = listOf("prop1"))
-        val relationship = MockRelationship(id = 10, type = "KNOWS", properties = mutableMapOf("prop" to "foo", "prop1" to "bar"),
-                startNode = MockNode(id = 1, labels = mutableListOf(Label.label("Foo"), Label.label("Bar")),
-                        properties = mutableMapOf("prop" to "foo", "prop1" to "bar")),
-                endNode = MockNode(id = 2, labels = mutableListOf(Label.label("FooEnd"), Label.label("BarEnd")),
-                        properties = mutableMapOf("prop" to "fooEnd", "prop1" to "barEnd")))
-        val payload = MockPath(relationship = relationship, startNode = relationship.startNode, endNode = relationship.endNode)
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label("Foo"), Label.label("Bar")))
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label("FooEnd"), Label.label("BarEnd")))
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(mapOf("prop" to "fooEnd", "prop1" to "barEnd"))
+        val relationship = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(relationship.id).thenReturn(10)
+        Mockito.`when`(relationship.type).thenReturn(RelationshipType.withName("KNOWS"))
+        Mockito.`when`(relationship.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(relationship.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(relationship.allProperties).thenReturn(mapOf("prop" to "foo", "prop1" to "bar"))
+        val payload = Mockito.mock(Path::class.java)
+        Mockito.`when`(payload.relationships()).thenReturn(listOf(relationship))
+        Mockito.`when`(payload.nodes()).thenReturn(listOf(mockedStartNode, mockedEndNode))
+        Mockito.`when`(payload.startNode()).thenReturn(mockedStartNode)
+        Mockito.`when`(payload.endNode()).thenReturn(mockedEndNode)
+        Mockito.`when`(payload.length()).thenReturn(1)
 
         // When
         val result = StreamsEventBuilder()

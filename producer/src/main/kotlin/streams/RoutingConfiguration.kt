@@ -121,14 +121,14 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                     }
                     .map {
                         val nodePayload = streamsTransactionEvent.payload as NodePayload
-                        val newRecordBefore: RecordChange? = if (nodePayload.before != null) {
+                        val newRecordBefore = if (nodePayload.before != null) {
                             val recordBefore = nodePayload.before as NodeChange
                             recordBefore.copy(properties = filterProperties(streamsTransactionEvent.payload.before?.properties, it),
                                     labels = recordBefore.labels)
                         } else {
                             null
                         }
-                        val newRecordAfter: RecordChange? = if (nodePayload.after != null) {
+                        val newRecordAfter = if (nodePayload.after != null) {
                             val recordAfter = nodePayload.after as NodeChange
                             recordAfter.copy(properties = filterProperties(streamsTransactionEvent.payload.after?.properties, it),
                                     labels = recordAfter.labels)
@@ -197,13 +197,13 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                     .map {
                         val relationshipPayload = streamsTransactionEvent.payload as RelationshipPayload
 
-                        val newRecordBefore: RecordChange? = if (relationshipPayload.before != null) {
+                        val newRecordBefore = if (relationshipPayload.before != null) {
                             val recordBefore = relationshipPayload.before as RelationshipChange
                             recordBefore.copy(properties = filterProperties(streamsTransactionEvent.payload.before?.properties, it))
                         } else {
                             null
                         }
-                        val newRecordAfter: RecordChange? = if (relationshipPayload.after != null) {
+                        val newRecordAfter = if (relationshipPayload.after != null) {
                             val recordAfter = relationshipPayload.after as RelationshipChange
                             recordAfter.copy(properties = filterProperties(streamsTransactionEvent.payload.after?.properties, it))
                         } else {

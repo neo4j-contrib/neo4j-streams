@@ -156,7 +156,7 @@ We must distinguish two cases:
 
 |*properties*
 |Map<K, V>
-|List of properties attached to the node, the Key is the property name
+|List of properties attached to the node, the `K` is the property name
 |===
 
 ====== Relationships
@@ -173,7 +173,7 @@ We must distinguish two cases:
 
 |*properties*
 |Map<K,V>
-|List of properties attached to the relationship, the Key is the property name
+|List of properties attached to the relationship, the `K` is the property name
 
 |*start*
 |Object
@@ -199,6 +199,11 @@ We must distinguish two cases:
 |*labels*
 |String[]
 |List of labels attached to the node
+
+|*ids*
+|Map<K,V>
+|The ids related to the defined constraints for the node (`UNIQUENESS` and/or `NODE_KEY`). The `K` is the property name, and the `V` the related value
+
 |===
 
 
@@ -210,56 +215,20 @@ We must distinguish two cases:
 |Type
 |Description
 
-|*before*
-|Object
-|The schema before the transaction event
-
-|*after*
-|Object
-|The schema after the transaction event
-|===
-
-===== Schema: before and after
-
-[cols="3*",options="header"]
-|===
-|Field
-|Type
-|Description
-
-|*before*
-|Object
-|The schema before the transaction event
-
-|*after*
-|Object
-|The schema after the transaction event
-|===
-
-We must distinguish two cases:
-
-====== Nodes
-
-[cols="3*",options="header"]
-|===
-|Field
-|Type
-|Description
-
 |*constraints*
 |Object[]
-|List of constraints attached to the node
+|List of constraints attached to the entity
 
 |*properties*
 |Map<K, V>
-|List of properties attached to the node
+|List of properties attached to the entity, where the `K` is the property name and the `V` is the class type
 |===
 
 ====== Constraints
 
 Nodes and Relationships can have a list of constraints attached to them:
 
-.Node Constraints
+.Constraints
 [cols="3*",options="header"]
 |===
 |Field
@@ -272,21 +241,9 @@ Nodes and Relationships can have a list of constraints attached to them:
 
 |*type*
 |enum["NODE_KEY", "UNIQUENESS", "RELATIONSHIP_PROPERTY_EXISTENCE", "NODE_PROPERTY_EXISTENCE"]
-|The contraint type
+|The constraint type
 
 |*properties*
 |String[]
-|List of node properties involved in the constraint
-|===
-
-.Relationship constraints
-[cols="3*",options="header"]
-|===
-|Field
-|Type
-|Description
-
-|*properties*
-|Map<K, V>
-|List of properties attached to the relationship
+|List of properties involved in the constraint
 |===

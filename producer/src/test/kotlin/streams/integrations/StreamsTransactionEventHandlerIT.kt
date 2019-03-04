@@ -12,7 +12,7 @@ import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
-
+@Suppress("DEPRECATION")
 class StreamsTransactionEventHandlerIT {
 
     private var db: GraphDatabaseService? = null

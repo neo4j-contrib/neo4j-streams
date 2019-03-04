@@ -12,7 +12,7 @@ fun Node.toMap(): Map<String, Any?> {
 
 fun Relationship.toMap(): Map<String, Any?> {
     return mapOf("id" to id.toString(), "properties" to allProperties, "label" to type,
-            "start" to RelationshipNodeChange(startNode.id.toString(), startNode.labelNames()),
-            "end" to RelationshipNodeChange(endNode.id.toString(), endNode.labelNames()),
+            "start" to startNode.toMap(),
+            "end" to endNode.toMap(),
             "type" to EntityType.relationship)
 }
