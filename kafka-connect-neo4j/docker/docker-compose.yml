@@ -100,6 +100,12 @@ services:
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       CONNECT_PLUGIN_PATH: /usr/share/java,/tmp/connect-plugins
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=DEBUG,org.I0Itec.zkclient=DEBUG,org.reflections=ERROR
+    command: 
+      - bash 
+      - -c 
+      - |
+        confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:1.0.0
+        /etc/confluent/docker/run
 
   control-center:
     image: confluentinc/cp-enterprise-control-center
