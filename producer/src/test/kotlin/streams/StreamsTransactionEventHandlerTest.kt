@@ -81,7 +81,7 @@ class StreamsTransactionEventHandlerTest {
         assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
         assertEquals(mapOf("name" to "String", "surname" to "String"), MockStreamsEventRouter.events[0].schema.properties)
-        assertEquals(listOf(Constraint("Person", setOf("name", "surname"), ConstraintType.NODE_KEY)), MockStreamsEventRouter.events[0].schema.constraints)
+        assertEquals(listOf(Constraint("Person", setOf("name", "surname"), StreamsConstraintType.UNIQUE)), MockStreamsEventRouter.events[0].schema.constraints)
     }
 
     @Test

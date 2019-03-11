@@ -240,7 +240,7 @@ Nodes and Relationships can have a list of constraints attached to them:
 |The label attached to the constraint
 
 |*type*
-|enum["NODE_KEY", "UNIQUENESS", "RELATIONSHIP_PROPERTY_EXISTENCE", "NODE_PROPERTY_EXISTENCE"]
+|enum["UNIQUE", "NODE_PROPERTY_EXISTS", "RELATIONSHIP_PROPERTY_EXISTS"]
 |The constraint type
 
 |*properties*

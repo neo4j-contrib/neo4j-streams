@@ -17,6 +17,7 @@ import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.graphdb.schema.Schema
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.events.*
+import streams.events.StreamsConstraintType
 import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -209,12 +210,8 @@ class StreamsTransactionEventHandlerRelTest {
         assertEquals(EntityType.relationship, MockStreamsEventRouter.events[0].payload.type)
         assertEquals(mapOf("since" to "Integer"), MockStreamsEventRouter.events[0].schema.properties)
 
-        val startConstraint = MockStreamsEventRouter.events[0].schema.constraints[0]
-        val endConstraint = MockStreamsEventRouter.events[0].schema.constraints[1]
-        val relConstraint = MockStreamsEventRouter.events[0].schema.constraints[2]
-        assertEquals(Constraint(startLabel, setOf("name", "surname"), ConstraintType.NODE_KEY), startConstraint)
-        assertEquals(Constraint(endLabel, setOf("name"), ConstraintType.UNIQUENESS), endConstraint)
-        assertEquals(Constraint(relType, setOf("since"), ConstraintType.RELATIONSHIP_PROPERTY_EXISTENCE), relConstraint)
+        val relConstraint = MockStreamsEventRouter.events[0].schema.constraints[0]
+        assertEquals(Constraint(relType, setOf("since"), StreamsConstraintType.RELATIONSHIP_PROPERTY_EXISTS), relConstraint)
     }
 
     @Test

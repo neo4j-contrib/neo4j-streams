@@ -187,7 +187,7 @@ class SchemaBuilder {
                 ?.mapValues {
                     val clazz = it.value::class
                     if (clazz.java.isArray) {
-                        "${it.value::class.java.componentType}[]"
+                        "${it.value::class.java.componentType.simpleName}[]"
                     } else {
                         it.value::class.java.simpleName
                     }

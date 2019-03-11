@@ -44,9 +44,11 @@ data class RelationshipPayload(override val id: String,
                                val label: String,
                                override val type: EntityType = EntityType.relationship): Payload()
 
+enum class StreamsConstraintType { UNIQUE, NODE_PROPERTY_EXISTS, RELATIONSHIP_PROPERTY_EXISTS }
+
 data class Constraint(val label: String?,
                       val properties: Set<String>,
-                      val type: ConstraintType)
+                      val type: StreamsConstraintType)
 
 data class Schema(val properties: Map<String, String> = emptyMap(),
                   val constraints: List<Constraint> = emptyList())

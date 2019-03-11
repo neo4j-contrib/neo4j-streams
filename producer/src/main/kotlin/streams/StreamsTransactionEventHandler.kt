@@ -1,7 +1,5 @@
 package streams
 
-import org.neo4j.graphdb.Label
-import org.neo4j.graphdb.RelationshipType
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
 import streams.events.*
@@ -38,37 +36,22 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
     }
 
     private fun mapToStreamsEvent(operation: OperationType, payloads: List<Payload>, txd: TransactionData, totalEventsCount: Int, accumulator: AtomicInteger,
-            nodeConstraints: Map<Label, Set<Constraint>>, relConstraints: Map<RelationshipType, Set<Constraint>>) : List<StreamsTransactionEvent> {
+            nodeConstraints: Map<String, Set<Constraint>>, relConstraints: Map<String, Set<Constraint>>) : List<StreamsTransactionEvent> {
         return payloads.map { payload ->
             accumulator.incrementAndGet()
             val schema = if (payload is NodePayload) {
-                val labels = (payload.after ?: payload.before)!!.labels?.toSet().orEmpty()
-                val constraints = if (labels.isNotEmpty()) {
-                    labels.flatMap { label ->
-                        nodeConstraints[Label.label(label)].orEmpty()
-                    }.toSet()
-                } else {
-                    emptySet()
-                }
+                val constraints = (payload.after ?: payload.before)!!.labels
+                        .orEmpty()
+                        .flatMap { label -> nodeConstraints[label].orEmpty() }
+                        .toSet()
                 SchemaBuilder()
                         .withPayload(payload)
                         .withConstraints(constraints)
                         .build()
             } else  {
                 val relationshipPayload = (payload as RelationshipPayload)
-                val label = relationshipPayload.label
-                val start = payload.start.labels
-                        ?.flatMap { label ->
-                            nodeConstraints[Label.label(label)].orEmpty()
-                        }
-                        .orEmpty()
-                val end = payload.end.labels
-                        ?.flatMap { label ->
-                            nodeConstraints[Label.label(label)].orEmpty()
-                        }
-                        .orEmpty()
-                val rel = relConstraints[RelationshipType.withName(label)].orEmpty()
-                val constraints = (start + end + rel).toSet()
+                val relType = relationshipPayload.label
+                val constraints = relConstraints[relType].orEmpty()
                 SchemaBuilder()
                         .withPayload(payload)
                         .withConstraints(constraints)
@@ -99,13 +82,13 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         // labels and properties of deleted nodes are unreachable
         val deletedNodeProperties = txd.removedNodeProperties()
                 .filter { txd.deletedNodes().contains( it.entity() )}
-                .map { Pair(it.entity().id, Pair(it.key(), it.previouslyCommitedValue())) }
+                .map { it.entity().id to (it.key() to it.previouslyCommitedValue()) }
                 .groupBy({it.first},{it.second}) // { nodeId -> [(k,v)] }
                 .mapValues { it.value.toMap() }
 
         val deletedLabels = txd.removedLabels()
                 .filter { txd.deletedNodes().contains( it.node() )}
-                .map { labelEntry -> Pair(labelEntry.node().id, labelEntry.label().name()) } // [ (nodeId, [label]) ]
+                .map { labelEntry -> labelEntry.node().id to labelEntry.label().name() } // [ (nodeId, [label]) ]
                 .groupBy({it.first},{it.second}) // { nodeId -> [label]  }
 
 
@@ -137,10 +120,10 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .withDeletedLabels(deletedLabels)
     }
 
-    private fun buildRelationshipChanges(txd: TransactionData, builder: PreviousTransactionDataBuilder, nodeConstraints: Map<Label, Set<Constraint>>): PreviousTransactionDataBuilder{
+    private fun buildRelationshipChanges(txd: TransactionData, builder: PreviousTransactionDataBuilder, nodeConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder{
         val deletedRelProperties = txd.removedRelationshipProperties()
                 .filter { txd.deletedRelationships().contains( it.entity() )}
-                .map { Pair(it.entity().id, Pair(it.key(), it.previouslyCommitedValue())) }
+                .map { it.entity().id to (it.key() to it.previouslyCommitedValue()) }
                 .groupBy({ it.first }, { it.second }) // { nodeId -> [(k,v)] }
                 .mapValues { it.value.toMap() }
 
@@ -150,8 +133,10 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                     .withProperties(it.allProperties)
                     .build()
 
-            val startKeys = it.startNode.labels.flatMap { label -> nodeConstraints[label].orEmpty() }.flatMap { it.properties }.toSet().toTypedArray()
-            val endKeys = it.endNode.labels.flatMap { label -> nodeConstraints[label].orEmpty() }.flatMap { it.properties }.toSet().toTypedArray()
+            val startKeys = getNodeKeys(it.startNode.labelNames(), it.startNode.propertyKeys.toSet(), nodeConstraints)
+                    .toTypedArray()
+            val endKeys = getNodeKeys(it.endNode.labelNames(), it.endNode.propertyKeys.toSet(), nodeConstraints)
+                    .toTypedArray()
 
             val payload = RelationshipPayloadBuilder()
                     .withId(it.id.toString())
@@ -171,13 +156,24 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
             // start and end can be unreachable in case of detach delete
             val isStartNodeDeleted = txd.isDeleted(it.startNode)
-            val isEndNodeDelete = txd.isDeleted(it.endNode)
+            val isEndNodeDeleted = txd.isDeleted(it.endNode)
 
             val startNodeLabels = if (isStartNodeDeleted) builder.deletedLabels(it.startNode.id) else it.startNode.labelNames()
-            val endNodeLabels = if (isEndNodeDelete) builder.deletedLabels(it.endNode.id) else it.endNode.labelNames()
+            val endNodeLabels = if (isEndNodeDeleted) builder.deletedLabels(it.endNode.id) else it.endNode.labelNames()
 
-            val startKeys = startNodeLabels.flatMap { label -> nodeConstraints[Label.label(label)].orEmpty() }.flatMap { it.properties }.toSet() //.toTypedArray()
-            val endKeys = endNodeLabels.flatMap { label -> nodeConstraints[Label.label(label)].orEmpty() }.flatMap { it.properties }.toSet() //.toTypedArray()
+            val startPropertyKeys = if (isStartNodeDeleted) {
+                builder.nodeDeletedPayload(it.startNodeId)?.before?.properties?.keys.orEmpty()
+            } else {
+                it.startNode.propertyKeys
+            }
+
+            val endPropertyKeys = if (isEndNodeDeleted) {
+                builder.nodeDeletedPayload(it.endNodeId)?.before?.properties?.keys.orEmpty()
+            } else {
+                it.endNode.propertyKeys
+            }
+            val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), nodeConstraints)
+            val endKeys = getNodeKeys(endNodeLabels, endPropertyKeys.toSet(), nodeConstraints)
 
             val startProperties = if (isStartNodeDeleted) {
                 val payload = builder.nodeDeletedPayload(it.startNode.id)!!
@@ -185,7 +181,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
             } else {
                 it.startNode.getProperties(*startKeys.toTypedArray())
             }
-            val endProperties = if (isEndNodeDelete) {
+            val endProperties = if (isEndNodeDeleted) {
                 val payload = builder.nodeDeletedPayload(it.endNode.id)!!
                 (payload.after ?: payload.before)?.properties?.filterKeys { endKeys.contains(it) }.orEmpty()
             } else {

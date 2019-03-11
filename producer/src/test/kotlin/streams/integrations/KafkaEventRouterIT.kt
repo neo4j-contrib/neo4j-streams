@@ -225,7 +225,7 @@ class KafkaEventRouterIT {
                 labels == listOf("PersonConstr") && properties == mapOf("name" to "Andrea")
                         && it.meta.operation == OperationType.created
                         && it.schema.properties == mapOf("name" to "String")
-                        && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), ConstraintType.UNIQUENESS))
+                        && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
             }
         })
         consumer.close()

@@ -45,11 +45,7 @@
     "constraints": [{
       "label": "KNOWS",
       "properties": ["since"],
-      "type": "RELATIONSHIP_PROPERTY_EXISTENCE"
-    },{
-      "label": "Person",
-      "properties": ["first_name", "last_name"],
-      "type": "NODE_KEY"
+      "type": "RELATIONSHIP_PROPERTY_EXISTS"
     }]
   }
 }

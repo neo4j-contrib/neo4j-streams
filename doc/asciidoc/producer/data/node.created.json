@@ -31,7 +31,7 @@
     "constraints": [{
       "label": "Person",
       "properties": ["first_name", "last_name"],
-      "type": "NODE_KEY"
+      "type": "UNIQUE"
     }]
   }
 }

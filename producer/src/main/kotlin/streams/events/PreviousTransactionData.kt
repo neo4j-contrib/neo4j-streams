@@ -1,12 +1,9 @@
 package streams.events
 
-import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
-import org.neo4j.graphdb.RelationshipType
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
-import org.neo4j.graphdb.schema.ConstraintType
 import streams.extensions.labelNames
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
@@ -22,13 +19,17 @@ data class PreviousRelTransactionData(val relProperties: Map<Long, Map<String, A
 
 data class PreviousTransactionData(val nodeData: PreviousNodeTransactionData,
                                    val relData: PreviousRelTransactionData,
-                                   val nodeConstraints: Map<Label, Set<Constraint>>,
-                                   val relConstraints: Map<RelationshipType, Set<Constraint>>)
+                                   val nodeConstraints: Map<String, Set<Constraint>>,
+                                   val relConstraints: Map<String, Set<Constraint>>)
 
-fun getNodeKeys(constraints: Set<Constraint>): Set<String> {
-    return constraints.filter { it.type == ConstraintType.NODE_KEY || it.type == ConstraintType.UNIQUENESS }
-            .flatMap { it.properties }
-            .toSet()
+fun getNodeKeys(labels: List<String>, propertyKeys: Set<String>, constraints: Map<String, Set<Constraint>>): Set<String> {
+    return labels
+            .filter {
+                constraints.containsKey(it) && constraints.getValue(it).any { it.properties.containsAll(propertyKeys) }
+            }
+            .map { constraints.getValue(it) }
+            .map { it.minBy { it.properties.size }!!.properties }
+            .minBy { it.size }.orEmpty()
 }
 
 /**
@@ -50,15 +51,15 @@ class PreviousTransactionDataBuilder {
     private var relCreatedPayload: List<RelationshipPayload> = emptyList()
     private var relDeletedPayload: List<RelationshipPayload> = emptyList()
 
-    private lateinit var nodeConstraints: Map<Label, Set<Constraint>>
-    private lateinit var relConstraints: Map<RelationshipType, Set<Constraint>>
+    private lateinit var nodeConstraints: Map<String, Set<Constraint>>
+    private lateinit var relConstraints: Map<String, Set<Constraint>>
 
-    fun withNodeConstraints(nodeConstraints: Map<Label, Set<Constraint>>): PreviousTransactionDataBuilder {
+    fun withNodeConstraints(nodeConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder {
         this.nodeConstraints = nodeConstraints
         return this
     }
 
-    fun withRelConstraints(relConstraints: Map<RelationshipType, Set<Constraint>>): PreviousTransactionDataBuilder {
+    fun withRelConstraints(relConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder {
         this.relConstraints = relConstraints
         return this
     }
@@ -126,11 +127,9 @@ class PreviousTransactionDataBuilder {
                     val startNodeLabels = it.startNode.labelNames()
                     val endNodeLabels = it.endNode.labelNames()
 
-                    val startNodeKeys = startNodeLabels
-                            .flatMap { label -> getNodeKeys(nodeConstraints[Label.label(label)].orEmpty()) }
+                    val startNodeKeys = getNodeKeys(it.startNode.labelNames(), it.startNode.propertyKeys.toSet(), nodeConstraints)
                             .toTypedArray()
-                    val endNodeKeys = endNodeLabels
-                            .flatMap { label -> getNodeKeys(nodeConstraints[Label.label(label)].orEmpty()) }
+                    val endNodeKeys = getNodeKeys(it.endNode.labelNames(), it.endNode.propertyKeys.toSet(), nodeConstraints)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()

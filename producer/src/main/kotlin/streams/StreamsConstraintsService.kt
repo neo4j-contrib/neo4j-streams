@@ -16,8 +16,8 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
         job.cancelAndJoin()
     }
 
-    private val nodeConstraints = ConcurrentHashMap<Label, Set<Constraint>>()
-    private val relConstraints = ConcurrentHashMap<RelationshipType, Set<Constraint>>()
+    private val nodeConstraints = ConcurrentHashMap<String, Set<Constraint>>()
+    private val relConstraints = ConcurrentHashMap<String, Set<Constraint>>()
 
     private val job: Job
 
@@ -27,16 +27,20 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
                 StreamsUtils.ignoreExceptions({
                     db.beginTx().use {
                         db.schema().constraints
-                                .filter { try { it.label; true } catch (e: IllegalStateException) { false } }
-                                .groupBy { it.label }
+                                .filter { it.isNodeConstraint() }
+                                .groupBy { it.label.name() }
                                 .forEach { label, constraints ->
-                                    nodeConstraints[label] = constraints.map { Constraint(label.name(), it.propertyKeys.toSet(), it.constraintType) }.toSet()
+                                    nodeConstraints[label] = constraints
+                                            .map { Constraint(label, it.propertyKeys.toSet(), it.streamsConstraintType()) }
+                                            .toSet()
                                 }
                         db.schema().constraints
-                                .filter { try { it.relationshipType; true } catch (e: IllegalStateException) { false } }
-                                .groupBy { it.relationshipType }
+                                .filter { it.isRelationshipConstraint() }
+                                .groupBy { it.relationshipType.name() }
                                 .forEach { relationshipType, constraints ->
-                                    relConstraints[relationshipType] = constraints.map { Constraint(relationshipType.name(), it.propertyKeys.toSet(), it.constraintType) }.toSet()
+                                    relConstraints[relationshipType] = constraints
+                                            .map { Constraint(relationshipType, it.propertyKeys.toSet(), it.streamsConstraintType()) }
+                                            .toSet()
                                 }
                     }
                 }, DatabaseShutdownException::class.java)
@@ -46,18 +50,18 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
     }
 
     fun forLabel(label: Label): Set<Constraint> {
-        return nodeConstraints[label] ?: emptySet()
+        return nodeConstraints[label.name()] ?: emptySet()
     }
 
     fun forRelationshipType(relationshipType: RelationshipType): Set<Constraint> {
-        return relConstraints[relationshipType] ?: emptySet()
+        return relConstraints[relationshipType.name()] ?: emptySet()
     }
 
-    fun allForLabels(): Map<Label, Set<Constraint>> {
+    fun allForLabels(): Map<String, Set<Constraint>> {
         return Collections.unmodifiableMap(nodeConstraints)
     }
 
-    fun allForRelationshipType(): Map<RelationshipType, Set<Constraint>> {
+    fun allForRelationshipType(): Map<String, Set<Constraint>> {
         return Collections.unmodifiableMap(relConstraints)
     }
 
