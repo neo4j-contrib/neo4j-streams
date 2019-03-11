@@ -16,6 +16,7 @@ import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class KafkaEventRouterIT {
 
@@ -154,7 +155,15 @@ class KafkaEventRouterIT {
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
         val message = "Hello World"
-        db.execute("CALL streams.publish('neo4j', '$message')").close()
+
+        val result = db.execute("CALL streams.publish('neo4j', '$message')")
+        assertTrue { result.hasNext() }
+        val resultMap = result.next()
+
+        assertTrue { "$message".equals(resultMap.get("payload")) }
+        assertTrue { "neo4j".equals(resultMap.get("topic")) }
+
+        result.close()
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
