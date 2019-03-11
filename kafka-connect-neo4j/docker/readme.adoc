@@ -44,17 +44,8 @@ Once the compose file is up and running you can install the plugin by executing 
 
 [source,bash]
 ----
-docker exec -it connect confluent-hub install neo4j/kafka-connect-neo4j:1.0.0
+docker exec -it connect confluent-hub install --no-prompt  neo4j/kafka-connect-neo4j:1.0.0
 ----
-
-When the installation will ask:
-
-[source,bash]
-----
-The component can be installed in any of the following Confluent Platform installations:
-----
-
-Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
 
 At the end of the process the plugin is automatically installed.
 
