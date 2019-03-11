@@ -18,6 +18,7 @@ import org.slf4j.LoggerFactory
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
 import org.apache.kafka.connect.errors.ConnectException
+import org.neo4j.driver.v1.exceptions.Neo4jException
 import java.util.concurrent.TimeUnit
 
 
@@ -28,6 +29,10 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
+
+    private val skipNeo4jErrors = listOf("Neo.ClientError.Statement.PropertyNotFound",
+            "Neo.ClientError.Statement.SemanticError",
+            "Neo.ClientError.Statement.ParameterMissing")
 
     init {
         val configBuilder = Config.build()
@@ -77,17 +82,29 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
                 runBlocking {
                     retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
                             retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                        session.writeTransaction {
-                            val result = it.run(query, data)
-                            if (log.isDebugEnabled) {
-                                log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
+                        try {
+                            session.writeTransaction {
+                                val result = it.run(query, data)
+                                if (log.isDebugEnabled) {
+                                    log.debug("Successfully executed query, summary: ${result.summary()}")
+                                }
+                            }
+                        } catch (neoException: Neo4jException) {
+                            if (skipNeo4jErrors.contains(neoException.code())) {
+                                log.info("Skip query: `$query`. Error message `${neoException.message}`. Error code: `${neoException.code()}`")
+                            } else {
+                                throw neoException
                             }
                         }
                     }
                 }
             } catch (e: Exception) {
                 if (log.isDebugEnabled) {
-                    log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+                    if (e is Neo4jException) {
+                        log.debug("Exception `${e.message}` with code `${e.code()}` while executing query `$query`, with data `$data`")
+                    } else {
+                        log.debug("Exception `${e.message}` while executing query `$query`, with data `$data`")
+                    }
                 }
                 throw e
             }
