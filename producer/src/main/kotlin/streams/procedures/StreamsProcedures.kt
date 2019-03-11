@@ -35,7 +35,7 @@ class StreamsProcedures {
         }
         if (payload == null) {
             log?.info("Payload empty, no message sent")
-            return Stream.empty();
+            throw RuntimeException("Payload may not be null")
         }
         val streamsEvent = StreamsEventBuilder()
                 .withPayload(payload)

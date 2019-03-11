@@ -17,6 +17,7 @@ import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class KafkaEventRouterIT {
 
@@ -173,6 +174,17 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
+    }
+
+    @Test
+    fun testCantPublishNull() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf("neo4j"))
+
+        assertFailsWith(RuntimeException::class) {
+            db.execute("CALL streams.publish('neo4j', null)")
+        }
     }
 
     private fun getRecordCount(config: KafkaConfiguration, topic: String): Int {
