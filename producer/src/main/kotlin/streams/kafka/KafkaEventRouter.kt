@@ -16,6 +16,7 @@ import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
 import java.util.*
+import java.util.concurrent.Future
 import java.util.concurrent.ThreadLocalRandom
 
 
@@ -42,43 +43,44 @@ class KafkaEventRouter: StreamsEventRouter {
         producer.close()
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
-        producer.send(producerRecord) { meta: RecordMetadata?, error: Exception? ->
+    private fun send(producerRecord: ProducerRecord<String, ByteArray>): Future<RecordMetadata> {
+        return producer.send(producerRecord) { meta: RecordMetadata?, error: Exception? ->
             if (log.isDebugEnabled) {
                 log.debug("Sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
             }
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent) {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent): Future<RecordMetadata> {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
         val uuid = UUID.randomUUID().toString()
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), uuid,
                 JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
+        return send(producerRecord)
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent) {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent): Future<RecordMetadata> {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
                 JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
+        return send(producerRecord)
     }
 
-    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {
-        try {
+    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>): List<out Future<RecordMetadata>> {
+        val sendFutures: MutableList<Future<RecordMetadata>> = mutableListOf()
+
+         try {
             producer.beginTransaction()
             transactionEvents.forEach {
+                // Use a mutable list and add each one, because we might send some and get an exception
+                // provoked by later ones.  We want to be able to return all sendFutures we managed to
+                // construct before hitting the Exception.
                 val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
-                if (it is StreamsTransactionEvent) {
-                    sendEvent(partition, topic, it)
-                } else {
-                    sendEvent(partition, topic, it)
-                }
+        sendFutures.add(sendEvent(partition, topic, it))
             }
             producer.commitTransaction()
         } catch (e: ProducerFencedException) {
@@ -94,8 +96,19 @@ class KafkaEventRouter: StreamsEventRouter {
             log.error("Generic kafka error. Stack trace is:", e)
             producer.abortTransaction()
         }
+
+        return sendFutures
     }
 
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<out RecordMetadata> {
+        producer.beginTransaction();
+
+        var results = transactionEvents.map { it ->
+            sendEvent(ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions), topic, it) }
+                .map { it -> it.get() }
+        producer.commitTransaction()
+        return results
+    }
 }
 
 class Neo4jKafkaProducer<K, V>: KafkaProducer<K, V> {

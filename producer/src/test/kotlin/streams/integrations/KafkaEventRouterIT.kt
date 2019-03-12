@@ -164,6 +164,12 @@ class KafkaEventRouterIT {
         assertTrue { "$message".equals(resultMap.get("payload")) }
         assertTrue { "neo4j".equals(resultMap.get("topic")) }
 
+        assertTrue { resultMap.containsKey("offset") }
+        assertTrue { resultMap.containsKey("partition") }
+        assertTrue { resultMap.containsKey("keySize") }
+        assertTrue { resultMap.containsKey("valueSize") }
+        assertTrue { resultMap.containsKey("timestamp") }
+
         result.close()
         val records = consumer.poll(5000)
         assertEquals(1, records.count())

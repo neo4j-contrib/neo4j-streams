@@ -1,6 +1,7 @@
 package streams.procedures
 
 import org.apache.commons.lang3.StringUtils
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.neo4j.logging.Log
 import org.neo4j.procedure.*
 import streams.StreamsEventRouter
@@ -13,10 +14,22 @@ class PublishResult {
     @JvmField public var topic: String
     @JvmField public var payload: Any
     @JvmField public var config: Map<String,Any>?
-    constructor(topic: String, payload: Any, config: Map<String,Any>?) {
+    @JvmField public var offset: Long
+    @JvmField public var partition: Long
+    @JvmField public var keySize: Long
+    @JvmField public var valueSize: Long
+    @JvmField public var timestamp: Long
+
+    constructor(topic: String, payload: Any, config: Map<String,Any>?, md: RecordMetadata) {
         this.topic = topic;
         this.payload = payload;
         this.config = config;
+
+        this.offset = md.offset()
+        this.partition = md.partition().toLong()
+        this.keySize = md.serializedKeySize().toLong()
+        this.valueSize = md.serializedValueSize().toLong()
+        this.timestamp = md.timestamp()
     }
 }
 
@@ -49,9 +62,9 @@ class StreamsProcedures {
                         .firstOrNull())
                 .withTopic(topic)
                 .build()
-        StreamsProcedures.eventRouter.sendEvents(topic, listOf(streamsEvent))
+        val result = StreamsProcedures.eventRouter.sendEventsSync(topic, listOf(streamsEvent))
 
-        return Stream.of(PublishResult(topic, payload, config))
+        return result.map { PublishResult(topic, payload, config, it) }.stream()
     }
 
     private fun checkEnabled() {
