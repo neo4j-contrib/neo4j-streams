@@ -105,7 +105,6 @@ services:
       - -c 
       - |
         confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:1.0.0
-        confluent-hub install --no-prompt jcustenborder/kafka-connect-twitter:0.2.32
         /etc/confluent/docker/run
 
   control-center:
@@ -128,21 +127,3 @@ services:
       CONTROL_CENTER_MONITORING_INTERCEPTOR_TOPIC_PARTITIONS: 1
       CONFLUENT_METRICS_TOPIC_REPLICATION: 1
       PORT: 9021
-
-  ksql-server:
-    image: confluentinc/cp-ksql-server:5.1.0
-    depends_on:
-      - broker
-      - schema_registry
-    environment:
-      KSQL_BOOTSTRAP_SERVERS: broker:9093
-      KSQL_LISTENERS: http://0.0.0.0:8088
-      KSQL_KSQL_SCHEMA_REGISTRY_URL: http://schema_registry:8081
-      KSQL_KSQL_SERVICE_ID: confluent_rmoff_01
-
-  ksql-cli:
-    image: confluentinc/cp-ksql-cli:5.1.0
-    depends_on:
-      - ksql-server
-    entrypoint: /bin/sh
-    tty: true
