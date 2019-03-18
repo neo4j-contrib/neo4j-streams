@@ -44,7 +44,7 @@
                         </goals>
                         <configuration>
                             <descriptors>
-                                <descriptor>assembly/assembly.xml</descriptor>
+                                <descriptor>../assembly/assembly.xml</descriptor>
                             </descriptors>
                             <appendAssemblyId>false</appendAssemblyId>
                             <finalName>neo4j-streams-${project.version}</finalName>
