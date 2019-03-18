@@ -13,6 +13,7 @@ import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
 import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
+import streams.utils.StreamsUtils
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -35,9 +36,27 @@ class StreamsSinkProceduresIT {
          * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
          */
         private const val confluentPlatformVersion = "4.0.2"
-        @ClassRule
-        @JvmField
-        val kafka = KafkaContainer(confluentPlatformVersion)
+        @JvmStatic
+        lateinit var kafka: KafkaContainer
+
+        @BeforeClass @JvmStatic
+        fun setUpContainer() {
+            var exists = false
+            StreamsUtils.ignoreExceptions({
+                kafka = KafkaContainer(confluentPlatformVersion)
+                kafka.start()
+                exists = true
+            }, IllegalStateException::class.java)
+            Assume.assumeTrue("Kafka container has to exist", exists)
+            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+        }
+
+        @AfterClass @JvmStatic
+        fun tearDownContainer() {
+            StreamsUtils.ignoreExceptions({
+                kafka.stop()
+            }, UninitializedPropertyAccessException::class.java)
+        }
     }
 
     private lateinit var db: GraphDatabaseAPI
