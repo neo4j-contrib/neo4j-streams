@@ -7,6 +7,8 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.*
+import org.junit.Assume.assumeNotNull
+import org.junit.Assume.assumeTrue
 import org.junit.rules.TestName
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -15,6 +17,7 @@ import org.testcontainers.containers.KafkaContainer
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
+import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
 class KafkaEventRouterIT {
@@ -33,8 +36,27 @@ class KafkaEventRouterIT {
          * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
          */
         private const val confluentPlatformVersion = "4.0.2"
-        @ClassRule @JvmField
-        val kafka = KafkaContainer(confluentPlatformVersion)
+        @JvmStatic
+        lateinit var kafka: KafkaContainer
+
+        @BeforeClass @JvmStatic
+        fun setUpContainer() {
+            var exists = false
+            StreamsUtils.ignoreExceptions({
+                kafka = KafkaContainer(confluentPlatformVersion)
+                kafka.start()
+                exists = true
+            }, IllegalStateException::class.java)
+            Assume.assumeTrue("Kafka container has to exist", exists)
+            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+        }
+
+        @AfterClass @JvmStatic
+        fun tearDownContainer() {
+            StreamsUtils.ignoreExceptions({
+                kafka.stop()
+            }, UninitializedPropertyAccessException::class.java)
+        }
     }
 
     lateinit var db: GraphDatabaseAPI
