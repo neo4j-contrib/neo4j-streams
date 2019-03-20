@@ -8,6 +8,9 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.NullLog
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.kafka.KafkaSinkConfiguration
+import streams.service.sink.strategy.SchemaIngestionStrategy
+import streams.service.sink.strategy.SourceIdIngestionStrategy
+import streams.service.Topics
 import kotlin.test.assertEquals
 
 class StreamsEventSinkQueryExecutionTest {
@@ -19,10 +22,12 @@ class StreamsEventSinkQueryExecutionTest {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .newGraphDatabase()
-        val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
-                "    ON CREATE SET n += event.properties")))
-        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI, kafkaConfig.streamsSinkConfiguration.topics)
-        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI, NullLog.getInstance())
+        val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
+                "    ON CREATE SET n += event.properties"))))
+        val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI)
+        streamsTopicService.setAllCypherTemplates(kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
+        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI,
+                NullLog.getInstance(), emptyMap())
     }
 
     @After
@@ -32,7 +37,7 @@ class StreamsEventSinkQueryExecutionTest {
 
     @Test
     fun shouldWriteCypherQuery() {
-        streamsEventSinkQueryExecution.execute("shouldWriteCypherQuery", listOf(mapOf("id" to "1", "properties" to mapOf("a" to 1)),
+        streamsEventSinkQueryExecution.writeForTopic("shouldWriteCypherQuery", listOf(mapOf("id" to "1", "properties" to mapOf("a" to 1)),
                 mapOf("id" to "2", "properties" to mapOf("a" to 1))))
 
         db.execute("MATCH (n:Label) RETURN count(n) AS count").columnAs<Long>("count").use {

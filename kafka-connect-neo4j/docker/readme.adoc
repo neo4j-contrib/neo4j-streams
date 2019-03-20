@@ -91,7 +91,12 @@ CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
 
 Create the Sink instance:
 
-We'll define the Sink configuration as follows:
+We'll define the Sink configuration in two ways:
+
+* by providing a Cypher query;
+* by unpacking the events emitted by a Change Data Capture.
+
+===== Cypher query
 
 [source,json]
 ----
@@ -164,6 +169,175 @@ and click to the **Send data out** (or **Sink** depending on your Confluent Plat
 |Neo4jSinkConnector
 |my-topic
 |===
+
+==== Change Data Capture Event
+
+This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
+
+ * The `SourceId` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID)
+ * The `Schema` strategy which merges the nodes/relationships by the constraints (UNIQUENESS, NODE_KEY) defined in your graph model
+
+===== The `SourceId` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.sourceId=<list of topics separated by semicolon>
+streams.sink.topic.cdc.sourceId.labelName=<the label attached to the node, default=SourceEvent>
+streams.sink.topic.cdc.sourceId.idName=<the id name given to the CDC id field, default=sourceId>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.sourceId=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+include::../../doc/asciidoc/producer/data/node.created.json[]
+----
+
+will be persisted as the following node:
+
+```
+Person:SourceEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", sourceId: "1004"}
+```
+
+as you can notice, ingested event has been projected with two peculiarities:
+
+* the `id` field has transformed into `sourceId`;
+* the node has an additional label `SourceEvent`;
+
+these two fields will be used in order to match the node/relationship for future updates/deletes
+
+===== The `Schema` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "created",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": "123",
+    "type": "relationship",
+    "label": "KNOWS",
+    "start": {
+      "labels": ["Person"],
+      "id": "123",
+      "ids": {
+        "last_name": "Andrea",
+        "first_name": "Santurbano"
+      }
+    },
+    "end": {
+      "labels": ["Person"],
+      "id": "456",
+      "ids": {
+        "last_name": "Michael",
+        "first_name": "Hunger"
+      }
+    },
+    "after": {
+      "properties": {
+        "since": "2018-04-05T12:34:00[Europe/Berlin]"
+      }
+    }
+  },
+  "schema": {
+    "properties": {
+      "since": "ZonedDateTime"
+    },
+    "constraints": [{
+      "label": "KNOWS",
+      "properties": ["since"],
+      "type": "RELATIONSHIP_PROPERTY_EXISTENCE"
+    },{
+      "label": "Person",
+      "properties": ["first_name", "last_name"],
+      "type": "NODE_KEY"
+    }]
+  }
+}
+----
+
+will be persisted as the following node:
+
+```
+Person{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org"}
+```
+
+The `Schema` strategy leverages the `schema` field in order to insert/update the nodes so no extra fields will be created.
+
+In case of relationship
+
+[source,json]
+----
+{
+  "meta": {
+    "timestamp": 1532597182604,
+    "username": "neo4j",
+    "tx_id": 3,
+    "tx_event_id": 0,
+    "tx_events_count": 2,
+    "operation": "created",
+    "source": {
+      "hostname": "neo4j.mycompany.com"
+    }
+  },
+  "payload": {
+    "id": "1004",
+    "type": "node",
+    "after": {
+      "labels": ["Person"],
+      "properties": {
+        "email": "annek@noanswer.org",
+        "last_name": "Kretchmar",
+        "first_name": "Anne Marie"
+      }
+    }
+  },
+  "schema": {
+    "properties": {
+      "last_name": "String",
+      "email": "String",
+      "first_name": "String"
+    },
+    "constraints": [{
+      "label": "Person",
+      "properties": ["first_name", "last_name"],
+      "type": "NODE_KEY"
+    }]
+  }
+}
+----
+
+the `Schema` strategy leverages the `ids` fields in order to insert/update the relationships so no extra fields will be created.
 
 ==== Use the data generator
 

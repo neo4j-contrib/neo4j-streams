@@ -9,6 +9,9 @@ kafka.group.id=neo4j
 
 streams.sink.polling.interval=<The time, in milliseconds, spent waiting in poll if data is not available in the buffer. default=Long.MAX_VALUE>
 streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
-streams.sink.enabled=<true/false, default=false>
+streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.enabled=<true/false, default=true>
+----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

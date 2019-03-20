@@ -7,21 +7,23 @@ import org.apache.kafka.connect.data.Timestamp
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
-import org.easymock.EasyMockSupport
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito
+import org.mockito.Mockito.mock
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
-import org.neo4j.graphdb.RelationshipType
 import org.neo4j.harness.ServerControls
 import org.neo4j.harness.TestServerBuilders
+import streams.events.*
 import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 
-class Neo4jSinkTaskTest: EasyMockSupport() {
+class Neo4jSinkTaskTest {
 
     private lateinit var db: ServerControls
 
@@ -96,7 +98,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic"
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, ValueConverterTest.getTreeStruct(), 42))
         task.put(input)
@@ -140,7 +142,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
                 .put("modified", Date(1474661402123L))
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
@@ -160,6 +162,201 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
     }
 
     @Test
+    fun `should insert data into Neo4j from CDC events`() {
+        val firstTopic = "neotopic"
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to firstTopic)
+
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 0,
+                txEventsCount = 3,
+                operation = OperationType.created
+            ),
+            payload = NodePayload(id = "0",
+                before = null,
+                after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+            ),
+            schema = Schema()
+        )
+        val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 1,
+                txEventsCount = 3,
+                operation = OperationType.created
+            ),
+            payload = NodePayload(id = "1",
+                before = null,
+                after = NodeChange(properties = mapOf("name" to "Michael", "comp@ny" to "Neo4j"), labels = listOf("User Ext"))
+            ),
+            schema = Schema()
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 2,
+                txEventsCount = 3,
+                operation = OperationType.created
+            ),
+            payload = RelationshipPayload(
+                id = "2",
+                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
+                after = RelationshipChange(properties = mapOf("since" to 2014)),
+                before = null,
+                label = "KNOWS WHO"
+            ),
+            schema = Schema()
+        )
+
+        val task = Neo4jSinkTask()
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
+                SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
+                SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 44))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                MATCH p = (s:User{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
+                    -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
+                    (e:`User Ext`{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
+                RETURN count(p) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
+    @Test
+    fun `should update data into Neo4j from CDC events`() {
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                CREATE (s:User:OldLabel:SourceEvent{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
+                    -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
+                    (e:`User Ext`:SourceEvent{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
+            """.trimIndent()).close()
+            it.success()
+        }
+        val firstTopic = "neotopic"
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to firstTopic)
+
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 0,
+                txEventsCount = 3,
+                operation = OperationType.updated
+            ),
+            payload = NodePayload(id = "0",
+                before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
+                    labels = listOf("User", "OldLabel")),
+                after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA, Venice", "age" to 34),
+                    labels = listOf("User"))
+            ),
+            schema = Schema()
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 2,
+                txEventsCount = 3,
+                operation = OperationType.updated
+            ),
+            payload = RelationshipPayload(
+                id = "2",
+                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
+                after = RelationshipChange(properties = mapOf("since" to 2014, "foo" to "bar")),
+                before = RelationshipChange(properties = mapOf("since" to 2014)),
+                label = "KNOWS WHO"
+            ),
+            schema = Schema()
+        )
+
+        val task = Neo4jSinkTask()
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
+                SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 43))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                MATCH p = (s:User{name:'Andrea', `comp@ny`:'LARUS-BA, Venice', sourceId:'0', age:34})
+                    -[r:`KNOWS WHO`{since:2014, sourceId:'2', foo:'bar'}]->
+                    (e:`User Ext`{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
+                RETURN count(p) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
+    @Test
+    fun `should delete data into Neo4j from CDC events`() {
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                CREATE (s:User:OldLabel:SourceEvent{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
+                    -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
+                    (e:`User Ext`:SourceEvent{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
+            """.trimIndent()).close()
+            it.success()
+        }
+        val firstTopic = "neotopic"
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to firstTopic)
+
+        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
+                username = "user",
+                txId = 1,
+                txEventId = 0,
+                txEventsCount = 3,
+                operation = OperationType.deleted
+            ),
+            payload = NodePayload(id = "0",
+                before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
+                    labels = listOf("User", "OldLabel")),
+                after = null
+            ),
+            schema = Schema()
+        )
+        val task = Neo4jSinkTask()
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                    MATCH (s:SourceEvent)
+                    RETURN count(s) as count
+                """.trimIndent())
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
+    @Test
     fun `should not insert data into Neo4j`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
@@ -174,7 +371,7 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
                 .put("longitude", -122.3255254.toFloat())
 
         val task = Neo4jSinkTask()
-        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.initialize(Mockito.mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
         db.graph().beginTx().use {

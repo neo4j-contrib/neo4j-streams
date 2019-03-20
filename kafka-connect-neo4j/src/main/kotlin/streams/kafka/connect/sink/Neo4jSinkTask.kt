@@ -31,7 +31,7 @@ class Neo4jSinkTask : SinkTask() {
 
         val data = EventBuilder()
                 .withBatchSize(config.batchSize)
-                .withTopics(config.topicMap.keys)
+                .withTopics(config.topics.allTopics())
                 .withSinkRecords(collection)
                 .build()
         neo4jService.writeData(data)
