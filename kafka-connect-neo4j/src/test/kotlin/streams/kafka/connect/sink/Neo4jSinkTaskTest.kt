@@ -13,6 +13,7 @@ import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.RelationshipType
 import org.neo4j.harness.ServerControls
 import org.neo4j.harness.TestServerBuilders
 import java.util.*
@@ -55,6 +56,64 @@ class Neo4jSinkTaskTest: EasyMockSupport() {
             .field("latitude", Schema.FLOAT32_SCHEMA)
             .field("longitude", Schema.FLOAT32_SCHEMA)
             .build()
+
+    private val PERSON_SCHEMA_EXT = SchemaBuilder.struct().name("com.example.Person")
+            .field("firstName", Schema.STRING_SCHEMA)
+            .field("lastName", Schema.STRING_SCHEMA)
+            .field("age", Schema.OPTIONAL_INT32_SCHEMA)
+            .field("bool", Schema.OPTIONAL_BOOLEAN_SCHEMA)
+            .field("short", Schema.OPTIONAL_INT16_SCHEMA)
+            .field("byte", Schema.OPTIONAL_INT8_SCHEMA)
+            .field("long", Schema.OPTIONAL_INT64_SCHEMA)
+            .field("float", Schema.OPTIONAL_FLOAT32_SCHEMA)
+            .field("double", Schema.OPTIONAL_FLOAT64_SCHEMA)
+            .field("modified", Timestamp.SCHEMA)
+            .field("visited", SchemaBuilder.array(PLACE_SCHEMA))
+            .build()
+
+
+
+    @Test
+    fun `test array of struct`() {
+        val firstTopic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = """
+            CREATE (b:BODY)
+            WITH event.p AS paragraphList, event.ul AS ulList, b
+            FOREACH (paragraph IN paragraphList | CREATE (b)-[:HAS_P]->(p:P{value: paragraph.value}))
+
+            WITH ulList, b
+            UNWIND ulList AS ulElem
+            CREATE (b)-[:HAS_UL]->(ul:UL)
+
+            WITH ulElem, ul
+            UNWIND ulElem.value AS liElem
+            CREATE (ul)-[:HAS_LI]->(li:LI{value: liElem.value, class: liElem.class})
+        """.trimIndent()
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
+        props[SinkTask.TOPICS_CONFIG] = "$firstTopic"
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock<SinkTaskContext, SinkTaskContext>(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, ValueConverterTest.getTreeStruct(), 42))
+        task.put(input)
+        db.graph().beginTx().use {
+            assertEquals(1, db.graph().findNodes(Label.label("BODY")).stream().count())
+            assertEquals(2, db.graph().findNodes(Label.label("P")).stream().count())
+            assertEquals(2, db.graph().findNodes(Label.label("UL")).stream().count())
+            assertEquals(4, db.graph().findNodes(Label.label("LI")).stream().count())
+
+            assertEquals(2, db.graph().execute("MATCH (b:BODY)-[r:HAS_P]->(p:P) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(2, db.graph().execute("MATCH (b:BODY)-[r:HAS_UL]->(ul:UL) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(4, db.graph().execute("MATCH (ul:UL)-[r:HAS_LI]->(li:LI) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+
+            assertEquals(1, db.graph().execute("MATCH (li:LI{class:['ClassA', 'ClassB']}) RETURN COUNT(li) AS COUNT").columnAs<Long>("COUNT").next())
+        }
+    }
+
 
     @Test
     fun `should insert data into Neo4j`() {
