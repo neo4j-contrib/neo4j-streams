@@ -1,35 +1,75 @@
 package streams
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
+import org.junit.After
 import org.junit.Before
 import org.junit.Test
+import org.mockito.Mockito
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.RelationshipType
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
-import streams.events.EntityType
-import streams.events.NodeChange
-import streams.events.OperationType
-import streams.mocks.*
+import org.neo4j.graphdb.event.TransactionData
+import org.neo4j.graphdb.schema.ConstraintDefinition
+import org.neo4j.graphdb.schema.ConstraintType
+import org.neo4j.graphdb.schema.Schema
+import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.events.*
+import streams.mocks.MockStreamsEventRouter
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
+@Suppress("UNCHECKED_CAST")
 class StreamsTransactionEventHandlerTest {
 
-    private val handler : StreamsTransactionEventHandler = StreamsTransactionEventHandler(MockStreamsEventRouter(), StreamsEventRouterConfiguration())
-
+    private lateinit var handler: StreamsTransactionEventHandler
+    private lateinit var schemaMock: Schema
+    private lateinit var streamsConstraintsService: StreamsConstraintsService
 
     @Before
     fun setUp() {
+        val dbMock = Mockito.mock(GraphDatabaseAPI::class.java)
+        schemaMock = Mockito.mock(Schema::class.java)
+        Mockito.`when`(schemaMock.getConstraints(Mockito.any(Label::class.java))).thenReturn(emptyList())
+        Mockito.`when`(schemaMock.getConstraints(Mockito.any(RelationshipType::class.java))).thenReturn(emptyList())
+        Mockito.`when`(dbMock.schema()).thenReturn(schemaMock)
+        streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
+        handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),
+                streamsConstraintsService, StreamsEventRouterConfiguration())
         MockStreamsEventRouter.reset()
     }
 
-    @Test
-    fun afterCreatedNodes() {
+    @After
+    fun shutdown() {
+        streamsConstraintsService.close()
+    }
 
-        val createdNodes = mutableListOf<Node>(MockNode(id = 1))
-        val txd = MockTransactionData(createdNodes = createdNodes)
+    @Test
+    fun afterCreatedNodes() = runBlocking {
+
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("Person")))
+        Mockito.`when`(mockedNode.allProperties).thenReturn(mapOf("name" to "Andrea", "surname" to "Santurbano"))
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.createdNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
+        val constraintDefinition = Mockito.mock(ConstraintDefinition::class.java)
+        Mockito.`when`(constraintDefinition.constraintType).thenReturn(ConstraintType.NODE_KEY)
+        Mockito.`when`(constraintDefinition.label).thenReturn(Label.label("Person"))
+        Mockito.`when`(constraintDefinition.relationshipType).thenThrow(IllegalStateException("Constraint is associated with nodes"))
+        Mockito.`when`(constraintDefinition.propertyKeys).thenReturn(listOf("name", "surname"))
+
+        Mockito.`when`(schemaMock.getConstraints(Label.label("Person"))).thenReturn(listOf(constraintDefinition))
+        Mockito.`when`(schemaMock.constraints).thenReturn(listOf(constraintDefinition))
+
+        delay(500) // wait the StreamsConstraintsService to load the constraints
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
@@ -40,17 +80,21 @@ class StreamsTransactionEventHandlerTest {
         assertEquals("1", MockStreamsEventRouter.events[0].payload.id)
         assertEquals(EntityType.node, MockStreamsEventRouter.events[0].payload.type)
 
+        assertEquals(mapOf("name" to "String", "surname" to "String"), MockStreamsEventRouter.events[0].schema.properties)
+        assertEquals(listOf(Constraint("Person", setOf("name", "surname"), StreamsConstraintType.UNIQUE)), MockStreamsEventRouter.events[0].schema.constraints)
     }
 
     @Test
     fun afterCreatedNodesWithLabel() {
 
-        val node = MockNode(id = 1, labels = mutableListOf(Label.label("Test")))
-        val createdNodes = mutableListOf<Node>(node)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("Test")))
 
-        val labels = mapOf<String, List<String>>("1" to listOf("Test"))
-
-        val txd = MockTransactionData(createdNodes = createdNodes)
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.createdNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+        
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
@@ -67,10 +111,14 @@ class StreamsTransactionEventHandlerTest {
     @Test
     fun afterCreatedNodesWithProperties() {
 
-        val node = MockNode(id = 1, properties = hashMapOf<String,Any>("name" to "Omar"))
-        val createdNodes = mutableListOf<Node>(node)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.allProperties).thenReturn(mapOf("name" to "Omar"))
 
-        val txd = MockTransactionData(createdNodes = createdNodes)
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.createdNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
@@ -87,8 +135,13 @@ class StreamsTransactionEventHandlerTest {
     @Test
     fun afterDeletedNodes() {
 
-        val deletedNodes = mutableListOf<Node>(MockNode(id = 1))
-        val txd = MockTransactionData(deletedNodes = deletedNodes)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.deletedNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd)// PreviousTransactionData(nodeProperties = emptyMap(), nodeLabels = emptyMap(), createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
@@ -104,16 +157,18 @@ class StreamsTransactionEventHandlerTest {
     @Test
     fun afterDeletedNodesWithLabel() {
 
-        val node = MockNode(id = 1)
-        val deletedNodes = mutableListOf<Node>(node)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
 
-        val labels = mapOf("1" to listOf("Test"))
+        val labelEntry = Mockito.mock(LabelEntry::class.java)
+        Mockito.`when`(labelEntry.label()).thenReturn(Label.label("Test"))
+        Mockito.`when`(labelEntry.node()).thenReturn(mockedNode)
 
-        val labelsEntries = mutableListOf<LabelEntry>(MockLabelEntry(
-                Label.label("Test"),
-                node))
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.deletedNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.removedLabels()).thenReturn(listOf(labelEntry))
+        Mockito.`when`(txd.username()).thenReturn("mock")
 
-        val txd = MockTransactionData(deletedNodes = deletedNodes, removedLabels = labelsEntries )
         val previous = handler.beforeCommit(txd) // PreviousTransactionData(nodeProperties = emptyMap(), nodeLabels = labels, createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
@@ -130,13 +185,20 @@ class StreamsTransactionEventHandlerTest {
     @Test
     fun afterDeletedNodesWithProperties() {
 
-        val props = hashMapOf<String,Any>("name" to "Omar")
-        val node = MockNode(id = 1)
-        val deletedNodes = mutableListOf<Node>(node)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
 
-        val removedProps = mutableListOf<PropertyEntry<Node>>(MockPropertyEntry<Node>(node, "name", null, "Omar"))
+        val removedProp = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(removedProp.entity()).thenReturn(mockedNode)
+        Mockito.`when`(removedProp.key()).thenReturn("name")
+        Mockito.`when`(removedProp.value()).thenReturn(null)
+        Mockito.`when`(removedProp.previouslyCommitedValue()).thenReturn("Omar")
 
-        val txd = MockTransactionData(deletedNodes = deletedNodes, removedNodeProperties = removedProps )
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.deletedNodes()).thenReturn(listOf(mockedNode))
+        Mockito.`when`(txd.removedNodeProperties()).thenReturn(listOf(removedProp))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd)//PreviousTransactionData(nodeProperties = mapOf("1" to props), nodeLabels = emptyMap(), createdPayload = emptyList(), deletedPayload = emptyList())
         handler.afterCommit(txd, previous)
 
@@ -153,13 +215,18 @@ class StreamsTransactionEventHandlerTest {
     @Test
     fun afterUpdateLabelNodes() {
 
-        val updateNodes = mutableListOf<Node>(MockNode(id = 1,labels = mutableListOf(Label.label("PreTest"),Label.label("Test"))))
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("PreTest"), Label.label("Test")))
 
-        val labels = mutableListOf<LabelEntry>(MockLabelEntry(
-                Label.label("Test"),
-                updateNodes[0]))
+        val labelEntry = Mockito.mock(LabelEntry::class.java)
+        Mockito.`when`(labelEntry.label()).thenReturn(Label.label("Test"))
+        Mockito.`when`(labelEntry.node()).thenReturn(mockedNode)
 
-        val txd = MockTransactionData(assignedLabels = labels)
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedLabels()).thenReturn(listOf(labelEntry))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
 
@@ -180,12 +247,23 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun afterUpdatePropertiesNodes() {
-        val prevProps = hashMapOf<String,Any>("name" to "Omar")
-        val afterProps = hashMapOf<String,Any>("name" to "Andrea")
-        val updateNodes = mutableListOf<Node>(MockNode(id = 1,properties = afterProps,labels = mutableListOf(Label.label("Test"))))
+        val prevProps = mapOf("name" to "Omar")
+        val afterProps = mapOf("name" to "Andrea")
 
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("Test")))
+        Mockito.`when`(mockedNode.allProperties).thenReturn(afterProps)
 
-        val txd = MockTransactionData(assignedNodeProperties = mutableListOf<PropertyEntry<Node>>(MockPropertyEntry<Node>(updateNodes[0], "name", "Andrea", "Omar")))
+        val prop = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop.key()).thenReturn("name")
+        Mockito.`when`(prop.value()).thenReturn("Andrea")
+        Mockito.`when`(prop.previouslyCommitedValue()).thenReturn("Omar")
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedNodeProperties()).thenReturn(listOf(prop))
+        Mockito.`when`(txd.username()).thenReturn("mock")
 
         val previous = handler.beforeCommit(txd)
         handler.afterCommit(txd, previous)
@@ -209,11 +287,19 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitAddLabel() {
-        val labels = mutableListOf<LabelEntry>(MockLabelEntry(
-                Label.label("Test"),
-                MockNode(id = 1, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
 
-        val txd = MockTransactionData(assignedLabels = labels)
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("PreTest"), Label.label("Test")))
+
+        val labelEntry = Mockito.mock(LabelEntry::class.java)
+        Mockito.`when`(labelEntry.label()).thenReturn(Label.label("Test"))
+        Mockito.`when`(labelEntry.node()).thenReturn(mockedNode)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedLabels()).thenReturn(listOf(labelEntry))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
@@ -226,11 +312,18 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitRemoveLabel() {
-        val labels = mutableListOf<LabelEntry>(MockLabelEntry(
-                Label.label("Test"),
-                MockNode(id = 1, labels = mutableListOf(Label.label("PreTest")))))
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.labels).thenReturn(listOf(Label.label("PreTest")))
 
-        val txd = MockTransactionData(removedLabels = labels)
+        val labelEntry = Mockito.mock(LabelEntry::class.java)
+        Mockito.`when`(labelEntry.label()).thenReturn(Label.label("Test"))
+        Mockito.`when`(labelEntry.node()).thenReturn(mockedNode)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.removedLabels()).thenReturn(listOf(labelEntry))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals(1, previous.nodeLabels.size)
@@ -244,10 +337,20 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitAddProperty() {
-        val props = mutableListOf<PropertyEntry<Node>>()
-        val node = MockNode(1)
-        props.add(MockPropertyEntry<Node>(node, "p1", "value", null))
-        val txd = MockTransactionData(assignedNodeProperties = props)
+
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+
+        val prop = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop.key()).thenReturn("name")
+        Mockito.`when`(prop.value()).thenReturn("value")
+        Mockito.`when`(prop.previouslyCommitedValue()).thenReturn(null)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedNodeProperties()).thenReturn(listOf(prop))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertTrue { previous.nodeProperties[1]!!.isEmpty() }
@@ -258,10 +361,20 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitRemoveProperty() {
-        val props = mutableListOf<PropertyEntry<Node>>()
-        val node = MockNode(id = 1)
-        props.add(MockPropertyEntry<Node>(node, "p1", "value0", "value0"))
-        val txd = MockTransactionData(removedNodeProperties = props)
+
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+
+        val prop = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop.key()).thenReturn("p1")
+        Mockito.`when`(prop.value()).thenReturn(null)
+        Mockito.`when`(prop.previouslyCommitedValue()).thenReturn("value0")
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.removedNodeProperties()).thenReturn(listOf(prop))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
@@ -273,12 +386,27 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitSetProperty() {
-        val node = MockNode(id = 1, properties = mutableMapOf("p1" to "value1", "p2" to "value2", "p3" to "value4"))
-        val props = mutableListOf<PropertyEntry<Node>>(
-                MockPropertyEntry<Node>(node, "p1", "value1", "value0"),
-                MockPropertyEntry<Node>(node, "p3", "value4", "value3")
-        )
-        val txd = MockTransactionData(assignedNodeProperties = props)
+
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
+        Mockito.`when`(mockedNode.allProperties).thenReturn(mapOf("p1" to "value1", "p2" to "value2", "p3" to "value4"))
+
+        val prop1 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop1.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop1.key()).thenReturn("p1")
+        Mockito.`when`(prop1.value()).thenReturn("value1")
+        Mockito.`when`(prop1.previouslyCommitedValue()).thenReturn("value0")
+
+        val prop2 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop2.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop2.key()).thenReturn("p3")
+        Mockito.`when`(prop2.value()).thenReturn("value4")
+        Mockito.`when`(prop2.previouslyCommitedValue()).thenReturn("value3")
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedNodeProperties()).thenReturn(listOf(prop1, prop2))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(1, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
@@ -292,15 +420,29 @@ class StreamsTransactionEventHandlerTest {
 
     @Test
     fun beforeCommitMultinodes() {
-        val props = mutableListOf<PropertyEntry<Node>>()
-        val node = MockNode(id = 1)
-        props.add(MockPropertyEntry<Node>(node, "p1", "value1", "value0"))
 
-        val labels = mutableListOf<LabelEntry>(MockLabelEntry(
-                Label.label("Test"),
-                MockNode(id = 2, labels = mutableListOf(Label.label("PreTest"),Label.label("Test")))))
+        val mockedNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNode.id).thenReturn(1)
 
-        val txd = MockTransactionData(assignedNodeProperties = props, assignedLabels = labels)
+        val mockedNodeLabels = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedNodeLabels.id).thenReturn(2)
+        Mockito.`when`(mockedNodeLabels.labels).thenReturn(listOf(Label.label("PreTest"),Label.label("Test")))
+
+        val prop1 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Node>
+        Mockito.`when`(prop1.entity()).thenReturn(mockedNode)
+        Mockito.`when`(prop1.key()).thenReturn("p1")
+        Mockito.`when`(prop1.value()).thenReturn("value1")
+        Mockito.`when`(prop1.previouslyCommitedValue()).thenReturn("value0")
+
+        val labelEntry = Mockito.mock(LabelEntry::class.java)
+        Mockito.`when`(labelEntry.label()).thenReturn(Label.label("Test"))
+        Mockito.`when`(labelEntry.node()).thenReturn(mockedNodeLabels)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.assignedNodeProperties()).thenReturn(listOf(prop1))
+        Mockito.`when`(txd.assignedLabels()).thenReturn(listOf(labelEntry))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
         val previous = handler.beforeCommit(txd).nodeData
         assertEquals(2, previous.nodeProperties.size)
         assertEquals("value0", previous.nodeProperties[1]!!["p1"])
