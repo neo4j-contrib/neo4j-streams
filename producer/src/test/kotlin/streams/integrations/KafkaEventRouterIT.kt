@@ -10,16 +10,19 @@ import org.junit.*
 import org.junit.Assume.assumeNotNull
 import org.junit.Assume.assumeTrue
 import org.junit.rules.TestName
+import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.events.*
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
+@Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterIT {
 
     companion object {
@@ -63,7 +66,8 @@ class KafkaEventRouterIT {
 
     private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
-    private val MULTI_NODE_PATTERN_TEST: String = "MultiTopicPatternConfig"
+    private val MULTI_NODE_PATTERN_TEST_SUFFIX = "MultiTopicPatternConfig"
+    private val WITH_CONSTRAINTS_SUFFIX = "WithConstraints"
 
     @Rule
     @JvmField
@@ -80,16 +84,23 @@ class KafkaEventRouterIT {
         if (testName.methodName.endsWith(WITH_NODE_ROUTING_METHOD_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.source.topic.nodes.person", "Person{*}")
         }
-        if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST)) {
+        if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST_SUFFIX)) {
             graphDatabaseBuilder.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
                     .setConfig("streams.source.topic.nodes.neo4j-color", "Color{*}")
                     .setConfig("streams.source.topic.nodes.neo4j-basket", "Basket{*}")
                     .setConfig("streams.source.topic.relationships.neo4j-isin", "IS_IN{month,day}")
                     .setConfig("streams.source.topic.relationships.neo4j-hascolor", "HAS_COLOR{*}")
         }
+        if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.personConstraints", "PersonConstr{*}")
+                    .setConfig("streams.source.schema.polling.interval", "0")
+        }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
+        if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
+            db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
+        }
 
     }
 
@@ -108,13 +119,14 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
-                var payload = it["payload"] as Map<String, Any?>
-                val after = payload["after"] as Map<String, Any?>
-                val labels = after["labels"] as List<String>
-                val propertiesAfter = after["properties"] as Map<String, Any?>
-                val meta = it["meta"] as Map<String, Any?>
-                labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42) && meta["operation"] == "created"
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val after = it.payload.after as NodeChange
+                val labels = after.labels
+                val propertiesAfter = after.properties
+                labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
             }
         })
         consumer.close()
@@ -129,11 +141,13 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
-                var payload = it["payload"] as Map<String, Any?>
-                val after = payload["after"] as Map<String, Any?>
-                val properties = after["properties"] as Map<String, Any?>
-                payload["type"] == "relationship" && payload["label"] == "KNOWS" && properties["since"] == 2014
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                var payload = it.payload as RelationshipPayload
+                val properties = payload.after!!.properties!!
+                payload.type == EntityType.relationship && payload.label == "KNOWS"
+                        && properties["since"] == 2014
+                        && it.schema.properties == mapOf("since" to "Long")
+                        && it.schema.constraints.isEmpty()
             }
         })
         consumer.close()
@@ -148,13 +162,14 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
-                var payload = it["payload"] as Map<String, Any?>
-                val after = payload["after"] as Map<String, Any?>
-                val labels = after["labels"] as List<String>
-                val propertiesAfter = after["properties"] as Map<String, Any?>
-                val meta = it["meta"] as Map<String, Any?>
-                labels == listOf("Person") && propertiesAfter == mapOf("name" to "Andrea") && meta["operation"] == "created"
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val payload = it.payload as NodePayload
+                val labels = payload.after!!.labels!!
+                val properties = payload.after!!.properties
+                labels == listOf("Person") && properties == mapOf("name" to "Andrea")
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String")
+                        && it.schema.constraints.isEmpty()
             }
         })
         consumer.close()
@@ -180,9 +195,8 @@ class KafkaEventRouterIT {
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue(it.value(), Map::class.java).let {
-                val payload = it as Map<String, String>
-                message == payload["payload"]
+            JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                message == it.payload
             }
         })
         consumer.close()
@@ -215,6 +229,28 @@ class KafkaEventRouterIT {
         assertEquals(1, recordsBasket.await())
         assertEquals(1, recordsIsIn.await())
         assertEquals(1, recordsHasColor.await())
+    }
+
+    @Test
+    fun testCreateNodeWithConstraints() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val consumer = createConsumer(config)
+        consumer.subscribe(listOf("personConstraints"))
+        db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
+        val records = consumer.poll(5000)
+        assertEquals(1, records.count())
+        assertEquals(true, records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val payload = it.payload as NodePayload
+                val labels = payload.after!!.labels!!
+                val properties = payload.after!!.properties
+                labels == listOf("PersonConstr") && properties == mapOf("name" to "Andrea")
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String")
+                        && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
+            }
+        })
+        consumer.close()
     }
 
 }

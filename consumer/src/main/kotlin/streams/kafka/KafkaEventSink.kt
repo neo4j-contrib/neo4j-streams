@@ -120,7 +120,7 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
         if (records != null && !records.isEmpty) {
             return records
                     .map {
-                        it.topic()!! to JSONUtils.readValue(it.value(), Any::class.java)
+                        it.topic()!! to JSONUtils.readValue<Any>(it.value())
                     }
                     .groupBy({ it.first }, { it.second })
         }

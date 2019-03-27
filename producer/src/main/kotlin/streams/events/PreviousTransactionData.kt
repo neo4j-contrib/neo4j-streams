@@ -13,18 +13,29 @@ data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String,
                                    val deletedPayload: List<NodePayload>)
 
 data class PreviousRelTransactionData(val relProperties: Map<Long, Map<String, Any>> = emptyMap(),
-                                       val relTypes: Map<Long,String> = emptyMap(),
                                        val updatedPayloads: List<RelationshipPayload> = emptyList(),
                                        val createdPayload: List<RelationshipPayload> = emptyList(),
                                        val deletedPayload: List<RelationshipPayload> = emptyList())
 
 data class PreviousTransactionData(val nodeData: PreviousNodeTransactionData,
-                                   val relData: PreviousRelTransactionData)
+                                   val relData: PreviousRelTransactionData,
+                                   val nodeConstraints: Map<String, Set<Constraint>>,
+                                   val relConstraints: Map<String, Set<Constraint>>)
+
+fun getNodeKeys(labels: List<String>, propertyKeys: Set<String>, constraints: Map<String, Set<Constraint>>): Set<String> {
+    return labels
+            .filter {
+                constraints.containsKey(it) && constraints.getValue(it).any { it.properties.containsAll(propertyKeys) }
+            }
+            .map { constraints.getValue(it) }
+            .map { it.minBy { it.properties.size }!!.properties }
+            .minBy { it.size }.orEmpty()
+}
 
 /**
  * Build a data class containing the previous (before) state of the nodes/relationships
  */
-class PreviousTransactionDataBuilder(){
+class PreviousTransactionDataBuilder {
 
     //nodes
     private var nodeProperties : Map<Long,Map<String,Any>> = emptyMap()
@@ -36,23 +47,34 @@ class PreviousTransactionDataBuilder(){
 
     //relationships
     private var relProperties : Map<Long,Map<String,Any>> = emptyMap()
-    private var relTypes: Map<Long, String> = emptyMap()
     private var updatedRels : Set<Relationship> = emptySet()
     private var relCreatedPayload: List<RelationshipPayload> = emptyList()
     private var relDeletedPayload: List<RelationshipPayload> = emptyList()
 
-    fun build() : PreviousTransactionData{
+    private lateinit var nodeConstraints: Map<String, Set<Constraint>>
+    private lateinit var relConstraints: Map<String, Set<Constraint>>
 
+    fun withNodeConstraints(nodeConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder {
+        this.nodeConstraints = nodeConstraints
+        return this
+    }
+
+    fun withRelConstraints(relConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder {
+        this.relConstraints = relConstraints
+        return this
+    }
+
+    fun build() : PreviousTransactionData{
         var createdNodeIds = hashSetOf<String>()
-        nodeCreatedPayload.forEach({
+        nodeCreatedPayload.forEach {
             createdNodeIds.add(it.id)
-        })
+        }
 
         //val createdIds = nodeCreatedPayload.map { it.id }.toSet()
 
         val updatedPayloads = updatedNodes
                 .filter { ! createdNodeIds.contains(it.id.toString()) }
-                .map { it ->
+                .map {
                     //val labelsBefore = nodeLabels.getOrDefault(it.id, emptyList())
                     val labelsBefore = nodeLabels.getOrDefault(it.id, it.labelNames())
                     val propsBefore = nodeProperties.getOrDefault(it.id, emptyMap())
@@ -81,17 +103,17 @@ class PreviousTransactionDataBuilder(){
         val nodeData = PreviousNodeTransactionData(nodeProperties, nodeLabels , updatedPayloads,nodeCreatedPayload, nodeDeletedPayload)
 
         var notUpdatedRels = hashSetOf<String>()
-        relCreatedPayload.forEach({
+        relCreatedPayload.forEach {
             notUpdatedRels.add(it.id)
-        })
+        }
 
-        relDeletedPayload.forEach({
+        relDeletedPayload.forEach {
             notUpdatedRels.add(it.id)
-        })
+        }
 
         val updatedRelPayloads = updatedRels
                 .filter { ! notUpdatedRels.contains(it.id.toString()) }
-                .map { it ->
+                .map {
                     val propsBefore = relProperties.getOrDefault(it.id, emptyMap())
 
                     val beforeNode = RelationshipChangeBuilder()
@@ -102,11 +124,19 @@ class PreviousTransactionDataBuilder(){
                             .withProperties(it.allProperties)
                             .build()
 
+                    val startNodeLabels = it.startNode.labelNames()
+                    val endNodeLabels = it.endNode.labelNames()
+
+                    val startNodeKeys = getNodeKeys(it.startNode.labelNames(), it.startNode.propertyKeys.toSet(), nodeConstraints)
+                            .toTypedArray()
+                    val endNodeKeys = getNodeKeys(it.endNode.labelNames(), it.endNode.propertyKeys.toSet(), nodeConstraints)
+                            .toTypedArray()
+
                     val payload = RelationshipPayloadBuilder()
                             .withId(it.id.toString())
                             .withName(it.type.name())
-                            .withStartNode(it.startNode.id.toString(), it.startNode.labelNames())
-                            .withEndNode(it.endNode.id.toString(), it.endNode.labelNames())
+                            .withStartNode(it.startNode.id.toString(), startNodeLabels, it.startNode.getProperties(*startNodeKeys))
+                            .withEndNode(it.endNode.id.toString(), endNodeLabels, it.startNode.getProperties(*endNodeKeys))
                             .withBefore(beforeNode)
                             .withAfter(afterNode)
                             .build()
@@ -116,19 +146,19 @@ class PreviousTransactionDataBuilder(){
 
         val relData = PreviousRelTransactionData(createdPayload = this.relCreatedPayload, deletedPayload = this.relDeletedPayload, updatedPayloads = updatedRelPayloads)
 
-        return PreviousTransactionData(nodeData=nodeData, relData = relData)
+        return PreviousTransactionData(nodeData = nodeData, relData = relData, nodeConstraints = nodeConstraints, relConstraints = relConstraints)
     }
 
     fun withLabels(assignedLabels: Iterable<LabelEntry>, removedLabels: Iterable<LabelEntry>): PreviousTransactionDataBuilder {
         val assignedPreviousLabels = assignedLabels
-                .map { labelEntry -> Pair(labelEntry.node().id, labelEntry.node().labels.filter { it != labelEntry.label() }.map { it -> it.name() }.toList()) } // [ (nodeId, [label]) ]
+                .map { labelEntry -> Pair(labelEntry.node().id, labelEntry.node().labels.filter { it != labelEntry.label() }.map { it.name() }.toList()) } // [ (nodeId, [label]) ]
                 .groupBy({it.first},{it.second}) // { nodeId -> [ [label] ] }
-                .mapValues { it -> it.value.flatten() } // { nodeId -> [label] }
+                .mapValues { it.value.flatten() } // { nodeId -> [label] }
 
         val removedPreviousLabels = removedLabels
                 .map { labelEntry -> Pair(labelEntry.node().id, labelEntry.node().labelNames().toList().plus(labelEntry.label().name())) } // [ (nodeId, [label]) ]
                 .groupBy({it.first},{it.second}) // { nodeId -> [ [label] ] }
-                .mapValues { it -> it.value.flatten() } // { nodeId -> [label] }
+                .mapValues { it.value.flatten() } // { nodeId -> [label] }
 
 
         updatedNodes = updatedNodes.plus(assignedLabels
@@ -142,9 +172,9 @@ class PreviousTransactionDataBuilder(){
         nodeLabels = assignedPreviousLabels.plus(removedPreviousLabels)
 
         val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
-        updatedNodes.forEach({
+        updatedNodes.forEach {
             allProps.putIfAbsent(it.id, it.allProperties)
-        })
+        }
 
         nodeProperties = nodeProperties.plus(allProps)
 
@@ -153,25 +183,25 @@ class PreviousTransactionDataBuilder(){
 
     fun withNodeProperties(assignedNodeProperties: Iterable<PropertyEntry<Node>>, removedNodeProperties: Iterable<PropertyEntry<Node>>): PreviousTransactionDataBuilder {
         val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
-        assignedNodeProperties.filter { it -> it.previouslyCommitedValue() == null }
-                .forEach({
+        assignedNodeProperties.filter { it.previouslyCommitedValue() == null }
+                .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.remove(it.key())
                     allProps.putIfAbsent(it.entity().id, props)
-                })
+                }
 
-        assignedNodeProperties.filter { it -> it.previouslyCommitedValue() != null }
-                .forEach({
+        assignedNodeProperties.filter { it.previouslyCommitedValue() != null }
+                .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.put(it.key(), it.previouslyCommitedValue())
                     allProps.putIfAbsent(it.entity().id, props)
-                })
+                }
 
-        removedNodeProperties.forEach({
+        removedNodeProperties.forEach {
             var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
             props.put(it.key(), it.previouslyCommitedValue())
             allProps.putIfAbsent(it.entity().id, props)
-        })
+        }
 
         updatedNodes = updatedNodes.plus(assignedNodeProperties
                 .map { it.entity() }
@@ -181,7 +211,7 @@ class PreviousTransactionDataBuilder(){
                 .map { it.entity() }
                 .toSet() )
 
-        //val updateNodesLabels = updatedNodes.groupBy ( {it.id},{it.labels.map { it.name() }}).mapValues { it -> it.value.flatten() }
+        //val updateNodesLabels = updatedNodes.groupBy ( {it.id},{it.labels.map { it.name() }}).mapValues { it.value.flatten() }
 
         //nodeLabels = nodeLabels.plus(updateNodesLabels)
 
@@ -212,25 +242,25 @@ class PreviousTransactionDataBuilder(){
 
     fun withRelProperties(assignedRelProperties: Iterable<PropertyEntry<Relationship>>, removedRelProperties: Iterable<PropertyEntry<Relationship>>): PreviousTransactionDataBuilder {
         val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
-        assignedRelProperties.filter { it -> it.previouslyCommitedValue() == null }
-                .forEach({
+        assignedRelProperties.filter { it.previouslyCommitedValue() == null }
+                .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.remove(it.key())
                     allProps.putIfAbsent(it.entity().id, props)
-                })
+                }
 
-        assignedRelProperties.filter { it -> it.previouslyCommitedValue() != null }
-                .forEach({
+        assignedRelProperties.filter { it.previouslyCommitedValue() != null }
+                .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.put(it.key(), it.previouslyCommitedValue())
                     allProps.putIfAbsent(it.entity().id, props)
-                })
+                }
 
-        removedRelProperties.forEach({
+        removedRelProperties.forEach {
             var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
             props.put(it.key(), it.previouslyCommitedValue())
             allProps.putIfAbsent(it.entity().id, props)
-        })
+        }
 
         updatedRels = updatedRels.plus(assignedRelProperties
                 .map { it.entity() }
@@ -253,4 +283,10 @@ class PreviousTransactionDataBuilder(){
     fun deletedLabels(id : Long): List<String>{
         return this.deletedLabels.getOrDefault(id, emptyList())
     }
+
+    fun nodeDeletedPayload(id: Long): NodePayload? {
+        return this.nodeDeletedPayload.filter { it.id == id.toString() }.firstOrNull()
+    }
+
+
 }

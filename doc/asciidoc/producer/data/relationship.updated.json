@@ -16,11 +16,19 @@
     "label": "KNOWS",
     "start": {
       "labels": ["Person"],
-      "id": "123"
+      "id": "123",
+      "ids": {
+        "last_name": "Andrea",
+        "first_name": "Santurbano"
+      }
     },
     "end": {
       "labels": ["Person"],
-      "id": "456"
+      "id": "456",
+      "ids": {
+        "last_name": "Michael",
+        "first_name": "Hunger"
+      }
     },
     "before": {
       "properties": {
@@ -33,5 +41,16 @@
         "to": "2019-04-05T23:00:00[Europe/Berlin]"
       }
     }
+  },
+  "schema": {
+    "properties": {
+      "since": "ZonedDateTime",
+      "to": "ZonedDateTime"
+    },
+    "constraints": [{
+      "label": "KNOWS",
+      "properties": ["since"],
+      "type": "RELATIONSHIP_PROPERTY_EXISTS"
+    }]
   }
 }

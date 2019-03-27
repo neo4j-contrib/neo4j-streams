@@ -27,8 +27,20 @@
         "last_name": "Kretchmar",
         "email": "annek@noanswer.org",
         "first_name": "Anne Marie",
-        "geo":[0.123, 46.2222, 32.11111]
+        "geo": { "crs": "wgs-84-3d", "latitude": 46.2222, "longitude": 32.11111, "height": 0.123 }
       }
     }
+  },
+  "schema": {
+    "properties": {
+      "last_name": "String",
+      "email": "String",
+      "first_name": "String"
+    },
+    "constraints": [{
+      "label": "Person",
+      "properties": ["first_name", "last_name"],
+      "type": "UNIQUE"
+    }]
   }
 }

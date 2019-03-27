@@ -31,6 +31,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
                                   private val log: LogService): LifecycleAdapter() {
     private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
     private lateinit var txHandler: StreamsTransactionEventHandler
+    private lateinit var streamsConstraintsService: StreamsConstraintsService
 
     override fun start() {
         try {
@@ -48,13 +49,15 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
 
     private fun registerTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
-            txHandler = StreamsTransactionEventHandler(streamHandler, streamsEventRouterConfiguration)
+            streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
+            txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
             db.registerTransactionEventHandler(txHandler)
         }
     }
 
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
+            streamsConstraintsService.close()
             db.unregisterTransactionEventHandler(txHandler)
         }
     }
