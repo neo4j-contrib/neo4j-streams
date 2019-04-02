@@ -12,16 +12,19 @@ import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 
 class StreamsConstraintsService(private val db: GraphDatabaseService, private val poolInterval: Long): Closeable {
-    override fun close() = runBlocking {
-        job.cancelAndJoin()
-    }
 
     private val nodeConstraints = ConcurrentHashMap<String, Set<Constraint>>()
     private val relConstraints = ConcurrentHashMap<String, Set<Constraint>>()
 
-    private val job: Job
+    private lateinit var job: Job
 
-    init {
+    override fun close() = runBlocking {
+        if (::job.isInitialized) {
+            job.cancelAndJoin()
+        }
+    }
+
+    fun start() {
         job = GlobalScope.launch(Dispatchers.IO) {
             while (isActive) {
                 StreamsUtils.ignoreExceptions({
