@@ -1,5 +1,6 @@
 package streams
 
+import org.neo4j.kernel.AvailabilityGuard
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.KernelExtensionFactory
@@ -17,18 +18,20 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
         val configuration = dependencies.config()
         val streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
         val streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
-        return StreamsEventRouterLifecycle(db, streamHandler, streamsEventRouterConfiguration, log)
+        return StreamsEventRouterLifecycle(db, streamHandler, streamsEventRouterConfiguration, dependencies.availabilityGuard(), log)
     }
 
     interface Dependencies {
         fun graphdatabaseAPI(): GraphDatabaseAPI
         fun log(): LogService
         fun config(): Config
+        fun availabilityGuard(): AvailabilityGuard
     }
 }
 
 class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: StreamsEventRouter,
                                   val streamsEventRouterConfiguration: StreamsEventRouterConfiguration,
+                                  private val availabilityGuard: AvailabilityGuard,
                                   private val log: LogService): LifecycleAdapter() {
     private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
     private lateinit var txHandler: StreamsTransactionEventHandler
@@ -53,6 +56,13 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
             streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
             txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
             db.registerTransactionEventHandler(txHandler)
+            availabilityGuard.addListener(object: AvailabilityGuard.AvailabilityListener {
+                override fun unavailable() {}
+
+                override fun available() {
+                    streamsConstraintsService.start()
+                }
+            })
         }
     }
 

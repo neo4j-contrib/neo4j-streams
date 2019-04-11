@@ -40,6 +40,7 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(schemaMock.constraints).thenReturn(emptyList())
         Mockito.`when`(dbMock.schema()).thenReturn(schemaMock)
         streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
+        streamsConstraintsService.start()
         handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),
                 streamsConstraintsService, StreamsEventRouterConfiguration())
         MockStreamsEventRouter.reset()
