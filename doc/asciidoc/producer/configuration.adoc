@@ -18,7 +18,7 @@ kafka.transactional.id=
 
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
-streams.source.enable=<true/false, default=true>
+streams.source.enabled=<true/false, default=true>
 streams.source.schema.polling.interval=<MILLIS, the polling interval for getting the schema information>
 ----
 
