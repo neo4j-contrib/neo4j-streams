@@ -1,7 +1,6 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
-import streams.service.TopicType
 import streams.service.TopicUtils
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics

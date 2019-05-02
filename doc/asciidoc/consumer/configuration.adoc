@@ -11,6 +11,8 @@ kafka.enable.auto.commit=true
 streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
+streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
 streams.sink.enabled=<true/false, default=true>
 ----
 

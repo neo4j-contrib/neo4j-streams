@@ -126,6 +126,9 @@ object JSONUtils {
 
     @Suppress("UNCHECKED_CAST")
     fun asStreamsTransactionEvent(obj: Any): StreamsTransactionEvent {
+        if (obj is StreamsTransactionEvent) {
+            return obj
+        }
         val value = when (obj) {
             is Map<*, *> -> obj as Map<String, Map<String, Any>>
             is String -> readValue(obj)

@@ -18,4 +18,17 @@ object IngestionUtils {
         val quoted = property.quote()
         return "$quoted: event.$prefix.$quoted"
     }
+
+    fun getNodeMergeKeys(prefix: String, keys: Set<String>): String = keys
+            .map {
+                val quoted = it.quote()
+                "$quoted: event.$prefix.$quoted"
+            }
+            .joinToString(keySeparator)
+
+    fun containsProp(key: String, properties: List<String>): Boolean = if (key.contains(".")) {
+        properties.contains(key) || properties.any { key.startsWith("$it.") }
+    } else {
+        properties.contains(key)
+    }
 }
