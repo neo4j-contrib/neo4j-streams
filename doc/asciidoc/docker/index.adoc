@@ -68,6 +68,7 @@ In case of you are using the Sink you can define your topic/cypher-query combina
 [source,yaml]
 ----
     environment:
+      NEO4J_streams_sink_enabled: "true"
       NEO4J_streams_sink_topic_neo4j:
         "WITH event.value.payload AS payload, event.value.meta AS meta
         FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Question' THEN [1] ELSE [] END |

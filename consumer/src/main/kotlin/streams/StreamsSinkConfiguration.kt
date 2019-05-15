@@ -11,7 +11,7 @@ private object StreamsSinkConfigurationConstants {
     const val PROCEDURES_ENABLED = "procedures.enabled"
 }
 
-data class StreamsSinkConfiguration(val enabled: Boolean = true,
+data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val proceduresEnabled: Boolean = true,
                                     val sinkPollingInterval: Long = 10000,
                                     val topics: Map<String, String> = emptyMap()) {
