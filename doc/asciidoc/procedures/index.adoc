@@ -69,10 +69,19 @@ Uses:
 Example:
 Imagine you have a producer that publish events like this `{"name": "Andrea", "surname": "Santurbano"}`, we can create user nodes in this way:
 
-```
-CALL streams.consume('my-topic', {<config>}) YIELD event
+[source,cypher]
+----
+CALL streams.consume('my-topic') YIELD event
 CREATE (p:Person{firstName: event.data.name, lastName: event.data.surname})
-```
+----
+
+In case you want to read a specific offset of a topic partition you can do it by executing the following query:
+
+[source,cypher]
+----
+CALL streams.consume('my-topic', {timeout: 5000, partitions: [{partition: 0, offset: 30}]}) YIELD event
+CREATE (p:Person{firstName: event.data.name, lastName: event.data.surname})
+----
 
 Input Parameters:
 
@@ -87,7 +96,7 @@ Input Parameters:
 |The topic where you want to publish the data
 
 |`config`
-|Object
+|Map<K,V>
 |The configuration parameters
 
 |===
@@ -101,11 +110,59 @@ Input Parameters:
 |Description
 
 |`timeout`
-|Long
-|It's the value passed to Kafka https://kafka.apache.org/10/javadoc/org/apache/kafka/clients/consumer/KafkaConsumer.html#poll-long-[`Consumer#poll`] method (milliseconds). Default 1000
+|Number (default `1000`)
+|Define the time that the procedure should be listen the topic
 
 |`from`
 |String
-|It's the Kafka configuration parameter `auto.offset.reset`
+|It's the Kafka configuration parameter `auto.offset.reset`.
+If not specified it inherits the underlying `kafka.auto.offset.reset` value
+
+|`groupId`
+|String
+|It's the Kafka configuration parameter `group.id`.
+If not specified it inherits the underlying `kafka.group.id` value
+
+|`autoCommit`
+|Boolean (default `true`)
+|It's the Kafka configuration parameter `enable.auto.commit`.
+If not specified it inherits the underlying `kafka.enable.auto.commit` value
+
+|`commit`
+|Boolean (default `true`)
+|In case of `autoCommit` is set to `false` you can decide if you want to commit the data.
+
+|`zookeeper`
+|String
+|The comma separated string of Zookeeper nodes url.
+If not specified it inherits the underlying `kafka.zookeeper.connect` value
+
+|`broker`
+|String
+|The comma separated string of Kafka nodes url.
+If not specified it inherits the underlying `kafka.bootstrap.servers` value
+
+|`partitions`
+|List<Map<K,V>>
+|The map contains the information about partition and offset in order to start reading from a
 
 |===
+
+===== Partitions
+
+[cols="3*",options="header"]
+|===
+|Variable Name
+|Type
+|Description
+
+|`partition`
+|Number
+|It's the Kafka partition number to read
+
+|`offset`
+|Number
+|It's the offset to start to read the topic partition
+
+|===
+

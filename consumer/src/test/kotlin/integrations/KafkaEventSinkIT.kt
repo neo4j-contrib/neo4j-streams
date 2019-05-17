@@ -2,19 +2,21 @@ package integrations
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.hamcrest.Matchers
 import org.hamcrest.Matchers.equalTo
 import org.junit.*
-import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder
-import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.neo4j.test.assertion.Assert.assertEventually
@@ -22,14 +24,8 @@ import org.testcontainers.containers.KafkaContainer
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
-import java.io.File
-import java.io.IOException
-import java.io.UncheckedIOException
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventSinkIT {
@@ -322,6 +318,37 @@ class KafkaEventSinkIT {
             val result = db.execute(query).columnAs<Long>("count")
             result.hasNext() && result.next() == 0L && !result.hasNext()
         }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun shouldWriteLastOffsetWithNoAutoCommit() = runBlocking {
+        val topic = topics[0]
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
+        graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        var producerRecord = ProducerRecord(topic, 0, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        val newData = data.toMutableMap()
+        newData["id"] = 2
+        producerRecord = ProducerRecord(topic, 0, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
+        val resp = kafkaProducer.send(producerRecord).get()
+
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = "MATCH (n:Label) RETURN count(*) AS count"
+            val result = db.execute(query).columnAs<Long>("count")
+
+            val kafkaProperties = Properties()
+            kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
+            kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
+            kafkaProperties[ConsumerConfig.GROUP_ID_CONFIG] = "neo4j"
+            kafkaProperties[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+            kafkaProperties[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
+            val kafkaConsumer = KafkaConsumer<String, ByteArray>(kafkaProperties)
+            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topics[0], 0))
+
+            result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() == offsetAndMetadata.offset()
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+
     }
 
 }

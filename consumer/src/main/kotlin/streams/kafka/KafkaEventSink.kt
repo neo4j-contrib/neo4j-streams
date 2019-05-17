@@ -1,34 +1,45 @@
 package streams.kafka
 
 import kotlinx.coroutines.*
-import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.common.TopicPartition
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.Log
 import streams.*
+import streams.kafka.KafkaTopicConfig.Companion.toTopicPartitionMap
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
+import java.util.concurrent.ConcurrentHashMap
+
 
 class KafkaEventSink(private val config: Config,
                      private val queryExecution: StreamsEventSinkQueryExecution,
                      private val streamsTopicService: StreamsTopicService,
                      private val log: Log): StreamsEventSink(config, queryExecution, streamsTopicService, log) {
 
-    private lateinit var eventConsumer: StreamsEventConsumer<*>
+    private lateinit var eventConsumer: StreamsEventConsumer
     private lateinit var job: Job
 
     private val streamsConfigMap = config.raw.filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
     }.toMap()
 
-    private val mappingKeys = mapOf("timeout" to "streams.sink.polling.interval",
-            "from" to "kafka.auto.offset.reset")
+    private val mappingKeys = mapOf(
+            "zookeeper" to "kafka.zookeeper.connect",
+            "broker" to "kafka.${ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG}",
+            "from" to "kafka.${ConsumerConfig.AUTO_OFFSET_RESET_CONFIG}",
+            "autoCommit" to "kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}",
+            "groupId" to "kafka.${ConsumerConfig.GROUP_ID_CONFIG}")
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
-            override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer<*> {
+            override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
-                val kafkaConsumer = KafkaConsumer<String, ByteArray>(kafkaConfig.asProperties())
-                return KafkaEventConsumer(kafkaConsumer, kafkaConfig.streamsSinkConfiguration, log)
+                return if (kafkaConfig.enableAutoCommit) {
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log)
+                } else {
+                    KafkaManualCommitEventConsumer(kafkaConfig, log)
+                }
             }
         }
     }
@@ -71,12 +82,11 @@ class KafkaEventSink(private val config: Config,
         return GlobalScope.launch(Dispatchers.IO) {
             try {
                 while (isActive) {
-                    val data= eventConsumer.read()
-                    data?.forEach {
+                    eventConsumer.read { topic, data ->
                         if (log.isDebugEnabled) {
-                            log.debug("Reading data from topic ${it.key}, with data ${it.value}")
+                            log.debug("Reading data from topic $topic")
                         }
-                        queryExecution.writeForTopic(it.key, it.value)
+                        queryExecution.writeForTopic(topic, data)
                     }
                 }
                 eventConsumer.stop()
@@ -90,13 +100,38 @@ class KafkaEventSink(private val config: Config,
 
 }
 
-class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
-                         private val config: StreamsSinkConfiguration,
-                         private val log: Log): StreamsEventConsumer<KafkaConsumer<String, ByteArray>>(consumer, config, log) {
+data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<TopicPartition, Long>) {
+    companion object {
+        private fun toTopicPartitionMap(topicConfig: Map<String,
+                List<Map<String, Any>>>): Map<TopicPartition, Long> = topicConfig
+                .flatMap { topicConfigEntry ->
+                    topicConfigEntry.value.map {
+                        val partition = it.getValue("partition").toString().toInt()
+                        val offset = it.getValue("offset").toString().toLong()
+                        TopicPartition(topicConfigEntry.key, partition) to offset
+                    }
+                }
+                .associateBy({ it.first }, { it.second })
 
-    private lateinit var topics: Set<String>
+        fun fromMap(map: Map<String, Any>): KafkaTopicConfig {
+            val commit = map.getOrDefault("commit", true).toString().toBoolean()
+            val topicPartitionsMap = toTopicPartitionMap(map
+                    .getOrDefault("partitions", emptyMap<String, List<Map<String, Any>>>()) as Map<String, List<Map<String, Any>>>)
+            return KafkaTopicConfig(commit = commit, topicPartitionsMap = topicPartitionsMap)
+        }
+    }
+}
 
-    override fun withTopics(topics: Set<String>): StreamsEventConsumer<KafkaConsumer<String, ByteArray>> {
+open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
+                                        private val log: Log): StreamsEventConsumer(log) {
+
+    private var isSeekSet = false
+
+    val consumer = KafkaConsumer<String, ByteArray>(config.asProperties())
+
+    lateinit var topics: Set<String>
+
+    override fun withTopics(topics: Set<String>): StreamsEventConsumer {
         this.topics = topics
         return this
     }
@@ -113,15 +148,172 @@ class KafkaEventConsumer(private val consumer: KafkaConsumer<String, ByteArray>,
         StreamsUtils.ignoreExceptions({ consumer.close() }, UninitializedPropertyAccessException::class.java)
     }
 
-    override fun read(): Map<String, List<Any>>? {
-        val records = consumer.poll(config.sinkPollingInterval)
-        if (records != null && !records.isEmpty) {
-            return records
-                    .map {
-                        it.topic()!! to JSONUtils.readValue<Any>(it.value())
-                    }
-                    .groupBy({ it.first }, { it.second })
+    private fun readSimple(action: (String, List<Any>) -> Unit) {
+        val records = consumer.poll(0)
+        if (!records.isEmpty) {
+            try {
+                this.topics.forEach { topic ->
+                    action(topic, records.records(topic).map { JSONUtils.readValue<Any>(it.value()) })
+                }
+            } catch (e: Exception) {
+                // TODO add dead letter queue
+            }
         }
-        return null
+    }
+
+    private fun readFromPartition(config: KafkaTopicConfig, action: (String, List<Any>) -> Unit) {
+        setSeek(config.topicPartitionsMap)
+        val records = consumer.poll(0)
+        val consumerRecordsMap = toConsumerRecordsMap(config.topicPartitionsMap, records)
+        if (consumerRecordsMap.isNotEmpty()) {
+            try {
+                consumerRecordsMap.forEach { action(it.key.topic(), it.value.map { JSONUtils.readValue<Any>(it.value()) }) }
+            } catch (e: Exception) {
+                // TODO add dead letter queue
+            }
+        }
+    }
+
+    override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {
+        val kafkaTopicConfig = KafkaTopicConfig.fromMap(topicConfig)
+        if (kafkaTopicConfig.topicPartitionsMap.isEmpty()) {
+            readSimple(action)
+        } else {
+            readFromPartition(kafkaTopicConfig, action)
+        }
+    }
+
+    fun toConsumerRecordsMap(topicPartitionsMap: Map<TopicPartition, Long>,
+                             records: ConsumerRecords<String, ByteArray>)
+            : Map<TopicPartition, List<ConsumerRecord<String, ByteArray>>> = topicPartitionsMap
+                .mapValues {
+                    records.records(it.key)
+                }
+                .filterValues { it.isNotEmpty() }
+
+    fun setSeek(topicPartitionsMap: Map<TopicPartition, Long>) {
+        if (isSeekSet) {
+            return
+        }
+        isSeekSet = true
+        consumer.poll(0) // dummy call see: https://stackoverflow.com/questions/41008610/kafkaconsumer-0-10-java-api-error-message-no-current-assignment-for-partition
+        topicPartitionsMap.forEach {
+            when (it.value) {
+                -1L -> consumer.seekToBeginning(listOf(it.key))
+                -2L -> consumer.seekToEnd(listOf(it.key))
+                else -> consumer.seek(it.key, it.value)
+            }
+        }
+    }
+}
+
+class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
+                                     private val log: Log): KafkaAutoCommitEventConsumer(config, log) {
+
+    private val topicPartitionOffsetMap = ConcurrentHashMap<TopicPartition, OffsetAndMetadata>()
+
+    override fun start() {
+        if (topics.isEmpty()) {
+            log.info("No topics specified Kafka Consumer will not started")
+            return
+        }
+        this.consumer.subscribe(topics, StreamsConsumerRebalanceListener(topicPartitionOffsetMap, consumer, config.autoOffsetReset, log))
+    }
+
+    private fun readSimple(action: (String, List<Any>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
+        val topicMap = mutableMapOf<TopicPartition, OffsetAndMetadata>()
+        val records = consumer.poll(0)
+        if (!records.isEmpty) {
+            this.topics.forEach { topic ->
+                val topicRecords = records.records(topic)
+                val lastRecord = topicRecords.last()
+                val offsetAndMetadata = OffsetAndMetadata(lastRecord.offset(), "")
+                val topicPartition = TopicPartition(lastRecord.topic(), lastRecord.partition())
+                topicMap[topicPartition] = offsetAndMetadata
+                topicPartitionOffsetMap[topicPartition] = offsetAndMetadata
+                try {
+                    action(topic, topicRecords.map { JSONUtils.readValue<Any>(it.value()) })
+                } catch (e: Exception) {
+                    // TODO add dead letter queue
+                }
+            }
+        }
+        return topicMap
+    }
+
+    private fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
+                                  action: (String, List<Any>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
+        val topicMap = mutableMapOf<TopicPartition, OffsetAndMetadata>()
+        setSeek(kafkaTopicConfig.topicPartitionsMap)
+        val records = consumer.poll(0)
+        val consumerRecordsMap = toConsumerRecordsMap(kafkaTopicConfig.topicPartitionsMap, records)
+        if (consumerRecordsMap.isNotEmpty()) {
+            try {
+                consumerRecordsMap.forEach {
+                    val lastRecord = it.value.last()
+                    val topicPartition = TopicPartition(lastRecord.topic(), lastRecord.partition())
+                    val offsetAndMetadata = OffsetAndMetadata(lastRecord.offset(), "")
+                    topicMap[topicPartition] = offsetAndMetadata
+                    topicPartitionOffsetMap[topicPartition] = offsetAndMetadata
+                    action(it.key.topic(), it.value.map { JSONUtils.readValue<Any>(it.value()) })
+                }
+            } catch (e: Exception) {
+                // TODO add dead letter queue
+            }
+        }
+        return topicMap
+    }
+
+    private fun commitData(commit: Boolean, topicMap: Map<TopicPartition, OffsetAndMetadata>) {
+        if (commit && topicMap.isNotEmpty()) {
+            consumer.commitSync(topicMap)
+        }
+    }
+
+    override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {
+        val kafkaTopicConfig = KafkaTopicConfig.fromMap(topicConfig)
+        val topicMap = if (kafkaTopicConfig.topicPartitionsMap.isEmpty()) {
+            readSimple(action)
+        } else {
+            readFromPartition(kafkaTopicConfig, action)
+        }
+        commitData(kafkaTopicConfig.commit, topicMap)
+    }
+}
+
+class StreamsConsumerRebalanceListener(private val topicPartitionOffsetMap: Map<TopicPartition, OffsetAndMetadata>,
+                                       private val consumer: KafkaConsumer<String, ByteArray>,
+                                       private val autoOffsetReset: String,
+                                       private val log: Log): ConsumerRebalanceListener {
+
+    override fun onPartitionsRevoked(partitions: Collection<TopicPartition>) {
+        val offsets = partitions
+                .map {
+                    val offset = consumer.position(it)
+                    if (log.isDebugEnabled) {
+                        log.debug("for topic ${it.topic()} partition ${it.partition()}, the last saved offset is: $offset")
+                    }
+                    it to OffsetAndMetadata(offset, "")
+                }
+                .toMap()
+        consumer.commitSync(offsets)
+    }
+
+    override fun onPartitionsAssigned(partitions: Collection<TopicPartition>) {
+        for (partition in partitions) {
+            val offset = topicPartitionOffsetMap[partition]?.offset()
+            if (log.isDebugEnabled) {
+                log.debug("for ${partition.topic()} partition ${partition.partition()}, the retrieved offset is: $offset")
+            }
+            if (offset == null) {
+                when (autoOffsetReset) {
+                    "latest" -> consumer.seekToEnd(listOf(partition))
+                    "earliest" -> consumer.seekToBeginning(listOf(partition))
+                    else -> throw RuntimeException("No kafka.auto.offset.reset property specified")
+                }
+            } else {
+                consumer.seek(partition, offset + 1)
+            }
+        }
     }
 }

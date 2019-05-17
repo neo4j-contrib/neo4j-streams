@@ -233,7 +233,7 @@ We must distinguish two cases:
 |List of properties attached to the entity, where the `K` is the property name and the `V` is the class type
 |===
 
-====== Constraints
+===== Constraints
 
 Nodes and Relationships can have a list of constraints attached to them:
 
