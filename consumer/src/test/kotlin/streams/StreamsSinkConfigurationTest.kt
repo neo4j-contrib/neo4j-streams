@@ -23,11 +23,11 @@ class StreamsSinkConfigurationTest {
         val config = Config.builder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
-                .withSetting("streams.sink.enabled", "false")
+                .withSetting("streams.sink.enabled", "true")
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, pollingInterval, topic, topicValue)
-        assertFalse { streamsConfig.enabled }
+        assertTrue { streamsConfig.enabled }
     }
 
     companion object {
