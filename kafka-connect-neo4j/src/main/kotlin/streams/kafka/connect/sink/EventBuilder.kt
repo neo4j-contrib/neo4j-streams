@@ -8,7 +8,7 @@ class EventBuilder {
     private val log: Logger = LoggerFactory.getLogger(EventBuilder::class.java)
 
     private var batchSize: Int? = null
-    private lateinit var topics: Set<String>
+    private lateinit var topics: List<String>
     private lateinit var sinkRecords: Collection<SinkRecord>
 
     fun withBatchSize(batchSize: Int): EventBuilder {
@@ -16,7 +16,7 @@ class EventBuilder {
         return this
     }
 
-    fun withTopics(topics: Set<String>): EventBuilder {
+    fun withTopics(topics: List<String>): EventBuilder {
         this.topics = topics
         return this
     }
@@ -26,7 +26,7 @@ class EventBuilder {
         return this
     }
 
-    fun build(): Map<String, List<List<SinkRecord>>> { // <Topic, List<List<SinkRecord>>
+    fun build(): Map<String, List<List<Any>>> { // <Topic, List<List<SinkRecord>>
         return this.sinkRecords
                 .groupBy { it.topic() }
                 .filterKeys {topic ->
@@ -36,8 +36,8 @@ class EventBuilder {
                     }
                     isValidTopic
                 }
-                .mapValues { it ->
-                    val value = it.value
+                .mapValues {
+                    val value = it.value.mapNotNull { it.value() }
                     value.chunked(this.batchSize!!)
                 }
     }

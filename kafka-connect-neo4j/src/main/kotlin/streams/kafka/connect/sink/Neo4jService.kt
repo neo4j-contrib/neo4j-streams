@@ -1,12 +1,13 @@
 package streams.kafka.connect.sink
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
-import org.apache.kafka.connect.sink.SinkRecord
+import org.apache.kafka.connect.errors.ConnectException
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
@@ -15,24 +16,23 @@ import org.neo4j.driver.v1.exceptions.ClientException
 import org.neo4j.driver.v1.exceptions.TransientException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.service.StreamsSinkService
+import streams.service.TopicType
+import streams.service.sink.strategy.SchemaIngestionStrategy
+import streams.service.sink.strategy.SourceIdIngestionStrategy
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
-import org.apache.kafka.connect.errors.ConnectException
-import org.neo4j.driver.v1.exceptions.Neo4jException
 import java.util.concurrent.TimeUnit
 
 
-class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
+class Neo4jService(private val config: Neo4jSinkConnectorConfig):
+        StreamsSinkService(config.strategyMap) {
 
     private val converter = ValueConverter()
 
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
-
-    private val skipNeo4jErrors = listOf("Neo.ClientError.Statement.PropertyNotFound",
-            "Neo.ClientError.Statement.SemanticError",
-            "Neo.ClientError.Statement.ParameterMissing")
 
     init {
         val configBuilder = Config.build()
@@ -74,49 +74,55 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
         driver.close()
     }
 
-    private fun write(topic: String, records: List<SinkRecord>) {
-        val query = "${StreamsUtils.UNWIND} ${config.topicMap[topic]}"
-        val data = mapOf<String, Any>("events" to records.map { converter.convert(it.value()) })
-        driver.session().use { session ->
-            try {
-                runBlocking {
-                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-                            retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                        try {
-                            session.writeTransaction {
-                                val result = it.run(query, data)
-                                if (log.isDebugEnabled) {
-                                    log.debug("Successfully executed query, summary: ${result.summary()}")
-                                }
-                            }
-                        } catch (neoException: Neo4jException) {
-                            if (skipNeo4jErrors.contains(neoException.code())) {
-                                log.info("Skip query: `$query`. Error message `${neoException.message}`. Error code: `${neoException.code()}`")
-                            } else {
-                                throw neoException
-                            }
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                if (log.isDebugEnabled) {
-                    if (e is Neo4jException) {
-                        log.debug("Exception `${e.message}` with code `${e.code()}` while executing query `$query`, with data `$data`")
-                    } else {
-                        log.debug("Exception `${e.message}` while executing query `$query`, with data `$data`")
-                    }
-                }
-                throw e
-            }
+    override fun getTopicType(topic: String): TopicType? {
+        val isCDCMerge = config.topics.cdcSourceIdTopics.contains(topic) ?: false
+        val isCDCSchema = config.topics.cdcSchemaTopics.contains(topic) ?: false
+        return if (isCDCMerge) {
+            TopicType.CDC_SOURCE_ID
+        } else if (isCDCSchema) {
+            TopicType.CDC_SCHEMA
+        } else if (config.topics.cypherTopics.containsKey(topic)) {
+            TopicType.CYPHER
+        } else {
+            null
         }
     }
 
-    suspend fun writeData(data: Map<String, List<List<SinkRecord>>>) = coroutineScope {
+    override fun getCypherTemplate(topic: String): String? {
+        return "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
+    }
+
+    override fun write(query: String, events: Collection<Any>) {
+        val session = driver.session()
+        val records = events as List<Any>
+        val data = mapOf<String, Any>("events" to records.map { converter.convert(it) })
+        try {
+            runBlocking {
+                retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+                        retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                    session.writeTransaction {
+                        val result = it.run(query, data)
+                        if (log.isDebugEnabled) {
+                            log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            if (log.isDebugEnabled) {
+                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+            }
+            throw e
+        }
+    }
+
+
+    suspend fun writeData(data: Map<String, List<List<Any>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
         val deferredList = data
                 .flatMap { (topic, records) ->
-                    records.map { async { write(topic, it) } }
+                    records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
                 }
         whileSelect {
             ticker.onReceive {

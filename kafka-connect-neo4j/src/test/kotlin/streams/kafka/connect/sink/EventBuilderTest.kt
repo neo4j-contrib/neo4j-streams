@@ -46,7 +46,7 @@ class EventBuilderTest {
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 44),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 45),
                 SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43)) // 5 records for topic "neotopic", 1 for topic "foo"
-        val topics = setOf(firstTopic, secondTopic)
+        val topics = listOf(firstTopic, secondTopic)
 
         // When
         val data = EventBuilder()
@@ -56,7 +56,7 @@ class EventBuilderTest {
                 .build()
 
         // Then
-        assertEquals(topics, data.keys)
+        assertEquals(topics, data.keys.toList())
         assertEquals(3, data[firstTopic]!!.size) // n° of chunks for "neotopic"
         assertEquals(1, data[secondTopic]!!.size) // n° of chunks for "foo"
     }

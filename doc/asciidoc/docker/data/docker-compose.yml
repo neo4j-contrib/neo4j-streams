@@ -10,7 +10,7 @@ services:
     depends_on:
     - kafka
     volumes:
-    - $HOME/neo4j/3.4/plugins:/plugins
+    - ./neo4j/plugins:/plugins:/plugins
     environment:
       NEO4J_AUTH: neo4j/streams
       NEO4J_dbms_logs_debug_level: DEBUG

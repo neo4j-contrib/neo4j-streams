@@ -20,7 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
-
+@Suppress("UNCHECKED_CAST", "DEPRECATION")
 class StreamsSinkProceduresIT {
     companion object {
         /**
