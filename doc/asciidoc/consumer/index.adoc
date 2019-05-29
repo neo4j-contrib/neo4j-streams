@@ -4,6 +4,13 @@ Is the Kafka Sink that ingest the data directly into Neo4j
 
 === How it works
 
+It works in two ways:
+
+* by providing a Cypher template
+* by ingesting the events emitted from another Neo4j instance via the Change Data Capture module
+
+==== Cypher Template
+
 It works with template Cypher queries stored into properties with the following format:
 
 [source,ini]
@@ -54,6 +61,87 @@ UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
+
+==== Change Data Capture Event
+
+This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
+
+ * The `SourceId` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID)
+ * The `Schema` strategy which merges the nodes/relationships by the constraints (UNIQUENESS, NODE_KEY) defined in your graph model
+
+===== The `SourceId` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.sourceId=<list of topics separated by semicolon>
+streams.sink.topic.cdc.sourceId.labelName=<the label attached to the node, default=SourceEvent>
+streams.sink.topic.cdc.sourceId.idName=<the id name given to the CDC id field, default=sourceId>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.sourceId=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+include::../producer/data/node.created.json[]
+----
+
+will be persisted as the following node:
+
+```
+Person:SourceEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", sourceId: "1004"}
+```
+
+as you can notice, ingested event has been projected with two peculiarities:
+
+* the `id` field has transformed into `sourceId`;
+* the node has an additional label `SourceEvent`;
+
+these two fields will be used in order to match the node/relationship for future updates/deletes
+
+===== The `schema` strategy
+
+You can configure the topic in the following way:
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+----
+
+[source,ini]
+----
+streams.sink.topic.cdc.schema=my-topic;my-other.topic
+----
+
+Each streams event will be projected into the related graph entity, for instance the following event:
+
+[source,json]
+----
+include::../producer/data/node.created.json[]
+----
+
+will be persisted as the following node:
+
+```
+Person{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org"}
+```
+
+The `Schema` strategy leverages the `schema` field in order to insert/update the nodes so no extra fields will be created.
+
+In case of relationship
+
+[source,json]
+----
+include::../producer/data/relationship.created.json[]
+----
+
+the `Schema` strategy leverages the `ids` fields in order to insert/update the relationships so no extra fields will be created.
 
 === Configuration
 

@@ -11,6 +11,10 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.procedures.StreamsSinkProcedures
+import streams.service.TopicUtils
+import streams.service.sink.strategy.SchemaIngestionStrategy
+import streams.service.sink.strategy.SourceIdIngestionStrategy
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
 class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Consumer") {
@@ -41,8 +45,33 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
                     override fun available() {
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
-                        val streamsTopicService = StreamsTopicService(db, streamsSinkConfiguration.topics)
-                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db, log.getUserLog(StreamsEventSinkQueryExecution::class.java))
+
+                        val streamsTopicService = StreamsTopicService(db)
+                        streamsTopicService.clearAll()
+                        streamsTopicService.setAll(streamsSinkConfiguration.topics)
+                        val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
+                                streamsSinkConfiguration.sourceIdStrategyConfig)
+                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
+                                log.getUserLog(StreamsEventSinkQueryExecution::class.java),
+                                strategyMap)
+
+                        // Create and start the Sink
+                        eventSink = StreamsEventSinkFactory
+                                .getStreamsEventSink(configuration,
+                                        streamsQueryExecution,
+                                        streamsTopicService,
+                                        log.getUserLog(StreamsEventSinkFactory::class.java))
+                        eventSink.start()
+                        if (Neo4jUtils.isWriteableInstance(db)) {
+                            if (streamsLog.isDebugEnabled) {
+                                streamsLog.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
+                                streamsLog.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
+                            } else {
+                                streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
+                            }
+                        }
+
+                        // Register required services for the Procedures
                         StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                         eventSink = StreamsEventSinkFactory.getStreamsEventSink(configuration,
                                 streamsQueryExecution,

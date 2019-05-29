@@ -1,5 +1,6 @@
 package streams.kafka
 
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -18,7 +19,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                                   val groupId: String = "neo4j",
                                   val autoOffsetReset: String = "earliest",
                                   val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration(),
-                                  // val enableAutoCommit: String = true,
+                                  val enableAutoCommit: Boolean = true,
                                   val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -39,10 +40,10 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
             val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg)
 
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
-                    bootstrapServers = config.getOrDefault("bootstrap.servers", default.bootstrapServers),
-                    autoOffsetReset = config.getOrDefault("auto.offset.reset", default.autoOffsetReset),
-                    groupId = config.getOrDefault("group.id", default.groupId),
-                    // enableAutoCommit = config.getOrDefault("enable.auto.commit", default.enableAutoCommit).toBoolean(),
+                    bootstrapServers = config.getOrDefault(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, default.bootstrapServers),
+                    autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
+                    groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId),
+                    enableAutoCommit = config.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, default.enableAutoCommit).toString().toBoolean(),
                     streamsSinkConfiguration = streamsSinkConfiguration,
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
@@ -57,7 +58,6 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
         props.putAll(map)
         props.putAll(extraProperties)
         props.putAll(addDeserializers()) // Fixed deserializers
-        props[ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG] = true // Fixed autocommit
         return props
     }
 

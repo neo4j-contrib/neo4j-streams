@@ -1,25 +1,41 @@
 package streams.kafka.connect.sink
 
+import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkConnector
 import org.junit.Test
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 
 class Neo4jSinkConnectorConfigTest {
 
-   @Test(expected = RuntimeException::class)
-   fun `should throw a RuntimeException`() {
+   @Test(expected = ConfigException::class)
+   fun `should throw a ConfigException because of mismatch`() {
        try {
            val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})")
            Neo4jSinkConnectorConfig(originals)
-       } catch (e: RuntimeException) {
-           assertEquals("There is a mismatch between provided Cypher queries ([foo]) and configured topics ([foo, bar])", e.message)
+       } catch (e: ConfigException) {
+           assertEquals("There is a mismatch between provided Cypher queries + CDC topics ([foo]) and configured topics ([foo, bar])", e.message)
            throw e
        }
    }
+
+    @Test(expected = ConfigException::class)
+    fun `should throw a ConfigException because of cross defined topics`() {
+        try {
+            val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
+                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})",
+                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}bar" to "CREATE (p:Person{name: event.firsName})",
+                    "${Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID}" to "foo")
+            Neo4jSinkConnectorConfig(originals)
+        } catch (e: ConfigException) {
+            assertEquals("The following topics are cross defined between Cypher template configuration and CDC configuration: [foo]", e.message)
+            throw e
+        }
+    }
 
     @Test
     fun `should return the configuration`() {
@@ -31,8 +47,8 @@ class Neo4jSinkConnectorConfigTest {
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
         val config = Neo4jSinkConnectorConfig(originals)
 
-        assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topicMap["foo"])
-        assertTrue { config.encryptionEnabled }
+        assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.cypherTopics["foo"])
+        assertFalse { config.encryptionEnabled }
         assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
         assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)

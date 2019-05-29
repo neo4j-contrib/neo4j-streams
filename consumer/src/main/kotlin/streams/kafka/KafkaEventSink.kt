@@ -36,14 +36,12 @@ class KafkaEventSink(private val config: Config,
     override fun start() {
         val streamsConfig = StreamsSinkConfiguration.from(config)
         if (!streamsConfig.enabled) {
-            log.info("The sink will not started, please set the property streams.sink.enabled=true")
             return
         }
         log.info("Starting the Kafka Sink")
-        val topics = streamsTopicService.getAll()
         this.eventConsumer = getEventConsumerFactory()
                 .createStreamsEventConsumer(config.raw, log)
-                .withTopics(topics.keys)
+                .withTopics(streamsTopicService.getTopics())
         this.eventConsumer.start()
         this.job = createJob()
         log.info("Kafka Sink started")
@@ -78,7 +76,7 @@ class KafkaEventSink(private val config: Config,
                         if (log.isDebugEnabled) {
                             log.debug("Reading data from topic ${it.key}, with data ${it.value}")
                         }
-                        queryExecution.execute(it.key, it.value)
+                        queryExecution.writeForTopic(it.key, it.value)
                     }
                 }
                 eventConsumer.stop()

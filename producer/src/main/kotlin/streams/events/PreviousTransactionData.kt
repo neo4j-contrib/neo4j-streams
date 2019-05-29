@@ -5,6 +5,7 @@ import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
 import streams.extensions.labelNames
+import streams.utils.SchemaUtils.getNodeKeys
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
                                    val nodeLabels: Map<Long, List<String>>,
@@ -22,15 +23,6 @@ data class PreviousTransactionData(val nodeData: PreviousNodeTransactionData,
                                    val nodeConstraints: Map<String, Set<Constraint>>,
                                    val relConstraints: Map<String, Set<Constraint>>)
 
-fun getNodeKeys(labels: List<String>, propertyKeys: Set<String>, constraints: Map<String, Set<Constraint>>): Set<String> {
-    return labels
-            .filter {
-                constraints.containsKey(it) && constraints.getValue(it).any { it.properties.containsAll(propertyKeys) }
-            }
-            .map { constraints.getValue(it) }
-            .map { it.minBy { it.properties.size }!!.properties }
-            .minBy { it.size }.orEmpty()
-}
 
 /**
  * Build a data class containing the previous (before) state of the nodes/relationships
@@ -69,8 +61,6 @@ class PreviousTransactionDataBuilder {
         nodeCreatedPayload.forEach {
             createdNodeIds.add(it.id)
         }
-
-        //val createdIds = nodeCreatedPayload.map { it.id }.toSet()
 
         val updatedPayloads = updatedNodes
                 .filter { ! createdNodeIds.contains(it.id.toString()) }
@@ -111,6 +101,8 @@ class PreviousTransactionDataBuilder {
             notUpdatedRels.add(it.id)
         }
 
+        val nodeConstraintsCache = mutableMapOf<List<String>, List<Constraint>>()
+
         val updatedRelPayloads = updatedRels
                 .filter { ! notUpdatedRels.contains(it.id.toString()) }
                 .map {
@@ -124,19 +116,30 @@ class PreviousTransactionDataBuilder {
                             .withProperties(it.allProperties)
                             .build()
 
-                    val startNodeLabels = it.startNode.labelNames()
-                    val endNodeLabels = it.endNode.labelNames()
-
-                    val startNodeKeys = getNodeKeys(it.startNode.labelNames(), it.startNode.propertyKeys.toSet(), nodeConstraints)
+                    val startLabels = it.startNode.labelNames()
+                    val startNodeConstraints = nodeConstraintsCache.computeIfAbsent(startLabels) {
+                        nodeConstraints
+                                .filterKeys { startLabels.contains(it) }
+                                .flatMap { it.value }
+                    }
+                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints)
                             .toTypedArray()
-                    val endNodeKeys = getNodeKeys(it.endNode.labelNames(), it.endNode.propertyKeys.toSet(), nodeConstraints)
+
+
+                    val endLabels = it.endNode.labelNames()
+                    val endNodeConstraints = nodeConstraintsCache.computeIfAbsent(endLabels) {
+                        nodeConstraints
+                                .filterKeys { endLabels.contains(it) }
+                                .flatMap { it.value }
+                    }
+                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
                             .withId(it.id.toString())
                             .withName(it.type.name())
-                            .withStartNode(it.startNode.id.toString(), startNodeLabels, it.startNode.getProperties(*startNodeKeys))
-                            .withEndNode(it.endNode.id.toString(), endNodeLabels, it.startNode.getProperties(*endNodeKeys))
+                            .withStartNode(it.startNode.id.toString(), startLabels, it.startNode.getProperties(*startNodeKeys))
+                            .withEndNode(it.endNode.id.toString(), endLabels, it.startNode.getProperties(*endNodeKeys))
                             .withBefore(beforeNode)
                             .withAfter(afterNode)
                             .build()
@@ -210,10 +213,6 @@ class PreviousTransactionDataBuilder {
         updatedNodes = updatedNodes.plus(removedNodeProperties
                 .map { it.entity() }
                 .toSet() )
-
-        //val updateNodesLabels = updatedNodes.groupBy ( {it.id},{it.labels.map { it.name() }}).mapValues { it.value.flatten() }
-
-        //nodeLabels = nodeLabels.plus(updateNodesLabels)
 
         nodeProperties = nodeProperties.plus(allProps)
 

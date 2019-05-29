@@ -10,21 +10,12 @@ Prerequisites:
 
 Here the instruction about how to configure https://docs.docker.com/compose/install/[Docker and Docker-Compose]
 
-=== Launch it locally
-
-Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper in order to test the application.
-
-Before starting please change the volume directory according to yours, inside the <plugins> dir you must put Streams jar
-
-```yml
-volumes:
-    - $HOME/neo4j/3.4/plugins:/plugins
-```
-
 From the same directory where the compose file is, you can launch this command:
 
- $ docker-compose up -d
-
+[source,bash]
+----
+docker-compose up -d
+----
 
 Please note that the Neo4j Docker image use a naming convention; you can override every neo4j.conf property by prefix it with `NEO4J_` and using the following transformations:
 
@@ -36,36 +27,69 @@ Example:
 * `dbms.memory.heap.max_size=8G` -> `NEO4J_dbms_memory_heap_max__size: 8G`
 * `dbms.logs.debug.level=DEBUG` -> `NEO4J_dbms_logs_debug_level: DEBUG`
 
-=== Producer
+=== Source module
 
-In case you are testing the producer you can execute a consumer that subscribes the topic `neo4j` by executing this command:
+Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper in order to test the application.
 
- $ docker exec kafka kafka-console-consumer --bootstrap-server kafka:19092 --topic neo4j --from-beginning
+.docker-compose.yml
+[source,yaml]
+----
+include::data/docker-compose.yml[]
+----
+
+==== Launch it locally
+
+===== Prerequisites
+
+* Install the Neo4j Streams plugin into `./neo4j/plugins`
+
+Before starting please change the volume directory according to yours, inside the <plugins> dir you must put Streams jar
+
+[source,yml]
+----
+volumes:
+    - ./neo4j/plugins:/plugins
+----
+
+You can execute a Kafka Consumer that subscribes the topic `neo4j` by executing this command:
+
+[source,bash]
+----
+docker exec kafka kafka-console-consumer --bootstrap-server kafka:19092 --topic neo4j --from-beginning
+----
 
 Then directly from the Neo4j browser you can generate some random data with this query:
 
-```cypher
+[source,cypher]
+----
 UNWIND range(1,100) as id
 CREATE (p:Person {id:id, name: "Name " + id, age: id % 3}) WITH collect(p) as people
 UNWIND people as p1
 UNWIND range(1,10) as friend
 WITH p1, people[(p1.id + friend) % size(people)] as p2
 CREATE (p1)-[:KNOWS {years: abs(p2.id - p1.id)}]->(p2)
-```
+----
 
 And if you go back to your consumer you'll see something like this:
 
-```bash
+[source,json]
+----
 {"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":107,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"99","start":{"id":"9","labels":["Person"]},"end":{"id":"0","labels":["Person"]},"before":null,"after":{"properties":{"years":9}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
+
 {"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":108,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"96","start":{"id":"9","labels":["Person"]},"end":{"id":"7","labels":["Person"]},"before":null,"after":{"properties":{"years":2}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
+
 {"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":109,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"97","start":{"id":"9","labels":["Person"]},"end":{"id":"8","labels":["Person"]},"before":null,"after":{"properties":{"years":1}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
-```
+----
 
-=== Consumer
+=== Sink module
 
-In case of you are using the Sink you can define your topic/cypher-query combination as it follows:
+Following you'll find a simple docker compose file that allow you to spin-up two Neo4j instances
+one configured as `Source` and one as `Sink`, allowing you to share any data from the `Source` to the `Sink`:
 
-[source,yaml]
+* The `Source` is listening at `http://localhost:8474/browser/` (bolt: `bolt://localhost:8687`)
+* The `Sink` is listening at `http://localhost:7474/browser/` (bolt: `bolt://localhost:7687`) and is configured with the `Schema` strategy.
+
+[source,yml]
 ----
     environment:
       NEO4J_streams_sink_enabled: "true"
@@ -109,8 +133,78 @@ In case of you are using the Sink you can define your topic/cypher-query combina
         )"
 ----
 
-.docker-compose.yml
-[source,yaml]
+
+==== Launch it locally
+
+In the following example we will use the Neo4j Streams plugin in combination with the APOC procedures (download from here) in order to download some data
+from Stackoverflow, store them into the Neo4j `Source` instance and replicate these dataset into the `Sink` via the Neo4j Streams plugin.
+
+
+[source,yml]
 ----
-include::data/docker-compose.yml[]
+include::../docker/data/docker-compose-source-sink.yml[]
+----
+
+===== Prerequisites
+
+* Install the APOC into `./neo4j/plugins`.
+* Install the Neo4j Streams plugin into `./neo4j/plugins` and `./neo4j/plugins-sink`
+
+===== Import the data
+
+Let's go to two instances in order to create the constraints on both sides:
+
+
+[source,cypher]
+----
+// enable the multi-statement execution: https://stackoverflow.com/questions/21778435/multiple-unrelated-queries-in-neo4j-cypher?answertab=votes#tab-top
+CREATE CONSTRAINT ON (u:User) ASSERT u.id IS UNIQUE;
+CREATE CONSTRAINT ON (a:Answer) ASSERT a.id IS UNIQUE;
+CREATE CONSTRAINT ON (t:Tag) ASSERT t.name IS UNIQUE;
+CREATE CONSTRAINT ON (q:Question) ASSERT q.id IS UNIQUE;
+----
+
+please note this property inside the compose file:
+
+[source,ini]
+----
+NEO4J_streams_source_schema_polling_interval: 10000
+----
+
+this means that every 10 seconds the Streams plugin polls the DB in order to retrieve schema changes and store them.
+So after you created the indexes you need almost to wait 10 seconds before the next step, otherwise the
+
+Now lets go to the `Source` and, in order to import the Stackoverflow dataset, execute the following query:
+
+[source,cypher]
+----
+UNWIND range(1, 1) as page
+CALL apoc.load.json("https://api.stackexchange.com/2.2/questions?pagesize=100&order=desc&sort=creation&tagged=neo4j&site=stackoverflow&page=" + page) YIELD value
+UNWIND value.items AS event
+MERGE (question:Question {id:event.question_id}) ON CREATE
+  SET question.title = event.title, question.share_link = event.share_link, question.favorite_count = event.favorite_count
+
+FOREACH (ignoreMe in CASE WHEN exists(event.accepted_answer_id) THEN [1] ELSE [] END | MERGE (question)<-[:ANSWERS]-(answer:Answer{id: event.accepted_answer_id}))
+
+WITH * WHERE NOT event.owner.user_id IS NULL
+MERGE (owner:User {id:event.owner.user_id}) ON CREATE SET owner.display_name = event.owner.display_name
+MERGE (owner)-[:ASKED]->(question)
+----
+
+Once the import process has finished to be sure that the data is correctly replicated into the `Sink` execute this query
+both in `Source` and `Sink` and compare the results:
+
+[source,cypher]
+----
+MATCH (n)
+RETURN
+DISTINCT labels(n),
+count(*) AS NumofNodes,
+avg(size(keys(n))) AS AvgNumOfPropPerNode,
+min(size(keys(n))) AS MinNumPropPerNode,
+max(size(keys(n))) AS MaxNumPropPerNode,
+avg(size((n)-[]-())) AS AvgNumOfRelationships,
+min(size((n)-[]-())) AS MinNumOfRelationships,
+max(size((n)-[]-())) AS MaxNumOfRelationships
+order by NumofNodes desc
 ----

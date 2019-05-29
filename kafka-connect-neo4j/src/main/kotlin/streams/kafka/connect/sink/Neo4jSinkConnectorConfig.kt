@@ -13,6 +13,10 @@ import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
 import streams.kafka.connect.utils.PropertiesUtil
+import streams.service.TopicType
+import streams.service.TopicUtils
+import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
+import streams.service.Topics
 import java.io.File
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -55,7 +59,15 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val batchTimeout: Long
     val batchSize: Int
 
-    val topicMap: Map<String, String>
+//    val cdcTopics: Map<TopicType, Set<String>>
+//
+//    val cypherTopics: Map<String, String>
+
+    val topics: Topics
+
+    val strategyMap: Map<TopicType, Any>
+
+    val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
 
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -87,25 +99,26 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         batchTimeout = getLong(BATCH_TIMEOUT_MSECS)
         batchSize = getInt(BATCH_SIZE)
 
-        topicMap = getTopics(originals)
+        sourceIdStrategyConfig = SourceIdIngestionStrategyConfig(getString(TOPIC_CDC_SOURCE_ID_LABEL_NAME), getString(TOPIC_CDC_SOURCE_ID_ID_NAME))
+        topics = Topics.from(originals, "streams.sink.", "neo4j.")
+        strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
+
+        validateAllTopics(originals)
     }
 
-    private fun getTopics(originals: Map<*, *>): Map<String, String> {
-        val topicMap = originals
-                .filterKeys { it.toString().startsWith(TOPIC_CYPHER_PREFIX) }
-                .mapKeys { it.key.toString().replace(TOPIC_CYPHER_PREFIX, "") }
-                .mapValues { it.value.toString() }
-
+    private fun validateAllTopics(originals: Map<*, *>) {
+        TopicUtils.validate<ConfigException>(this.topics)
         val topics = if (originals.containsKey(SinkTask.TOPICS_CONFIG)) {
-            originals["topics"].toString().split(",").map { it.trim() }.toSet()
+            originals["topics"].toString().split(",").map { it.trim() }
         } else { // TODO manage regexp
-            emptySet()
+            emptyList()
         }
-        if (topics != topicMap.keys.toSet()) {
-            throw ConfigException("There is a mismatch between provided Cypher queries (${topicMap.keys}) and configured topics ($topics)")
+        val allTopics = this.topics.allTopics()
+        if (topics != allTopics) {
+            throw ConfigException("There is a mismatch between provided Cypher queries + CDC topics ($allTopics) and configured topics ($topics)")
         }
-        return topicMap
     }
+
 
     companion object {
         const val SERVER_URI = "neo4j.server.uri"
@@ -133,12 +146,18 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val RETRY_MAX_ATTEMPTS = "neo4j.retry.max.attemps"
 
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
+        const val TOPIC_CDC_SOURCE_ID = "neo4j.topic.cdc.sourceId"
+        const val TOPIC_CDC_SOURCE_ID_LABEL_NAME = "neo4j.topic.cdc.sourceId.labelName"
+        const val TOPIC_CDC_SOURCE_ID_ID_NAME = "neo4j.topic.cdc.sourceId.idName"
+        const val TOPIC_CDC_SCHEMA = "neo4j.topic.cdc.schema"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val BATCH_SIZE_DEFAULT = 1000
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
+
+        val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
         fun config(): ConfigDef {
             return ConfigDef()
@@ -286,6 +305,22 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .defaultValue(RETRY_MAX_ATTEMPTS_DEFAULT)
                             .group(ConfigGroup.RETRY)
                             .validator(ConfigDef.Range.atLeast(1)).build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_SOURCE_ID, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SOURCE_ID)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_SOURCE_ID_LABEL_NAME, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SOURCE_ID_LABEL_NAME)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue(sourceIdIngestionStrategyConfig.labelName).group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_SOURCE_ID_ID_NAME, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SOURCE_ID_ID_NAME)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue(sourceIdIngestionStrategyConfig.idName).group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CDC_SCHEMA, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SCHEMA)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
         }
     }
 }
