@@ -31,7 +31,7 @@ class Neo4jSinkConnectorConfigSinkTest {
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
         val config = Neo4jSinkConnectorConfig(originals)
 
-        assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topicMap["foo"])
+        assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.allTopics()["foo"])
         assertTrue { config.encryptionEnabled }
         assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
@@ -47,7 +47,7 @@ class Neo4jSinkConnectorConfigSinkTest {
         assertEquals(Neo4jSinkConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
         assertEquals(Config.LoadBalancingStrategy.LEAST_CONNECTED, config.loadBalancingStrategy)
-        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSEC_DEFAULT, config.batchTimeout)
+        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS, config.batchTimeout)
     }
 
 }
