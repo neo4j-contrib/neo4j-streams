@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig) {
-
+    private val converter = ValueConverter()
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
