@@ -1,6 +1,7 @@
 package streams
 
-import org.neo4j.kernel.AvailabilityGuard
+import org.neo4j.kernel.availability.AvailabilityGuard
+import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.KernelExtensionFactory
@@ -56,7 +57,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
             streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
             txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
             db.registerTransactionEventHandler(txHandler)
-            availabilityGuard.addListener(object: AvailabilityGuard.AvailabilityListener {
+            availabilityGuard.addListener(object: AvailabilityListener {
                 override fun unavailable() {}
 
                 override fun available() {

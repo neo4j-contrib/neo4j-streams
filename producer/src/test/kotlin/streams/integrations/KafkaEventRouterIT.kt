@@ -7,10 +7,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.*
-import org.junit.Assume.assumeNotNull
-import org.junit.Assume.assumeTrue
 import org.junit.rules.TestName
-import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory

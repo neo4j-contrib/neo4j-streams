@@ -23,6 +23,7 @@
             <artifactId>neo4j-streams-common</artifactId>
             <version>3.5.0</version>
         </dependency>
+
     </dependencies>
 
 </project>
