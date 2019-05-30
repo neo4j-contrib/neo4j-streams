@@ -9,10 +9,10 @@ def upload_asset(asset_name, release_id, headers):
         upload_url = "https://uploads.github.com/repos/neo4j-contrib/neo4j-streams/releases/{release_id}/assets?name={asset_name}".format(
             release_id=release_id, asset_name=asset_name.split("/")[-1]
         )
-    print(upload_url)
-    headers["Content-Type"] = "application/java-archive"
-    response = requests.post(upload_url, headers=headers, data=file_name_handle.read())
-    print(response.text)
+        print(upload_url)
+        headers["Content-Type"] = "application/java-archive"
+        response = requests.post(upload_url, headers=headers, data=file_name_handle.read())
+        print(response.text)
 
 
 def main(token, tag_name, plugin_file_name, kafka_connect_file_name):
