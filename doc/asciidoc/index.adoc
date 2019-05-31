@@ -4,6 +4,12 @@
 :toclevels: 2
 :sectid:
 :sectlinks:
+:img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
+:env-docs: true
+
+ifdef::backend-html5[(C) {copyright}]
+
+License: link:{common-license-page-uri}[Creative Commons 4.0]
 
 
 [abstract]
@@ -18,13 +24,21 @@ The guide covers the following areas:
 * <<consumer>> -- Ingests events from a Kafka topic into Neo4j
 * <<procedures>> -- Procedures for consuming and producing Kafka events
 * <<docker>> -- Docker Compose files for local testing
-* <<kafka-connect>> -- Kafka Connect Sink plugin 
+* <<kafka-connect>> -- Kafka Connect Sink plugin
 
 
 [[introduction]]
 == Introduction
 
-Many user and customers want to integrate Kakfa and other streaming solutions with Neo4j.
+ifdef::env-docs[]
+[abstract]
+--
+This chapter provides an introduction to the Neo4j Streams Library, and instructions for installation.
+--
+endif::env-docs[]
+
+
+Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
 Either to ingest data into the graph from other sources.
 Or to send update events (change data capture - CDC) to the event log for later consumption.
 
@@ -35,8 +49,7 @@ The project is composed of several parts:
 * Neo4j Streams Procedure: a procedure to send a payload to a topic
 * Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
 * Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
-
-In the next releases we will add Kafka-Connect connectors as well.
+* Kafka-Connect Plugin: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries.
 
 [[installation]]
 === Installation
@@ -71,7 +84,6 @@ include::producer/index.adoc[]
 include::consumer/index.adoc[]
 
 include::procedures/index.adoc[]
-
 
 include::docker/index.adoc[]
 
