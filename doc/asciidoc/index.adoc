@@ -5,7 +5,24 @@
 :sectid:
 :sectlinks:
 
-== Motivation
+
+[abstract]
+--
+This is the user guide for Neo4j Streams version {docs-version}, authored by the Neo4j Labs Team.
+--
+
+The guide covers the following areas:
+
+* <<introduction>> -- An introduction to Neo4j Streams
+* <<producer>> -- Sends transaction event handler events to a Kafka topic
+* <<consumer>> -- Ingests events from a Kafka topic into Neo4j
+* <<procedures>> -- Procedures for consuming and producing Kafka events
+* <<docker>> -- Docker Compose files for local testing
+* <<kafka-connect>> -- Kafka Connect Sink plugin 
+
+
+[[introduction]]
+== Introduction
 
 Many user and customers want to integrate Kakfa and other streaming solutions with Neo4j.
 Either to ingest data into the graph from other sources.
@@ -21,7 +38,8 @@ The project is composed of several parts:
 
 In the next releases we will add Kafka-Connect connectors as well.
 
-== Installation
+[[installation]]
+=== Installation
 
 Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
 
@@ -37,7 +55,8 @@ kafka.bootstrap.servers=localhost:9092
 For each module there are additional configs that are explained in the individual sections.
 
 
-== Build locally
+[[build-locally]]
+==== Build locally
 
 ----
 mvn clean install
@@ -53,4 +72,7 @@ include::consumer/index.adoc[]
 
 include::procedures/index.adoc[]
 
+
 include::docker/index.adoc[]
+
+include::kafka-connect/index.adoc[]
