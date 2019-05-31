@@ -1,3 +1,4 @@
+[[producer]]
 == Neo4j Streams Producer
 
 Is the transaction event handler events that sends data to a Kafka topic

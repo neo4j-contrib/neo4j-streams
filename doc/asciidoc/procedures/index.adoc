@@ -1,3 +1,4 @@
+[[procedures]]
 == Procedures
 
 The Streams project comes out with a list of procedures.

@@ -1,3 +1,4 @@
+[[consumer]]
 == Neo4j Streams Consumer
 
 Is the Kafka Sink that ingest the data directly into Neo4j
