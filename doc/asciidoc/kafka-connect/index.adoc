@@ -1,6 +1,13 @@
 [[kafka-connect]]
 == Kafka Connect
 
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes Kafka Connect plugins in the Neo4j Streams Library.
+--
+endif::env-docs[]
+
 image::neo4j-loves-confluent.png[Neo4j Loves Confluent]
 
 

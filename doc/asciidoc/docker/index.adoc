@@ -1,6 +1,13 @@
 [[docker]]
 == Execute with Docker
 
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes Docker Compose templates that can be used to test Neo4j Streams applications.
+--
+endif::env-docs[]
+
 Following you'll find a lightweight Docker Compose file that allows you to test the application in your local environment
 
 Prerequisites:

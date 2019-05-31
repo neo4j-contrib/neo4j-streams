@@ -32,21 +32,24 @@ plugins {
 if (!project.hasProperty('apocVersion')) { ext.apocVersion = '3.4.0.7' }
 
 ext {
+    copyrightYear = '2019'
     versionParts = apocVersion.split('-')
     branch = '3.4'
     versions = [
         'apoc' : apocVersion,
-        'apocDocs' : versionParts[0].split('\\.')[0..1].join('.'),
+        'apocDocs' : versionParts[0].split('\\.')[0..1].join('.')
     ]
     if (1 < versionParts.size()) { versions.apocDocs += '-preview' }
 
     docsBaseUri = "https://neo4j.com/docs"
     apocBaseUri = "https://neo4j-contrib.github.io/neo4j-apoc-procedures"
+    streamsBaseUri = "https://neo4j.com/labs/neo4j-streams/docs"
     crossReferenceBase = [ // We have no strategy for cross references; always link to current.
             'operations-manual' : "${docsBaseUri}/operations-manual/current",
             'developer-manual'  : "${docsBaseUri}/developer-manual/current",
             'graph-algorithms'  : "${docsBaseUri}/graph-algorithms/current",
             'apoc'              : "${apocBaseUri}/${versions.apocDocs}",
+            'streams'           : "${streamsBaseUri}/${versions.apocDocs}",
             'java-reference'    : "${docsBaseUri}/java-reference/current",
             'rest-docs'         : "${docsBaseUri}/rest-docs/current",
             'ogm-manual'        : "${docsBaseUri}/ogm-manual/current",
@@ -60,6 +63,8 @@ ext {
             'attribute-missing'  : 'skip',
             'docs-version'       : versions.apocDocs,
             'apoc-release'      : versions.apocDocs,
+            'copyright-year'     : copyrightYear,
+            'copyright'          : "${copyrightYear} Neo4j, Inc.",
             'branch'             : branch,
             'common-license-page-uri': "$docsBaseUri/license/",
         ],
@@ -175,6 +180,7 @@ html {
         "OGM_Manual=${crossReferenceBase['ogm-manual']}/",
         "Graph_Algorithms=${crossReferenceBase['graph-algorithms']}/",
         "APOC=${crossReferenceBase['apoc']}/",
+        "Neo4j_Streams=${crossReferenceBase['streams']}/",
         "Java_Reference=${crossReferenceBase['java-reference']}/",
     ].join(" ")
     def scripts = [

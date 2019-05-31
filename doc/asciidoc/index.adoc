@@ -5,6 +5,11 @@
 :sectid:
 :sectlinks:
 :img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
+:env-docs: true
+
+ifdef::backend-html5[(C) {copyright}]
+
+License: link:{common-license-page-uri}[Creative Commons 4.0]
 
 
 [abstract]
@@ -19,11 +24,19 @@ The guide covers the following areas:
 * <<consumer>> -- Ingests events from a Kafka topic into Neo4j
 * <<procedures>> -- Procedures for consuming and producing Kafka events
 * <<docker>> -- Docker Compose files for local testing
-* <<kafka-connect>> -- Kafka Connect Sink plugin 
+* <<kafka-connect>> -- Kafka Connect Sink plugin
 
 
 [[introduction]]
 == Introduction
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter provides an introduction to the Neo4j Streams Library, and instructions for installation.
+--
+endif::env-docs[]
+
 
 Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
 Either to ingest data into the graph from other sources.
