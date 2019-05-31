@@ -1,4 +1,12 @@
+[[consumer]]
 == Neo4j Streams Consumer
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes the Neo4j Streams Consumer in the Neo4j Streams Library.
+--
+endif::env-docs[]
 
 Is the Kafka Sink that ingest the data directly into Neo4j
 

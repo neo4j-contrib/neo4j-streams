@@ -1,4 +1,13 @@
+[[producer]]
 == Neo4j Streams Producer
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes the Neo4j Streams Producer in the Neo4j Streams Library.
+--
+endif::env-docs[]
+
 
 Is the transaction event handler events that sends data to a Kafka topic
 

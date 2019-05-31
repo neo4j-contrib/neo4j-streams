@@ -1,6 +1,14 @@
+[[kafka-connect]]
 == Kafka Connect
 
-image::{img}/neo4j-loves-confluent.png[Neo4j Loves Confluent]
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes Kafka Connect plugins in the Neo4j Streams Library.
+--
+endif::env-docs[]
+
+image::neo4j-loves-confluent.png[Neo4j Loves Confluent]
 
 
 Kafka Connect, an open source component of Apache Kafka, is a framework for connecting Kafka with external systems such as databases, key-value stores, search indexes, and file systems.
@@ -36,7 +44,7 @@ Please prefer the solution `(where this tool is installed)` and then go ahead wi
 
 Following an example:
 
-image::{img}/confluent-hub-client.jpg[Installation via Confluent Hub Client]
+image::confluent-hub-client.jpg[Installation via Confluent Hub Client]
 
 At the end of the process the plugin is automatically installed.
 
@@ -82,10 +90,10 @@ include::../../../kafka-connect-neo4j/docker/readme.adoc[]
 
 The Kafka Monitoring UI can be found at http://<localhost>:9021/management/connect
 
-image::{img}/confluent-metrics.jpg[Confluent Importing Metrics]
+image::confluent-metrics.jpg[Confluent Importing Metrics]
 
 They show up properly in my topic, and then are added to Neo4j via the sink.
 
 Below you see the data that has been ingested into Neo4j. During my testing I got up to more than 2M events.
 
-image::{img}/confluent-imported-data.jpg[Confluent Platform Management]
+image::confluent-imported-data.jpg[Confluent Platform Management]

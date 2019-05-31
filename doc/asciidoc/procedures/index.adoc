@@ -1,4 +1,13 @@
+[[procedures]]
 == Procedures
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes consumer and producer procedures in the Neo4j Streams Library.
+--
+endif::env-docs[]
+
 
 The Streams project comes out with a list of procedures.
 
