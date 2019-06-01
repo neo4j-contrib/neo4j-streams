@@ -18,20 +18,20 @@ abstract class StreamsEventSink(private val config: Config,
 
 }
 
-abstract class StreamsEventConsumer<T>(private val consumer: T, config: StreamsSinkConfiguration, private val log: Log) {
+abstract class StreamsEventConsumer(private val log: Log) {
 
     abstract fun stop()
 
-    abstract fun withTopics(topics: Set<String>): StreamsEventConsumer<T>
+    abstract fun withTopics(topics: Set<String>): StreamsEventConsumer
 
     abstract fun start()
 
-    abstract fun read(): Map<String, List<Any>>?
+    abstract fun read(topicConfig: Map<String, Any> = emptyMap(), action: (String, List<Any>) -> Unit)
 
 }
 
 abstract class StreamsEventConsumerFactory {
-    abstract fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer<*>
+    abstract fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer
 }
 
 object StreamsEventSinkFactory {

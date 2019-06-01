@@ -2,10 +2,7 @@ package streams.serialization
 
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.JsonSerializer
-import com.fasterxml.jackson.databind.ObjectMapper
-import com.fasterxml.jackson.databind.SerializationFeature
-import com.fasterxml.jackson.databind.SerializerProvider
+import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
@@ -91,6 +88,7 @@ object JSONUtils {
         module.addSerializer(TemporalAccessor::class.java, TemporalAccessorSerializer())
         OBJECT_MAPPER.registerModule(module)
         OBJECT_MAPPER.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+        OBJECT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
     }
 
     fun getObjectMapper(): ObjectMapper {

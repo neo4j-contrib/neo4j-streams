@@ -1,11 +1,18 @@
 package integrations
 
+import kotlinx.coroutines.*
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.*
+import org.junit.Test
 import org.junit.rules.TestName
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -15,10 +22,7 @@ import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.*
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
+import kotlin.test.*
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class StreamsSinkProceduresIT {
@@ -187,5 +191,96 @@ class StreamsSinkProceduresIT {
         assertEquals(3L, searchResultMap["count"])
 
     }
+
+    @Test
+    fun shouldReadATopicPartitionStartingFromAnOffset() = runBlocking {
+        val topic = "read-from-range"
+        val simpleInt = 1
+        val partition = 0
+        var start = -1L
+        (1..10).forEach {
+            val producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleInt))
+            val recordMetadata = kafkaProducer.send(producerRecord).get()
+            if (it == 6) {
+                start = recordMetadata.offset()
+            }
+        }
+        delay(1000)
+        db.execute("""
+            CALL streams.consume('$topic', {timeout: 5000, partitions: [{partition: $partition, offset: $start}]}) YIELD event
+            CREATE (t:LOG{simpleData: event.data})
+            RETURN count(t) AS insert
+        """.trimIndent()).close()
+
+        val count = db.execute("""
+            MATCH (l:LOG)
+            RETURN count(l) as count
+        """.trimIndent()).columnAs<Long>("count").next()
+        assertEquals(5L, count)
+    }
+
+    @Test
+    fun shouldReadFromLatest() = runBlocking {
+        val topic = "simple-data-from-latest"
+        val simpleInt = 1
+        val simpleString = "test"
+        val partition = 0
+        (1..10).forEach {
+            val producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleInt))
+            kafkaProducer.send(producerRecord).get()
+        }
+        delay(1000) // should ignore the three above
+        GlobalScope.launch(Dispatchers.IO) {
+            delay(1000)
+            val producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleString))
+            kafkaProducer.send(producerRecord).get()
+        }
+        db.execute("""
+            CALL streams.consume('$topic', {timeout: 5000, from: 'latest', groupId: 'foo'}) YIELD event
+            CREATE (t:LOG{simpleData: event.data})
+            RETURN count(t) AS insert
+        """.trimIndent()).close()
+        val searchResult = db.execute("""
+            MATCH (l:LOG)
+            RETURN count(l) AS count
+        """.trimIndent())
+        assertTrue { searchResult.hasNext() }
+        val searchResultMap = searchResult.next()
+        assertTrue { searchResultMap.containsKey("count") }
+        assertEquals(1L, searchResultMap["count"])
+    }
+
+    @Test
+    fun shouldNotCommit() {
+        val topic = "simple-data"
+        val simpleInt = 1
+        val partition = 0
+        var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(simpleInt))
+        kafkaProducer.send(producerRecord).get()
+        db.execute("""
+            CALL streams.consume('$topic', {timeout: 5000, autoCommit: false, commit:false}) YIELD event
+            MERGE (t:LOG{simpleData: event.data})
+            RETURN count(t) AS insert
+        """.trimIndent()).close()
+        val searchResult = db.execute("""
+            MATCH (l:LOG)
+            RETURN count(l) as count
+        """.trimIndent())
+        assertTrue { searchResult.hasNext() }
+        val searchResultMap = searchResult.next()
+        assertTrue { searchResultMap.containsKey("count") }
+        assertEquals(1L, searchResultMap["count"])
+
+        val kafkaProperties = Properties()
+        kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
+        kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
+        kafkaProperties[ConsumerConfig.GROUP_ID_CONFIG] = "neo4j"
+        kafkaProperties[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+        kafkaProperties[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
+        val kafkaConsumer = KafkaConsumer<String, ByteArray>(kafkaProperties)
+        val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
+        assertNull(offsetAndMetadata)
+    }
+
 
 }
