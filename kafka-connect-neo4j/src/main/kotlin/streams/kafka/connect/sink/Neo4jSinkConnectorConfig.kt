@@ -15,8 +15,8 @@ import org.neo4j.driver.v1.Config
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.TopicType
 import streams.service.TopicUtils
-import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
+import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import java.io.File
 import java.net.URI
 import java.util.concurrent.TimeUnit
@@ -115,10 +115,9 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         }
         val allTopics = this.topics.allTopics()
         if (topics != allTopics) {
-            throw ConfigException("There is a mismatch between provided Cypher queries + CDC topics ($allTopics) and configured topics ($topics)")
+            throw ConfigException("There is a mismatch between topics defined into the property `${SinkTask.TOPICS_CONFIG}` and configured topics ($topics)")
         }
     }
-
 
     companion object {
         const val SERVER_URI = "neo4j.server.uri"
@@ -149,6 +148,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val TOPIC_CDC_SOURCE_ID = "neo4j.topic.cdc.sourceId"
         const val TOPIC_CDC_SOURCE_ID_LABEL_NAME = "neo4j.topic.cdc.sourceId.labelName"
         const val TOPIC_CDC_SOURCE_ID_ID_NAME = "neo4j.topic.cdc.sourceId.idName"
+        const val TOPIC_PATTERN_NODE_PREFIX = "neo4j.topic.pattern.node."
+        const val TOPIC_PATTERN_RELATIONSHIP_PREFIX = "neo4j.topic.pattern.relationship."
         const val TOPIC_CDC_SCHEMA = "neo4j.topic.cdc.schema"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100

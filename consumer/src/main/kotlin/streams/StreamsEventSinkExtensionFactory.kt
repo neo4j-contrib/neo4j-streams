@@ -10,8 +10,6 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import streams.procedures.StreamsSinkProcedures
 import streams.service.TopicUtils
-import streams.service.sink.strategy.SchemaIngestionStrategy
-import streams.service.sink.strategy.SourceIdIngestionStrategy
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
