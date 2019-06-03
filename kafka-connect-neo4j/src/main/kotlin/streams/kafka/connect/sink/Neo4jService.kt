@@ -20,6 +20,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.service.StreamsSinkService
 import streams.service.TopicType
+import streams.service.TopicTypeGroup
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
 import java.util.concurrent.TimeUnit
@@ -73,23 +74,19 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         driver.close()
     }
 
-    override fun getTopicType(topic: String): TopicType? {
-        val isCDCMerge = config.topics.cdcSourceIdTopics.contains(topic) ?: false
-        val isCDCSchema = config.topics.cdcSchemaTopics.contains(topic) ?: false
-        return if (isCDCMerge) {
-            TopicType.CDC_SOURCE_ID
-        } else if (isCDCSchema) {
-            TopicType.CDC_SCHEMA
-        } else if (config.topics.cypherTopics.containsKey(topic)) {
-            TopicType.CYPHER
-        } else {
-            null
-        }
-    }
+    override fun getTopicType(topic: String): TopicType? = TopicType.values()
+            .filter { topicType ->
+                when (topicType.group) {
+                    TopicTypeGroup.CDC -> (config.topics.cdcSourceIdTopics.contains(topic))
+                            || (config.topics.cdcSchemaTopics.contains(topic))
+                    TopicTypeGroup.CYPHER -> config.topics.cypherTopics.containsKey(topic)
+                    TopicTypeGroup.PATTERN -> (topicType == TopicType.PATTERN_NODE && config.topics.nodePatternTopics.containsKey(topic))
+                            || (topicType == TopicType.PATTERN_RELATIONSHIP && config.topics.relPatternTopics.containsKey(topic))
+                }
+            }
+            .firstOrNull()
 
-    override fun getCypherTemplate(topic: String): String? {
-        return "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
-    }
+    override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
 
     override fun write(query: String, events: Collection<Any>) {
         val session = driver.session()

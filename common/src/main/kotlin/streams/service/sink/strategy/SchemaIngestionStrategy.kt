@@ -4,8 +4,7 @@ import streams.events.*
 import streams.extensions.quote
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeKeysAsString
-import streams.utils.IngestionUtils.keySeparator
-import streams.utils.IngestionUtils.labelSeparator
+import streams.serialization.JSONUtils
 import streams.utils.SchemaUtils.getNodeKeys
 import streams.utils.StreamsUtils
 
@@ -34,11 +33,11 @@ private fun prepareRelationshipEvents(events: List<StreamsTransactionEvent>, wit
 
 class SchemaIngestionStrategy: IngestionStrategy {
 
-    override fun mergeRelationshipEvents(events: List<StreamsTransactionEvent>): List<QueryEvents> {
+    override fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
         if (events.isNullOrEmpty()) {
             return emptyList()
         }
-        return prepareRelationshipEvents(events.filter { it.payload.type == EntityType.relationship && it.meta.operation != OperationType.deleted })
+        return prepareRelationshipEvents(events.map { JSONUtils.asStreamsTransactionEvent(it) }.filter { it.payload.type == EntityType.relationship && it.meta.operation != OperationType.deleted })
                 .map {
                     val label = it.key.label.quote()
                     val query = """
@@ -52,11 +51,11 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 }
     }
 
-    override fun deleteRelationshipEvents(events: List<StreamsTransactionEvent>): List<QueryEvents> {
+    override fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
         if (events.isNullOrEmpty()) {
             return emptyList()
         }
-        return prepareRelationshipEvents(events.filter { it.payload.type == EntityType.relationship && it.meta.operation == OperationType.deleted }, false)
+        return prepareRelationshipEvents(events.map { JSONUtils.asStreamsTransactionEvent(it) }.filter { it.payload.type == EntityType.relationship && it.meta.operation == OperationType.deleted }, false)
                 .map {
                     val label = it.key.label.quote()
                     val query = """
@@ -70,19 +69,23 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 }
     }
 
-    override fun deleteNodeEvents(events: List<StreamsTransactionEvent>): List<QueryEvents> {
+    override fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents> {
         if (events.isNullOrEmpty()) {
             return emptyList()
         }
         return events
-                .filter { it.payload.type == EntityType.node && it.meta.operation == OperationType.deleted }
                 .mapNotNull {
-                    val changeEvtBefore = it.payload.before as NodeChange
-                    val constraints = getNodeConstraints(it) { it.type == StreamsConstraintType.UNIQUE }
-                    if (constraints.isEmpty()) {
-                        null
+                    val data = JSONUtils.asStreamsTransactionEvent(it)
+                    if (data.payload.type == EntityType.node && data.meta.operation == OperationType.deleted) {
+                        val changeEvtBefore = data.payload.before as NodeChange
+                        val constraints = getNodeConstraints(data) { it.type == StreamsConstraintType.UNIQUE }
+                        if (constraints.isEmpty()) {
+                            null
+                        } else {
+                            constraints to mapOf("properties" to changeEvtBefore.properties)
+                        }
                     } else {
-                        constraints to mapOf("properties" to changeEvtBefore.properties)
+                        null
                     }
                 }
                 .groupBy { it.first }
@@ -98,7 +101,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 }
     }
 
-    override fun mergeNodeEvents(events: List<StreamsTransactionEvent>): List<QueryEvents> {
+    override fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents> {
         if (events.isNullOrEmpty()) {
             return emptyList()
         }
@@ -107,7 +110,8 @@ class SchemaIngestionStrategy: IngestionStrategy {
             labels.filter { label -> !constraints.any { constraint -> constraint.label == label } }
                 .map { it.quote() }
         }
-        return events
+
+        return events.map { JSONUtils.asStreamsTransactionEvent(it) }
                 .filter { it.payload.type == EntityType.node && it.meta.operation != OperationType.deleted }
                 .mapNotNull {
                     val changeEvtAfter = it.payload.after as NodeChange

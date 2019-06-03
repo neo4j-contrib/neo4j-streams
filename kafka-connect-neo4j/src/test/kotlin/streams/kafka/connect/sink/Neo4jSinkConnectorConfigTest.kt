@@ -15,10 +15,10 @@ class Neo4jSinkConnectorConfigTest {
    fun `should throw a ConfigException because of mismatch`() {
        try {
            val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
-                   "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})")
+                   "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})")
            Neo4jSinkConnectorConfig(originals)
        } catch (e: ConfigException) {
-           assertEquals("There is a mismatch between provided Cypher queries + CDC topics ([foo]) and configured topics ([foo, bar])", e.message)
+           assertEquals("There is a mismatch between topics defined into the property `topics` and configured topics ([foo, bar])", e.message)
            throw e
        }
    }
@@ -27,12 +27,12 @@ class Neo4jSinkConnectorConfigTest {
     fun `should throw a ConfigException because of cross defined topics`() {
         try {
             val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
-                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})",
-                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}bar" to "CREATE (p:Person{name: event.firsName})",
-                    "${Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID}" to "foo")
+                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
+                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}bar" to "CREATE (p:Person{name: event.firstName})",
+                    Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to "foo")
             Neo4jSinkConnectorConfig(originals)
         } catch (e: ConfigException) {
-            assertEquals("The following topics are cross defined between Cypher template configuration and CDC configuration: [foo]", e.message)
+            assertEquals("The following topics are cross defined: [foo]", e.message)
             throw e
         }
     }
@@ -40,7 +40,7 @@ class Neo4jSinkConnectorConfigTest {
     @Test
     fun `should return the configuration`() {
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
-                "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firsName})",
+                "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
                 Neo4jSinkConnectorConfig.SERVER_URI to "bolt://neo4j:7687",
                 Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",

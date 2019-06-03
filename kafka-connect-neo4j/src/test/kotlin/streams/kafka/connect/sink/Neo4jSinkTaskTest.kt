@@ -10,7 +10,6 @@ import org.apache.kafka.connect.sink.SinkTaskContext
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito
 import org.mockito.Mockito.mock
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
@@ -143,7 +142,7 @@ class Neo4jSinkTaskTest {
                 .put("modified", Date(1474661402123L))
 
         val task = Neo4jSinkTask()
-        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
@@ -215,7 +214,7 @@ class Neo4jSinkTaskTest {
         )
 
         val task = Neo4jSinkTask()
-        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
@@ -287,7 +286,7 @@ class Neo4jSinkTaskTest {
         )
 
         val task = Neo4jSinkTask()
-        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 43))
@@ -339,7 +338,7 @@ class Neo4jSinkTaskTest {
             schema = Schema()
         )
         val task = Neo4jSinkTask()
-        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42))
         task.put(input)
@@ -373,7 +372,7 @@ class Neo4jSinkTaskTest {
                 .put("longitude", -122.3255254.toFloat())
 
         val task = Neo4jSinkTask()
-        task.initialize(Mockito.mock(SinkTaskContext::class.java))
+        task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
         db.graph().beginTx().use {
@@ -381,4 +380,64 @@ class Neo4jSinkTaskTest {
             assertTrue { node == null }
         }
     }
+
+    @Test
+    fun `should work with node pattern topic`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}$topic"] = "User{!userId,name,surname,address.city}"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano",
+                "address" to mapOf("city" to "Venice", "CAP" to "30100"))
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(topic, 1, null, null, null, data, 42))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("MATCH (n:User{name: 'Andrea', surname: 'Santurbano', userId: 1, `address.city`: 'Venice'}) RETURN count(n) AS count")
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
+    @Test
+    fun `should work with relationship pattern topic`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_RELATIONSHIP_PREFIX}$topic"] = "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
+                "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(topic, 1, null, null, null, data, 42))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
+                RETURN count(p) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
 }

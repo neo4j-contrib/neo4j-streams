@@ -49,6 +49,7 @@ class StreamsSinkConfigurationTest {
         val config = Config.builder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
+                .withSetting("streams.sink.topic.pattern.node.nodePatternTopic", "User{!userId,name,surname,address.city}")
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.sourceId", topic)
                 .build()

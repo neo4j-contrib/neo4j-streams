@@ -8,10 +8,10 @@ import streams.utils.StreamsUtils
 data class QueryEvents(val query: String, val events: List<Map<String, Any?>>)
 
 interface IngestionStrategy {
-    fun mergeNodeEvents(events: List<StreamsTransactionEvent>): List<QueryEvents>
-    fun deleteNodeEvents(events: List<StreamsTransactionEvent>): List<QueryEvents>
-    fun mergeRelationshipEvents(events: List<StreamsTransactionEvent>): List<QueryEvents>
-    fun deleteRelationshipEvents(events: List<StreamsTransactionEvent>): List<QueryEvents>
+    fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents>
+    fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents>
+    fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents>
+    fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents>
 }
 
 data class RelationshipSchemaMetadata(val label: String,

@@ -4,9 +4,12 @@ import org.apache.commons.lang3.StringUtils
 import org.neo4j.kernel.impl.core.EmbeddedProxySPI
 import org.neo4j.kernel.impl.core.GraphProperties
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.serialization.JSONUtils
 import streams.service.STREAMS_TOPIC_KEY
 import streams.service.TopicType
 import streams.service.TopicTypeGroup
+import streams.service.sink.strategy.NodePatternConfiguration
+import streams.service.sink.strategy.RelationshipPatternConfiguration
 import streams.utils.Neo4jUtils
 import streams.service.TopicUtils
 import streams.service.Topics
@@ -14,8 +17,6 @@ import streams.service.Topics
 class StreamsTopicService(private val db: GraphDatabaseAPI) {
     private val properties: GraphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     private val log = Neo4jUtils.getLogService(db).getUserLog(StreamsTopicService::class.java)
-
-    private val CYPHER_PREFIX: String = "${TopicType.CYPHER.key}."
 
     fun clearAll() {
         if (!Neo4jUtils.isWriteableInstance(db)) {
@@ -36,7 +37,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         if (!Neo4jUtils.isWriteableInstance(db)) {
             return
         }
-        val key = "$CYPHER_PREFIX$topic"
+        val key = "${TopicType.CYPHER.key}.$topic"
         return db.beginTx().use {
             if (!properties.hasProperty(key)) {
                 if (log.isDebugEnabled) {
@@ -49,42 +50,30 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun setCypherTemplate(topic: String, query: String) {
-        if (!Neo4jUtils.isWriteableInstance(db)) {
-            return
-        }
-        db.beginTx().use {
-            properties.setProperty(CYPHER_PREFIX + topic, query)
-            it.success()
-        }
-    }
-
     fun setAllCypherTemplates(topics: Map<String, String>) {
-        topics.forEach {
-            setCypherTemplate(it.key, it.value)
-        }
+        setAllTopicValue(TopicType.CYPHER.key, topics)
     }
 
     fun getCypherTemplate(topic: String): String? {
-        val key = "$CYPHER_PREFIX$topic"
-        return db.beginTx().use {
-            if (!properties.hasProperty(key)) {
+        return getTopicValue(TopicType.CYPHER.key, topic)
+    }
+
+    private fun getTopicValue(key: String, topic: String): String? {
+        val fullKey = "$key.$topic"
+        return  db.beginTx().use {
+            if (!properties.hasProperty(fullKey)) {
                 if (log.isDebugEnabled) {
-                    log.debug("No query registered for topic $topic")
+                    log.debug("No configuration registered for topic $topic")
                 }
                 return null
             }
-            return properties.getProperty(key).toString()
+            return properties.getProperty(fullKey).toString()
         }
     }
 
     fun getAllCypherTemplates(): Map<String, String> {
-        return db.beginTx().use {
-            return properties.allProperties
-                    .filterKeys { it.startsWith(CYPHER_PREFIX) }
-                    .map { it.key.replace(CYPHER_PREFIX, StringUtils.EMPTY) to it.value.toString()}
-                    .toMap()
-        }
+        val prefix = "${TopicType.CYPHER.key}."
+        return getAllTopicValue(prefix)
     }
 
     fun setAllCDCTopicsByType(type: TopicType, topics: Set<String>) {
@@ -142,7 +131,9 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         return db.beginTx().use {
             val cypherTopics = getAllCypherTemplates().keys
             val cdcTopics = getAllCDCTopics().flatMap { it.value }.toSet()
-            cypherTopics + cdcTopics
+            val nodePatternTopics = getAllNodePatternTopics().keys
+            val relPatternTopics = getAllRelPatternTopics().keys
+            cypherTopics + cdcTopics + nodePatternTopics + relPatternTopics
         }
     }
 
@@ -153,7 +144,14 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                 .firstOrNull()
                 ?:
                 db.beginTx().use {
-                    if (properties.hasProperty(CYPHER_PREFIX + topic)) TopicType.CYPHER else null
+                    return TopicType.values()
+                            .filter { topicType ->
+                                if (topicType.group == TopicTypeGroup.CDC) {
+                                    false
+                                }
+                                properties.hasProperty("${topicType.key}.$topic")
+                            }
+                            .firstOrNull()
                 }
     }
 
@@ -162,7 +160,58 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
             when (topicType) {
                 TopicType.CYPHER -> setAllCypherTemplates(data as Map<String, String>)
                 TopicType.CDC_SCHEMA, TopicType.CDC_SOURCE_ID -> setAllCDCTopicsByType(topicType, data as Set<String>)
+                TopicType.PATTERN_NODE -> setAllNodePatternTopics(data as Map<String, NodePatternConfiguration>)
+                TopicType.PATTERN_RELATIONSHIP -> setAllRelPatternTopics(data as Map<String, RelationshipPatternConfiguration>)
             }
+        }
+    }
+
+    private fun setAllTopicValue(prefix: String, nodePatternTopics: Map<String, Any>) {
+        if (!Neo4jUtils.isWriteableInstance(db)) {
+            return
+        }
+        db.beginTx().use {
+            nodePatternTopics.forEach { topic, config ->
+                properties.setProperty("$prefix.$topic", if (config is String) config else JSONUtils.writeValueAsString(config))
+            }
+            it.success()
+        }
+    }
+
+    fun getRelPattern(topic: String): RelationshipPatternConfiguration? {
+        val cfgString = getTopicValue(TopicType.PATTERN_RELATIONSHIP.key, topic) ?: return null
+        return JSONUtils.readValue<RelationshipPatternConfiguration>(cfgString)
+    }
+
+    fun getNodePattern(topic: String): NodePatternConfiguration? {
+        val cfgString = getTopicValue(TopicType.PATTERN_NODE.key, topic) ?: return null
+        return JSONUtils.readValue<NodePatternConfiguration>(cfgString)
+    }
+
+    fun setAllNodePatternTopics(nodePatternTopics: Map<String, NodePatternConfiguration>) {
+        setAllTopicValue(TopicType.PATTERN_NODE.key, nodePatternTopics)
+    }
+
+    fun setAllRelPatternTopics(relPatternTopics: Map<String, RelationshipPatternConfiguration>) {
+        setAllTopicValue(TopicType.PATTERN_RELATIONSHIP.key, relPatternTopics)
+    }
+
+    fun getAllNodePatternTopics(): Map<String, String> {
+        val prefix = "${TopicType.PATTERN_NODE.key}."
+        return getAllTopicValue(prefix)
+    }
+
+    fun getAllRelPatternTopics(): Map<String, String> {
+        val prefix = "${TopicType.PATTERN_RELATIONSHIP.key}."
+        return getAllTopicValue(prefix)
+    }
+
+    private fun getAllTopicValue(prefix: String): Map<String, String> {
+        return db.beginTx().use {
+            return properties.allProperties
+                    .filterKeys { it.startsWith(prefix) }
+                    .map { it.key.replace(prefix, StringUtils.EMPTY) to it.value.toString() }
+                    .toMap()
         }
     }
 

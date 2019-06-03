@@ -4,8 +4,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.service.StreamsSinkService
 import streams.service.TopicType
-import streams.service.sink.strategy.SchemaIngestionStrategy
-import streams.service.sink.strategy.SourceIdIngestionStrategy
+import streams.service.sink.strategy.*
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
