@@ -5,6 +5,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class Neo4jUtilsTest {
@@ -30,6 +31,12 @@ class Neo4jUtilsTest {
     fun shouldCheckIfIsWriteableInstance() {
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         assertTrue { isWriteableInstance }
+    }
+
+    @Test
+    fun shouldCheckIfIsEnterpriseEdition() {
+        val isEnterprise = Neo4jUtils.isEnterpriseEdition(db)
+        assertFalse { isEnterprise }
     }
 
 }

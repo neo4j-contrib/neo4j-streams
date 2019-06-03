@@ -4,18 +4,21 @@ import kotlinx.coroutines.*
 import org.apache.kafka.clients.consumer.*
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.*
-import streams.kafka.KafkaTopicConfig.Companion.toTopicPartitionMap
 import streams.serialization.JSONUtils
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 
 class KafkaEventSink(private val config: Config,
                      private val queryExecution: StreamsEventSinkQueryExecution,
                      private val streamsTopicService: StreamsTopicService,
-                     private val log: Log): StreamsEventSink(config, queryExecution, streamsTopicService, log) {
+                     private val log: Log,
+                     private val db: GraphDatabaseAPI): StreamsEventSink(config, queryExecution, streamsTopicService, log, db) {
 
     private lateinit var eventConsumer: StreamsEventConsumer
     private lateinit var job: Job
@@ -46,15 +49,28 @@ class KafkaEventSink(private val config: Config,
 
     override fun start() {
         val streamsConfig = StreamsSinkConfiguration.from(config)
+        val topics = streamsTopicService.getTopics()
+        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         if (!streamsConfig.enabled) {
+            if (topics.isNotEmpty() && isWriteableInstance) {
+                log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
+            }
             return
         }
         log.info("Starting the Kafka Sink")
         this.eventConsumer = getEventConsumerFactory()
                 .createStreamsEventConsumer(config.raw, log)
-                .withTopics(streamsTopicService.getTopics())
+                .withTopics(topics)
         this.eventConsumer.start()
         this.job = createJob()
+        if (isWriteableInstance) {
+            if (log.isDebugEnabled) {
+                log.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
+                log.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
+            } else {
+                log.info("Subscribed topics: $topics")
+            }
+        }
         log.info("Kafka Sink started")
     }
 
@@ -82,11 +98,19 @@ class KafkaEventSink(private val config: Config,
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 while (isActive) {
-                    eventConsumer.read { topic, data ->
-                        if (log.isDebugEnabled) {
-                            log.debug("Reading data from topic $topic")
+                    if (Neo4jUtils.isWriteableInstance(db)) {
+                        eventConsumer.read { topic, data ->
+                            if (log.isDebugEnabled) {
+                                log.debug("Reading data from topic $topic")
+                            }
+                            queryExecution.writeForTopic(topic, data)
                         }
-                        queryExecution.writeForTopic(topic, data)
+                    } else {
+                        val timeMillis = TimeUnit.MILLISECONDS.toMinutes(5)
+                        if (log.isDebugEnabled) {
+                            log.debug("Not in a writeable instance, new check in $timeMillis millis")
+                        }
+                        delay(timeMillis)
                     }
                 }
                 eventConsumer.stop()
