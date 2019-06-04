@@ -331,7 +331,7 @@ class KafkaEventSinkIT {
 
     @Test
     fun shouldWriteLastOffsetWithNoAutoCommit() = runBlocking {
-        val topic = topics[0]
+        val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
         graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
@@ -353,7 +353,7 @@ class KafkaEventSinkIT {
             kafkaProperties[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
             kafkaProperties[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
             val kafkaConsumer = KafkaConsumer<String, ByteArray>(kafkaProperties)
-            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topics[0], 0))
+            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, 0))
 
             result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() == offsetAndMetadata.offset()
         }, equalTo(true), 30, TimeUnit.SECONDS)
