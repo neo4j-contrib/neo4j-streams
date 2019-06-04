@@ -401,6 +401,63 @@ class KafkaEventSinkIT {
         }, equalTo(true), 30, TimeUnit.SECONDS)
     }
 
+    @Test
+    fun `should fix issue 186 with auto commit false`() {
+        val product = "product" to "MERGE (p:Product {id: event.id}) ON CREATE SET p.name = event.name"
+        val customer = "customer" to "MERGE (c:Customer {id: event.id}) ON CREATE SET c.name = event.name"
+        val bought = "bought" to """
+            MERGE (c:Customer {id: event.id})
+            MERGE (p:Product {id: event.id})
+            MERGE (c)-[:BOUGHT]->(p)
+        """.trimIndent()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
+        graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
+        val props = mapOf("id" to 1, "name" to "My Awesome Product")
+        var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),
+                JSONUtils.writeValueAsBytes(props))
+        kafkaProducer.send(producerRecord).get()
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+            MATCH (p:Product)
+            WHERE properties(p) = {props}
+            RETURN count(p) AS count
+        """.trimIndent()
+            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
+            result.hasNext() && result.next() == 1L && !result.hasNext()
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should fix issue 186 with auto commit true`() {
+        val product = "product" to "MERGE (p:Product {id: event.id}) ON CREATE SET p.name = event.name"
+        val customer = "customer" to "MERGE (c:Customer {id: event.id}) ON CREATE SET c.name = event.name"
+        val bought = "bought" to """
+            MERGE (c:Customer {id: event.id})
+            MERGE (p:Product {id: event.id})
+            MERGE (c)-[:BOUGHT]->(p)
+        """.trimIndent()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+
+        val props = mapOf("id" to 1, "name" to "My Awesome Product")
+        var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),
+                JSONUtils.writeValueAsBytes(props))
+        kafkaProducer.send(producerRecord).get()
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+            MATCH (p:Product)
+            WHERE properties(p) = {props}
+            RETURN count(p) AS count
+        """.trimIndent()
+            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
+            result.hasNext() && result.next() == 1L && !result.hasNext()
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
 
 }
