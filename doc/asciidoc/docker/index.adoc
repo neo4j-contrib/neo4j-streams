@@ -81,11 +81,11 @@ And if you go back to your consumer you'll see something like this:
 
 [source,json]
 ----
-{"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":107,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"99","start":{"id":"9","labels":["Person"]},"end":{"id":"0","labels":["Person"]},"before":null,"after":{"properties":{"years":9}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
+{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":107,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"99","start":{"id":"9","labels":["Person"]},"end":{"id":"0","labels":["Person"]},"before":null,"after":{"properties":{"years":9}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}
 
-{"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":108,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"96","start":{"id":"9","labels":["Person"]},"end":{"id":"7","labels":["Person"]},"before":null,"after":{"properties":{"years":2}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
+{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":108,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"96","start":{"id":"9","labels":["Person"]},"end":{"id":"7","labels":["Person"]},"before":null,"after":{"properties":{"years":2}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}
 
-{"key":"neo4j","value":{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":109,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"97","start":{"id":"9","labels":["Person"]},"end":{"id":"8","labels":["Person"]},"before":null,"after":{"properties":{"years":1}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}}
+{"meta":{"timestamp":1542047038549,"username":"neo4j","txId":12,"txEventId":109,"txEventsCount":110,"operation":"created","source":{"hostname":"neo4j"}},"payload":{"id":"97","start":{"id":"9","labels":["Person"]},"end":{"id":"8","labels":["Person"]},"before":null,"after":{"properties":{"years":1}},"label":"KNOWS","type":"relationship"},"schema":{"properties":[],"constraints":null}}
 ----
 
 === Sink module
