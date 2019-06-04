@@ -79,7 +79,7 @@ class KafkaEventSink(private val config: Config,
 
     private fun createJob(): Job {
         log.info("Creating Sink daemon Job")
-        return GlobalScope.launch(Dispatchers.IO) {
+        return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 while (isActive) {
                     eventConsumer.read { topic, data ->
@@ -153,7 +153,11 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         if (!records.isEmpty) {
             try {
                 this.topics.forEach { topic ->
-                    action(topic, records.records(topic).map { JSONUtils.readValue<Any>(it.value()) })
+                    val topicRecords = records.records(topic)
+                    if (!topicRecords.iterator().hasNext()) {
+                        return@forEach
+                    }
+                    action(topic, topicRecords.map { JSONUtils.readValue<Any>(it.value()) })
                 }
             } catch (e: Exception) {
                 // TODO add dead letter queue
@@ -186,10 +190,10 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
     fun toConsumerRecordsMap(topicPartitionsMap: Map<TopicPartition, Long>,
                              records: ConsumerRecords<String, ByteArray>)
             : Map<TopicPartition, List<ConsumerRecord<String, ByteArray>>> = topicPartitionsMap
-                .mapValues {
-                    records.records(it.key)
-                }
-                .filterValues { it.isNotEmpty() }
+            .mapValues {
+                records.records(it.key)
+            }
+            .filterValues { it.isNotEmpty() }
 
     fun setSeek(topicPartitionsMap: Map<TopicPartition, Long>) {
         if (isSeekSet) {
@@ -226,6 +230,9 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
         if (!records.isEmpty) {
             this.topics.forEach { topic ->
                 val topicRecords = records.records(topic)
+                if (!topicRecords.iterator().hasNext()) {
+                    return@forEach
+                }
                 val lastRecord = topicRecords.last()
                 val offsetAndMetadata = OffsetAndMetadata(lastRecord.offset(), "")
                 val topicPartition = TopicPartition(lastRecord.topic(), lastRecord.partition())
@@ -291,7 +298,7 @@ class StreamsConsumerRebalanceListener(private val topicPartitionOffsetMap: Map<
                 .map {
                     val offset = consumer.position(it)
                     if (log.isDebugEnabled) {
-                        log.debug("for topic ${it.topic()} partition ${it.partition()}, the last saved offset is: $offset")
+                        log.debug("onPartitionsRevoked: for topic ${it.topic()} partition ${it.partition()}, the last saved offset is: $offset")
                     }
                     it to OffsetAndMetadata(offset, "")
                 }
@@ -301,9 +308,9 @@ class StreamsConsumerRebalanceListener(private val topicPartitionOffsetMap: Map<
 
     override fun onPartitionsAssigned(partitions: Collection<TopicPartition>) {
         for (partition in partitions) {
-            val offset = topicPartitionOffsetMap[partition]?.offset()
+            val offset = (topicPartitionOffsetMap[partition] ?: consumer.committed(partition))?.offset()
             if (log.isDebugEnabled) {
-                log.debug("for ${partition.topic()} partition ${partition.partition()}, the retrieved offset is: $offset")
+                log.debug("onPartitionsAssigned: for ${partition.topic()} partition ${partition.partition()}, the retrieved offset is: $offset")
             }
             if (offset == null) {
                 when (autoOffsetReset) {
