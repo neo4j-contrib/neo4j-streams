@@ -1,12 +1,14 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 
 abstract class StreamsEventSink(private val config: Config,
                                 private val queryExecution: StreamsEventSinkQueryExecution,
                                 private val streamsTopicService: StreamsTopicService,
-                                private val log: Log) {
+                                private val log: Log,
+                                private val db: GraphDatabaseAPI) {
 
     abstract fun stop()
 
@@ -36,13 +38,14 @@ abstract class StreamsEventConsumerFactory {
 
 object StreamsEventSinkFactory {
     fun getStreamsEventSink(config: Config, streamsQueryExecution: StreamsEventSinkQueryExecution,
-                            streamsTopicService: StreamsTopicService, log: Log): StreamsEventSink {
+                            streamsTopicService: StreamsTopicService, log: Log, db: GraphDatabaseAPI): StreamsEventSink {
         return Class.forName(config.raw.getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
                 .getConstructor(Config::class.java,
                         StreamsEventSinkQueryExecution::class.java,
                         StreamsTopicService::class.java,
-                        Log::class.java)
-                .newInstance(config, streamsQueryExecution, streamsTopicService, log) as StreamsEventSink
+                        Log::class.java,
+                        GraphDatabaseAPI::class.java)
+                .newInstance(config, streamsQueryExecution, streamsTopicService, log, db) as StreamsEventSink
     }
 }
 

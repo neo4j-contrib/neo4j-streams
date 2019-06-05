@@ -51,27 +51,27 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                                 logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
                                 strategyMap)
 
-                        // Create and start the Sink
+                        // Create the Sink
+                        val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
                         eventSink = StreamsEventSinkFactory
                                 .getStreamsEventSink(configuration,
                                         streamsQueryExecution,
                                         streamsTopicService,
-                                        logService.getUserLog(StreamsEventSinkFactory::class.java))
-                        eventSink.start()
-                        if (Neo4jUtils.isWriteableInstance(db)) {
-                            if (streamsLog.isDebugEnabled) {
-                                streamsLog.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
-                                streamsLog.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
-                            } else {
-                                streamsLog.info("Subscribed topics: ${streamsTopicService.getTopics()}")
-                            }
+                                        log,
+                                        db)
+                        // start the Sink
+                        if (Neo4jUtils.isEnterpriseEdition(db)) {
+                            log.info("The Sink module is running in an enterprise edition, checking for the ${Neo4jUtils.LEADER}")
+                            Neo4jUtils.executeInLeader(db, log) { initSinkModule() }
+                        } else {
+                            // check if is writeable instance
+                            Neo4jUtils.executeInWriteableInstance(db) { initSinkModule() }
                         }
 
                         // Register required services for the Procedures
                         StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                         StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
                         StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
-                        streamsLog.info("Streams Sink module initialised")
                     }
 
                 })
@@ -79,6 +79,11 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                 e.printStackTrace()
                 streamsLog.error("Error initializing the streaming sink", e)
             }
+        }
+
+        private fun initSinkModule() {
+            eventSink.start()
+            streamsLog.info("Streams Sink module initialised")
         }
 
         override fun stop() {

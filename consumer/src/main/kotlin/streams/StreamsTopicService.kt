@@ -18,7 +18,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
     private val properties: GraphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     private val log = Neo4jUtils.getLogService(db).getUserLog(StreamsTopicService::class.java)
 
-    fun clearAll() {
+    fun clearAll() { // TODO move to Neo4jUtils#executeInWriteableInstance
         if (!Neo4jUtils.isWriteableInstance(db)) {
             return
         }

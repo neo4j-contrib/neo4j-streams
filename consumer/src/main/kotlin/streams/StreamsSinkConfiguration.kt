@@ -6,7 +6,7 @@ import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
 
 
-private object StreamsSinkConfigurationConstants {
+object StreamsSinkConfigurationConstants {
     const val STREAMS_CONFIG_PREFIX: String = "streams."
     const val ENABLED = "sink.enabled"
     const val PROCEDURES_ENABLED = "procedures.enabled"
