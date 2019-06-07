@@ -1,7 +1,7 @@
 = Neo4j Streaming Data Integrations
 :docs: https://neo4j-contrib.github.io/neo4j-streams/
 
-image::https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.5/images/neo4j-loves-confluent.png[]
+image::https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png[]
 
 This project integrates Neo4j with streaming data solutions.
 
