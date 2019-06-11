@@ -78,7 +78,6 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
                 })
             } catch (e: Exception) {
-                e.printStackTrace()
                 streamsLog.error("Error initializing the streaming sink", e)
             }
         }
