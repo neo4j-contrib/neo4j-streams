@@ -41,12 +41,10 @@ object Neo4jUtils {
                 .resolveDependency(LogService::class.java)
     }
 
-    fun isEnterpriseEdition(db: GraphDatabaseAPI): Boolean {
+    fun isCluster(db: GraphDatabaseAPI): Boolean {
         try {
-            return db.execute("""
-                CALL dbms.components() YIELD edition
-                RETURN edition = "enterprise" AS isEnterprise
-            """.trimIndent()).columnAs<Boolean>("isEnterprise").next()
+            db.execute("CALL dbms.cluster.role()").columnAs<String>("role").next()
+            return true
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return false

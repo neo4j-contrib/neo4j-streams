@@ -60,8 +60,8 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                                         log,
                                         db)
                         // start the Sink
-                        if (Neo4jUtils.isEnterpriseEdition(db)) {
-                            log.info("The Sink module is running in an enterprise edition, checking for the ${Neo4jUtils.LEADER}")
+                        if (Neo4jUtils.isCluster(db)) {
+                            log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
                             Neo4jUtils.executeInLeader(db, log) { initSinkModule() }
                         } else {
                             // check if is writeable instance
