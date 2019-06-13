@@ -30,6 +30,8 @@ abstract class StreamsEventConsumer(private val log: Log) {
 
     abstract fun read(topicConfig: Map<String, Any> = emptyMap(), action: (String, List<Any>) -> Unit)
 
+    abstract fun read(action: (String, List<Any>) -> Unit)
+
 }
 
 abstract class StreamsEventConsumerFactory {
