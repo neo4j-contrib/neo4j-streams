@@ -1,37 +1,85 @@
 = Neo4j Streaming Data Integrations
+:docs: https://neo4j-contrib.github.io/neo4j-streams/
 
-== Description
+image::https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png[]
 
-The project is composed by 2 parts:
+This project integrates Neo4j with streaming data solutions.
 
-* Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
-* Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
+Currently it provides an integration with *Apache Kafka and the Confluent Platform*.
 
-== Installation
+The project contains these components:
 
-Build locally
+== Neo4j Kafka Connect Plugin
+
+A https://www.confluent.io/connector/kafka-connect-neo4j-sink/[Kafka Connect Sink plugin] that allows to ingest events from Kafka to Neo4j via templated Cypher statements. (link:{docs}#_kafka_connect[docs], https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[article])
+
+image::https://www.confluent.io/wp-content/uploads/Kafka_Connect_Neo4j_Sink.png[width=300,link=https://www.confluent.io/connector/kafka-connect-neo4j-sink/]
+
+== Neo4j Server Extension
+
+* Source: a Change-Data-Capture (CDC) implementation sends change data to Kafka topics (link:{docs}#_neo4j_streams_producer[docs])
+* Sink: a Neo4j extension that ingest data from Kafka topics into Neo4j via templated Cypher statements (link:{docs}#_neo4j_streams_consumer[docs])
+* Neo4j Streams Procedures (Read & Write): Procedures to write to and read from topics interactively/programmatically (link:{docs}#_procedures[docs])
+
+== Documentation & Articles
+
+Read more at http://r.neo4j.com/kafka
+
+Here are articles, introducing the https://medium.com/neo4j/a-new-neo4j-integration-with-apache-kafka-6099c14851d2[Neo4j Extension] and the https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[Kafka Connect Plugin].
+
+And practical applications of the extension for https://medium.freecodecamp.org/how-to-leverage-neo4j-streams-and-build-a-just-in-time-data-warehouse-64adf290f093[Building Data Pipelines with Kafka, Spark, Neo4j & Zeppelin] (https://medium.freecodecamp.org/how-to-ingest-data-into-neo4j-from-a-kafka-stream-a34f574f5655[part 2]).
+
+And for exchanging results of https://medium.freecodecamp.org/how-to-embrace-event-driven-graph-analytics-using-neo4j-and-apache-kafka-474c9f405e06[Neo4j Graph Algorithms within a Neo4j Cluster].
+
+== Feedback & Suggestions
+
+Please raise https://github.com/neo4j-contrib/neo4j-streams/issues[issues on GitHub], we also love contributions, so don't be shy to send a Pull Request.
+
+We would also love you to https://goo.gl/forms/VLwvqwsIvdfdm9fL2[**fill out our survey**] to learn more about your Kafka + Neo4j use-cases and deployments.
+
+== Installation Server Extension
+
+You can run/test the extension link:{docs}#docker[locally with Docker], or install it manually into your existing Neo4j server.
+
+1. Download the jar-file from the https://github.com/neo4j-contrib/neo4j-streams/releases/latest[latest release]
+2. Copy `neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
+3. Update `$NEO4J_HOME/conf/neo4j.conf` with the necessary configuration.
+4. Restart Neo4j
+
+== Development & Contributions
+
+==== Build locally
 
 ----
 mvn clean install
 ----
 
-2. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
-3. Restart Neo4j
+You'll find the build artifact in `<project_dir>/target/neo4j-streams-<VERSION>.jar`
 
-== Streams Producer
+Testing the link:{docs}#_docker_compose_file[Kafka Connect Plugin locally with Docker].
+
+////
+== Documentation Links
+
+=== Kafka Connect Plugin
+
+### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Plugin]
+
+=== Streams Producer
 
 ### link:doc/asciidoc/producer/configuration.adoc[Configuration]
 
 ### link:doc/asciidoc/producer/patterns.adoc[Patterns]
 
-== Streams Consumer
+=== Streams Consumer
 
 ### link:doc/asciidoc/consumer/configuration.adoc[Configuration]
 
-== Streams Procedures
+=== Streams Procedures
 
 ### link:doc/asciidoc/procedures/index.adoc[Procedures]
 
-== Docker
+=== Docker
 
 ### link:doc/asciidoc/docker/index.adoc[Docker]
+////

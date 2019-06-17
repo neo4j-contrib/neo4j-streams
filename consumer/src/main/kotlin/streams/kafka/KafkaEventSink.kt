@@ -75,9 +75,10 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun stop() = runBlocking {
-        log.info("Stopping Sink daemon Job")
+        log.info("Stopping Kafka Sink daemon Job")
         try {
             job.cancelAndJoin()
+            log.info("Kafka Sink daemon Job stopped")
         } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
     }
 
@@ -98,20 +99,22 @@ class KafkaEventSink(private val config: Config,
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 while (isActive) {
-                    if (Neo4jUtils.isWriteableInstance(db)) {
+                    val timeMillis = if (Neo4jUtils.isWriteableInstance(db)) {
                         eventConsumer.read { topic, data ->
                             if (log.isDebugEnabled) {
                                 log.debug("Reading data from topic $topic")
                             }
                             queryExecution.writeForTopic(topic, data)
                         }
+                        TimeUnit.SECONDS.toMillis(1)
                     } else {
-                        val timeMillis = TimeUnit.MILLISECONDS.toMinutes(5)
+                        val timeMillis = TimeUnit.MINUTES.toMillis(5)
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }
-                        delay(timeMillis)
+                        timeMillis
                     }
+                    delay(timeMillis)
                 }
                 eventConsumer.stop()
             } catch (e: Throwable) {
@@ -135,7 +138,7 @@ data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<Top
                         TopicPartition(topicConfigEntry.key, partition) to offset
                     }
                 }
-                .associateBy({ it.first }, { it.second })
+                .toMap()
 
         fun fromMap(map: Map<String, Any>): KafkaTopicConfig {
             val commit = map.getOrDefault("commit", true).toString().toBoolean()
@@ -200,6 +203,10 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 // TODO add dead letter queue
             }
         }
+    }
+
+    override fun read(action: (String, List<Any>) -> Unit) {
+        readSimple(action)
     }
 
     override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {
@@ -299,6 +306,11 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
         if (commit && topicMap.isNotEmpty()) {
             consumer.commitSync(topicMap)
         }
+    }
+
+    override fun read(action: (String, List<Any>) -> Unit) {
+        val topicMap = readSimple(action)
+        commitData(true, topicMap)
     }
 
     override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {

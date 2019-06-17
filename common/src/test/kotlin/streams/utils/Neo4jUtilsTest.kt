@@ -1,8 +1,6 @@
 package streams.utils
 
-import org.junit.AfterClass
-import org.junit.BeforeClass
-import org.junit.Test
+import org.junit.*
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import kotlin.test.assertFalse
@@ -34,8 +32,8 @@ class Neo4jUtilsTest {
     }
 
     @Test
-    fun shouldCheckIfIsEnterpriseEdition() {
-        val isEnterprise = Neo4jUtils.isEnterpriseEdition(db)
+    fun shouldCheckIfIsACluster() {
+        val isEnterprise = Neo4jUtils.isCluster(db)
         assertFalse { isEnterprise }
     }
 
