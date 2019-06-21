@@ -3,6 +3,7 @@ package streams
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
+import streams.service.dlq.DeadLetterQueueService
 
 abstract class StreamsEventSink(private val config: Config,
                                 private val queryExecution: StreamsEventSinkQueryExecution,
@@ -20,7 +21,7 @@ abstract class StreamsEventSink(private val config: Config,
 
 }
 
-abstract class StreamsEventConsumer(private val log: Log) {
+abstract class StreamsEventConsumer(private val log: Log, private val dlqService: DeadLetterQueueService?) {
 
     abstract fun stop()
 

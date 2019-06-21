@@ -1,10 +1,7 @@
 package streams.kafka
 
 import kotlinx.coroutines.*
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.clients.consumer.*
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -13,7 +10,11 @@ import streams.*
 import streams.extensions.offsetAndMetadata
 import streams.extensions.topicPartition
 import streams.serialization.JSONUtils
+import streams.service.dlq.DLQData
+import streams.service.dlq.KafkaDLQService
 import streams.utils.Neo4jUtils
+import streams.utils.StreamsUtils
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 
@@ -41,10 +42,20 @@ class KafkaEventSink(private val config: Config,
         return object: StreamsEventConsumerFactory() {
             override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
-                return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log)
+                val dlqService = if (kafkaConfig.streamsSinkConfiguration.dlqTopic.isNotBlank()) {
+                    val asProperties = kafkaConfig.asProperties()
+                            .mapKeys { it.key.toString() }
+                            .toMutableMap()
+                    asProperties.remove(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)
+                    asProperties.remove(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)
+                    KafkaDLQService(asProperties, "__streams.errors")
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log)
+                    null
+                }
+                return if (kafkaConfig.enableAutoCommit) {
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, dlqService)
+                } else {
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, dlqService)
                 }
             }
         }
@@ -153,7 +164,8 @@ data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<Top
 }
 
 open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
-                                        private val log: Log): StreamsEventConsumer(log) {
+                                        private val log: Log,
+                                        private val dlqService: KafkaDLQService?): StreamsEventConsumer(log, dlqService) {
 
     private var isSeekSet = false
 
@@ -176,6 +188,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 
     override fun stop() {
         consumer.close()
+        dlqService?.close()
     }
 
     private fun readSimple(action: (String, List<Any>) -> Unit) {
@@ -190,7 +203,9 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         try {
             action(topic, convert(topicRecords))
         } catch (e: Exception) {
-            // TODO send to the DLQ
+            topicRecords
+                    .map { DLQData.from(it, e, this::class.java) }
+                    .forEach{ sentToDLQ(it) }
         }
     }
 
@@ -199,14 +214,19 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 try {
                     "ok" to JSONUtils.readValue<Any>(it.value())
                 } catch (e: Exception) {
-                    "error" to it
+                    "error" to DLQData.from(it, e, this::class.java)
                 }
             }
             .groupBy({ it.first }, { it.second })
             .let {
-                // TODO send content of the "error" key to the DLQ
+                it.getOrDefault("error", emptyList<DLQData>())
+                        .forEach{ sentToDLQ(it as DLQData) }
                 it.getOrDefault("ok", emptyList())
             }
+
+    private fun sentToDLQ(dlqData: DLQData) {
+        dlqService?.send(config.streamsSinkConfiguration.dlqTopic, dlqData)
+    }
 
     private fun readFromPartition(config: KafkaTopicConfig, action: (String, List<Any>) -> Unit) {
         setSeek(config.topicPartitionsMap)
@@ -248,7 +268,10 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 }
 
 class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
-                                     private val log: Log): KafkaAutoCommitEventConsumer(config, log) {
+                                     private val log: Log,
+                                     private val dlqService: KafkaDLQService?): KafkaAutoCommitEventConsumer(config, log, dlqService) {
+
+    private val topicPartitionOffsetMap = ConcurrentHashMap<TopicPartition, OffsetAndMetadata>()
 
     override fun start() {
         if (topics.isEmpty()) {
@@ -295,6 +318,7 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
 
     override fun read(action: (String, List<Any>) -> Unit) {
         val topicMap = readSimple(action)
+        topicPartitionOffsetMap += topicMap
         commitData(true, topicMap)
     }
 
@@ -305,6 +329,7 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
         } else {
             readFromPartition(kafkaTopicConfig, action)
         }
+        topicPartitionOffsetMap += topicMap
         commitData(kafkaTopicConfig.commit, topicMap)
     }
 }
