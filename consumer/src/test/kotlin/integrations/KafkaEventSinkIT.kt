@@ -12,14 +12,11 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.hamcrest.Matchers
 import org.hamcrest.Matchers.equalTo
 import org.junit.*
-import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder
-import org.neo4j.graphdb.schema.ConstraintType
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.neo4j.test.assertion.Assert.assertEventually
@@ -27,14 +24,8 @@ import org.testcontainers.containers.KafkaContainer
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
-import java.io.File
-import java.io.IOException
-import java.io.UncheckedIOException
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventSinkIT {
@@ -335,27 +326,23 @@ class KafkaEventSinkIT {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
         graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        var producerRecord = ProducerRecord(topic, 0, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        val partition = 0
+        var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
         val newData = data.toMutableMap()
         newData["id"] = 2
-        producerRecord = ProducerRecord(topic, 0, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
+        producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
         val resp = kafkaProducer.send(producerRecord).get()
 
         assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:Label) RETURN count(*) AS count"
             val result = db.execute(query).columnAs<Long>("count")
 
-            val kafkaProperties = Properties()
-            kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
-            kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-            kafkaProperties[ConsumerConfig.GROUP_ID_CONFIG] = "neo4j"
-            kafkaProperties[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-            kafkaProperties[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-            val kafkaConsumer = KafkaConsumer<String, ByteArray>(kafkaProperties)
-            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, 0))
+            val kafkaConsumer = createConsumer<String, ByteArray>()
+            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
+            kafkaConsumer.close()
 
-            result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() == offsetAndMetadata.offset()
+            result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
         }, equalTo(true), 30, TimeUnit.SECONDS)
 
     }
@@ -393,16 +380,16 @@ class KafkaEventSinkIT {
         kafkaProducer.send(producerRecord).get()
         assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
-            MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
-            RETURN count(p) AS count
-        """.trimIndent()
+                MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
+                RETURN count(p) AS count
+            """.trimIndent()
             val result = db.execute(query).columnAs<Long>("count")
             result.hasNext() && result.next() == 1L && !result.hasNext()
         }, equalTo(true), 30, TimeUnit.SECONDS)
     }
 
     @Test
-    fun `should fix issue 186 with auto commit false`() {
+    fun `should fix issue 186 with auto commit false`() = runBlocking {
         val product = "product" to "MERGE (p:Product {id: event.id}) ON CREATE SET p.name = event.name"
         val customer = "customer" to "MERGE (c:Customer {id: event.id}) ON CREATE SET c.name = event.name"
         val bought = "bought" to """
@@ -422,10 +409,10 @@ class KafkaEventSinkIT {
         kafkaProducer.send(producerRecord).get()
         assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
-            MATCH (p:Product)
-            WHERE properties(p) = {props}
-            RETURN count(p) AS count
-        """.trimIndent()
+                MATCH (p:Product)
+                WHERE properties(p) = {props}
+                RETURN count(p) AS count
+            """.trimIndent()
             val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
             result.hasNext() && result.next() == 1L && !result.hasNext()
         }, equalTo(true), 30, TimeUnit.SECONDS)
@@ -451,13 +438,31 @@ class KafkaEventSinkIT {
         kafkaProducer.send(producerRecord).get()
         assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
-            MATCH (p:Product)
-            WHERE properties(p) = {props}
-            RETURN count(p) AS count
-        """.trimIndent()
+                MATCH (p:Product)
+                WHERE properties(p) = {props}
+                RETURN count(p) AS count
+            """.trimIndent()
             val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
             result.hasNext() && result.next() == 1L && !result.hasNext()
         }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    private fun <K, V> createConsumer(keyDeserializer: String = StringDeserializer::class.java.name,
+                               valueDeserializer: String = ByteArrayDeserializer::class.java.name,
+                               vararg topics: String): KafkaConsumer<K, V> {
+        val props = Properties()
+        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
+        props["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
+        props["group.id"] = "neo4j"
+        props["enable.auto.commit"] = "true"
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
+        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer
+        props["auto.offset.reset"] = "earliest"
+        val consumer = KafkaConsumer<K, V>(props)
+        if (!topics.isNullOrEmpty()) {
+            consumer.subscribe(topics.toList())
+        }
+        return consumer
     }
 
 }

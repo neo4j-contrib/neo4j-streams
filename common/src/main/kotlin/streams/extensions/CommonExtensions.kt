@@ -1,5 +1,8 @@
 package streams.extensions
 
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
+import org.apache.kafka.common.TopicPartition
 import org.neo4j.graphdb.Node
 import javax.lang.model.SourceVersion
 
@@ -27,3 +30,5 @@ fun Map<String, Any?>.flatten(map: Map<String, Any?> = this, prefix: String = ""
         }
     }.toMap()
 }
+fun <K, V> ConsumerRecord<K, V>.topicPartition() = TopicPartition(this.topic(), this.partition())
+fun <K, V> ConsumerRecord<K, V>.offsetAndMetadata(metadata: String = "") = OffsetAndMetadata(this.offset() + 1, metadata)
