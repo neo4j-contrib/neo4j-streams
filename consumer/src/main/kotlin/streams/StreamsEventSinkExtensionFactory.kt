@@ -43,8 +43,6 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                         streamsLog.info("Initialising the Streams Sink module")
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
                         val streamsTopicService = StreamsTopicService(db)
-                        streamsTopicService.clearAll()
-                        streamsTopicService.setAll(streamsSinkConfiguration.topics)
                         val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
                                 streamsSinkConfiguration.sourceIdStrategyConfig)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
@@ -62,10 +60,10 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                         // start the Sink
                         if (Neo4jUtils.isCluster(db)) {
                             log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
-                            Neo4jUtils.executeInLeader(db, log) { initSinkModule() }
+                            Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
                         } else {
                             // check if is writeable instance
-                            Neo4jUtils.executeInWriteableInstance(db) { initSinkModule() }
+                            Neo4jUtils.executeInWriteableInstance(db) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
                         }
 
                         // Register required services for the Procedures
@@ -80,7 +78,9 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
             }
         }
 
-        private fun initSinkModule() {
+        private fun initSinkModule(streamsTopicService: StreamsTopicService, streamsSinkConfiguration: StreamsSinkConfiguration) {
+            streamsTopicService.clearAll()
+            streamsTopicService.setAll(streamsSinkConfiguration.topics)
             eventSink.start()
             streamsLog.info("Streams Sink module initialised")
         }

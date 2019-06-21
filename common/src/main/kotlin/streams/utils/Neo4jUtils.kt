@@ -89,4 +89,16 @@ object Neo4jUtils {
         }
     }
 
+    fun waitForTheLeader(db: GraphDatabaseAPI, log: Log, timeout: Long = 120000, action: () -> Unit) {
+        GlobalScope.launch(Dispatchers.IO) {
+            val start = System.currentTimeMillis()
+            val delay: Long = 2000
+            while (!clusterHasLeader(db) && System.currentTimeMillis() - start < timeout) {
+                log.info("$LEADER not found, new check comes in $delay milliseconds...")
+                delay(delay)
+            }
+            action()
+        }
+    }
+
 }
