@@ -26,6 +26,7 @@ import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventSinkIT {
@@ -508,6 +509,36 @@ class KafkaEventSinkIT {
             dlqConsumer.close()
             !records.isEmpty && headers.size == 7 && data == value && result.hasNext() && result.next() == 0L && !result.hasNext()
                     && headers["__streams.errorsexception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should mange the Tombstone record for the Node Pattern Strategy`() = runBlocking {
+        val topic = UUID.randomUUID().toString()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
+                "(:User{!userId,name,surname})")
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+
+        db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
+        val count = db.execute("MATCH (n:User) RETURN count(n) AS count").columnAs<Long>("count").next()
+        assertEquals(1L, count)
+
+        kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
+        kafkaProperties["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
+        kafkaProperties["group.id"] = "neo4j"
+        kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
+        kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
+
+        val kafkaProducer: KafkaProducer<ByteArray, ByteArray> = KafkaProducer(kafkaProperties)
+
+        val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano")
+
+        val producerRecord = ProducerRecord<ByteArray, ByteArray>(topic, JSONUtils.writeValueAsBytes(data), null)
+        kafkaProducer.send(producerRecord).get()
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = "MATCH (n:User) RETURN count(n) AS count"
+            val result = db.execute(query).columnAs<Long>("count")
+            result.hasNext() && result.next() == 0L && !result.hasNext()
         }, equalTo(true), 30, TimeUnit.SECONDS)
     }
 

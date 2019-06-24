@@ -63,7 +63,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
     private fun addDeserializers() : Properties {
         val props = Properties()
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
+        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
         return props
     }

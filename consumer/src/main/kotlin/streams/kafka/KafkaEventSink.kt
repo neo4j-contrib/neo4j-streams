@@ -1,19 +1,22 @@
 package streams.kafka
 
 import kotlinx.coroutines.*
-import org.apache.kafka.clients.consumer.*
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.ConsumerRecord
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.*
 import streams.extensions.offsetAndMetadata
+import streams.extensions.toStreamsSinkEntity
 import streams.extensions.topicPartition
-import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import streams.service.dlq.DLQData
 import streams.service.dlq.KafkaDLQService
 import streams.utils.Neo4jUtils
-import streams.utils.StreamsUtils
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
@@ -169,7 +172,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 
     private var isSeekSet = false
 
-    val consumer = KafkaConsumer<String, ByteArray>(config.asProperties())
+    val consumer = KafkaConsumer<ByteArray, ByteArray>(config.asProperties())
 
     lateinit var topics: Set<String>
 
@@ -191,7 +194,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         dlqService?.close()
     }
 
-    private fun readSimple(action: (String, List<Any>) -> Unit) {
+    private fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit) {
         val records = consumer.poll(0)
         this.topics
                 .filter { topic -> records.records(topic).iterator().hasNext() }
@@ -199,7 +202,8 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 .forEach { (topic, topicRecords) -> executeAction(action, topic, topicRecords) }
     }
 
-    fun executeAction(action: (String, List<Any>) -> Unit, topic: String, topicRecords: MutableIterable<ConsumerRecord<String, ByteArray>>) {
+    fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String,
+                      topicRecords: MutableIterable<ConsumerRecord<ByteArray, ByteArray>>) {
         try {
             action(topic, convert(topicRecords))
         } catch (e: Exception) {
@@ -209,10 +213,10 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         }
     }
 
-    private fun convert(topicRecords: MutableIterable<ConsumerRecord<String, ByteArray>>) = topicRecords
+    private fun convert(topicRecords: MutableIterable<ConsumerRecord<ByteArray, ByteArray>>): List<StreamsSinkEntity> = topicRecords
             .map {
                 try {
-                    "ok" to JSONUtils.readValue<Any>(it.value())
+                    "ok" to it.toStreamsSinkEntity()
                 } catch (e: Exception) {
                     "error" to DLQData.from(it, e, this::class.java)
                 }
@@ -221,14 +225,14 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
             .let {
                 it.getOrDefault("error", emptyList<DLQData>())
                         .forEach{ sentToDLQ(it as DLQData) }
-                it.getOrDefault("ok", emptyList())
+                it.getOrDefault("ok", emptyList()) as List<StreamsSinkEntity>
             }
 
     private fun sentToDLQ(dlqData: DLQData) {
         dlqService?.send(config.streamsSinkConfiguration.dlqTopic, dlqData)
     }
 
-    private fun readFromPartition(config: KafkaTopicConfig, action: (String, List<Any>) -> Unit) {
+    private fun readFromPartition(config: KafkaTopicConfig, action: (String, List<StreamsSinkEntity>) -> Unit) {
         setSeek(config.topicPartitionsMap)
         val records = consumer.poll(0)
         config.topicPartitionsMap
@@ -238,11 +242,11 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 .forEach { (topic, topicRecords) -> executeAction(action, topic, topicRecords) }
     }
 
-    override fun read(action: (String, List<Any>) -> Unit) {
+    override fun read(action: (String, List<StreamsSinkEntity>) -> Unit) {
         readSimple(action)
     }
 
-    override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {
+    override fun read(topicConfig: Map<String, Any>, action: (String, List<StreamsSinkEntity>) -> Unit) {
         val kafkaTopicConfig = KafkaTopicConfig.fromMap(topicConfig)
         if (kafkaTopicConfig.topicPartitionsMap.isEmpty()) {
             readSimple(action)
@@ -281,7 +285,7 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
         this.consumer.subscribe(topics)
     }
 
-    private fun readSimple(action: (String, List<Any>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
+    private fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
         val records = consumer.poll(0)
         return this.topics
                 .filter { topic -> records.records(topic).iterator().hasNext() }
@@ -295,7 +299,7 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
     }
 
     private fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
-                                  action: (String, List<Any>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
+                                  action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
         setSeek(kafkaTopicConfig.topicPartitionsMap)
         val records = consumer.poll(0)
         return kafkaTopicConfig.topicPartitionsMap
@@ -316,13 +320,13 @@ class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
         }
     }
 
-    override fun read(action: (String, List<Any>) -> Unit) {
+    override fun read(action: (String, List<StreamsSinkEntity>) -> Unit) {
         val topicMap = readSimple(action)
         topicPartitionOffsetMap += topicMap
         commitData(true, topicMap)
     }
 
-    override fun read(topicConfig: Map<String, Any>, action: (String, List<Any>) -> Unit) {
+    override fun read(topicConfig: Map<String, Any>, action: (String, List<StreamsSinkEntity>) -> Unit) {
         val kafkaTopicConfig = KafkaTopicConfig.fromMap(topicConfig)
         val topicMap = if (kafkaTopicConfig.topicPartitionsMap.isEmpty()) {
             readSimple(action)

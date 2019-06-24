@@ -8,16 +8,16 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
-import org.apache.kafka.connect.sink.SinkRecord
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
 import org.neo4j.driver.v1.exceptions.ClientException
-import org.neo4j.driver.v1.exceptions.Neo4jException
 import org.neo4j.driver.v1.exceptions.TransientException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.kafka.connect.sink.converters.Neo4jValueConverter
+import streams.service.StreamsSinkEntity
 import streams.service.StreamsSinkService
 import streams.service.TopicType
 import streams.service.TopicTypeGroup
@@ -29,7 +29,7 @@ import java.util.concurrent.TimeUnit
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         StreamsSinkService(config.strategyMap) {
 
-    private val converter = ValueConverter()
+    private val converter = Neo4jValueConverter()
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
@@ -113,7 +113,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     }
 
 
-    suspend fun writeData(data: Map<String, List<List<Any>>>) = coroutineScope {
+    suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
         val deferredList = data

@@ -1,6 +1,7 @@
 package streams.service.sink.strategy
 
 import streams.events.*
+import streams.service.StreamsSinkEntity
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
@@ -8,10 +9,10 @@ import streams.utils.StreamsUtils
 data class QueryEvents(val query: String, val events: List<Map<String, Any?>>)
 
 interface IngestionStrategy {
-    fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents>
-    fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents>
-    fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents>
-    fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents>
+    fun mergeNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents>
+    fun deleteNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents>
+    fun mergeRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents>
+    fun deleteRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents>
 }
 
 data class RelationshipSchemaMetadata(val label: String,
