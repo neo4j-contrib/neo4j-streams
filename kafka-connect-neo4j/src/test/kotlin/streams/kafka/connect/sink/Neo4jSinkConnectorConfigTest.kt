@@ -11,17 +11,17 @@ import kotlin.test.assertNull
 
 class Neo4jSinkConnectorConfigTest {
 
-   @Test(expected = ConfigException::class)
-   fun `should throw a ConfigException because of mismatch`() {
-       try {
-           val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
-                   "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})")
-           Neo4jSinkConnectorConfig(originals)
-       } catch (e: ConfigException) {
-           assertEquals("There is a mismatch between topics defined into the property `topics` and configured topics ([foo, bar])", e.message)
-           throw e
-       }
-   }
+    @Test(expected = ConfigException::class)
+    fun `should throw a ConfigException because of mismatch`() {
+        try {
+            val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo, bar",
+                    "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})")
+            Neo4jSinkConnectorConfig(originals)
+        } catch (e: ConfigException) {
+            assertEquals("There is a mismatch between topics defined into the property `topics` ([bar, foo]) and configured topics ([foo])", e.message)
+            throw e
+        }
+    }
 
     @Test(expected = ConfigException::class)
     fun `should throw a ConfigException because of cross defined topics`() {
@@ -41,6 +41,37 @@ class Neo4jSinkConnectorConfigTest {
     fun `should return the configuration`() {
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
                 "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
+                Neo4jSinkConnectorConfig.SERVER_URI to "bolt://neo4j:7687",
+                Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
+                Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
+        val config = Neo4jSinkConnectorConfig(originals)
+
+        assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.cypherTopics["foo"])
+        assertFalse { config.encryptionEnabled }
+        assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
+        assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
+        assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
+        assertEquals(AuthenticationType.BASIC, config.authenticationType)
+        assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME], config.authenticationUsername)
+        assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD], config.authenticationPassword)
+        assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD], config.authenticationPassword)
+        assertEquals("", config.authenticationKerberosTicket)
+        assertNull(config.encryptionCACertificateFile, "encryptionCACertificateFile should be null")
+
+        assertEquals(PoolSettings.DEFAULT_MAX_CONNECTION_LIFETIME, config.connectionMaxConnectionLifetime)
+        assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionLifenessCheckTimeout)
+        assertEquals(Neo4jSinkConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
+        assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
+        assertEquals(Config.LoadBalancingStrategy.LEAST_CONNECTED, config.loadBalancingStrategy)
+        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
+    }
+
+    @Test
+    fun `should return the configuration with shuffled topic order`() {
+        val originals = mapOf(SinkConnector.TOPICS_CONFIG to "bar,foo",
+                "${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}foo" to "(:Foo{!fooId,fooName})",
+                "${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}bar" to "(:Bar{!barId,barName})",
                 Neo4jSinkConnectorConfig.SERVER_URI to "bolt://neo4j:7687",
                 Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
