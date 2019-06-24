@@ -34,6 +34,7 @@ class Neo4jSinkTask : SinkTask() {
                 .withTopics(config.topics.allTopics())
                 .withSinkRecords(collection)
                 .build()
+
         neo4jService.writeData(data)
     }
 

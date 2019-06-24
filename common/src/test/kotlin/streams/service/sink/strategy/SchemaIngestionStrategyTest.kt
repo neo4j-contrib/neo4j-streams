@@ -2,6 +2,8 @@ package streams.service.sink.strategy
 
 import org.junit.Test
 import streams.events.*
+import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import kotlin.test.assertEquals
 
 class SchemaIngestionStrategyTest {
@@ -10,14 +12,15 @@ class SchemaIngestionStrategyTest {
     fun `should create the Schema Query Strategy for mixed events`() {
         // given
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
-                constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
-        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 0,
-                txEventsCount = 3,
-                operation = OperationType.created
-        ),
+                constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname"))))
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
                 payload = NodePayload(id = "0",
                         before = null,
                         after = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
@@ -25,25 +28,26 @@ class SchemaIngestionStrategyTest {
                 schema = nodeSchema
         )
         val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 1,
-                txEventsCount = 3,
-                operation = OperationType.created
-        ),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
                 payload = NodePayload(id = "1",
                         before = null,
                         after = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger", "comp@ny" to "Neo4j"), labels = listOf("User"))
                 ),
                 schema = nodeSchema
         )
-        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 2,
-                txEventsCount = 3,
-                operation = OperationType.created
-        ),
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
                 payload = RelationshipPayload(
                         id = "2",
                         start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
@@ -55,7 +59,9 @@ class SchemaIngestionStrategyTest {
                 schema = Schema()
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
-        val txEvents = listOf(cdcDataStart, cdcDataEnd, cdcDataRelationship)
+        val txEvents = listOf(StreamsSinkEntity(cdcDataStart, cdcDataStart),
+                StreamsSinkEntity(cdcDataEnd, cdcDataEnd),
+                StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
 
         // when
         val nodeEvents = cdcQueryStrategy.mergeNodeEvents(txEvents)
@@ -107,26 +113,28 @@ class SchemaIngestionStrategyTest {
         // given
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
                 constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
-        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 0,
-                txEventsCount = 3,
-                operation = OperationType.updated
-        ),
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.updated
+                ),
                 payload = NodePayload(id = "0",
                         before = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano"), labels = listOf("User", "ToRemove")),
                         after = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User", "NewLabel"))
                 ),
                 schema = nodeSchema
         )
-        val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 1,
-                txEventsCount = 3,
-                operation = OperationType.updated
-        ),
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.updated
+                ),
                 payload = NodePayload(id = "1",
                         before = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger"), labels = listOf("User", "ToRemove")),
                         after = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger", "comp@ny" to "Neo4j"), labels = listOf("User", "NewLabel"))
@@ -134,7 +142,9 @@ class SchemaIngestionStrategyTest {
                 schema = nodeSchema
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
-        val txEvents = listOf(cdcDataStart, cdcDataEnd)
+        val txEvents = listOf(
+                StreamsSinkEntity(cdcDataStart, cdcDataStart),
+                StreamsSinkEntity(cdcDataEnd, cdcDataEnd))
 
         // when
         val nodeEvents = cdcQueryStrategy.mergeNodeEvents(txEvents)
@@ -164,13 +174,14 @@ class SchemaIngestionStrategyTest {
     @Test
     fun `should create the Schema Query Strategy for relationships`() {
         // given
-        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 2,
-                txEventsCount = 3,
-                operation = OperationType.updated
-        ),
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.updated
+                ),
                 payload = RelationshipPayload(
                         id = "2",
                         start = RelationshipNodeChange(id = "0", labels = listOf("User Ext"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
@@ -182,7 +193,7 @@ class SchemaIngestionStrategyTest {
                 schema = Schema()
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
-        val txEvents = listOf(cdcDataRelationship)
+        val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
 
         // when
         val relationshipEvents = cdcQueryStrategy.mergeRelationshipEvents(txEvents)
@@ -215,26 +226,28 @@ class SchemaIngestionStrategyTest {
         // given
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
                 constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
-        val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 0,
-                txEventsCount = 3,
-                operation = OperationType.deleted
-        ),
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.deleted
+                ),
                 payload = NodePayload(id = "0",
                         before = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User")),
                         after = null
                 ),
                 schema = nodeSchema
         )
-        val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 1,
-                txEventsCount = 3,
-                operation = OperationType.deleted
-        ),
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.deleted
+                ),
                 payload = NodePayload(id = "1",
                         before = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger", "comp@ny" to "Neo4j"), labels = listOf("User")),
                         after = null
@@ -242,7 +255,9 @@ class SchemaIngestionStrategyTest {
                 schema = nodeSchema
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
-        val txEvents = listOf(cdcDataStart, cdcDataEnd)
+        val txEvents = listOf(
+                StreamsSinkEntity(cdcDataStart, cdcDataStart),
+                StreamsSinkEntity(cdcDataEnd, cdcDataEnd))
 
         // when
         val nodeEvents = cdcQueryStrategy.mergeNodeEvents(txEvents)
@@ -270,13 +285,14 @@ class SchemaIngestionStrategyTest {
     @Test
     fun `should create the Schema Query Strategy for relationships deletes`() {
         // given
-        val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
-                username = "user",
-                txId = 1,
-                txEventId = 2,
-                txEventsCount = 3,
-                operation = OperationType.deleted
-        ),
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.deleted
+                ),
                 payload = RelationshipPayload(
                         id = "2",
                         start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
@@ -288,7 +304,7 @@ class SchemaIngestionStrategyTest {
                 schema = Schema()
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
-        val txEvents = listOf(cdcDataRelationship)
+        val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
 
         // when
         val relationshipEvents = cdcQueryStrategy.mergeRelationshipEvents(txEvents)

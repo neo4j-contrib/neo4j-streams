@@ -1,7 +1,8 @@
 package streams.service.sink.strategy
 
 import streams.extensions.flatten
-import streams.utils.IngestionUtils
+import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import streams.utils.IngestionUtils.containsProp
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeMergeKeys
@@ -9,7 +10,7 @@ import streams.utils.StreamsUtils
 
 class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePatternConfiguration): IngestionStrategy {
 
-    private val nodeTemplate: String = """
+    private val mergeNodeTemplate: String = """
                 |${StreamsUtils.UNWIND}
                 |MERGE (n:${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
@@ -18,32 +19,47 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
                 |SET n += event.keys
             """.trimMargin()
 
-    override fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
+    private val deleteNodeTemplate: String = """
+                |${StreamsUtils.UNWIND}
+                |MATCH (n:${getLabelsAsString(nodePatternConfiguration.labels)}{${
+                    getNodeMergeKeys("keys", nodePatternConfiguration.keys)
+                }})
+                |DETACH DELETE n
+            """.trimMargin()
+
+    override fun mergeNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
+        val data = events
+                .mapNotNull { if (it.value != null) JSONUtils.asMap(it.value) else null }
+                .mapNotNull { toData(nodePatternConfiguration, it) }
+        return if (data.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(QueryEvents(mergeNodeTemplate, data))
         }
-
-        val data = (events as List<Map<String, Any?>>)
-                .mapNotNull {
-                    toData(nodePatternConfiguration, it)
-                }
-        return listOf(QueryEvents(nodeTemplate, data))
     }
 
-    override fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents> {
+    override fun deleteNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
+        val data = events
+                .filter { it.value == null && it.key != null }
+                .mapNotNull { if (it.key != null) JSONUtils.asMap(it.key) else null }
+                .mapNotNull { toData(nodePatternConfiguration, it, false) }
+        return if (data.isEmpty()) {
+            emptyList()
+        } else {
+            listOf(QueryEvents(deleteNodeTemplate, data))
+        }
+    }
+
+    override fun mergeRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return emptyList()
     }
 
-    override fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
-        return emptyList()
-    }
-
-    override fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
+    override fun deleteRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return emptyList()
     }
 
     companion object {
-        fun toData(nodePatternConfiguration: NodePatternConfiguration, props: Map<String, Any?>): Map<String, Map<String, Any?>>? {
+        fun toData(nodePatternConfiguration: NodePatternConfiguration, props: Map<String, Any?>, withProperties: Boolean = true): Map<String, Map<String, Any?>>? {
             val properties = props.flatten()
             val containsKeys = nodePatternConfiguration.keys.all { properties.containsKey(it) }
             return if (containsKeys) {
@@ -58,8 +74,12 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
                         !nodePatternConfiguration.keys.contains(key) && containsProp
                     }
                 }
-                mapOf("keys" to properties.filterKeys { nodePatternConfiguration.keys.contains(it) },
-                        "properties" to filteredProperties)
+                if (withProperties) {
+                    mapOf("keys" to properties.filterKeys { nodePatternConfiguration.keys.contains(it) },
+                            "properties" to filteredProperties)
+                } else {
+                    mapOf("keys" to properties.filterKeys { nodePatternConfiguration.keys.contains(it) })
+                }
             } else {
                 null
             }

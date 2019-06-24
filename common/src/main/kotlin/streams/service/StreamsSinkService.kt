@@ -1,8 +1,6 @@
 package streams.service
 
-import streams.serialization.JSONUtils
-import streams.service.sink.strategy.*
-import java.util.concurrent.ConcurrentHashMap
+import streams.service.sink.strategy.IngestionStrategy
 
 
 const val STREAMS_TOPIC_KEY: String = "streams.sink.topic"
@@ -17,13 +15,15 @@ enum class TopicType(val group: TopicTypeGroup, val key: String) {
     CDC_SCHEMA(group = TopicTypeGroup.CDC, key = "$STREAMS_TOPIC_CDC_KEY.schema")
 }
 
+data class StreamsSinkEntity(val key: Any?, val value: Any?)
+
 abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) {
 
     abstract fun getTopicType(topic: String): TopicType?
     abstract fun getCypherTemplate(topic: String): String?
     abstract fun write(query: String, events: Collection<Any>)
 
-    private fun writeWithStrategy(data: Collection<Any>, strategy: IngestionStrategy) {
+    private fun writeWithStrategy(data: Collection<StreamsSinkEntity>, strategy: IngestionStrategy) {
         strategy.mergeNodeEvents(data).forEach { write(it.query, it.events) }
         strategy.deleteNodeEvents(data).forEach { write(it.query, it.events) }
 
@@ -31,12 +31,12 @@ abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) 
         strategy.deleteRelationshipEvents(data).forEach { write(it.query, it.events) }
     }
 
-    private fun writeWithCypherTemplate(topic: String, params: Collection<Any>) {
+    private fun writeWithCypherTemplate(topic: String, params: Collection<StreamsSinkEntity>) {
         val query = getCypherTemplate(topic) ?: return
-        write(query, params)
+        write(query, params.mapNotNull { it.value })
     }
 
-    fun writeForTopic(topic: String, params: Collection<Any>) {
+    fun writeForTopic(topic: String, params: Collection<StreamsSinkEntity>) {
         val topicType = getTopicType(topic) ?: return
         when (topicType.group) {
             TopicTypeGroup.CYPHER -> writeWithCypherTemplate(topic, params)

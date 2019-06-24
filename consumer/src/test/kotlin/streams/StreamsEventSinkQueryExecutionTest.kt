@@ -8,6 +8,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.NullLog
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.kafka.KafkaSinkConfiguration
+import streams.service.StreamsSinkEntity
 import streams.service.TopicType
 import streams.service.Topics
 import kotlin.test.assertEquals
@@ -36,8 +37,10 @@ class StreamsEventSinkQueryExecutionTest {
 
     @Test
     fun shouldWriteCypherQuery() {
-        streamsEventSinkQueryExecution.writeForTopic("shouldWriteCypherQuery", listOf(mapOf("id" to "1", "properties" to mapOf("a" to 1)),
-                mapOf("id" to "2", "properties" to mapOf("a" to 1))))
+        val first = mapOf("id" to "1", "properties" to mapOf("a" to 1))
+        val second = mapOf("id" to "2", "properties" to mapOf("a" to 1))
+        streamsEventSinkQueryExecution.writeForTopic("shouldWriteCypherQuery", listOf(StreamsSinkEntity(first, first),
+                StreamsSinkEntity(second, second)))
 
         db.execute("MATCH (n:Label) RETURN count(n) AS count").columnAs<Long>("count").use {
             assertEquals(2, it.next())

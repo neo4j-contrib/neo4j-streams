@@ -99,7 +99,7 @@ class Neo4jSinkTaskTest {
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
-        val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, ValueConverterTest.getTreeStruct(), 42))
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, Neo4jValueConverterTest.getTreeStruct(), 42))
         task.put(input)
         db.graph().beginTx().use {
             assertEquals(1, db.graph().findNodes(Label.label("BODY")).stream().count())
@@ -433,6 +433,40 @@ class Neo4jSinkTaskTest {
                         assertTrue { it.hasNext() }
                         val count = it.next()
                         assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+        }
+    }
+
+    @Test
+    fun `should work with node pattern topic for tombstone record`() {
+        db.graph().beginTx().use {
+            db.graph().execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
+            it.success()
+        }
+        val count = db.graph().beginTx().use {db.graph().execute("MATCH (n) RETURN count(n) AS count")
+                .columnAs<Long>("count").next() }
+        assertEquals(1L, count)
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}$topic"] = "User{!userId,name,surname,address.city}"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val data = mapOf("userId" to 1)
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(topic, 1, null, data, null, null, 42))
+        task.put(input)
+        db.graph().beginTx().use {
+            db.graph().execute("MATCH (n) RETURN count(n) AS count")
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(0, count)
                         assertFalse { it.hasNext() }
                     }
         }

@@ -13,14 +13,14 @@ data class DLQData(val originalTopic: String,
                    val exception: Exception?) {
 
     companion object {
-        fun from(consumerRecord: ConsumerRecord<String, ByteArray>, exception: Exception?, executingClass: Class<*>?): DLQData {
+        fun from(consumerRecord: ConsumerRecord<ByteArray, ByteArray>, exception: Exception?, executingClass: Class<*>?): DLQData {
             return DLQData(offset = consumerRecord.offset().toString(),
                     originalTopic = consumerRecord.topic(),
                     partition = consumerRecord.partition().toString(),
                     timestamp = consumerRecord.timestamp(),
                     exception = exception,
                     executingClass = executingClass,
-                    key = consumerRecord.key().toByteArray(),
+                    key = consumerRecord.key(),
                     value = consumerRecord.value())
         }
     }
