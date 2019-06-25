@@ -24,15 +24,11 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
 
     override fun write(query: String, params: Collection<Any>) {
         if (Neo4jUtils.isWriteableInstance(db)) {
-            try {
-                val result = db.execute(query, mapOf("events" to params))
-                if (log.isDebugEnabled) {
-                    log.debug("Query statistics:\n${result.queryStatistics}")
-                }
-                result.close()
-            } catch (e: Exception) {
-                log.error("Error while executing the query", e)
+            val result = db.execute(query, mapOf("events" to params))
+            if (log.isDebugEnabled) {
+                log.debug("Query statistics:\n${result.queryStatistics}")
             }
+            result.close()
         } else {
             if (log.isDebugEnabled) {
                 log.debug("Not writeable instance")
