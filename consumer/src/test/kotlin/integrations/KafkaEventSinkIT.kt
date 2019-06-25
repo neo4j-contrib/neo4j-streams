@@ -447,6 +447,70 @@ class KafkaEventSinkIT {
         }, equalTo(true), 30, TimeUnit.SECONDS)
     }
 
+    @Test
+    fun `should send data to the DLQ because of QueryExecutionException`() {
+        val topic = UUID.randomUUID().toString()
+        val dlqTopic = UUID.randomUUID().toString()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
+        graphDatabaseBuilder.setConfig("streams.sink.dlq", dlqTopic)
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
+
+        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+                MATCH (c:Customer)
+                RETURN count(c) AS count
+            """.trimIndent()
+            val result = db.execute(query).columnAs<Long>("count")
+
+            val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
+                    ByteArrayDeserializer::class.java.name,
+                    dlqTopic)
+            val records = dlqConsumer.poll(5000)
+            val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
+            val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
+            val value = if (record != null) JSONUtils.readValue<Any>(record.value()!!) else emptyMap<String, Any>()
+            dlqConsumer.close()
+            !records.isEmpty && headers.size == 7 && value == data && result.hasNext() && result.next() == 0L && !result.hasNext()
+                    && headers["__streams.errorsexception.class.name"] == "org.neo4j.graphdb.QueryExecutionException"
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should send data to the DLQ because of JsonParseException`() {
+        val topic = UUID.randomUUID().toString()
+        val dlqTopic = UUID.randomUUID().toString()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
+        graphDatabaseBuilder.setConfig("streams.sink.dlq", dlqTopic)
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+
+        val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
+
+        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(),
+                data.toByteArray())
+        kafkaProducer.send(producerRecord).get()
+        assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+                MATCH (c:Customer)
+                RETURN count(c) AS count
+            """.trimIndent()
+            val result = db.execute(query).columnAs<Long>("count")
+
+            val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
+                    ByteArrayDeserializer::class.java.name,
+                    dlqTopic)
+            val records = dlqConsumer.poll(5000)
+            val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
+            val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
+            val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
+            dlqConsumer.close()
+            !records.isEmpty && headers.size == 7 && data == value && result.hasNext() && result.next() == 0L && !result.hasNext()
+                    && headers["__streams.errorsexception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+        }, equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
     private fun <K, V> createConsumer(keyDeserializer: String = StringDeserializer::class.java.name,
                                valueDeserializer: String = ByteArrayDeserializer::class.java.name,
                                vararg topics: String): KafkaConsumer<K, V> {

@@ -308,6 +308,53 @@ By default no properties will be attached to the edge nodes but you can specify 
 
 |===
 
+=== How deal with bad data
+
+The Neo4j Streams Plugin provides a way to re-route all the data that for something reason it wasn't able to ingest to a `Dead Letter Queue`.
+You can active the feature by setting the following property:
+
+```
+streams.sink.dlq=<TOPIC_NAME>
+```
+
+So given:
+
+```
+streams.sink.dlq=my-dlq-topic
+```
+
+the Neo4j Streams plugin will re-route all the data to the the `my-dlq-topic` topic.
+
+Every published record in the `Dead Letter Queue` contains the original record `Key` and `Value` pairs and the following headers:
+
+[cols="1m,3a",opts=header]
+|===
+| Header key
+| Description
+
+| "__streams.errorstopic"
+| The topic where the data is published
+
+| "__streams.errorspartition"
+| The topic partition where the data is published
+
+| "__streams.errorsoffset"
+| The offset of the data into the topic partition
+
+| "__streams.errorsclass.name"
+| The class that generated the error
+
+| "__streams.errorsexception.class.name
+| The exception that generated the error
+
+| "__streams.errorsexception.message"
+| The exception message
+
+| "__streams.errorsexception.stacktrace"
+| The exception stack trace
+|===
+
+
 === Configuration
 
 include::configuration.adoc[]

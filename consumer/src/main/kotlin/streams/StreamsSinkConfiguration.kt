@@ -16,6 +16,7 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val proceduresEnabled: Boolean = true,
                                     val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
+                                    val dlqTopic: String = "",
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     companion object {
@@ -39,11 +40,14 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                     config.getOrDefault("sink.topic.cdc.sourceId.labelName", defaultSourceIdStrategyConfig.labelName),
                     config.getOrDefault("sink.topic.cdc.sourceId.idName", defaultSourceIdStrategyConfig.idName))
 
+            val dlqTopic = config.getOrDefault("sink.dlq", "")
+
             return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
                     proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
                             .toString().toBoolean(),
                     sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
+                    dlqTopic = dlqTopic,
                     sourceIdStrategyConfig = sourceIdStrategyConfig)
         }
 
