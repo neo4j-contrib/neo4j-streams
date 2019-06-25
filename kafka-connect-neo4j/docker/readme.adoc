@@ -101,7 +101,7 @@ We'll define the Sink configuration in two ways:
 
 [source,json]
 ----
-include::contrib.sink.neo4j.json[]
+include::contrib.sink.avro.neo4j.json[]
 ----
 
 In particular this line:
@@ -169,8 +169,6 @@ and click to the **Sink** tab. You must find a table just like this:
 |my-topic
 |===
 
-<<<<<<< HEAD
-=======
 ==== Change Data Capture Event
 
 This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
@@ -337,9 +335,6 @@ In case of relationship
   }
 }
 ----
-
-the `Schema` strategy leverages the `ids` fields in order to insert/update the relationships so no extra fields will be created.
->>>>>>> b5d68c7... fixes #99: Provide a roundtrip-sink-config (#169)
 
 ===== The `Pattern` strategy
 
