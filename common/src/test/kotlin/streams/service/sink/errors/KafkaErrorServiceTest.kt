@@ -5,6 +5,8 @@ import org.apache.kafka.clients.producer.MockProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.clients.producer.internals.FutureRecordMetadata
 import org.apache.kafka.common.record.RecordBatch
+import org.apache.kafka.common.utils.SystemTime
+import org.apache.kafka.common.utils.Time
 import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
@@ -23,7 +25,7 @@ class KafkaErrorServiceTest {
         val counter = AtomicInteger(0)
         Mockito.`when`(producer.send(ArgumentMatchers.any<ProducerRecord<ByteArray, ByteArray>>())).then {
             counter.incrementAndGet()
-            FutureRecordMetadata(null, 0, RecordBatch.NO_TIMESTAMP, 0L, 0, 0)
+            FutureRecordMetadata(null, 0, RecordBatch.NO_TIMESTAMP, 0L, 0, 0, SystemTime())
         }
         val dlqService = KafkaErrorService(producer, ErrorService.ErrorConfig(fail=false,dlqTopic = "dlqTopic"), { s, e -> })
         dlqService.report(listOf(dlqData()))
