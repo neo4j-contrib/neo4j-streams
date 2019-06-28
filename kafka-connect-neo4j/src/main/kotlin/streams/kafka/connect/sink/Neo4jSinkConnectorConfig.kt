@@ -109,13 +109,18 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     private fun validateAllTopics(originals: Map<*, *>) {
         TopicUtils.validate<ConfigException>(this.topics)
         val topics = if (originals.containsKey(SinkTask.TOPICS_CONFIG)) {
-            originals["topics"].toString().split(",").map { it.trim() }
+            originals["topics"].toString()
+                    .split(",")
+                    .map { it.trim() }
+                    .sorted()
         } else { // TODO manage regexp
             emptyList()
         }
-        val allTopics = this.topics.allTopics()
+        val allTopics = this.topics
+                .allTopics()
+                .sorted()
         if (topics != allTopics) {
-            throw ConfigException("There is a mismatch between topics defined into the property `${SinkTask.TOPICS_CONFIG}` and configured topics ($topics)")
+            throw ConfigException("There is a mismatch between topics defined into the property `${SinkTask.TOPICS_CONFIG}` ($topics) and configured topics ($allTopics)")
         }
     }
 
