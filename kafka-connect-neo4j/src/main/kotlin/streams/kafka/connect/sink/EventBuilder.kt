@@ -3,6 +3,8 @@ package streams.kafka.connect.sink
 import org.apache.kafka.connect.sink.SinkRecord
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.kafka.connect.utils.toStreamsSinkEntity
+import streams.service.StreamsSinkEntity
 
 class EventBuilder {
     private val log: Logger = LoggerFactory.getLogger(EventBuilder::class.java)
@@ -26,7 +28,7 @@ class EventBuilder {
         return this
     }
 
-    fun build(): Map<String, List<List<Any>>> { // <Topic, List<List<SinkRecord>>
+    fun build(): Map<String, List<List<StreamsSinkEntity>>> { // <Topic, List<List<SinkRecord>>
         return this.sinkRecords
                 .groupBy { it.topic() }
                 .filterKeys {topic ->
@@ -37,7 +39,7 @@ class EventBuilder {
                     isValidTopic
                 }
                 .mapValues {
-                    val value = it.value.mapNotNull { it.value() }
+                    val value = it.value.map { it.toStreamsSinkEntity() }
                     value.chunked(this.batchSize!!)
                 }
     }

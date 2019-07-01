@@ -5,7 +5,9 @@ import streams.extensions.quote
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeKeysAsString
 import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import streams.utils.SchemaUtils.getNodeKeys
+import streams.utils.SchemaUtils.toStreamsTransactionEvent
 import streams.utils.StreamsUtils
 
 
@@ -33,29 +35,27 @@ private fun prepareRelationshipEvents(events: List<StreamsTransactionEvent>, wit
 
 class SchemaIngestionStrategy: IngestionStrategy {
 
-    override fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
-        return prepareRelationshipEvents(events.map { JSONUtils.asStreamsTransactionEvent(it) }.filter { it.payload.type == EntityType.relationship && it.meta.operation != OperationType.deleted })
+    override fun mergeRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
+        return prepareRelationshipEvents(events
+                    .mapNotNull { toStreamsTransactionEvent(it) { it.payload.type == EntityType.relationship
+                            && it.meta.operation != OperationType.deleted } })
                 .map {
                     val label = it.key.label.quote()
                     val query = """
                         |${StreamsUtils.UNWIND}
                         |MERGE (start:${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
                         |MERGE (end:${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
-                        |MERGE (start)-[r:${label}]->(end)
+                        |MERGE (start)-[r:$label]->(end)
                         |SET r = event.properties
                     """.trimMargin()
                     QueryEvents(query, it.value)
                 }
     }
 
-    override fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
-        return prepareRelationshipEvents(events.map { JSONUtils.asStreamsTransactionEvent(it) }.filter { it.payload.type == EntityType.relationship && it.meta.operation == OperationType.deleted }, false)
+    override fun deleteRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
+        return prepareRelationshipEvents(events
+                    .mapNotNull { toStreamsTransactionEvent(it) { it.payload.type == EntityType.relationship
+                            && it.meta.operation == OperationType.deleted } }, false)
                 .map {
                     val label = it.key.label.quote()
                     val query = """
@@ -69,26 +69,19 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 }
     }
 
-    override fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
+    override fun deleteNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return events
+                .mapNotNull { toStreamsTransactionEvent(it) { it.payload.type == EntityType.node && it.meta.operation == OperationType.deleted } }
                 .mapNotNull {
-                    val data = JSONUtils.asStreamsTransactionEvent(it)
-                    if (data.payload.type == EntityType.node && data.meta.operation == OperationType.deleted) {
-                        val changeEvtBefore = data.payload.before as NodeChange
-                        val constraints = getNodeConstraints(data) { it.type == StreamsConstraintType.UNIQUE }
-                        if (constraints.isEmpty()) {
-                            null
-                        } else {
-                            constraints to mapOf("properties" to changeEvtBefore.properties)
-                        }
-                    } else {
+                    val changeEvtBefore = it.payload.before as NodeChange
+                    val constraints = getNodeConstraints(it) { it.type == StreamsConstraintType.UNIQUE }
+                    if (constraints.isEmpty()) {
                         null
+                    } else {
+                        constraints to mapOf("properties" to changeEvtBefore.properties)
                     }
                 }
-                .groupBy { it.first }
+                .groupBy({ it.first }, { it.second })
                 .map {
                     val labels = it.key.mapNotNull { it.label }
                     val nodeKeys = it.key.flatMap { it.properties }.toSet()
@@ -97,22 +90,17 @@ class SchemaIngestionStrategy: IngestionStrategy {
                         |MATCH (n:${getLabelsAsString(labels)}{${getNodeKeysAsString(keys = nodeKeys)}})
                         |DETACH DELETE n
                     """.trimMargin()
-                    QueryEvents(query, it.value.map { it.second })
+                    QueryEvents(query, it.value)
                 }
     }
 
-    override fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
-
+    override fun mergeNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         val filterLabels: (List<String>, List<Constraint>) -> List<String> = { labels, constraints ->
             labels.filter { label -> !constraints.any { constraint -> constraint.label == label } }
                 .map { it.quote() }
         }
-
-        return events.map { JSONUtils.asStreamsTransactionEvent(it) }
-                .filter { it.payload.type == EntityType.node && it.meta.operation != OperationType.deleted }
+        return events
+                .mapNotNull { toStreamsTransactionEvent(it) { it.payload.type == EntityType.node && it.meta.operation != OperationType.deleted } }
                 .mapNotNull {
                     val changeEvtAfter = it.payload.after as NodeChange
                     val labelsAfter = changeEvtAfter.labels ?: emptyList()
@@ -139,7 +127,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                         }
                     }
                 }
-                .groupBy { it.first }
+                .groupBy({ it.first }, { it.second })
                 .map { map ->
                     var query = """
                         |${StreamsUtils.UNWIND}
@@ -152,7 +140,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                     if (map.key.labelsToDelete.isNotEmpty()) {
                         query += "\nREMOVE n:${getLabelsAsString(map.key.labelsToDelete)}"
                     }
-                    QueryEvents(query, map.value.map { it.second })
+                    QueryEvents(query, map.value)
                 }
     }
 

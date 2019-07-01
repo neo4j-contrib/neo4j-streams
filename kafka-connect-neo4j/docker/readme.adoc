@@ -351,6 +351,11 @@ or inclusion properties
 
 Labels can be chained via `:`
 
+.Tombstone Record Management
+The pattern strategy come out with the support to the https://en.wikipedia.org/wiki/Tombstone_(data_store)[Tombstone Record],
+in order to leverage it your event should contain as key the record that you want to delete and `null` for the value.
+
+
 ====== The `Node Pattern` configuration
 
 You can configure the node pattern extraction in the following way:

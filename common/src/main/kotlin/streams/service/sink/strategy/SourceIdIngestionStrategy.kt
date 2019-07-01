@@ -3,7 +3,9 @@ package streams.service.sink.strategy
 import streams.events.*
 import streams.extensions.quote
 import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import streams.utils.IngestionUtils.getLabelsAsString
+import streams.utils.SchemaUtils
 import streams.utils.StreamsUtils
 
 data class SourceIdIngestionStrategyConfig(val labelName: String = "SourceEvent", val idName: String = "sourceId")
@@ -13,28 +15,21 @@ class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = Source
     private val quotedLabelName = config.labelName.quote()
     private val quotedIdName = config.idName.quote()
 
-    override fun mergeRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
+    override fun mergeRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return events
-                .mapNotNull {
-                    val data = JSONUtils.asStreamsTransactionEvent(it)
-                    if (data.payload.type == EntityType.relationship && data.meta.operation != OperationType.deleted) {
-                        val payload = data.payload as RelationshipPayload
-                        val changeEvt = when (data.meta.operation) {
-                            OperationType.deleted -> {
-                                data.payload.before as RelationshipChange
-                            }
-                            else -> data.payload.after as RelationshipChange
+                .mapNotNull { SchemaUtils.toStreamsTransactionEvent(it) { it.payload.type == EntityType.relationship && it.meta.operation != OperationType.deleted } }
+                .map { data ->
+                    val payload = data.payload as RelationshipPayload
+                    val changeEvt = when (data.meta.operation) {
+                        OperationType.deleted -> {
+                            data.payload.before as RelationshipChange
                         }
-                        payload.label to mapOf("id" to payload.id,
-                                "start" to payload.start.id, "end" to payload.end.id, "properties" to changeEvt.properties)
-                    } else {
-                        null
+                        else -> data.payload.after as RelationshipChange
                     }
+                    payload.label to mapOf("id" to payload.id,
+                            "start" to payload.start.id, "end" to payload.end.id, "properties" to changeEvt.properties)
                 }
-                .groupBy { it.first }
+                .groupBy({ it.first }, { it.second })
                 .map {
                     val query = """
                         |${StreamsUtils.UNWIND}
@@ -44,44 +39,28 @@ class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = Source
                         |SET r = event.properties
                         |SET r.$quotedIdName = event.id
                     """.trimMargin()
-                    QueryEvents(query, it.value.map { it.second })
+                    QueryEvents(query, it.value)
                 }
     }
 
-    override fun deleteRelationshipEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
+    override fun deleteRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return events
-                .mapNotNull {
-                    val data = JSONUtils.asStreamsTransactionEvent(it)
-                    if (data.payload.type == EntityType.relationship && data.meta.operation == OperationType.deleted) {
-                        val payload = data.payload as RelationshipPayload
-                        payload.label to mapOf("id" to data.payload.id)
-                    } else {
-                        null
-                    }
+                .mapNotNull { SchemaUtils.toStreamsTransactionEvent(it) { it.payload.type == EntityType.relationship && it.meta.operation == OperationType.deleted } }
+                .map { data ->
+                    val payload = data.payload as RelationshipPayload
+                    payload.label to mapOf("id" to data.payload.id)
                 }
-                .groupBy { it.first }
+                .groupBy({ it.first }, { it.second })
                 .map {
                     val query = "${StreamsUtils.UNWIND} MATCH ()-[r:${it.key.quote()}{$quotedIdName: event.id}]-() DELETE r"
-                    QueryEvents(query, it.value.map { it.second })
+                    QueryEvents(query, it.value)
                 }
     }
 
-    override fun deleteNodeEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
+    override fun deleteNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         val data = events
-                .mapNotNull {
-                    val data = JSONUtils.asStreamsTransactionEvent(it)
-                    if (data.payload.type == EntityType.node && data.meta.operation == OperationType.deleted) {
-                        mapOf("id" to data.payload.id)
-                    } else {
-                        null
-                    }
-                }
+                .mapNotNull { SchemaUtils.toStreamsTransactionEvent(it) { it.payload.type == EntityType.node && it.meta.operation == OperationType.deleted } }
+                .map { mapOf("id" to it.payload.id) }
         if (data.isNullOrEmpty()) {
             return emptyList()
         }
@@ -89,32 +68,25 @@ class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = Source
         return listOf(QueryEvents(query, data))
     }
 
-    override fun mergeNodeEvents(events: Collection<Any>): List<QueryEvents> {
-        if (events.isNullOrEmpty()) {
-            return emptyList()
-        }
+    override fun mergeNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return events
-                .mapNotNull {
-                    val data = JSONUtils.asStreamsTransactionEvent(it)
-                    if (data.payload.type == EntityType.node && data.meta.operation != OperationType.deleted) {
-                        val changeEvtAfter = data.payload.after as NodeChange
-                        val labelsAfter = changeEvtAfter.labels ?: emptyList()
-                        val labelsBefore = if (data.payload.before != null) {
-                            val changeEvtBefore = data.payload.before as NodeChange
-                            changeEvtBefore.labels ?: emptyList()
-                        } else {
-                            emptyList()
-                        }
-                        val labelsToAdd = (labelsAfter - labelsBefore)
-                                .toSet()
-                        val labelsToDelete = (labelsBefore - labelsAfter)
-                                .toSet()
-                        NodeMergeMetadata(labelsToAdd = labelsToAdd, labelsToDelete = labelsToDelete) to mapOf("id" to data.payload.id, "properties" to changeEvtAfter.properties)
+                .mapNotNull { SchemaUtils.toStreamsTransactionEvent(it) { it.payload.type == EntityType.node && it.meta.operation != OperationType.deleted } }
+                .map { data ->
+                    val changeEvtAfter = data.payload.after as NodeChange
+                    val labelsAfter = changeEvtAfter.labels ?: emptyList()
+                    val labelsBefore = if (data.payload.before != null) {
+                        val changeEvtBefore = data.payload.before as NodeChange
+                        changeEvtBefore.labels ?: emptyList()
                     } else {
-                        null
+                        emptyList()
                     }
+                    val labelsToAdd = (labelsAfter - labelsBefore)
+                            .toSet()
+                    val labelsToDelete = (labelsBefore - labelsAfter)
+                            .toSet()
+                    NodeMergeMetadata(labelsToAdd = labelsToAdd, labelsToDelete = labelsToDelete) to mapOf("id" to data.payload.id, "properties" to changeEvtAfter.properties)
                 }
-                .groupBy { it.first }
+                .groupBy({ it.first }, { it.second })
                 .map {
                     var query = """
                         |${StreamsUtils.UNWIND}
@@ -128,7 +100,7 @@ class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = Source
                     if (it.key.labelsToAdd.isNotEmpty()) {
                         query += "\nSET n:${getLabelsAsString(it.key.labelsToAdd)}"
                     }
-                    QueryEvents(query, it.value.map { it.second })
+                    QueryEvents(query, it.value)
                 }
     }
 

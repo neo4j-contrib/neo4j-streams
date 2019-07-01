@@ -15,8 +15,6 @@ class Neo4jSinkTask : SinkTask() {
     private lateinit var config: Neo4jSinkConnectorConfig
     private lateinit var neo4jService: Neo4jService
 
-    private val converter = ValueConverter()
-
     override fun version(): String {
         return VersionUtil.version(this.javaClass as Class<*>)
     }
@@ -31,12 +29,12 @@ class Neo4jSinkTask : SinkTask() {
             return@runBlocking
         }
 
-
         val data = EventBuilder()
                 .withBatchSize(config.batchSize)
                 .withTopics(config.topics.allTopics())
                 .withSinkRecords(collection)
                 .build()
+
         neo4jService.writeData(data)
     }
 

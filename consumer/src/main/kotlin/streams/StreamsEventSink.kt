@@ -3,6 +3,7 @@ package streams
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
+import streams.service.StreamsSinkEntity
 import streams.service.dlq.DeadLetterQueueService
 
 abstract class StreamsEventSink(private val config: Config,
@@ -29,9 +30,9 @@ abstract class StreamsEventConsumer(private val log: Log, private val dlqService
 
     abstract fun start()
 
-    abstract fun read(topicConfig: Map<String, Any> = emptyMap(), action: (String, List<Any>) -> Unit)
+    abstract fun read(topicConfig: Map<String, Any> = emptyMap(), action: (String, List<StreamsSinkEntity>) -> Unit)
 
-    abstract fun read(action: (String, List<Any>) -> Unit)
+    abstract fun read(action: (String, List<StreamsSinkEntity>) -> Unit)
 
 }
 

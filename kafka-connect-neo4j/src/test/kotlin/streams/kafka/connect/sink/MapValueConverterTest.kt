@@ -4,14 +4,13 @@ import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.SchemaBuilder
 import org.apache.kafka.connect.data.Struct
 import org.junit.Test
-import org.neo4j.driver.v1.Value
-import org.neo4j.driver.v1.Values
+import streams.kafka.connect.sink.converters.MapValueConverter
 import kotlin.test.assertEquals
 
-class ValueConverterTest {
+class MapValueConverterTest {
 
     @Test
-    fun `should convert tree struct into map of neo4j values`() {
+    fun `should convert tree struct into map of String,Any?`() {
         // given
         // this test generates a simple tree structure like this
         //           body
@@ -22,15 +21,15 @@ class ValueConverterTest {
         val body = getTreeStruct()
 
         // when
-        val result = ValueConverter().convert(body) as Map<*, *>
+        val result = MapValueConverter<Any>().convert(body) as Map<*, *>
 
         // then
-        val expected = getExpectedMap()
+        val expected = getTreeMap()
         assertEquals(expected, result)
     }
 
     @Test
-    fun `should convert tree simple map into map of neo4j values`() {
+    fun `should convert tree simple map into map of String,Any?`() {
         // given
         // this test generates a simple tree structure like this
         //           body
@@ -41,10 +40,10 @@ class ValueConverterTest {
         val body = getTreeMap()
 
         // when
-        val result = ValueConverter().convert(body) as Map<*, *>
+        val result = MapValueConverter<Any>().convert(body) as Map<*, *>
 
         // then
-        val expected = getExpectedMap()
+        val expected = getTreeMap()
         assertEquals(expected, result)
     }
 
@@ -82,24 +81,9 @@ class ValueConverterTest {
                     Struct(P_SCHEMA).put("value", "First Paragraph"),
                     Struct(P_SCHEMA).put("value", "Second Paragraph")
             )
-            val body = Struct(BODY_SCHEMA)
+            return Struct(BODY_SCHEMA)
                     .put("ul", ulList)
                     .put("p", pList)
-            return body
-        }
-
-        fun getExpectedMap(): Map<String, Value> {
-            val firstULMap = mapOf("value" to listOf(
-                    mapOf("value" to Values.value("First UL - First Element"), "class" to Values.NULL),
-                    mapOf("value" to Values.value("First UL - Second Element"), "class" to Values.value(listOf("ClassA", "ClassB")))))
-            val secondULMap = mapOf("value" to listOf(
-                    mapOf("value" to Values.value("Second UL - First Element"), "class" to Values.NULL),
-                    mapOf("value" to Values.value("Second UL - Second Element"), "class" to Values.NULL)))
-            val ulListMap = Values.value(listOf(firstULMap, secondULMap))
-            val pListMap = Values.value(listOf(mapOf("value" to Values.value("First Paragraph")),
-                    mapOf("value" to Values.value("Second Paragraph"))))
-            val bodyMap = mapOf("ul" to ulListMap, "p" to pListMap)
-            return bodyMap
         }
 
         fun getTreeMap(): Map<String, Any?> {
@@ -112,8 +96,7 @@ class ValueConverterTest {
             val ulListMap = listOf(firstULMap, secondULMap)
             val pListMap = listOf(mapOf("value" to "First Paragraph"),
                     mapOf("value" to "Second Paragraph"))
-            val bodyMap = mapOf("ul" to ulListMap, "p" to pListMap)
-            return bodyMap
+            return mapOf("ul" to ulListMap, "p" to pListMap)
         }
     }
 

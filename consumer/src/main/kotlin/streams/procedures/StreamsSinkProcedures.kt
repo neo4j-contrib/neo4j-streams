@@ -44,7 +44,7 @@ class StreamsSinkProcedures {
             val start = System.currentTimeMillis()
             while ((System.currentTimeMillis() - start) < timeout) {
                 consumer.read(cfg) { _, topicData ->
-                    data.addAll(topicData)
+                    data.addAll(topicData.mapNotNull { it.value })
                 }
             }
         } catch (e: Exception) {

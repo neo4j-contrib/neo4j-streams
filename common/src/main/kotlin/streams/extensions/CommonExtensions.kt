@@ -4,6 +4,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.graphdb.Node
+import streams.serialization.JSONUtils
+import streams.service.StreamsSinkEntity
 import javax.lang.model.SourceVersion
 
 fun Map<String,String>.getInt(name:String, defaultValue: Int) = this.get(name)?.toInt() ?: defaultValue
@@ -30,5 +32,10 @@ fun Map<String, Any?>.flatten(map: Map<String, Any?> = this, prefix: String = ""
         }
     }.toMap()
 }
+
 fun <K, V> ConsumerRecord<K, V>.topicPartition() = TopicPartition(this.topic(), this.partition())
 fun <K, V> ConsumerRecord<K, V>.offsetAndMetadata(metadata: String = "") = OffsetAndMetadata(this.offset() + 1, metadata)
+
+fun ConsumerRecord<ByteArray, ByteArray>.toStreamsSinkEntity(): StreamsSinkEntity = StreamsSinkEntity(
+        if (this.key() != null) try { JSONUtils.readValue<Any>(this.key()) } catch (e: Exception) { String(this.key()) } else null,
+        if (this.value() != null) JSONUtils.readValue<Any>(this.value()) else null)
