@@ -23,7 +23,7 @@ class KafkaDLQService: DeadLetterQueueService {
         producer = KafkaProducer(props)
     }
 
-    @VisibleForTesting
+    // Visible for testing
     constructor(producer: Producer<ByteArray, ByteArray>, headerPrefix: String = ""): super(emptyMap(), headerPrefix) {
         this.producer = producer
     }
