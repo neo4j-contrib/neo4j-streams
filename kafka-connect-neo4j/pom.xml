@@ -5,7 +5,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>kafka-connect-neo4j</artifactId>
-    <version>1.0.2</version>
+    <version>1.0.3</version>
     <packaging>jar</packaging>
 
     <name>Kafka Connect Neo4j</name>
