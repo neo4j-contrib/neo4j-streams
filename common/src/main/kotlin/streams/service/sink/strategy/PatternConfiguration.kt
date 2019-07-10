@@ -159,7 +159,7 @@ data class RelationshipPatternConfiguration(val start: NodePatternConfiguration,
             if (matcher == null) {
                 throw IllegalArgumentException("The Relationship pattern $pattern is invalid")
             } else {
-                val isLeftToRight = (!isCypherPattern || isUndirected(matcher) || isDirectedToRigth(matcher))
+                val isLeftToRight = (!isCypherPattern || isUndirected(matcher) || isDirectedToRight(matcher))
                 val isRightToLeft = if (isCypherPattern) isDirectedToLeft(matcher) else false
 
                 if (!isLeftToRight && !isRightToLeft) {
@@ -186,12 +186,10 @@ data class RelationshipPatternConfiguration(val start: NodePatternConfiguration,
             }
         }
 
-
-
         private fun isDirectedToLeft(matcher: MatchResult) =
                 (matcher.groupValues[2] == "<" && matcher.groupValues[6] == "")
 
-        private fun isDirectedToRigth(matcher: MatchResult) =
+        private fun isDirectedToRight(matcher: MatchResult) =
                 (matcher.groupValues[2] == "" && matcher.groupValues[6] == ">")
 
         private fun isUndirected(matcher: MatchResult) =
