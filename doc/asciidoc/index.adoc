@@ -122,6 +122,23 @@ The project is composed of several parts:
 * Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
 * Kafka-Connect Plugin: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries.
 
+[[before_begin]]
+=== Before you Begin
+
+Neo4j streams can run in two modes:
+
+* As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
+to Kafka.
+* As a **Kafka Connect worker**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
+the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support
+change data capture (CDC) coming _from_ Neo4j.
+
+Experienced Neo4j users will likely prefer running the software as a Neo4j Plugin.  Kafka administrators
+may prefer using the Kafka Connect method.
+
+The remainder of the introduction section assumes you are running Neo4j Streams as a Neo4j plugin. 
+More information on the alternative Kafka Connect method can be link:/kafka-connect/[found in this section].
+
 [[installation]]
 === Installation
 
@@ -187,6 +204,16 @@ how much memory the plugin may require to hold messages not yet delivered to Neo
 |A unique string that identifies the consumer group this consumer belongs to.
 |N/A
 |===
+
+==== Confluent Cloud
+
+Configuring a connection to a Confluent Cloud instance should follow 
+link:https://docs.confluent.io/current/cloud/using/config-client.html#java-client[Confluent's Java Client]
+configuration advice, and the advice just above.  At a minimum, to configure this, you will need:
+
+* `bootstrap_server_url`
+* `api-key`
+* `api-secret`
 
 ==== Plugin Configuration
 
