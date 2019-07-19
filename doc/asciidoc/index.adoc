@@ -253,4 +253,6 @@ include::docker/index.adoc[]
 
 include::kafka-connect/index.adoc[]
 
+include::neo4j-cluster/index.adoc[]
+
 include::developing/index.adoc[]
