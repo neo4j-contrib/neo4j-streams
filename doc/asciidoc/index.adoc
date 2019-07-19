@@ -24,8 +24,10 @@ The guide covers the following areas:
 * <<producer>> -- Sends transaction event handler events to a Kafka topic
 * <<consumer>> -- Ingests events from a Kafka topic into Neo4j
 * <<procedures>> -- Procedures for consuming and producing Kafka events
-* <<docker>> -- Docker Compose files for local testing
+* <<docker>> -- Docker Compose files for local testing; example configurations
 * <<kafka-connect>> -- Kafka Connect Sink plugin
+* <<cluster>> -- Using with Neo4j Causal Cluster
+* <<developing>> -- Developing Neo4j Streams
 
 [[quickstart]]
 == Quick Start
@@ -37,12 +39,17 @@ Get started fast for common scenarios, using neo4j-streams as a plugin.
 --
 endif::env-docs[]
 
-1. Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
-2. Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections
-3. Configure the plugin to connect to your kafka instance.
+=== Install the Plugin
 
-If you are managing Kafka yourself, the simple setup is as follows:
+* Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
+* Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections
 
+=== Configure Kafka Connection 
+
+If you are running Kafka locally, the simplest setup is:
+
+.neo4j.conf
+[source,ini]
 ----
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
@@ -51,6 +58,8 @@ kafka.bootstrap.servers=localhost:9092
 If you are using Confluent Cloud (managed Kafka), you can connect to Kafka in this way, filling 
 in your own `CONFLUENT_CLOUD_ENDPOINT`, `CONFLUENT_API_KEY`, and `CONFLUENT_API_SECRET`
 
+.neo4j.conf
+[source,ini]
 ----
 kafka.bootstrap.servers: <<CONFLUENT_CLOUD_ENDPOINT_HERE>>
 kafka.sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="<<CONFLUENT_API_KEY HERE>>" password="<<CONFLUENT_API_SECRET HERE>>";
@@ -61,10 +70,13 @@ kafka.request.timeout_ms: 20000
 kafka.retry.backoff.ms: 500
 ----
 
-4. Decide if you want to save data to Neo4j using the plugin, produce data from Neo4j, or both
-and then follow these extra steps accordingly:
+=== Decide: Consumer, Producer, or Both
 
-5. (Optional) Take data from Kafka and store it in Neo4j (Neo4j as a data sink) by adding configuration such as:
+Follow one or both subsections according to your use case and need:
+
+==== Consumer
+
+Take data from Kafka and store it in Neo4j (Neo4j as a data sink) by adding configuration such as:
 
 .neo4j.conf
 [source,ini]
@@ -80,7 +92,9 @@ properties in the source message.
 
 For full details on what you can do here, see the link:/consumer[Consumer Section] of the documentation.
 
-6. (Optional) Produce data from Neo4j and send it to a Kafka topic (Neo4j as a source) by adding configuration such as:
+==== Producer
+
+Produce data from Neo4j and send it to a Kafka topic (Neo4j as a source) by adding configuration such as:
 
 .neo4j.conf
 ----
@@ -204,6 +218,11 @@ how much memory the plugin may require to hold messages not yet delivered to Neo
 |A unique string that identifies the consumer group this consumer belongs to.
 |N/A
 |===
+
+=== Restart Neo4j
+
+Once the plugin is installed and configured, restarting the database will make it active.
+If you have configured Neo4j to consume from kafka, it will begin immediately processing messages.
 
 ==== Confluent Cloud
 
