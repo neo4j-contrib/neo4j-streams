@@ -214,6 +214,8 @@ NEO4J_kafka_bootstrap_servers: broker:9093
 
 Note the configuration style that you need, and adapt examples in this documentation accordingly.
 
+For more information and examples see the link:/docker[Docker section] of the documentation.
+
 include::producer/index.adoc[]
 
 include::consumer/index.adoc[]

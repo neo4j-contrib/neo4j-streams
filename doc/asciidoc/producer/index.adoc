@@ -1,10 +1,11 @@
 [[producer]]
-== Neo4j Streams Producer
+== Producer: Neo4j -> Kafka
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes the Neo4j Streams Producer in the Neo4j Streams Library.
+This chapter describes the Neo4j Streams Producer in the Neo4j Streams Library.  Use this section
+to configure Neo4j to publish CDC style data to Kafka.
 --
 endif::env-docs[]
 

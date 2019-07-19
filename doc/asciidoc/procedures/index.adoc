@@ -1,17 +1,18 @@
 [[procedures]]
-== Procedures
+== Cypher Procedures
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes consumer and producer procedures in the Neo4j Streams Library.
+This chapter describes consumer and producer procedures in the Neo4j Streams Library.  Procedures
+allow the functionality of the plugin to be used ad-hoc in any Cypher query.
 --
 endif::env-docs[]
 
 
 The Streams project comes out with a list of procedures.
 
-=== General configuration
+=== Configuration
 
 You can enable/disable the procedures by changing this variable inside the `neo4j.conf`
 
