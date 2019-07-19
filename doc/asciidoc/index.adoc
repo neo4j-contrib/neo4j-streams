@@ -142,6 +142,36 @@ This section will deal with configuring the plugin's connection to Kafka.  See t
 in the sub-sections for link:/consumer[Consumer] and link:/producer[Producer] for documentation
 on how to configure those aspects.
 
+==== Kafka Configuration Settings
+
+Neo4j streams uses the official Confluent Kafka producer and consumer java clients.  This means that
+configuration settings which are valid for those connectors will also work for Neo4j Streams.  Any
+configuration option that starts with `kafka.` will be passed to the driver.  For example, in the
+kafka documentation linked below, the configuration setting named `batch.size` should be stated as
+`kafka.batch.size` in Neo4j Streams.
+
+The following are a couple of common configuration settings you may wish to use.  _This is not a complete
+list_.  See the references at the bottom of this section for a full reference table of available configuration
+options.
+
+.Common Configuration Settings
+|===
+|Setting Name |Description |Default Value
+
+|kafka.max.poll.records
+|The maximum number of records to pull per batch from Kafka. Increasing this number will mean
+larger transactions in Neo4j memory and may improve throughput.
+|500
+
+|Cell in column 1, row 2
+|Cell in column 2, row 2
+|Cell in column 3, row 2
+|===
+
+Important further configuration references:
+* link:https://docs.confluent.io/current/installation/configuration/consumer-configs.html#cp-config-consumer[Consumer Configurations]
+* link:https://docs.confluent.io/current/installation/configuration/producer-configs.html#cp-config-producer[Producer Configurations]
+
 ==== When Running Neo4j in Docker
 
 When Neo4j is run in a docker, some special considerations apply; please see 
