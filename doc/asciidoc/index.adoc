@@ -129,14 +129,39 @@ Download the latest release jar from https://github.com/neo4j-contrib/neo4j-stre
 
 Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections.
 
-The minimal setup in your `neo4j.conf` is:
+[[configuration]]
+=== Configuration
+
+Configuring neo4j-streams comes in three different parts, depending on your need:
+
+. *Required*: Configuring a connection to Kafka
+. _Optional_: Configuring Neo4j to ingest from Kafka (link:/consumer[Consumer])
+. _Optional_: Configuring Neo4j to produce records to Kafka (link:/producer[Producer])
+
+This section will deal with configuring the plugin's connection to Kafka.  See the links above
+in the sub-sections for link:/consumer[Consumer] and link:/producer[Producer] for documentation
+on how to configure those aspects.
+
+==== When Running Neo4j in Docker
+
+When Neo4j is run in a docker, some special considerations apply; please see 
+link:https://neo4j.com/docs/operations-manual/current/docker/configuration/[Neo4j Docker Configuration]
+for more information.  In particular, the configuration format used in `neo4j.conf` looks like this:
 
 ----
 kafka.zookeeper.connect=localhost:2181
-kafka.bootstrap.servers=localhost:9092
+kafka.bootstrap.servers=broker:9093
 ----
 
-For each module there are additional configs that are explained in the individual sections.
+Where the same configuration for Neo4j running in docker would be done by environment variables,
+like this:
+
+----
+NEO4J_kafka_zookeeper_connect: zookeeper:2181
+NEO4J_kafka_bootstrap_servers: broker:9093
+----
+
+Note the configuration style that you need, and adapt examples in this documentation accordingly.
 
 include::producer/index.adoc[]
 
