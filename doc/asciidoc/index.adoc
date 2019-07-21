@@ -1,7 +1,7 @@
 = Neo4j Streaming Data Integrations User Guide v{docs-version}
 :toc: left
 :experimental:
-:toclevels: 2
+:toclevels: 3
 :sectid:
 :sectlinks:
 :img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
@@ -10,7 +10,6 @@
 ifdef::backend-html5[(C) {copyright}]
 
 License: link:{common-license-page-uri}[Creative Commons 4.0]
-
 
 [abstract]
 --
@@ -46,7 +45,7 @@ endif::env-docs[]
 
 === Configure Kafka Connection 
 
-If you are running Kafka locally, the simplest setup is:
+If you are running locally or against a standalone machine, configure `neo4j.conf` to point to that server:
 
 .neo4j.conf
 [source,ini]
@@ -113,154 +112,7 @@ these in the link:/producer/#_patterns[Patterns section].
 
 For full details on what you can do here, see the link:/producer[Producer Section] of the documentation.
 
-[[introduction]]
-== Introduction
-
-ifdef::env-docs[]
-[abstract]
---
-This chapter provides an introduction to the Neo4j Streams Library, and instructions for installation.
---
-endif::env-docs[]
-
-Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
-Either to ingest data into the graph from other sources.
-Or to send update events (change data capture - CDC) to the event log for later consumption.
-
-This extension was developed to satisfy all these use-cases and more to come.
-
-The project is composed of several parts:
-
-* Neo4j Streams Procedure: a procedure to send a payload to a topic
-* Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
-* Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
-* Kafka-Connect Plugin: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries.
-
-[[before_begin]]
-=== Before you Begin
-
-Neo4j streams can run in two modes:
-
-* As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
-to Kafka.
-* As a **Kafka Connect worker**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
-the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support
-change data capture (CDC) coming _from_ Neo4j.
-
-Experienced Neo4j users will likely prefer running the software as a Neo4j Plugin.  Kafka administrators
-may prefer using the Kafka Connect method.
-
-The remainder of the introduction section assumes you are running Neo4j Streams as a Neo4j plugin. 
-More information on the alternative Kafka Connect method can be link:/kafka-connect/[found in this section].
-
-[[installation]]
-=== Installation
-
-Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
-
-Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections.
-
-[[configuration]]
-=== Configuration
-
-Configuring neo4j-streams comes in three different parts, depending on your need:
-
-. *Required*: Configuring a connection to Kafka
-. _Optional_: Configuring Neo4j to ingest from Kafka (link:/consumer[Consumer])
-. _Optional_: Configuring Neo4j to produce records to Kafka (link:/producer[Producer])
-
-This section will deal with configuring the plugin's connection to Kafka.  See the links above
-in the sub-sections for link:/consumer[Consumer] and link:/producer[Producer] for documentation
-on how to configure those aspects.
-
-==== Kafka Configuration Settings
-
-Any configuration option that starts with `kafka.` will be passed to the underlying Kafka driver. Neo4j 
-streams uses the official Confluent Kafka producer and consumer java clients.
-Configuration settings which are valid for those connectors will also work for Neo4j Streams.  
-
-For example, in the
-kafka documentation linked below, the configuration setting named `batch.size` should be stated as
-`kafka.batch.size` in Neo4j Streams.
-
-The following are common configuration settings you may wish to use.  _This is not a complete
-list_.  The full list of configuration options and reference material is available from Confluent's
-site for link:https://docs.confluent.io/current/installation/configuration/consumer-configs.html#cp-config-consumer[consumer configurations] and
-link:https://docs.confluent.io/current/installation/configuration/producer-configs.html#cp-config-producer[producer configurations]
-
-.Most Common Needed Configuration Settings
-|===
-|Setting Name |Description |Default Value
-
-|kafka.max.poll.records
-|The maximum number of records to pull per batch from Kafka. Increasing this number will mean
-larger transactions in Neo4j memory and may improve throughput.
-|500
-
-|kafka.buffer.memory
-|The total bytes of memory the producer can use to buffer records waiting.  Use this to adjust
-how much memory the plugin may require to hold messages not yet delivered to Neo4j
-|33554432
-
-|kafka.batch.size
-|(Producer only) The producer will attempt to batch records together into fewer requests whenever multiple records are being sent to the same partition. This helps performance on both the client and the server. This configuration controls the default batch size in bytes.
-|16384
-
-|kafka.batch.size
-|(Producer only) The producer will attempt to batch records together into fewer requests whenever multiple records are being sent to the same partition. This helps performance on both the client and the server. This configuration controls the default batch size in bytes.
-|16384
-
-|kafka.max.partition.fetch.bytes
-|(Consumer only) The maximum amount of data per-partition the server will return. Records are fetched in batches by the consumer. If the first record batch in the first non-empty partition of the fetch is larger than this limit, the batch will still be returned to ensure that the consumer can make progress. 
-|1048576
-
-|kafka.group.id
-|A unique string that identifies the consumer group this consumer belongs to.
-|N/A
-|===
-
-=== Restart Neo4j
-
-Once the plugin is installed and configured, restarting the database will make it active.
-If you have configured Neo4j to consume from kafka, it will begin immediately processing messages.
-
-==== Confluent Cloud
-
-Configuring a connection to a Confluent Cloud instance should follow 
-link:https://docs.confluent.io/current/cloud/using/config-client.html#java-client[Confluent's Java Client]
-configuration advice, and the advice just above.  At a minimum, to configure this, you will need:
-
-* `bootstrap_server_url`
-* `api-key`
-* `api-secret`
-
-==== Plugin Configuration
-
-Any configuration option that starts with `streams.` controls how the plugin itself behaves.  For a full
-list of options available, see the documentation subsections on the producer and consumer.
-
-==== A Note on Running Neo4j in Docker
-
-When Neo4j is run in a docker, some special considerations apply; please see 
-link:https://neo4j.com/docs/operations-manual/current/docker/configuration/[Neo4j Docker Configuration]
-for more information.  In particular, the configuration format used in `neo4j.conf` looks like this:
-
-----
-kafka.zookeeper.connect=localhost:2181
-kafka.bootstrap.servers=broker:9093
-----
-
-Where the same configuration for Neo4j running in docker would be done by environment variables,
-like this:
-
-----
-NEO4J_kafka_zookeeper_connect: zookeeper:2181
-NEO4J_kafka_bootstrap_servers: broker:9093
-----
-
-Note the configuration style that you need, and adapt examples in this documentation accordingly.
-
-For more information and examples see the link:/docker[Docker section] of the documentation.
+include::introduction/index.adoc[]
 
 include::producer/index.adoc[]
 
