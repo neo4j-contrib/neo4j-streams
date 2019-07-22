@@ -1,7 +1,7 @@
 = Neo4j Streaming Data Integrations User Guide v{docs-version}
 :toc: left
 :experimental:
-:toclevels: 2
+:toclevels: 3
 :sectid:
 :sectlinks:
 :img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
@@ -11,7 +11,6 @@ ifdef::backend-html5[(C) {copyright}]
 
 License: link:{common-license-page-uri}[Creative Commons 4.0]
 
-
 [abstract]
 --
 This is the user guide for Neo4j Streams version {docs-version}, authored by the Neo4j Labs Team.
@@ -19,65 +18,101 @@ This is the user guide for Neo4j Streams version {docs-version}, authored by the
 
 The guide covers the following areas:
 
+* <<quickstart>> -- Get Started Fast with the most Common Scenarios
 * <<introduction>> -- An introduction to Neo4j Streams
 * <<producer>> -- Sends transaction event handler events to a Kafka topic
 * <<consumer>> -- Ingests events from a Kafka topic into Neo4j
 * <<procedures>> -- Procedures for consuming and producing Kafka events
-* <<docker>> -- Docker Compose files for local testing
+* <<docker>> -- Docker Compose files for local testing; example configurations
 * <<kafka-connect>> -- Kafka Connect Sink plugin
+* <<cluster>> -- Using with Neo4j Causal Cluster
+* <<developing>> -- Developing Neo4j Streams
 
-
-[[introduction]]
-== Introduction
+[[quickstart]]
+== Quick Start
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter provides an introduction to the Neo4j Streams Library, and instructions for installation.
+Get started fast for common scenarios, using neo4j-streams as a plugin.
 --
 endif::env-docs[]
 
+=== Install the Plugin
 
-Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
-Either to ingest data into the graph from other sources.
-Or to send update events (change data capture - CDC) to the event log for later consumption.
+* Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
+* Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections
 
-This extension was developed to satisfy all these use-cases and more to come.
+=== Configure Kafka Connection 
 
-The project is composed of several parts:
+If you are running locally or against a standalone machine, configure `neo4j.conf` to point to that server:
 
-* Neo4j Streams Procedure: a procedure to send a payload to a topic
-* Neo4j Streams Producer: a transaction event handler events that sends data to a Kafka topic
-* Neo4j Streams Consumer: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
-* Kafka-Connect Plugin: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries.
-
-[[installation]]
-=== Installation
-
-Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
-
-Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections.
-
-The minimal setup in your `neo4j.conf` is:
-
+.neo4j.conf
+[source,ini]
 ----
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 ----
 
-For each module there are additional configs that are explained in the individual sections.
+If you are using Confluent Cloud (managed Kafka), you can connect to Kafka in this way, filling 
+in your own `CONFLUENT_CLOUD_ENDPOINT`, `CONFLUENT_API_KEY`, and `CONFLUENT_API_SECRET`
 
-
-[[build-locally]]
-==== Build locally
-
+.neo4j.conf
+[source,ini]
 ----
-mvn clean install
+kafka.bootstrap.servers: <<CONFLUENT_CLOUD_ENDPOINT_HERE>>
+kafka.sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="<<CONFLUENT_API_KEY HERE>>" password="<<CONFLUENT_API_SECRET HERE>>";
+kafka.ssl.endpoint.identification.algorithm: https
+kafka.security.protocol: SASL_SSL
+kafka.sasl.mechanism: PLAIN
+kafka.request.timeout_ms: 20000
+kafka.retry.backoff.ms: 500
 ----
 
-1. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
-2. Restart Neo4j
+=== Decide: Consumer, Producer, or Both
 
+Follow one or both subsections according to your use case and need:
+
+==== Consumer
+
+Take data from Kafka and store it in Neo4j (Neo4j as a data sink) by adding configuration such as:
+
+.neo4j.conf
+[source,ini]
+----
+streams.sink.enabled=true
+streams.sink.topic.cypher.my-ingest-topic=MERGE (n:Label {id: event.id}) ON CREATE SET n += event.properties
+----
+
+This will process every message that comes in on `my-ingest-topic` with the given cypher statement.  When
+that cypher statement executes, the `event` variable that is referenced will be set to the message received,
+so this sample cypher will create a `(:Label)` node in the graph with the given ID, copying all of the
+properties in the source message.
+
+For full details on what you can do here, see the link:/consumer[Consumer Section] of the documentation.
+
+==== Producer
+
+Produce data from Neo4j and send it to a Kafka topic (Neo4j as a source) by adding configuration such as:
+
+.neo4j.conf
+----
+streams.source.topic.nodes.my-nodes-topic=Person{*}
+streams.source.topic.relationships.my-rels-topic=KNOWS{*}
+streams.source.enabled=true
+streams.source.schema.polling.interval=10000
+----
+
+This will produce all graph nodes labeled `(:Person)` on to the topic `my-nodes-topic` and all
+relationships of type `-[:KNOWS]->` to the topic named `my-rels-topic`.  Further, schema changes will
+be polled every 10,000 ms, which affects how quickly the database picks up new indexes/schema changes.
+
+The expressions `Person{\*}` and `KNOWS{*}` are _patterns_.  You can find documentation on how to change
+these in the link:/producer/#_patterns[Patterns section].
+
+For full details on what you can do here, see the link:/producer[Producer Section] of the documentation.
+
+include::introduction/index.adoc[]
 
 include::producer/index.adoc[]
 
@@ -88,3 +123,7 @@ include::procedures/index.adoc[]
 include::docker/index.adoc[]
 
 include::kafka-connect/index.adoc[]
+
+include::neo4j-cluster/index.adoc[]
+
+include::developing/index.adoc[]

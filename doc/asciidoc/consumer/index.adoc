@@ -1,10 +1,11 @@
 [[consumer]]
-== Neo4j Streams Consumer
+== Consumer: Kafka -> Neo4j
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes the Neo4j Streams Consumer in the Neo4j Streams Library.
+This chapter describes the Neo4j Streams Consumer in the Neo4j Streams Library. Use this section
+to configure Neo4j to consume data from Kafka and create new nodes and relationships.
 --
 endif::env-docs[]
 
