@@ -27,9 +27,9 @@ just `bolt://` as the scheme.
 
 If your Neo4j cluster is located at `graph.mycompany.com:7687`, simply configure the Kafka Connect worker with
 
----
+----
 neo4j.server.uri=bolt+routing://graph.mycompany.com:7687
----
+----
 
 The use of the `bolt+routing` driver will mean that the Neo4j Driver itself will handle connecting to
 the correct cluster member, and managing changes to the cluster membership over time.
