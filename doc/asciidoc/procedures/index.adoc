@@ -147,6 +147,22 @@ If not specified it inherits the underlying `kafka.bootstrap.servers` value
 |List<Map<K,V>>
 |The map contains the information about partition and offset in order to start reading from a
 
+|`keyDeserializer`
+|String
+|The supported deserializer for the Kafka Record Key
+If not specified it inherits the underlying `kafka.key.deserializer` value.
+Supported deserializers are: `org.apache.kafka.common.serialization.ByteArrayDeserializer` and `io.confluent.kafka.serializers.KafkaAvroDeserializer`
+
+|`valueDeserializer`
+|String
+|The supported deserializer for the Kafka Record Value
+If not specified it inherits the underlying `kafka.value.deserializer` value
+Supported deserializers are: `org.apache.kafka.common.serialization.ByteArrayDeserializer` and `io.confluent.kafka.serializers.KafkaAvroDeserializer`
+
+|`schemaRegistryUrl`
+|String
+|The schema registry url, required in case you are dealing with AVRO messages.
+
 |===
 
 ===== Partitions

@@ -1,9 +1,12 @@
 package streams.kafka
 
+import io.confluent.kafka.serializers.KafkaAvroDeserializer
+import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.neo4j.logging.Log
 import streams.StreamsEventConsumer
 import streams.extensions.offsetAndMetadata
@@ -40,7 +43,13 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 
     private var isSeekSet = false
 
-    val consumer = KafkaConsumer<ByteArray, ByteArray>(config.asProperties())
+    val consumer: KafkaConsumer<*, *> = when {
+        config.keyDeserializer == ByteArrayDeserializer::class.java.name && config.valueDeserializer == ByteArrayDeserializer::class.java.name -> KafkaConsumer<ByteArray, ByteArray>(config.asProperties())
+        config.keyDeserializer == ByteArrayDeserializer::class.java.name && config.valueDeserializer == KafkaAvroDeserializer::class.java.name -> KafkaConsumer<ByteArray, GenericRecord>(config.asProperties())
+        config.keyDeserializer == KafkaAvroDeserializer::class.java.name && config.valueDeserializer == KafkaAvroDeserializer::class.java.name -> KafkaConsumer<GenericRecord, GenericRecord>(config.asProperties())
+        config.keyDeserializer == KafkaAvroDeserializer::class.java.name && config.valueDeserializer == ByteArrayDeserializer::class.java.name -> KafkaConsumer<GenericRecord, ByteArray>(config.asProperties())
+        else -> throw RuntimeException("Invalid config")
+    }
 
     lateinit var topics: Set<String>
 
@@ -75,7 +84,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 }
     }
 
-    private fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String, topicRecords: Iterable<ConsumerRecord<ByteArray, ByteArray>>) {
+    private fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String, topicRecords: Iterable<ConsumerRecord<out Any, out Any>>) {
         try {
             action(topic, convert(topicRecords))
         } catch (e: Exception) {
@@ -83,7 +92,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         }
     }
 
-    private fun convert(topicRecords: Iterable<ConsumerRecord<ByteArray, ByteArray>>) = topicRecords
+    private fun convert(topicRecords: Iterable<ConsumerRecord<out Any, out Any>>) = topicRecords
             .map {
                 try {
                     "ok" to it.toStreamsSinkEntity()

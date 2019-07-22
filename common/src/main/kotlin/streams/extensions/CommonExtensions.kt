@@ -1,12 +1,17 @@
 package streams.extensions
 
-import com.fasterxml.jackson.core.JsonParseException
+import org.apache.avro.Schema
+import org.apache.avro.generic.GenericEnumSymbol
+import org.apache.avro.generic.GenericFixed
+import org.apache.avro.generic.GenericRecord
+import org.apache.avro.generic.IndexedRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.graphdb.Node
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
+import java.nio.ByteBuffer
 import javax.lang.model.SourceVersion
 
 fun Map<String,String>.getInt(name:String, defaultValue: Int) = this.get(name)?.toInt() ?: defaultValue
@@ -34,9 +39,37 @@ fun Map<String, Any?>.flatten(map: Map<String, Any?> = this, prefix: String = ""
     }.toMap()
 }
 
-fun <K, V> ConsumerRecord<K, V>.topicPartition() = TopicPartition(this.topic(), this.partition())
-fun <K, V> ConsumerRecord<K, V>.offsetAndMetadata(metadata: String = "") = OffsetAndMetadata(this.offset() + 1, metadata)
+fun ConsumerRecord<*, *>.topicPartition() = TopicPartition(this.topic(), this.partition())
+fun ConsumerRecord<*, *>.offsetAndMetadata(metadata: String = "") = OffsetAndMetadata(this.offset() + 1, metadata)
 
-fun ConsumerRecord<ByteArray, ByteArray>.toStreamsSinkEntity(): StreamsSinkEntity = StreamsSinkEntity(
-        if (this.key() == null) null else JSONUtils.readValue<Any>(this.key(), true),
-        if (this.value() == null) null else JSONUtils.readValue<Any>(this.value()))
+private fun convertAvroData(rawValue: Any?): Any? = when (rawValue) {
+    is IndexedRecord -> rawValue.toMap()
+    is Collection<*> -> rawValue.map(::convertAvroData)
+    is Array<*> -> if (rawValue.javaClass.componentType.isPrimitive) rawValue else rawValue.map(::convertAvroData)
+    is Map<*, *> -> rawValue
+            .mapKeys { it.key.toString() }
+            .mapValues { convertAvroData(it.value) }
+    is GenericFixed -> rawValue.bytes()
+    is ByteBuffer -> rawValue.array()
+    is GenericEnumSymbol, is CharSequence -> rawValue.toString()
+    else -> rawValue
+}
+fun IndexedRecord.toMap() = this.schema.fields
+        .map { it.name() to convertAvroData(this[it.pos()]) }
+        .toMap()
+
+fun Schema.toMap() = JSONUtils.asMap(this.toString())
+
+private fun convertData(data: Any?, stringWhenFailure: Boolean = false): Any? {
+    return when (data) {
+        null -> null
+        is ByteArray -> JSONUtils.readValue<Any>(data, stringWhenFailure)
+        is GenericRecord -> data.toMap()
+        else -> if (stringWhenFailure) data.toString() else throw RuntimeException("Unsupported type ${data::class.java.name}")
+    }
+}
+fun ConsumerRecord<*, *>.toStreamsSinkEntity(): StreamsSinkEntity {
+    val key = convertData(this.key(), true)
+    val value = convertData(this.value())
+    return StreamsSinkEntity(key, value)
+}
