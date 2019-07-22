@@ -3,7 +3,6 @@ package streams
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import streams.service.StreamsSinkEntity
 import streams.service.dlq.DeadLetterQueueService
 
 abstract class StreamsEventSink(private val config: Config,
@@ -12,32 +11,17 @@ abstract class StreamsEventSink(private val config: Config,
                                 private val log: Log,
                                 private val db: GraphDatabaseAPI) {
 
+    abstract val mappingKeys: Map<String, String>
+    abstract val streamsConfigMap: Map<String, String>
+
     abstract fun stop()
 
     abstract fun start()
 
     abstract fun getEventConsumerFactory(): StreamsEventConsumerFactory
 
-    abstract fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper
+    open fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper = StreamsEventSinkConfigMapper(streamsConfigMap, mappingKeys)
 
-}
-
-abstract class StreamsEventConsumer(private val log: Log, private val dlqService: DeadLetterQueueService?) {
-
-    abstract fun stop()
-
-    abstract fun withTopics(topics: Set<String>): StreamsEventConsumer
-
-    abstract fun start()
-
-    abstract fun read(topicConfig: Map<String, Any> = emptyMap(), action: (String, List<StreamsSinkEntity>) -> Unit)
-
-    abstract fun read(action: (String, List<StreamsSinkEntity>) -> Unit)
-
-}
-
-abstract class StreamsEventConsumerFactory {
-    abstract fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer
 }
 
 object StreamsEventSinkFactory {
@@ -53,6 +37,11 @@ object StreamsEventSinkFactory {
     }
 }
 
-abstract class StreamsEventSinkConfigMapper(private val baseConfiguration: Map<String, String>, private val mapping: Map<String, String>) {
-    abstract fun convert(config: Map<String, String>): Map<String, String>
+open class StreamsEventSinkConfigMapper(private val streamsConfigMap: Map<String, String>, private val mappingKeys: Map<String, String>) {
+    open fun convert(config: Map<String, String>): Map<String, String> {
+        val props = streamsConfigMap
+                .toMutableMap()
+        props += config.mapKeys { mappingKeys.getOrDefault(it.key, it.key) }
+        return props
+    }
 }
