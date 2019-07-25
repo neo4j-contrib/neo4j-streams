@@ -24,7 +24,7 @@ class KafkaConfigurationTest {
                 "kafka.linger.ms" to 10,
                 "kafka.fetch.min.bytes" to 1234)
 
-        val kafkaConfig = KafkaConfiguration.from(map.mapValues { it.value.toString() })
+        val kafkaConfig = KafkaConfiguration.create(map.mapValues { it.value.toString() })
 
         assertFalse { kafkaConfig.extraProperties.isEmpty() }
         assertTrue { kafkaConfig.extraProperties.containsKey("fetch.min.bytes") }

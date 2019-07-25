@@ -1,12 +1,14 @@
 package streams.kafka
 
 import org.apache.commons.lang3.StringUtils
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import streams.extensions.getInt
 import streams.extensions.toPointCase
 import streams.serialization.JSONUtils
+import streams.utils.ValidationUtils.validateConnection
 import java.util.*
 
 private val configPrefix = "kafka."
@@ -27,7 +29,8 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
-        fun from(cfg: Map<String, String>) : KafkaConfiguration {
+        // Visible for testing
+        fun create(cfg: Map<String, String>): KafkaConfiguration {
             val config = cfg.filterKeys { it.startsWith(configPrefix) }.mapKeys { it.key.substring(configPrefix.length) }
 
             val default = KafkaConfiguration()
@@ -51,6 +54,18 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
         }
+
+        fun from(cfg: Map<String, String>): KafkaConfiguration {
+            val cfg = create(cfg)
+            validate(cfg)
+            return cfg
+        }
+
+        private fun validate(config: KafkaConfiguration) {
+            validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
+            validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)
+        }
+
     }
 
     fun asProperties(): Properties {

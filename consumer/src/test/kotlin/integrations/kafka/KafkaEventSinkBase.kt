@@ -60,6 +60,7 @@ open class KafkaEventSinkBase {
         graphDatabaseBuilder = org.neo4j.test.TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
+                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
         kafkaProducer = createProducer()
         kafkaAvroProducer = createProducer(valueSerializer = KafkaAvroSerializer::class.java.name,
