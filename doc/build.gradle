@@ -179,9 +179,10 @@ html {
         "Developer_Manual=${crossReferenceBase['developer-manual']}/",
         "OGM_Manual=${crossReferenceBase['ogm-manual']}/",
         "Graph_Algorithms=${crossReferenceBase['graph-algorithms']}/",
+        "Java_Reference=${crossReferenceBase['java-reference']}/",
         "APOC=${crossReferenceBase['apoc']}/",
         "Neo4j_Streams=${crossReferenceBase['streams']}/",
-        "Java_Reference=${crossReferenceBase['java-reference']}/",
+
     ].join(" ")
     def scripts = [
 //        '//ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js',
