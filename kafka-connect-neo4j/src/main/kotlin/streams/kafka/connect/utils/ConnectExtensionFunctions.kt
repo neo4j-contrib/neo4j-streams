@@ -1,10 +1,8 @@
 package streams.kafka.connect.utils
 
-import com.fasterxml.jackson.core.JsonParseException
 import org.apache.kafka.connect.data.Struct
 import org.apache.kafka.connect.sink.SinkRecord
 import streams.kafka.connect.sink.converters.MapValueConverter
-import streams.kafka.connect.sink.converters.Neo4jValueConverter
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 

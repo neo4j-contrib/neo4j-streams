@@ -95,10 +95,10 @@ class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = Source
                         |SET n.$quotedIdName = event.id
                     """.trimMargin()
                     if (it.key.labelsToDelete.isNotEmpty()) {
-                        query += "\nREMOVE n:${getLabelsAsString(it.key.labelsToDelete)}"
+                        query += "\nREMOVE n${getLabelsAsString(it.key.labelsToDelete)}"
                     }
                     if (it.key.labelsToAdd.isNotEmpty()) {
-                        query += "\nSET n:${getLabelsAsString(it.key.labelsToAdd)}"
+                        query += "\nSET n${getLabelsAsString(it.key.labelsToAdd)}"
                     }
                     QueryEvents(query, it.value)
                 }

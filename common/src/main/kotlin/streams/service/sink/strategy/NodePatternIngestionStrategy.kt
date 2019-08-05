@@ -12,7 +12,7 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
 
     private val mergeNodeTemplate: String = """
                 |${StreamsUtils.UNWIND}
-                |MERGE (n:${getLabelsAsString(nodePatternConfiguration.labels)}{${
+                |MERGE (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})
                 |SET n = event.properties
@@ -21,7 +21,7 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
 
     private val deleteNodeTemplate: String = """
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:${getLabelsAsString(nodePatternConfiguration.labels)}{${
+                |MATCH (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})
                 |DETACH DELETE n

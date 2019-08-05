@@ -16,7 +16,12 @@ import org.neo4j.graphdb.Node
 import org.neo4j.harness.ServerControls
 import org.neo4j.harness.TestServerBuilders
 import streams.events.*
+import streams.serialization.JSONUtils
 import streams.service.errors.ErrorService
+import streams.service.sink.strategy.CUDNode
+import streams.service.sink.strategy.CUDNodeRel
+import streams.service.sink.strategy.CUDOperations
+import streams.service.sink.strategy.CUDRelationship
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -513,8 +518,11 @@ class Neo4jSinkTaskTest {
             db.graph().execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
             it.success()
         }
-        val count = db.graph().beginTx().use {db.graph().execute("MATCH (n) RETURN count(n) AS count")
-                .columnAs<Long>("count").next() }
+        val count = db.graph().beginTx().use {
+            db.graph().execute("MATCH (n) RETURN count(n) AS count")
+                    .columnAs<Long>("count")
+                    .next()
+        }
         assertEquals(1L, count)
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
@@ -538,6 +546,96 @@ class Neo4jSinkTaskTest {
                         assertEquals(0, count)
                         assertFalse { it.hasNext() }
                     }
+        }
+    }
+
+    @Test
+    fun `should ingest node data from CUD Events`() {
+        // given
+        val mergeMarkers = listOf(2, 5, 7)
+        val key = "key"
+        val topic = UUID.randomUUID().toString()
+        val data = (1..10).map {
+            val labels = if (it % 2 == 0) listOf("Foo", "Bar") else listOf("Foo", "Bar", "Label")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val (op, ids) = when (it) {
+                in mergeMarkers -> CUDOperations.merge to mapOf(key to it)
+                else -> CUDOperations.create to emptyMap()
+            }
+            val cudNode = CUDNode(op = op,
+                    labels = labels,
+                    ids = ids,
+                    properties = properties)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(cudNode), it.toLong())
+        }
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        // when
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(data)
+
+        // then
+        db.graph().beginTx().use {
+            val countFooBarLabel = db.graph().execute("MATCH (n:Foo:Bar:Label) RETURN count(n) AS count")
+                    .columnAs<Long>("count")
+                    .next()
+            assertEquals(5L, countFooBarLabel)
+            val countFooBar = db.graph().execute("MATCH (n:Foo:Bar) RETURN count(n) AS count")
+                    .columnAs<Long>("count")
+                    .next()
+            assertEquals(10L, countFooBar)
+        }
+    }
+
+    @Test
+    fun `should ingest relationship data from CUD Events`() {
+        // given
+        val key = "key"
+        val topic = UUID.randomUUID().toString()
+        val rel_type = "MY_REL"
+        val data = (1..10).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
+            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = rel_type)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
+        }
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+        db.graph().beginTx().use {
+            db.graph().execute("""
+                UNWIND range(1, 10) AS id
+                CREATE (:Foo:Bar {key: id})
+                CREATE (:FooBar {key: id})
+            """.trimIndent()).close()
+            assertEquals(0, db.graph().allRelationships.count())
+            assertEquals(20, db.graph().allNodes.count())
+            it.success()
+        }
+
+        // when
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(data)
+
+        // then
+        db.graph().beginTx().use {
+            val countFooBarLabel = db.graph().execute("""
+                MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
+                RETURN count(r) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").next()
+            assertEquals(10L, countFooBarLabel)
         }
     }
 

@@ -10,6 +10,7 @@ import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
+import org.neo4j.csv.reader.Magic.define
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
 import streams.kafka.connect.sink.ConfigGroup.ERROR_REPORTING
@@ -63,10 +64,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val batchTimeout: Long
     val batchSize: Int
     val parallelBatches: Boolean
-
-//    val cdcTopics: Map<TopicType, Set<String>>
-//
-//    val cypherTopics: Map<String, String>
 
     val topics: Topics
 
@@ -163,6 +160,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val TOPIC_PATTERN_NODE_PREFIX = "neo4j.topic.pattern.node."
         const val TOPIC_PATTERN_RELATIONSHIP_PREFIX = "neo4j.topic.pattern.relationship."
         const val TOPIC_CDC_SCHEMA = "neo4j.topic.cdc.schema"
+        const val TOPIC_CUD = "neo4j.topic.cud"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
         val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
@@ -337,6 +335,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                     .define(ConfigKeyBuilder.of(BATCH_PARALLELIZE, ConfigDef.Type.BOOLEAN)
                             .documentation(PropertiesUtil.getProperty(BATCH_PARALLELIZE)).importance(ConfigDef.Importance.MEDIUM)
                             .defaultValue(true).group(ConfigGroup.BATCH)
+                            .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_CUD, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(TOPIC_CUD)).importance(ConfigDef.Importance.HIGH)
+                            .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
                             .build())
         }
     }
