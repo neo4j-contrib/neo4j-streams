@@ -36,7 +36,7 @@ Experienced Neo4j users will likely prefer running the software as a Neo4j Plugi
 may prefer using the Kafka Connect method.
 
 The remainder of the introduction section assumes you are running Neo4j Streams as a Neo4j plugin. 
-More information on the alternative Kafka Connect method can be link:/kafka-connect/[found in this section].
+More information on the alternative Kafka Connect method can be  link:../kafka-connect/[found in this section].
 
 [[installation]]
 === Installation
@@ -51,8 +51,8 @@ Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections.
 Configuring neo4j-streams comes in three different parts, depending on your need:
 
 . *Required*: Configuring a connection to Kafka
-. _Optional_: Configuring Neo4j to ingest from Kafka (link:/consumer[Consumer])
-. _Optional_: Configuring Neo4j to produce records to Kafka (link:/producer[Producer])
+. _Optional_: Configuring Neo4j to ingest from Kafka ( link:../consumer[Consumer])
+. _Optional_: Configuring Neo4j to produce records to Kafka ( link:../producer[Producer])
 
 Below is a complete configured example of using the plugin in both modes, assuming kafka running
 on localhost.  See the relevant subsections to adjust the configuration as necessary.
@@ -155,7 +155,7 @@ Example:
 * `dbms.memory.heap.max_size=8G` -> `NEO4J_dbms_memory_heap_max__size: 8G`
 * `dbms.logs.debug.level=DEBUG` -> `NEO4J_dbms_logs_debug_level: DEBUG`
 
-For more information and examples see the link:/docker[Docker section] of the documentation.
+For more information and examples see the  link:../docker[Docker section] of the documentation.
 
 [[restart]]
 === Restart Neo4j
