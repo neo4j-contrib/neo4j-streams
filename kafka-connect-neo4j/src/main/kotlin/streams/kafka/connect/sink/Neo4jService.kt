@@ -67,7 +67,12 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         configBuilder.withLoadBalancingStrategy(this.config.loadBalancingStrategy)
         configBuilder.withMaxTransactionRetryTime(config.retryBackoff, TimeUnit.MILLISECONDS)
         val neo4jConfig = configBuilder.toConfig()
-        this.driver = GraphDatabase.driver(this.config.serverUri, authToken, neo4jConfig)
+
+        if (this.config.serverUri.size > 1) {
+            this.driver = GraphDatabase.routingDriver(this.config.serverUri, authToken, neo4jConfig)
+        } else {
+            this.driver = GraphDatabase.driver(this.config.serverUri.get(0), authToken, neo4jConfig)
+        }
     }
 
     fun close() {

@@ -39,9 +39,12 @@ class Neo4jSinkConnectorConfigTest {
 
     @Test
     fun `should return the configuration`() {
+        val a = "bolt://neo4j:7687"
+        val b = "bolt://neo4j2:7687"
+
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
                 "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
-                Neo4jSinkConnectorConfig.SERVER_URI to "bolt://neo4j:7687",
+                Neo4jSinkConnectorConfig.SERVER_URI to "$a,$b", // Check for string trimming
                 Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
@@ -49,7 +52,8 @@ class Neo4jSinkConnectorConfigTest {
 
         assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.cypherTopics["foo"])
         assertFalse { config.encryptionEnabled }
-        assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
+        assertEquals(a, config.serverUri.get(0).toString())
+        assertEquals(b, config.serverUri.get(1).toString())
         assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
         assertEquals(AuthenticationType.BASIC, config.authenticationType)
@@ -80,7 +84,7 @@ class Neo4jSinkConnectorConfigTest {
 
         assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.cypherTopics["foo"])
         assertFalse { config.encryptionEnabled }
-        assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.toString())
+        assertEquals(originals[Neo4jSinkConnectorConfig.SERVER_URI], config.serverUri.get(0).toString())
         assertEquals(originals[Neo4jSinkConnectorConfig.BATCH_SIZE], config.batchSize)
         assertEquals(Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES, config.encryptionTrustStrategy)
         assertEquals(AuthenticationType.BASIC, config.authenticationType)
