@@ -121,31 +121,34 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
-        val deferredList = data
-                .flatMap { (topic, records) ->
-                    records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
+
+        if (config.parallelBatches) {
+            val deferredList = data
+                    .flatMap { (topic, records) ->
+                        records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
+                    }
+            whileSelect {
+                ticker.onReceive {
+                    if (log.isDebugEnabled) {
+                        log.debug("Timeout $timeout occurred while executing queries")
+                    }
+                    deferredList.forEach { deferred -> deferred.cancel() }
+                    false // Stops the whileSelect
                 }
-        // loops while select<Boolean> returns true
-        whileSelect {
-            ticker.onReceive {
-                if (log.isDebugEnabled) {
-                    log.debug("Timeout $timeout occurred while executing queries")
+                val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
+                deferredList.forEach {
+                    it.onAwait { !isAllCompleted } // Stops the whileSelect
                 }
-                deferredList.forEach { deferred -> deferred.cancel() }
-                false // Stops the whileSelect
             }
-            val isAllCompleted = deferredList.all { it.isCompleted } // true when all are completed
-            // selects first that is done and returns !false==true for whileSelect until it's !true when all/last is done
-            deferredList.forEach {
-                it.onAwait { !isAllCompleted } // Stops the whileSelect
+            val exceptionMessages = deferredList
+                    .mapNotNull { it.getCompletionExceptionOrNull() }
+                    .map { it.message }
+                    .joinToString("\n")
+            if (exceptionMessages.isNotBlank()) {
+                throw ConnectException(exceptionMessages)
             }
-        }
-        val exceptionMessages = deferredList
-                .mapNotNull { it.getCompletionExceptionOrNull() }
-                .map { it.message }
-                .joinToString("\n")
-        if (exceptionMessages.isNotBlank()) {
-            throw ConnectException(exceptionMessages)
+        } else {
+            data.flatMap { (topic, records) -> records.map { writeForTopic(topic, it) } }
         }
     }
 }
