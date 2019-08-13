@@ -23,6 +23,7 @@ You can set the following configuration values via Confluent Connect UI, or via 
 |neo4j.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
 |neo4j.connection.max.pool.size|Int| The max pool size (default 100)
 |neo4j.load.balance.strategy|enum[ROUND_ROBIN, LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
+|neo4j.batch.parallelize|Boolean|(default true) whether batches should be written in parallel or not.  Parallel writing speeds overall throughput, but comes with the possibility of transactions succeeding out of order, and hence messages being applied not in strict order coming from Kafka.  Set to false if you need strict ordering.
 |===
 
 === Configuring the stack
