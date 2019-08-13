@@ -58,6 +58,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val batchTimeout: Long
     val batchSize: Int
+    val parallelBatches: Boolean
 
 //    val cdcTopics: Map<TopicType, Set<String>>
 //
@@ -103,6 +104,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         topics = Topics.from(originals, "streams.sink.", "neo4j.")
         strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
 
+        parallelBatches = getBoolean(BATCH_PARALLELIZE)
         validateAllTopics(originals)
     }
 
@@ -145,6 +147,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
         const val BATCH_SIZE = "neo4j.batch.size"
         const val BATCH_TIMEOUT_MSECS = "neo4j.batch.timeout.msecs"
+        const val BATCH_PARALLELIZE = "neo4j.batch.parallelize"
 
         const val RETRY_BACKOFF_MSECS = "neo4j.retry.backoff.msecs"
         const val RETRY_MAX_ATTEMPTS = "neo4j.retry.max.attemps"
@@ -326,6 +329,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                     .define(ConfigKeyBuilder.of(TOPIC_CDC_SCHEMA, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SCHEMA)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(BATCH_PARALLELIZE, ConfigDef.Type.BOOLEAN)
+                            .documentation(PropertiesUtil.getProperty(BATCH_PARALLELIZE)).importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(true).group(ConfigGroup.BATCH)
                             .build())
         }
     }
