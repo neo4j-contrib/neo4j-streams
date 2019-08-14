@@ -72,6 +72,22 @@ class Neo4jSinkConnectorConfigTest {
     }
 
     @Test
+    fun `should return valid configuration with multiple URIs`() {
+        val a = "bolt://neo4j:7687"
+        val b = "bolt://neo4j2:7687"
+        val c = "bolt://neo4j3:7777"
+
+        val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
+                "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
+                Neo4jSinkConnectorConfig.SERVER_URI to "$a,$b,$c")
+        val config = Neo4jSinkConnectorConfig(originals)
+
+        assertEquals(a, config.serverUri.get(0).toString())
+        assertEquals(b, config.serverUri.get(1).toString())
+        assertEquals(c, config.serverUri.get(2).toString())
+    }
+
+    @Test
     fun `should return the configuration with shuffled topic order`() {
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "bar,foo",
                 "${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}foo" to "(:Foo{!fooId,fooName})",
