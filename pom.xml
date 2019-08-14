@@ -39,7 +39,7 @@
         <kafka.version>1.0.1</kafka.version>
         <jackson.version>2.9.7</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <neo4j.java.driver.version>1.6.3</neo4j.java.driver.version>
+        <neo4j.java.driver.version>1.7.5</neo4j.java.driver.version>
         <testcontainers.version>1.9.1</testcontainers.version>
     </properties>
 

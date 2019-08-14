@@ -14,6 +14,7 @@ import org.neo4j.driver.v1.Driver
 import org.neo4j.driver.v1.GraphDatabase
 import org.neo4j.driver.v1.exceptions.ClientException
 import org.neo4j.driver.v1.exceptions.TransientException
+import org.neo4j.driver.v1.net.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
@@ -66,8 +67,10 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         configBuilder.withConnectionAcquisitionTimeout(this.config.connectionAcquisitionTimeout, TimeUnit.MILLISECONDS)
         configBuilder.withLoadBalancingStrategy(this.config.loadBalancingStrategy)
         configBuilder.withMaxTransactionRetryTime(config.retryBackoff, TimeUnit.MILLISECONDS)
+        configBuilder.withResolver { address -> this.config.serverUri.map { ServerAddress.of(it.host, it.port) }.toSet() }
         val neo4jConfig = configBuilder.toConfig()
-        this.driver = GraphDatabase.driver(this.config.serverUri, authToken, neo4jConfig)
+
+        this.driver = GraphDatabase.driver(this.config.serverUri.get(0), authToken, neo4jConfig)
     }
 
     fun close() {
