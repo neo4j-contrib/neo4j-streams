@@ -1,4 +1,4 @@
-package streams.service.sink.dlq
+package streams.service.sink.errors
 
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.kafka.clients.producer.MockProducer
@@ -8,10 +8,13 @@ import org.apache.kafka.common.record.RecordBatch
 import org.junit.Test
 import org.mockito.ArgumentMatchers
 import org.mockito.Mockito
-import streams.service.dlq.DLQData
-import streams.service.dlq.KafkaDLQService
+import streams.service.errors.ErrorData
+import streams.service.errors.ErrorService
+import streams.service.errors.KafkaDLQService
+import java.util.*
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class KafkaDLQServiceTest {
     @Test
@@ -22,23 +25,8 @@ class KafkaDLQServiceTest {
             counter.incrementAndGet()
             FutureRecordMetadata(null, 0, RecordBatch.NO_TIMESTAMP, 0L, 0, 0)
         }
-        val dlqService = KafkaDLQService(producer)
-        val offset = "0"
-        val originalTopic = "topicName"
-        val partition = "1"
-        val timestamp = System.currentTimeMillis()
-        val exception = RuntimeException("Test")
-        val key = "KEY"
-        val value = "VALUE"
-        val dlqData = DLQData(offset = offset,
-                originalTopic = originalTopic,
-                partition = partition,
-                timestamp = timestamp,
-                exception = exception,
-                executingClass = KafkaDLQServiceTest::class.java,
-                key = key.toByteArray(),
-                value = value.toByteArray())
-        dlqService.send("dlqTopic", dlqData)
+        val dlqService = KafkaDLQService(producer, ErrorService.ErrorConfig(fail=false,dlqTopic = "dlqTopic"), { s, e -> })
+        dlqService.report(listOf(dlqData()))
         assertEquals(1, counter.get())
         dlqService.close()
     }
@@ -47,7 +35,21 @@ class KafkaDLQServiceTest {
     @Test
     fun `should create the header map`() {
         val producer: MockProducer<ByteArray, ByteArray> = Mockito.mock(MockProducer::class.java) as MockProducer<ByteArray, ByteArray>
-        val dlqService = KafkaDLQService(producer)
+        val dlqService = KafkaDLQService(producer, ErrorService.ErrorConfig(fail=false, dlqTopic = "dlqTopic",dlqHeaders = true), { s, e -> })
+        val dlqData = dlqData()
+        val map = dlqService.populateContextHeaders(dlqData)
+        assertEquals(String(map["topic"]!!), dlqData.originalTopic)
+        assertEquals(String(map["partition"]!!), dlqData.partition)
+        assertEquals(String(map["offset"]!!), dlqData.offset)
+        assertEquals(String(map["class.name"]!!), KafkaDLQServiceTest::class.java.name)
+        val exception = dlqData.exception!!
+        assertEquals(String(map["exception.class.name"]!!), exception::class.java.name)
+        assertEquals(String(map["exception.message"]!!), exception.message)
+        assertEquals(String(map["exception.stacktrace"]!!), ExceptionUtils.getStackTrace(exception))
+
+    }
+
+    private fun dlqData(): ErrorData {
         val offset = "0"
         val originalTopic = "topicName"
         val partition = "1"
@@ -55,7 +57,7 @@ class KafkaDLQServiceTest {
         val exception = RuntimeException("Test")
         val key = "KEY"
         val value = "VALUE"
-        val dlqData = DLQData(
+        return ErrorData(
                 offset = offset,
                 originalTopic = originalTopic,
                 partition = partition,
@@ -65,14 +67,12 @@ class KafkaDLQServiceTest {
                 key = key.toByteArray(),
                 value = value.toByteArray()
         )
-        val map = dlqService.populateContextHeaders(dlqData)
-        assertEquals(String(map["topic"]!!), originalTopic)
-        assertEquals(String(map["partition"]!!), partition)
-        assertEquals(String(map["offset"]!!), offset)
-        assertEquals(String(map["class.name"]!!), KafkaDLQServiceTest::class.java.name)
-        assertEquals(String(map["exception.class.name"]!!), exception::class.java.name)
-        assertEquals(String(map["exception.message"]!!), exception.message)
-        assertEquals(String(map["exception.stacktrace"]!!), ExceptionUtils.getStackTrace(exception))
+    }
 
+    @Test
+    fun `should log DQL data`() {
+        val log = { s:String,e:Exception? -> assertTrue(s.contains("partition=1, offset=0, exception=java.lang.RuntimeException: Test, key=KEY, value=VALUE, executingClass=class streams.service.sink.errors.KafkaDLQServiceTest)"),"Wrong DLQ log message")}
+        val logService = KafkaDLQService(Properties(),ErrorService.ErrorConfig(fail = false, logMessages = true,log=true), log)
+        logService.report(listOf(dlqData()))
     }
 }

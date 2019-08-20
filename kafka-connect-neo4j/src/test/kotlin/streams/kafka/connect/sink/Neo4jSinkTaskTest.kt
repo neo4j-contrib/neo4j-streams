@@ -16,6 +16,7 @@ import org.neo4j.graphdb.Node
 import org.neo4j.harness.ServerControls
 import org.neo4j.harness.TestServerBuilders
 import streams.events.*
+import streams.service.errors.ErrorService
 import java.util.*
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -375,6 +376,72 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
+        db.graph().beginTx().use {
+            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+            assertTrue { node == null }
+        }
+    }
+
+    @Test
+    fun `should report but not fail parsing data`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+        props[ErrorService.ErrorConfig.TOLERANCE] = "all"
+        props[ErrorService.ErrorConfig.LOG] = true.toString()
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(listOf(SinkRecord(topic, 1, null, null, null, "a", 42)))
+        db.graph().beginTx().use {
+            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+            assertTrue { node == null }
+        }
+    }
+
+    @Test
+    fun `should report but not fail invalid schema`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[ErrorService.ErrorConfig.TOLERANCE] = "all"
+        props[ErrorService.ErrorConfig.LOG] = true.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(listOf(SinkRecord(topic, 1, null, 42, null, "true", 42)))
+        db.graph().beginTx().use {
+            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+            assertTrue { node == null }
+        }
+    }
+
+    @Test
+    fun `should fail running invalid cypher`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = " No Valid Cypher "
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+        props[ErrorService.ErrorConfig.TOLERANCE] = "all"
+        props[ErrorService.ErrorConfig.LOG] = true.toString()
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(listOf(SinkRecord(topic, 1, null, 42, null, "{\"foo\":42}", 42)))
         db.graph().beginTx().use {
             val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }

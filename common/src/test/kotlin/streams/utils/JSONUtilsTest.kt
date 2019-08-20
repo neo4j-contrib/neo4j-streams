@@ -10,6 +10,7 @@ import org.neo4j.values.storable.Values.pointValue
 import streams.events.*
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
+import kotlin.test.assertFails
 
 class JSONUtilsTest {
 
@@ -25,8 +26,8 @@ class JSONUtilsTest {
                 "point3dCartesian" to pointValue(Cartesian_3D, 1.0, 2.0, 3.0),
                 "point2dWgs84" to pointValue(WGS84, 1.0, 2.0),
                 "point3dWgs84" to pointValue(WGS84_3D, 1.0, 2.0, 3.0),
-                "time" to time( 14, 0, 0, 0, UTC),
-                "dateTime" to datetime(date( 2017, 12, 17), time( 17, 14, 35, 123456789, UTC)))
+                "time" to time(14, 0, 0, 0, UTC),
+                "dateTime" to datetime(date(2017, 12, 17), time(17, 14, 35, 123456789, UTC)))
 
         // When
         val jsonString = JSONUtils.writeValueAsString(map)
@@ -47,8 +48,8 @@ class JSONUtilsTest {
                 "point3dCartesian" to Values.point(Cartesian_3D.code, 1.0, 2.0, 3.0),
                 "point2dWgs84" to Values.point(WGS84.code, 1.0, 2.0),
                 "point3dWgs84" to Values.point(WGS84_3D.code, 1.0, 2.0, 3.0),
-                "time" to time( 14, 0, 0, 0, UTC),
-                "dateTime" to datetime(date( 2017, 12, 17), time( 17, 14, 35, 123456789, UTC)))
+                "time" to time(14, 0, 0, 0, UTC),
+                "dateTime" to datetime(date(2017, 12, 17), time(17, 14, 35, 123456789, UTC)))
 
         // When
         val jsonString = JSONUtils.writeValueAsString(map)
@@ -63,11 +64,11 @@ class JSONUtilsTest {
         val timestamp = System.currentTimeMillis()
         val cdcData = StreamsTransactionEvent(
                 meta = Meta(timestamp = timestamp,
-                    username = "user",
-                    txId = 1,
-                    txEventId = 0,
-                    txEventsCount = 1,
-                    operation = OperationType.created
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 1,
+                        operation = OperationType.created
                 ),
                 payload = NodePayload(id = "0",
                         before = null,
@@ -99,5 +100,14 @@ class JSONUtilsTest {
         val fromString = JSONUtils.asStreamsTransactionEvent(cdcString)
         assertEquals(cdcData, fromMap)
         assertEquals(cdcData, fromString)
+    }
+
+    @Test
+    fun `should deserialize plain values`() {
+        assertEquals("a", JSONUtils.readValue("a", stringWhenFailure = true))
+        assertEquals(42, JSONUtils.readValue("42"))
+        assertEquals(true, JSONUtils.readValue("true"))
+        assertFails { JSONUtils.readValue("a") }
+        // assertEquals(null, JSONUtils.readValue("null"))
     }
 }

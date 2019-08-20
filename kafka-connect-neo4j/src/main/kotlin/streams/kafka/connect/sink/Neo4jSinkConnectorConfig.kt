@@ -12,10 +12,12 @@ import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
+import streams.kafka.connect.sink.ConfigGroup.ERROR_REPORTING
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.TopicType
 import streams.service.TopicUtils
 import streams.service.Topics
+import streams.service.errors.ErrorService
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import java.io.File
 import java.net.URI
@@ -31,6 +33,7 @@ object ConfigGroup {
     const val CONNECTION = "Connection"
     const val AUTHENTICATION = "Authentication"
     const val TOPIC_CYPHER_MAPPING = "Topic Cypher Mapping"
+    const val ERROR_REPORTING = "Error Reporting"
     const val BATCH = "Batch Management"
     const val RETRY = "Retry Strategy"
     const val DEPRECATED = "Deprecated Properties (please check the documentation)"
@@ -86,7 +89,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         authenticationPassword = getPassword(AUTHENTICATION_BASIC_PASSWORD).value()
         authenticationKerberosTicket = getPassword(AUTHENTICATION_KERBEROS_TICKET).value()
 
-        serverUri = listOfURIs(SERVER_URI, getString(SERVER_URI))
+        serverUri = getString(SERVER_URI).split(",").map { URI(it) }
         connectionLifenessCheckTimeout = getLong(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS)
         connectionMaxConnectionLifetime = getLong(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS)
         connectionPoolMaxSize = getInt(CONNECTION_POOL_MAX_SIZE)
@@ -105,10 +108,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
 
         validateAllTopics(originals)
-    }
-
-    private fun listOfURIs(key: String, value: String): List<URI> {
-        return value.split(",").map { URI(it) }
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {

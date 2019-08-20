@@ -2,10 +2,10 @@ package streams
 
 import org.neo4j.logging.Log
 import streams.service.StreamsSinkEntity
-import streams.service.dlq.DeadLetterQueueService
+import streams.service.errors.ErrorService
 
 
-abstract class StreamsEventConsumer(private val log: Log, private val dlqService: DeadLetterQueueService?) {
+abstract class StreamsEventConsumer(private val log: Log, private val dlqService: ErrorService) {
 
     abstract fun stop()
 

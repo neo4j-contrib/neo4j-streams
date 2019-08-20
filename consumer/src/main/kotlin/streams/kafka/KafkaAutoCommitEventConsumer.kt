@@ -9,10 +9,8 @@ import streams.StreamsEventConsumer
 import streams.extensions.offsetAndMetadata
 import streams.extensions.toStreamsSinkEntity
 import streams.extensions.topicPartition
-import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
-import streams.service.dlq.DLQData
-import streams.service.dlq.KafkaDLQService
+import streams.service.errors.*
 
 data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<TopicPartition, Long>) {
     companion object {
@@ -38,7 +36,7 @@ data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<Top
 
 open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
                                         private val log: Log,
-                                        private val dlqService: KafkaDLQService?): StreamsEventConsumer(log, dlqService) {
+                                        private val errorService: ErrorService): StreamsEventConsumer(log, errorService) {
 
     private var isSeekSet = false
 
@@ -61,7 +59,8 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 
     override fun stop() {
         consumer.close()
-        dlqService?.close()
+        // doesn't make sense to close it if you don't own it
+        errorService.close()
     }
 
     fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
@@ -80,9 +79,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         try {
             action(topic, convert(topicRecords))
         } catch (e: Exception) {
-            topicRecords
-                    .map { DLQData.from(it, e, this::class.java) }
-                    .forEach{ sentToDLQ(it) }
+            handleErrors(topicRecords.map { ErrorData.from(it, e,this::class.java ) })
         }
     }
 
@@ -91,18 +88,17 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 try {
                     "ok" to it.toStreamsSinkEntity()
                 } catch (e: Exception) {
-                    "error" to DLQData.from(it, e, this::class.java)
+                    "error" to ErrorData.from(it, e, this::class.java)
                 }
             }
             .groupBy({ it.first }, { it.second })
             .let {
-                it.getOrDefault("error", emptyList<DLQData>())
-                        .forEach{ sentToDLQ(it as DLQData) }
+                it.get("error")?.let { handleErrors(it as List<ErrorData>) }
                 it.getOrDefault("ok", emptyList()) as List<StreamsSinkEntity>
             }
 
-    private fun sentToDLQ(dlqData: DLQData) {
-        dlqService?.send(config.streamsSinkConfiguration.dlqTopic, dlqData)
+    private fun handleErrors(errorData: List<ErrorData>) {
+        errorService.report(errorData)
     }
 
     fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
