@@ -1,10 +1,7 @@
 package streams.kafka.connect.sink
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.ticker
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
@@ -24,7 +21,11 @@ import streams.service.TopicType
 import streams.service.TopicTypeGroup
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
+import java.lang.RuntimeException
+import java.util.concurrent.CompletionException
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
@@ -117,38 +118,67 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         }
     }
 
-    // perhaps better? https://stackoverflow.com/questions/52192752/kotlin-how-to-run-n-coroutines-and-wait-for-first-m-results-or-timeout
-    suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
-        val timeout = config.batchTimeout
-        val ticker = ticker(timeout)
+    // taken from https://stackoverflow.com/questions/52192752/kotlin-how-to-run-n-coroutines-and-wait-for-first-m-results-or-timeout
+    @ObsoleteCoroutinesApi
+    @ExperimentalCoroutinesApi
+    suspend fun <T> List<Deferred<T>>.awaitAll(timeoutMs: Long): List<T> {
+        val jobs = CopyOnWriteArraySet<Deferred<T>>(this)
+        val result = ArrayList<T>(size)
+        val timeout = ticker(timeoutMs)
 
-        if (config.parallelBatches) {
-            val deferredList = data
-                    .flatMap { (topic, records) ->
-                        records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
-                    }
-            whileSelect {
-                ticker.onReceive {
-                    if (log.isDebugEnabled) {
-                        log.debug("Timeout $timeout occurred while executing queries")
-                    }
-                    deferredList.forEach { deferred -> deferred.cancel() }
-                    false // Stops the whileSelect
-                }
-                val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
-                deferredList.forEach {
-                    it.onAwait { !isAllCompleted } // Stops the whileSelect
+        whileSelect {
+            jobs.forEach { deferred ->
+                deferred.onAwait {
+                    jobs.remove(deferred)
+                    result.add(it)
+                    result.size != size
                 }
             }
-            val exceptionMessages = deferredList
-                    .mapNotNull { it.getCompletionExceptionOrNull() }
-                    .map { it.message }
-                    .joinToString("\n")
-            if (exceptionMessages.isNotBlank()) {
-                throw ConnectException(exceptionMessages)
+
+            timeout.onReceive {
+                jobs.forEach { it.cancel() }
+                throw TimeoutException("Tasks ${size} cancelled after timeout of $timeoutMs ms.")
             }
-        } else {
-            data.flatMap { (topic, records) -> records.map { writeForTopic(topic, it) } }
         }
+
+        return result
     }
+
+    @ExperimentalCoroutinesApi
+    fun <T> Deferred<T>.errors() = when {
+        isCompleted -> getCompletionExceptionOrNull()
+        isCancelled -> getCompletionExceptionOrNull() // was getCancellationException()
+        isActive -> RuntimeException("Job $this still active")
+        else -> null }
+
+        @ExperimentalCoroutinesApi
+        @ObsoleteCoroutinesApi
+        suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
+
+            val errors = if (config.parallelBatches) {
+                val jobs = data
+                        .flatMap { (topic, records) ->
+                            records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
+                        }
+
+                jobs.awaitAll(config.batchTimeout)
+                jobs.mapNotNull { it.errors() }
+            } else {
+                writeDataSync(data)
+            }
+            if (errors.isNotEmpty()) {
+                throw ConnectException(errors.map{ it.message }.distinct().joinToString("\n","Errors executing ${data.values.map { it.size }.sum()} jobs:\n"))
+            }
+        }
+
+    fun writeDataSync(data: Map<String, List<List<StreamsSinkEntity>>>) =
+            data.flatMap { (topic, records) ->
+                records.map {
+                    try {
+                        writeForTopic(topic, it)
+                    } catch (e: Exception) {
+                        e
+                    }
+                }.filterIsInstance<Throwable>()
+            }
 }
