@@ -148,19 +148,4 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
             throw ConnectException(exceptionMessages)
         }
     }
-
-    fun writeDataSync(data: Map<String, List<List<StreamsSinkEntity>>>) {
-        val errors = data
-                .flatMap { (topic, records) ->
-                    records.mapNotNull {
-                        try {
-                            writeForTopic(topic, it)
-                            null
-                        } catch(e:Exception) {
-                            e.message
-                        }
-                    }
-                }
-        if (errors.isNotEmpty()) throw ConnectException( errors.joinToString("\n"))
-    }
 }

@@ -355,7 +355,7 @@ errors.tolerance=none
 ----
 
 
-.Ignore Errors, Log with Messages
+.Don't fail on errors, Log with Messages
 [source]
 ----
 errors.tolerance=all
@@ -363,7 +363,7 @@ errors.log.enable=true
 errors.log.include.messages=true
 ----
 
-.Ignore Errors, Don't log but send to DLQ with headers
+.Don't fail on errors, Don't log but send to DLQ with headers
 [source]
 ----
 errors.tolerance=all

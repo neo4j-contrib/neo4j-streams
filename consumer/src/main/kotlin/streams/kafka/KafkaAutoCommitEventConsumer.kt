@@ -79,7 +79,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         try {
             action(topic, convert(topicRecords))
         } catch (e: Exception) {
-            handleErrors(topicRecords.map { ErrorData.from(it, e,this::class.java ) })
+            errorService.report(topicRecords.map { ErrorData.from(it, e,this::class.java ) })
         }
     }
 
@@ -93,13 +93,11 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
             }
             .groupBy({ it.first }, { it.second })
             .let {
-                it.get("error")?.let { handleErrors(it as List<ErrorData>) }
+                it.get("error")?.let {
+                    errorService.report(it as List<ErrorData>)
+                }
                 it.getOrDefault("ok", emptyList()) as List<StreamsSinkEntity>
             }
-
-    private fun handleErrors(errorData: List<ErrorData>) {
-        errorService.report(errorData)
-    }
 
     fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
                           action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {

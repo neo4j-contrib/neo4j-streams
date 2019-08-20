@@ -10,7 +10,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.neo4j.util.VisibleForTesting
 import java.util.*
 
-class KafkaDLQService(private val producer: Producer<ByteArray, ByteArray>?, private val errorConfig: ErrorConfig, private val log: (String,Exception?)->Unit): ErrorService() {
+class KafkaErrorService(private val producer: Producer<ByteArray, ByteArray>?, private val errorConfig: ErrorConfig, private val log: (String, Exception?)->Unit): ErrorService() {
 
     constructor(config: Properties, errorConfig: ErrorConfig,
                 log: (String, Exception?) -> Unit) : this(producer(errorConfig, config), errorConfig, log)

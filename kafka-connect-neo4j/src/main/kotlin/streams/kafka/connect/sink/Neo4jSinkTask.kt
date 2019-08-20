@@ -28,7 +28,7 @@ class Neo4jSinkTask : SinkTask() {
 
         val kafkaConfig = Properties()
         kafkaConfig.putAll(map)
-        this.errorService = KafkaDLQService(kafkaConfig, ErrorService.ErrorConfig.from(kafkaConfig), log::error)
+        this.errorService = KafkaErrorService(kafkaConfig, ErrorService.ErrorConfig.from(kafkaConfig), log::error)
         this.neo4jService = Neo4jService(this.config)
     }
 

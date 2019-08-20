@@ -7,7 +7,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.*
 import streams.service.errors.ErrorService
-import streams.service.errors.KafkaDLQService
+import streams.service.errors.KafkaErrorService
 import streams.utils.Neo4jUtils
 import java.util.concurrent.TimeUnit
 
@@ -37,7 +37,7 @@ class KafkaEventSink(private val config: Config,
             override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
 
-                val errorService = KafkaDLQService(kafkaConfig.asProperties(), ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),{ s, e -> log.error(s,e as Throwable)})
+                val errorService = KafkaErrorService(kafkaConfig.asProperties(), ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),{ s, e -> log.error(s,e as Throwable)})
                 return if (kafkaConfig.enableAutoCommit) {
                     KafkaAutoCommitEventConsumer(kafkaConfig, log, errorService)
                 } else {
