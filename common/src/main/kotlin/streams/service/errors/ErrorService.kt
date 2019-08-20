@@ -8,8 +8,8 @@ import java.util.*
 
 data class ErrorData(val originalTopic: String,
                      val timestamp: Long,
-                     val key: ByteArray,
-                     val value: ByteArray,
+                     val key: ByteArray?,
+                     val value: ByteArray?,
                      val partition: String,
                      val offset: String,
                      val executingClass: Class<*>?,
@@ -31,15 +31,18 @@ data class ErrorData(val originalTopic: String,
                     value = consumerRecord.value())
         }
         fun toByteArray(v:Any?) = try {
-            if (v == null) ByteArray(0)
-            else v.toString().toByteArray(Charsets.UTF_8)
+            when (v) {
+                null -> null
+                is ByteArray -> v
+                else -> v.toString().toByteArray(Charsets.UTF_8)
+            }
         } catch (e:Exception) {
-            ByteArray(0)
+            null
         }
     }
     fun toLogString() =
             """
-ErrorData(originalTopic=$originalTopic, timestamp=$timestamp, partition=$partition, offset=$offset, exception=$exception, key=${key.toString(Charsets.UTF_8)}, value=${value.sliceArray(0..Math.min(value.size,200)-1).toString(Charsets.UTF_8)}, executingClass=$executingClass)
+ErrorData(originalTopic=$originalTopic, timestamp=$timestamp, partition=$partition, offset=$offset, exception=$exception, key=${key?.toString(Charsets.UTF_8)}, value=${value?.sliceArray(0..Math.min(value.size,200)-1)?.toString(Charsets.UTF_8)}, executingClass=$executingClass)
     """.trimIndent()
 
 }
