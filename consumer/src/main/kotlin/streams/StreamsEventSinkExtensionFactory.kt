@@ -28,7 +28,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
         fun availabilityGuard(): AvailabilityGuard
     }
 
-    class StreamsEventLifecycle(private val dependencies: StreamsEventSinkExtensionFactory.Dependencies): LifecycleAdapter() {
+    class StreamsEventLifecycle(private val dependencies: Dependencies): LifecycleAdapter() {
         private val db = dependencies.graphdatabaseAPI()
         private val logService = dependencies.log()
         private val configuration = dependencies.config()

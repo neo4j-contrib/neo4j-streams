@@ -1,6 +1,7 @@
 package streams.serialization
 
 import com.fasterxml.jackson.core.JsonGenerator
+import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.core.JsonProcessingException
 import com.fasterxml.jackson.databind.*
 import com.fasterxml.jackson.databind.module.SimpleModule
@@ -14,6 +15,7 @@ import streams.events.*
 import streams.utils.StreamsUtils
 import java.io.IOException
 import java.time.temporal.TemporalAccessor
+import kotlin.reflect.full.isSubclassOf
 
 abstract class StreamsPoint { abstract val crs: String }
 data class StreamsPointCartesian(override val crs: String, val x: Double, val y: Double, val z: Double? = null): StreamsPoint()
@@ -112,12 +114,23 @@ object JSONUtils {
         return getObjectMapper().readValue(value, T::class.java)
     }
 
-    inline fun <reified T> readValue(value: Any): T {
+    inline fun <reified T> readValue(value: Any, stringWhenFailure:Boolean = false): T {
         val strValue = when (value) {
             is String -> value
+            is ByteArray -> String(value)
             else -> getObjectMapper().writeValueAsString(value)
         }
-        return getObjectMapper().readValue(strValue)
+        return try {
+            getObjectMapper().readValue(strValue)
+        } catch(e: JsonParseException) {
+            if (stringWhenFailure && String::class.isSubclassOf(T::class)) {
+                strValue.trimStart().let {
+                    if (it.get(0) == '{' || it.get(0) == '[') throw e
+                    else it as T
+                }
+            }
+            else throw e
+        }
     }
 
     inline fun <reified T> convertValue(value: Any): T {

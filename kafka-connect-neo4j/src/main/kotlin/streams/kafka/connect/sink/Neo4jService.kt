@@ -70,7 +70,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         configBuilder.withResolver { address -> this.config.serverUri.map { ServerAddress.of(it.host, it.port) }.toSet() }
         val neo4jConfig = configBuilder.toConfig()
 
-        this.driver = GraphDatabase.driver(this.config.serverUri.get(0), authToken, neo4jConfig)
+        this.driver = GraphDatabase.driver(this.config.serverUri.firstOrNull(), authToken, neo4jConfig)
     }
 
     fun close() {
@@ -93,29 +93,31 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
 
     override fun write(query: String, events: Collection<Any>) {
         val session = driver.session()
-        val records = events as List<Any>
-        val data = mapOf<String, Any>("events" to records.map { converter.convert(it) })
+        val records = events.map { converter.convert(it) }
+        val data = mapOf<String, Any>("events" to records)
         try {
             runBlocking {
                 retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
                         retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
                     session.writeTransaction {
-                        val result = it.run(query, data)
+                        val summary = it.run(query, data).consume()
                         if (log.isDebugEnabled) {
-                            log.debug("Successfully executed query: `$query`. Summary: ${result.summary()}")
+                            log.debug("Successfully executed query: `$query`. Summary: ${summary}")
                         }
                     }
                 }
             }
         } catch (e: Exception) {
             if (log.isDebugEnabled) {
-                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$data`")
+                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `${records.subList(0,Math.min(5,records.size))}` total-records ${records.size}")
             }
             throw e
+        } finally {
+            session.close()
         }
     }
 
-
+    // perhaps better? https://stackoverflow.com/questions/52192752/kotlin-how-to-run-n-coroutines-and-wait-for-first-m-results-or-timeout
     suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
         val timeout = config.batchTimeout
         val ticker = ticker(timeout)
@@ -123,6 +125,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 .flatMap { (topic, records) ->
                     records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
                 }
+        // loops while select<Boolean> returns true
         whileSelect {
             ticker.onReceive {
                 if (log.isDebugEnabled) {
@@ -131,7 +134,8 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 deferredList.forEach { deferred -> deferred.cancel() }
                 false // Stops the whileSelect
             }
-            val isAllCompleted = deferredList.all { it.isCompleted } // when all are completed
+            val isAllCompleted = deferredList.all { it.isCompleted } // true when all are completed
+            // selects first that is done and returns !false==true for whileSelect until it's !true when all/last is done
             deferredList.forEach {
                 it.onAwait { !isAllCompleted } // Stops the whileSelect
             }

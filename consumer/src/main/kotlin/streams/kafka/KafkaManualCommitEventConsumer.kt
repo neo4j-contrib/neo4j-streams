@@ -4,11 +4,11 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.logging.Log
 import streams.service.StreamsSinkEntity
-import streams.service.dlq.KafkaDLQService
+import streams.service.errors.ErrorService
 
 class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
                                      private val log: Log,
-                                     private val dlqService: KafkaDLQService?): KafkaAutoCommitEventConsumer(config, log, dlqService) {
+                                     private val dlqService: ErrorService): KafkaAutoCommitEventConsumer(config, log, dlqService) {
 
     private fun commitData(commit: Boolean, topicMap: Map<TopicPartition, OffsetAndMetadata>) {
         if (commit) {

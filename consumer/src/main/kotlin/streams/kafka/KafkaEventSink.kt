@@ -6,7 +6,8 @@ import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.*
-import streams.service.dlq.KafkaDLQService
+import streams.service.errors.ErrorService
+import streams.service.errors.KafkaErrorService
 import streams.utils.Neo4jUtils
 import java.util.concurrent.TimeUnit
 
@@ -35,20 +36,12 @@ class KafkaEventSink(private val config: Config,
         return object: StreamsEventConsumerFactory() {
             override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
-                val dlqService = if (kafkaConfig.streamsSinkConfiguration.dlqTopic.isNotBlank()) {
-                    val asProperties = kafkaConfig.asProperties()
-                            .mapKeys { it.key.toString() }
-                            .toMutableMap()
-                    asProperties.remove(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG)
-                    asProperties.remove(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG)
-                    KafkaDLQService(asProperties, "__streams.errors")
-                } else {
-                    null
-                }
+
+                val errorService = KafkaErrorService(kafkaConfig.asProperties(), ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),{ s, e -> log.error(s,e as Throwable)})
                 return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log, dlqService)
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, errorService)
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log, dlqService)
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, errorService)
                 }
             }
         }

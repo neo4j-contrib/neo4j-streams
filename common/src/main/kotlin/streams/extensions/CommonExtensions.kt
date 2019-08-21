@@ -1,5 +1,6 @@
 package streams.extensions
 
+import com.fasterxml.jackson.core.JsonParseException
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
@@ -37,5 +38,5 @@ fun <K, V> ConsumerRecord<K, V>.topicPartition() = TopicPartition(this.topic(), 
 fun <K, V> ConsumerRecord<K, V>.offsetAndMetadata(metadata: String = "") = OffsetAndMetadata(this.offset() + 1, metadata)
 
 fun ConsumerRecord<ByteArray, ByteArray>.toStreamsSinkEntity(): StreamsSinkEntity = StreamsSinkEntity(
-        if (this.key() != null) try { JSONUtils.readValue<Any>(this.key()) } catch (e: Exception) { String(this.key()) } else null,
-        if (this.value() != null) JSONUtils.readValue<Any>(this.value()) else null)
+        if (this.key() == null) null else JSONUtils.readValue<Any>(this.key(), true),
+        if (this.value() == null) null else JSONUtils.readValue<Any>(this.value()))

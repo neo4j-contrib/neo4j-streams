@@ -11,6 +11,7 @@ import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
 import streams.serialization.JSONUtils
+import java.io.PrintWriter
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -79,7 +80,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
 
         val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano")
 
-        val producerRecord = ProducerRecord<ByteArray, ByteArray>(topic, JSONUtils.writeValueAsBytes(data), null)
+        val producerRecord = ProducerRecord<ByteArray, ByteArray>(topic,  JSONUtils.writeValueAsBytes(data), null)
         kafkaProducer.send(producerRecord).get()
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:User) RETURN count(n) AS count"
