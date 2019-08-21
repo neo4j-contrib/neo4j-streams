@@ -23,7 +23,7 @@ You can set the following configuration values via Confluent Connect UI, or via 
 |neo4j.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
 |neo4j.connection.max.pool.size|Int| The max pool size (default 100)
 |neo4j.load.balance.strategy|enum[ROUND_ROBIN, LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
-|neo4j.batch.parallelize|Boolean|(default true) While concurrent batch processing improves throughput, it might cause out-of-order handling of events.  Set to `false` if you need application of messages with strict ordering, e.g. for change-data-capture (CDC) ev  ents.
+|neo4j.batch.parallelize|Boolean|(default true) While concurrent batch processing improves throughput, it might cause out-of-order handling of events.  Set to `false` if you need application of messages with strict ordering, e.g. for change-data-capture (CDC) events.
 |===
 
 === Configuring the stack
