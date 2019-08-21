@@ -151,26 +151,26 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         isActive -> RuntimeException("Job $this still active")
         else -> null }
 
-        @ExperimentalCoroutinesApi
-        @ObsoleteCoroutinesApi
-        suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
+    suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) {
+        val errors = if (config.parallelBatches) writeDataAsync(data) else writeDataSync(data);
 
-            val errors = if (config.parallelBatches) {
-                val jobs = data
-                        .flatMap { (topic, records) ->
-                            records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
-                        }
-
-                jobs.awaitAll(config.batchTimeout)
-                jobs.mapNotNull { it.errors() }
-            } else {
-                writeDataSync(data)
-            }
-            if (errors.isNotEmpty()) {
-                throw ConnectException(errors.map{ it.message }.distinct().joinToString("\n","Errors executing ${data.values.map { it.size }.sum()} jobs:\n"))
-            }
+        if (errors.isNotEmpty()) {
+            throw ConnectException(errors.map { it.message }.distinct().joinToString("\n", "Errors executing ${data.values.map { it.size }.sum()} jobs:\n"))
         }
+    }
 
+    @ExperimentalCoroutinesApi
+    @ObsoleteCoroutinesApi
+    suspend fun writeDataAsync(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
+        val jobs = data
+                .flatMap { (topic, records) ->
+                    records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
+                }
+
+        jobs.awaitAll(config.batchTimeout)
+        jobs.mapNotNull { it.errors() }
+    }
+    
     fun writeDataSync(data: Map<String, List<List<StreamsSinkEntity>>>) =
             data.flatMap { (topic, records) ->
                 records.map {
