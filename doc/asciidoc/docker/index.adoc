@@ -8,6 +8,13 @@ This chapter describes Docker Compose templates that can be used to test Neo4j S
 --
 endif::env-docs[]
 
+**Important Note**:  the Neo4j docker container is built on an approach that uses environment variables passed to
+the container as a way to configure Neo4j.  There are certain characters which environment variables cannot contain,
+notably the dash `-` character.  Configuring the plugin to use stream names that contain these characters will not
+work properly, because a configuration environment variable such as `NEO4J_streams_sink_topic_cypher_my-topic` cannot
+be correctly evaluated as an environment variable (`my-topic`).  This is a limitation of the Neo4j docker container
+rather than neo4j-streams.
+
 Following you'll find a lightweight Docker Compose file that allows you to test the application in your local environment
 
 Prerequisites:
