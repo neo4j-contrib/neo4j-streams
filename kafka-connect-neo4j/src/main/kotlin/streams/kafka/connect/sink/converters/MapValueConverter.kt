@@ -61,11 +61,13 @@ open class MapValueConverter<T>: AbstractConverter<MutableMap<String, T?>>() {
         }
     }
 
-    override fun setMap(result: MutableMap<String, T?>?, fieldName: String?, schema: Schema?, map: MutableMap<Any?, Any?>?) {
-        val newMap = map
-                ?.mapKeys { it.key.toString() }
-                ?.mapValues { convertInner(it.value) }
-        setValue(result, fieldName, newMap)
+    override fun setMap(result: MutableMap<String, T?>?, fieldName: String?, schema: Schema?, value: MutableMap<Any?, Any?>?) {
+        if (value != null) {
+            val converted = convert(value) as MutableMap<Any?, Any?>
+            setValue(result, fieldName, converted)
+        } else {
+            setNullField(result, fieldName)
+        }
     }
 
     override fun setNullField(result: MutableMap<String, T?>?, fieldName: String?) {
@@ -96,9 +98,11 @@ open class MapValueConverter<T>: AbstractConverter<MutableMap<String, T?>>() {
         setValue(result, fieldName, value)
     }
 
-    private fun convertInner(value: Any?): Any? {
+    open fun convertInner(value: Any?): Any? {
         return when (value) {
             is Struct, is Map<*, *> -> convert(value)
+            is Collection<*> -> value.map(::convertInner)
+            is Array<*> -> if (value.javaClass.componentType.isPrimitive) value else value.map(::convertInner)
             else -> value
         }
     }
