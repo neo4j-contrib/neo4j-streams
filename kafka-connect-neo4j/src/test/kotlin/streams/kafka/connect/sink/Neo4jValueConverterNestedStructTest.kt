@@ -88,19 +88,6 @@ class Neo4jValueConverterNestedStructTest {
 
         fun getExpectedMap(): Map<String, Value> {
             return JSONUtils.readValue<Map<String, Any?>>(data).mapValues(::convertDateNew).mapValues { Values.value(it.value) }
-/*
-            val firstULMap = mapOf("value" to listOf(
-                    mapOf("value" to Values.value("First UL - First Element"), "class" to Values.NULL),
-                    mapOf("value" to Values.value("First UL - Second Element"), "class" to Values.value(listOf("ClassA", "ClassB")))))
-            val secondULMap = mapOf("value" to listOf(
-                    mapOf("value" to Values.value("Second UL - First Element"), "class" to Values.NULL),
-                    mapOf("value" to Values.value("Second UL - Second Element"), "class" to Values.NULL)))
-            val ulListMap = Values.value(listOf(firstULMap, secondULMap))
-            val pListMap = Values.value(listOf(mapOf("value" to Values.value("First Paragraph")),
-                    mapOf("value" to Values.value("Second Paragraph"))))
-            return mapOf("ul" to ulListMap, "p" to pListMap)
-
- */
         }
 
         fun convertDate(it: Map.Entry<String,Any?>) : Any? =
