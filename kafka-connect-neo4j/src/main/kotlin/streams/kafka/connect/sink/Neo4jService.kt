@@ -81,6 +81,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     override fun getTopicType(topic: String): TopicType? = TopicType.values()
             .filter { topicType ->
                 when (topicType.group) {
+                    TopicTypeGroup.CUD -> config.topics.cudTopics.contains(topic)
                     TopicTypeGroup.CDC -> (config.topics.cdcSourceIdTopics.contains(topic))
                             || (config.topics.cdcSchemaTopics.contains(topic))
                     TopicTypeGroup.CYPHER -> config.topics.cypherTopics.containsKey(topic)

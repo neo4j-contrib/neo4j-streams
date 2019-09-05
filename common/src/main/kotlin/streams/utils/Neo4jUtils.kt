@@ -71,9 +71,11 @@ object Neo4jUtils {
         }
     }
 
-    fun <T> executeInWriteableInstance(db: GraphDatabaseAPI, action: () -> T) {
+    fun <T> executeInWriteableInstance(db: GraphDatabaseAPI, action: () -> T?): T? {
         if (isWriteableInstance(db)) {
-            action()
+            return action()
+        } else {
+            return null
         }
     }
 

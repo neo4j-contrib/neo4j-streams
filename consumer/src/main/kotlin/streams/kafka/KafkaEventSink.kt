@@ -65,8 +65,9 @@ class KafkaEventSink(private val config: Config,
         this.job = createJob()
         if (isWriteableInstance) {
             if (log.isDebugEnabled) {
-                log.debug("Subscribed topics with Cypher queries: ${streamsTopicService.getAllCypherTemplates()}")
-                log.debug("Subscribed topics with CDC configuration: ${streamsTopicService.getAllCDCTopics()}")
+                streamsTopicService.getAll().forEach {
+                    log.debug("Subscribed topics for type ${it.key} are: ${it.value}")
+                }
             } else {
                 log.info("Subscribed topics: $topics")
             }

@@ -8,6 +8,7 @@ import org.neo4j.kernel.impl.core.GraphProperties
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.kafka.KafkaSinkConfiguration
+import streams.service.TopicType
 import streams.service.Topics
 import kotlin.test.assertEquals
 
@@ -26,7 +27,7 @@ class StreamsTopicServiceTest {
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
         streamsTopicService = StreamsTopicService(db)
-        streamsTopicService.setAllCypherTemplates(kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
+        streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
         graphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     }
 
@@ -37,7 +38,6 @@ class StreamsTopicServiceTest {
 
     private fun assertProperty(entry: Map.Entry<String, String>) {
         assertEquals(entry.value, streamsTopicService.getCypherTemplate(entry.key))
-
     }
 
     @Test
@@ -49,14 +49,33 @@ class StreamsTopicServiceTest {
     fun shouldStoreTopicsAndCypherTemplate() {
         val map = mapOf("topic1" to "MERGE (n:Label1 {id: event.id})",
                 "topic2" to "MERGE (n:Label2 {id: event.id})")
-        streamsTopicService.setAllCypherTemplates(map)
+        streamsTopicService.set(TopicType.CYPHER, map)
 
         val allTopics = map.plus(kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
         allTopics.forEach { assertProperty(it) }
 
-        assertEquals(allTopics, streamsTopicService.getAllCypherTemplates())
+        assertEquals(allTopics, streamsTopicService.getAll().getValue(TopicType.CYPHER))
 
         assertEquals(allTopics.keys, streamsTopicService.getTopics())
+
+    }
+
+    @Test
+    fun `should remove topics`() {
+        val topicToRemove = "topic2"
+        val map = mapOf("topic1" to "MERGE (n:Label1 {id: event.id})",
+                topicToRemove to "MERGE (n:Label2 {id: event.id})")
+        streamsTopicService.set(TopicType.CYPHER, map)
+
+        val allTopics = map.plus(kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
+        allTopics.forEach { assertProperty(it) }
+
+        streamsTopicService.remove(TopicType.CYPHER, topicToRemove)
+        val remainingTopics = allTopics.filterKeys { it != topicToRemove }
+
+        assertEquals(remainingTopics, streamsTopicService.getAll().getValue(TopicType.CYPHER))
+
+        assertEquals(remainingTopics.keys, streamsTopicService.getTopics())
 
     }
 }

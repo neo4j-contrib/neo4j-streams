@@ -9,6 +9,7 @@ object IngestionUtils {
     fun getLabelsAsString(labels: Collection<String>): String = labels
             .map { it.quote() }
             .joinToString(labelSeparator)
+            .let { if (it.isNotBlank()) "$labelSeparator$it" else it }
 
     fun getNodeKeysAsString(prefix: String = "properties", keys: Set<String>): String = keys
             .map { toQuotedProperty(prefix, it) }

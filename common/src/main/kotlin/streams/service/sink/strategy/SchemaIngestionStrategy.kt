@@ -43,8 +43,8 @@ class SchemaIngestionStrategy: IngestionStrategy {
                     val label = it.key.label.quote()
                     val query = """
                         |${StreamsUtils.UNWIND}
-                        |MERGE (start:${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
-                        |MERGE (end:${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
+                        |MERGE (start${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
+                        |MERGE (end${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
                         |MERGE (start)-[r:$label]->(end)
                         |SET r = event.properties
                     """.trimMargin()
@@ -60,8 +60,8 @@ class SchemaIngestionStrategy: IngestionStrategy {
                     val label = it.key.label.quote()
                     val query = """
                         |${StreamsUtils.UNWIND}
-                        |MATCH (start:${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
-                        |MATCH (end:${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
+                        |MATCH (start${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
+                        |MATCH (end${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
                         |MATCH (start)-[r:$label]->(end)
                         |DELETE r
                     """.trimMargin()
@@ -87,7 +87,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                     val nodeKeys = it.key.flatMap { it.properties }.toSet()
                     val query = """
                         |${StreamsUtils.UNWIND}
-                        |MATCH (n:${getLabelsAsString(labels)}{${getNodeKeysAsString(keys = nodeKeys)}})
+                        |MATCH (n${getLabelsAsString(labels)}{${getNodeKeysAsString(keys = nodeKeys)}})
                         |DETACH DELETE n
                     """.trimMargin()
                     QueryEvents(query, it.value)
@@ -131,14 +131,14 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 .map { map ->
                     var query = """
                         |${StreamsUtils.UNWIND}
-                        |MERGE (n:${getLabelsAsString(map.key.constraints.mapNotNull { it.label })}{${getNodeKeysAsString(keys = map.key.keys)}})
+                        |MERGE (n${getLabelsAsString(map.key.constraints.mapNotNull { it.label })}{${getNodeKeysAsString(keys = map.key.keys)}})
                         |SET n = event.properties
                     """.trimMargin()
                     if (map.key.labelsToAdd.isNotEmpty()) {
-                        query += "\nSET n:${getLabelsAsString(map.key.labelsToAdd)}"
+                        query += "\nSET n${getLabelsAsString(map.key.labelsToAdd)}"
                     }
                     if (map.key.labelsToDelete.isNotEmpty()) {
-                        query += "\nREMOVE n:${getLabelsAsString(map.key.labelsToDelete)}"
+                        query += "\nREMOVE n${getLabelsAsString(map.key.labelsToDelete)}"
                     }
                     QueryEvents(query, map.value)
                 }

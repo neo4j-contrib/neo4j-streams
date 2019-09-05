@@ -12,12 +12,12 @@ class RelationshipPatternIngestionStrategy(private val relationshipPatternConfig
 
     private val mergeRelationshipTemplate: String = """
                 |${StreamsUtils.UNWIND}
-                |MERGE (start:${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
+                |MERGE (start${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
                     getNodeMergeKeys("start.keys", relationshipPatternConfiguration.start.keys)
                 }})
                 |SET start = event.start.properties
                 |SET start += event.start.keys
-                |MERGE (end:${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
+                |MERGE (end${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
                     getNodeMergeKeys("end.keys", relationshipPatternConfiguration.end.keys)
                 }})
                 |SET end = event.end.properties
@@ -28,10 +28,10 @@ class RelationshipPatternIngestionStrategy(private val relationshipPatternConfig
 
     private val deleteRelationshipTemplate: String = """
                 |${StreamsUtils.UNWIND}
-                |MATCH (start:${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
+                |MATCH (start${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
                     getNodeMergeKeys("start.keys", relationshipPatternConfiguration.start.keys)
                 }})
-                |MATCH (end:${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
+                |MATCH (end${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
                     getNodeMergeKeys("end.keys", relationshipPatternConfiguration.end.keys)
                 }})
                 |MATCH (start)-[r:${relationshipPatternConfiguration.relType}]->(end)
