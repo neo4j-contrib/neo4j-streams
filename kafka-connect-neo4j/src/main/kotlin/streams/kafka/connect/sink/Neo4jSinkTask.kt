@@ -17,7 +17,7 @@ class Neo4jSinkTask : SinkTask() {
     private val log: Logger = LoggerFactory.getLogger(Neo4jSinkTask::class.java)
     private lateinit var config: Neo4jSinkConnectorConfig
     private lateinit var neo4jService: Neo4jService
-    private lateinit var errorService: ErrorService
+//    private lateinit var errorService: ErrorService
 
     override fun version(): String {
         return VersionUtil.version(this.javaClass as Class<*>)
@@ -28,7 +28,7 @@ class Neo4jSinkTask : SinkTask() {
 
         val kafkaConfig = Properties()
         kafkaConfig.putAll(map)
-        this.errorService = KafkaErrorService(kafkaConfig, ErrorService.ErrorConfig.from(kafkaConfig), log::error)
+//        this.errorService = KafkaErrorService(kafkaConfig, ErrorService.ErrorConfig.from(kafkaConfig), log::error)
         this.neo4jService = Neo4jService(this.config)
     }
 
@@ -36,19 +36,19 @@ class Neo4jSinkTask : SinkTask() {
         if (collection.isEmpty()) {
             return@runBlocking
         }
-        try {
-            val data = EventBuilder()
-                    .withBatchSize(config.batchSize)
-                    .withTopics(config.topics.allTopics())
-                    .withSinkRecords(collection)
-                    .build()
+//        try {
+        val data = EventBuilder()
+                .withBatchSize(config.batchSize)
+                .withTopics(config.topics.allTopics())
+                .withSinkRecords(collection)
+                .build()
 
-            neo4jService.writeData(data)
-        } catch(e:Exception) {
-            errorService.report(collection.map {
-                ErrorData(it.topic(), it.timestamp(),it.key(), it.value(), it.kafkaPartition(), it.kafkaOffset(),  this::class.java,e)
-            })
-        }
+        neo4jService.writeData(data)
+//        } catch(e:Exception) {
+//            errorService.report(collection.map {
+//                ErrorData(it.topic(), it.timestamp(),it.key(), it.value(), it.kafkaPartition(), it.kafkaOffset(),  this::class.java,e)
+//            })
+//        }
     }
 
     override fun stop() {
