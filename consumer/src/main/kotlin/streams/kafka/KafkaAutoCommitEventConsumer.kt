@@ -11,6 +11,7 @@ import streams.extensions.toStreamsSinkEntity
 import streams.extensions.topicPartition
 import streams.service.StreamsSinkEntity
 import streams.service.errors.*
+import java.time.Duration
 
 data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<TopicPartition, Long>) {
     companion object {
@@ -64,15 +65,18 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
     }
 
     fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
-        val records = consumer.poll(0)
-        return this.topics
-                .filter { topic -> records.records(topic).iterator().hasNext() }
-                .flatMap { topic -> records.records(topic).map { it.topicPartition() to it } }
-                .groupBy({ it.first }, { it.second })
-                .mapValues {
-                    executeAction(action, it.key.topic(), it.value)
-                    it.value.last().offsetAndMetadata()
-                }
+        val records = consumer.poll(Duration.ZERO)
+        return when (records.isEmpty) {
+            true -> emptyMap()
+            else -> this.topics
+                    .filter { topic -> records.records(topic).iterator().hasNext() }
+                    .flatMap { topic -> records.records(topic).map { it.topicPartition() to it } }
+                    .groupBy({ it.first }, { it.second })
+                    .mapValues {
+                        executeAction(action, it.key.topic(), it.value)
+                        it.value.last().offsetAndMetadata()
+                    }
+        }
     }
 
     private fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String, topicRecords: Iterable<ConsumerRecord<ByteArray, ByteArray>>) {
@@ -102,14 +106,17 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
     fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
                           action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
         setSeek(kafkaTopicConfig.topicPartitionsMap)
-        val records = consumer.poll(0)
-        return kafkaTopicConfig.topicPartitionsMap
-                .mapValues { records.records(it.key) }
-                .filterValues { it.isNotEmpty() }
-                .mapValues { (topic, topicRecords) ->
-                    executeAction(action, topic.topic(), topicRecords)
-                    topicRecords.last().offsetAndMetadata()
-                }
+        val records = consumer.poll(Duration.ZERO)
+        return when (records.isEmpty) {
+            true -> emptyMap()
+            else -> kafkaTopicConfig.topicPartitionsMap
+                    .mapValues { records.records(it.key) }
+                    .filterValues { it.isNotEmpty() }
+                    .mapValues { (topic, topicRecords) ->
+                        executeAction(action, topic.topic(), topicRecords)
+                        topicRecords.last().offsetAndMetadata()
+                    }
+        }
     }
 
     override fun read(action: (String, List<StreamsSinkEntity>) -> Unit) {

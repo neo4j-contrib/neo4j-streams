@@ -27,24 +27,27 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val query = """
+        val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
+                ByteArrayDeserializer::class.java.name,
+                dlqTopic)
+
+        dlqConsumer.let {
+            Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+                val query = """
                 MATCH (c:Customer)
                 RETURN count(c) AS count
             """.trimIndent()
-            val result = db.execute(query).columnAs<Long>("count")
+                val result = db.execute(query).columnAs<Long>("count")
 
-            val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
-                    ByteArrayDeserializer::class.java.name,
-                    dlqTopic)
-            val records = dlqConsumer.poll(5000)
-            val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
-            val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
-            val value = if (record != null) JSONUtils.readValue<Any>(record.value()!!) else emptyMap<String, Any>()
-            dlqConsumer.close()
-            !records.isEmpty && headers.size == 7 && value == data && result.hasNext() && result.next() == 0L && !result.hasNext()
-                    && headers["__streams.errors.exception.class.name"] == "org.neo4j.graphdb.QueryExecutionException"
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+                val records = dlqConsumer.poll(5000)
+                val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
+                val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
+                val value = if (record != null) JSONUtils.readValue<Any>(record.value()!!) else emptyMap<String, Any>()
+                !records.isEmpty && headers.size == 7 && value == data && result.hasNext() && result.next() == 0L && !result.hasNext()
+                        && headers["__streams.errors.exception.class.name"] == "org.neo4j.graphdb.QueryExecutionException"
+            }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            it.close()
+        }
     }
 
     @Test
@@ -63,24 +66,27 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(),
                 data.toByteArray())
         kafkaProducer.send(producerRecord).get()
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val query = """
+        val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
+                ByteArrayDeserializer::class.java.name,
+                dlqTopic)
+        dlqConsumer.let {
+            Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+                val query = """
                 MATCH (c:Customer)
                 RETURN count(c) AS count
             """.trimIndent()
-            val result = db.execute(query).columnAs<Long>("count")
+                val result = db.execute(query).columnAs<Long>("count")
 
-            val dlqConsumer = createConsumer<ByteArray, ByteArray>(ByteArrayDeserializer::class.java.name,
-                    ByteArrayDeserializer::class.java.name,
-                    dlqTopic)
-            val records = dlqConsumer.poll(5000)
-            val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
-            val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
-            val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
-            dlqConsumer.close()
-            !records.isEmpty && headers.size == 7 && data == value && result.hasNext() && result.next() == 0L && !result.hasNext()
-                    && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+                val records = dlqConsumer.poll(5000)
+                val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
+                val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
+                val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
+                !records.isEmpty && headers.size == 7 && data == value && result.hasNext() && result.next() == 0L && !result.hasNext()
+                        && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+            }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            it.close()
+        }
     }
 
 }
