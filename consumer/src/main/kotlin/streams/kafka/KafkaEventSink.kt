@@ -30,6 +30,9 @@ class KafkaEventSink(private val config: Config,
             "broker" to "kafka.${ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG}",
             "from" to "kafka.${ConsumerConfig.AUTO_OFFSET_RESET_CONFIG}",
             "autoCommit" to "kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}",
+            "keyDeserializer" to "kafka.${ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG}",
+            "valueDeserializer" to "kafka.${ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG}",
+            "schemaRegistryUrl" to "kafka.schema.registry.url",
             "groupId" to "kafka.${ConsumerConfig.GROUP_ID_CONFIG}")
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
@@ -81,18 +84,6 @@ class KafkaEventSink(private val config: Config,
             job.cancelAndJoin()
             log.info("Kafka Sink daemon Job stopped")
         } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
-    }
-
-    override fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper { // TODO move to the abstract class
-        return object: StreamsEventSinkConfigMapper(streamsConfigMap, mappingKeys) {
-            override fun convert(config: Map<String, String>): Map<String, String> {
-                val props = streamsConfigMap
-                        .toMutableMap()
-                props += config.mapKeys { mappingKeys.getOrDefault(it.key, it.key) }
-                return props
-            }
-
-        }
     }
 
     private fun createJob(): Job {

@@ -1,9 +1,9 @@
 package streams.kafka
 
+import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.neo4j.kernel.configuration.Config
 import streams.StreamsSinkConfiguration
 import streams.extensions.toPointCase
@@ -11,11 +11,29 @@ import streams.serialization.JSONUtils
 import java.util.*
 
 
-
 private const val kafkaConfigPrefix = "kafka."
+
+private val SUPPORTED_DESERIALIZER = listOf(ByteArrayDeserializer::class.java.name, KafkaAvroDeserializer::class.java.name)
+
+private fun validateDeserializers(config: Map<String, String>) {
+    val kafkaKeyConfig = config[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG].orEmpty()
+    val kafkaValueConfig = config[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG].orEmpty()
+    val key = if (kafkaKeyConfig.isNotBlank() && !SUPPORTED_DESERIALIZER.contains(kafkaKeyConfig)) {
+        ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG
+    } else if (kafkaValueConfig.isNotBlank() && !SUPPORTED_DESERIALIZER.contains(kafkaValueConfig)) {
+        ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG
+    } else {
+        ""
+    }
+    if (key.isNotBlank()) {
+        throw RuntimeException("The property kafka.$key contains an invalid deserializer. Supported deserializers are $SUPPORTED_DESERIALIZER")
+    }
+}
 
 data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181",
                                   val bootstrapServers: String = "localhost:9092",
+                                  val keyDeserializer: String = "org.apache.kafka.common.serialization.ByteArrayDeserializer",
+                                  val valueDeserializer: String = "org.apache.kafka.common.serialization.ByteArrayDeserializer",
                                   val groupId: String = "neo4j",
                                   val autoOffsetReset: String = "earliest",
                                   val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration(),
@@ -34,12 +52,16 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                     .mapKeys { it.key.substring(kafkaConfigPrefix.length) }
             val default = KafkaSinkConfiguration()
 
+
             val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
+            validate(config)
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
             val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg)
 
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
+                    keyDeserializer = config.getOrDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, default.keyDeserializer),
+                    valueDeserializer = config.getOrDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, default.valueDeserializer),
                     bootstrapServers = config.getOrDefault(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, default.bootstrapServers),
                     autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
                     groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId),
@@ -47,6 +69,10 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                     streamsSinkConfiguration = streamsSinkConfiguration,
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
+        }
+
+        private fun validate(config: Map<String, String>) {
+            validateDeserializers(config)
         }
     }
 
@@ -57,14 +83,6 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                 .mapKeys { it.key.toPointCase() }
         props.putAll(map)
         props.putAll(extraProperties)
-        props.putAll(addDeserializers()) // Fixed deserializers
-        return props
-    }
-
-    private fun addDeserializers() : Properties {
-        val props = Properties()
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
         return props
     }
 }

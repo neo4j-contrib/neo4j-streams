@@ -550,6 +550,15 @@ Every published record in the `Dead Letter Queue` contains the original record `
 |===
 
 
+=== Supported Kafka deserializers
+
+The Neo4j Streams plugin supports 2 deserializers:
+
+* `org.apache.kafka.common.serialization.ByteArrayDeserializer`: if you want manage JSON messages
+* `io.confluent.kafka.serializers.KafkaAvroDeserializer`: if you want manage AVRO messages
+
+You can define the independently for `Key` and `Value` as specified in the Configuration paragraph
+
 === Configuration
 
 include::configuration.adoc[]

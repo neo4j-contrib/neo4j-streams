@@ -41,6 +41,8 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>1.7.5</neo4j.java.driver.version>
         <testcontainers.version>1.9.1</testcontainers.version>
+        <avro.version>1.8.2</avro.version>
+        <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
     </properties>
 
     <organization>
@@ -66,6 +68,21 @@
         <developerConnection>scm:git:git@github.com:neo4j-contrib/neo4j-streams.git</developerConnection>
         <url>git@github.com:neo4j-contrib/neo4j-streams.git</url>
     </scm>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.apache.avro</groupId>
+                <artifactId>avro</artifactId>
+                <version>${avro.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.confluent</groupId>
+                <artifactId>kafka-avro-serializer</artifactId>
+                <version>${kafka.avro.serializer.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 

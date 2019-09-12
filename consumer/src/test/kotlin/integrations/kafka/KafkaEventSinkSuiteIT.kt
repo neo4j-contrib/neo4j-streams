@@ -16,7 +16,8 @@ import streams.utils.StreamsUtils
         KafkaEventSinkPattern::class,
         KafkaEventSinkSimple::class,
         KafkaStreamsSinkProcedures::class,
-        KafkaEventSinkCUDFormat::class
+        KafkaEventSinkCUDFormat::class,
+        KafkaEventSinkAvro::class
 )
 class KafkaEventSinkSuiteIT {
     companion object {
@@ -34,6 +35,7 @@ class KafkaEventSinkSuiteIT {
          */
         private const val confluentPlatformVersion = "4.0.2"
         @JvmStatic lateinit var kafka: KafkaContainer
+        @JvmStatic lateinit var schemaRegistry: SchemaRegistryContainer
 
         var isRunning = false
 
@@ -42,7 +44,10 @@ class KafkaEventSinkSuiteIT {
         fun setUpContainer() {
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
+                schemaRegistry = SchemaRegistryContainer(confluentPlatformVersion)
+                        .withKafka(kafka)
                 kafka.start()
+                schemaRegistry.start()
                 isRunning = true
             }, IllegalStateException::class.java)
             assumeTrue("Kafka container has to exist", isRunning)
@@ -54,6 +59,7 @@ class KafkaEventSinkSuiteIT {
         fun tearDownContainer() {
             StreamsUtils.ignoreExceptions({
                 kafka.stop()
+                schemaRegistry.stop()
             }, kotlin.UninitializedPropertyAccessException::class.java)
         }
     }

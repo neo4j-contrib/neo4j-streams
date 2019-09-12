@@ -1,5 +1,6 @@
 package streams.kafka
 
+import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -21,6 +22,8 @@ class KafkaSinkConfigurationTest {
         assertEquals("localhost:9092", default.bootstrapServers)
         assertEquals("neo4j", default.groupId)
         assertEquals("earliest", default.autoOffsetReset)
+        assertEquals(ByteArrayDeserializer::class.java.name, default.keyDeserializer)
+        assertEquals(ByteArrayDeserializer::class.java.name, default.valueDeserializer)
         assertEquals(emptyMap(), default.extraProperties)
     }
 
@@ -43,11 +46,15 @@ class KafkaSinkConfigurationTest {
                 .withSetting("kafka.auto.offset.reset", autoOffsetReset)
                 .withSetting("kafka.enable.auto.commit", autoCommit)
                 .withSetting("kafka.group.id", group)
+                .withSetting("kafka.key.deserializer", ByteArrayDeserializer::class.java.name)
+                .withSetting("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
                 .build()
         val expectedMap = mapOf("zookeeper.connect" to zookeeper, "bootstrap.servers" to bootstrap,
                 "auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to group,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
-                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString())
+                ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
+                "key.deserializer" to ByteArrayDeserializer::class.java.name,
+                "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
         val kafkaSinkConfiguration = KafkaSinkConfiguration.from(config)
         StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue)

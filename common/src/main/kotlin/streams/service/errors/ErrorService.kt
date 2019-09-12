@@ -1,8 +1,10 @@
 package streams.service.errors
 
+import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.record.RecordBatch
-import java.lang.RuntimeException
+import streams.extensions.toMap
+import streams.serialization.JSONUtils
 import java.util.*
 
 
@@ -20,20 +22,23 @@ data class ErrorData(val originalTopic: String,
             this(originalTopic, timestamp ?: RecordBatch.NO_TIMESTAMP, toByteArray(key), toByteArray(value), partition.toString(),offset.toString(), executingClass, exception)
 
     companion object {
-        fun from(consumerRecord: ConsumerRecord<ByteArray, ByteArray>, exception: Exception?, executingClass: Class<*>?): ErrorData {
+
+        fun from(consumerRecord: ConsumerRecord<out Any, out Any>, exception: Exception?, executingClass: Class<*>?): ErrorData {
             return ErrorData(offset = consumerRecord.offset().toString(),
                     originalTopic = consumerRecord.topic(),
                     partition = consumerRecord.partition().toString(),
                     timestamp = consumerRecord.timestamp(),
                     exception = exception,
                     executingClass = executingClass,
-                    key = consumerRecord.key(),
-                    value = consumerRecord.value())
+                    key = toByteArray(consumerRecord.key()),
+                    value = toByteArray(consumerRecord.value()))
         }
+
         fun toByteArray(v:Any?) = try {
             when (v) {
                 null -> null
                 is ByteArray -> v
+                is GenericRecord -> JSONUtils.writeValueAsBytes(mapOf("schema" to v.schema.toMap(), "record" to v.toMap()))
                 else -> v.toString().toByteArray(Charsets.UTF_8)
             }
         } catch (e:Exception) {

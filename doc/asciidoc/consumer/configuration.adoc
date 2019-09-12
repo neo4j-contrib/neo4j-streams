@@ -7,6 +7,8 @@ kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
 kafka.group.id=neo4j
 kafka.enable.auto.commit=true
+kafka.key.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
+kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
 
 streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
