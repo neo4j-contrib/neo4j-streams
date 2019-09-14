@@ -17,9 +17,7 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
         val db = dependencies.graphdatabaseAPI()
         val log = dependencies.log()
         val configuration = dependencies.config()
-        val streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
-        val streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
-        return StreamsEventRouterLifecycle(db, streamHandler, streamsEventRouterConfiguration, dependencies.availabilityGuard(), log)
+        return StreamsEventRouterLifecycle(db, configuration, dependencies.availabilityGuard(), log)
     }
 
     interface Dependencies {
@@ -30,25 +28,27 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
     }
 }
 
-class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: StreamsEventRouter,
-                                  val streamsEventRouterConfiguration: StreamsEventRouterConfiguration,
+class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: Config,
                                   private val availabilityGuard: AvailabilityGuard,
                                   private val log: LogService): LifecycleAdapter() {
     private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
     private lateinit var txHandler: StreamsTransactionEventHandler
     private lateinit var streamsConstraintsService: StreamsConstraintsService
+    private lateinit var streamHandler: StreamsEventRouter
+    private lateinit var streamsEventRouterConfiguration: StreamsEventRouterConfiguration
 
     override fun start() {
         try {
             streamsLog.info("Initialising the Streams Source module")
+            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
+            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()
             registerTransactionEventHandler()
             streamsLog.info("Streams Source module initialised")
         } catch (e: Exception) {
-            e.printStackTrace()
-            streamsLog.error("Error initializing the streaming producer", e)
+            streamsLog.error("Error initializing the streaming producer:", e)
         }
     }
 
@@ -69,13 +69,17 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val streamHandler: S
 
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
-            streamsConstraintsService.close()
+            if (::streamsConstraintsService.isInitialized) {
+                streamsConstraintsService.close()
+            }
             db.unregisterTransactionEventHandler(txHandler)
         }
     }
 
     override fun stop() {
         unregisterTransactionEventHandler()
-        streamHandler.stop()
+        if (::streamHandler.isInitialized) {
+            streamHandler.stop()
+        }
     }
 }

@@ -22,16 +22,16 @@ import java.util.concurrent.ThreadLocalRandom
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
     private lateinit var producer: Producer<String, ByteArray>
-    private val kafkaConfig: KafkaConfiguration
+    private lateinit var kafkaConfig: KafkaConfiguration
 
 
     constructor(logService: LogService, config: Config): super(logService, config) {
         log = logService.getUserLog(KafkaEventRouter::class.java)
-        log.info("Initializing Kafka Connector")
-        kafkaConfig = KafkaConfiguration.from(config.raw)
     }
 
     override fun start() {
+        log.info("Initializing Kafka Connector")
+        kafkaConfig = KafkaConfiguration.from(config?.raw ?: emptyMap())
         val props = kafkaConfig.asProperties()
         producer = Neo4jKafkaProducer<String, ByteArray>(props)
         producer.initTransactions()
@@ -39,7 +39,9 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
     override fun stop() {
-        producer.close()
+        if (::producer.isInitialized) {
+            producer.close()
+        }
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {

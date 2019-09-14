@@ -14,7 +14,7 @@ import kotlin.test.assertTrue
 class KafkaSinkConfigurationTest {
 
     @Test
-    fun shouldReturnDefaultConfiguration() {
+    fun `should return default configuration`() {
         val default = KafkaSinkConfiguration()
         StreamsSinkConfigurationTest.testDefaultConf(default.streamsSinkConfiguration)
 
@@ -28,7 +28,7 @@ class KafkaSinkConfigurationTest {
     }
 
     @Test
-    fun shouldReturnConfigurationFromMap() {
+    fun `should return configuration from map`() {
         val pollingInterval = "10"
         val topic = "topic-neo"
         val topicKey = "streams.sink.topic.cypher.$topic"
@@ -56,7 +56,7 @@ class KafkaSinkConfigurationTest {
                 "key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
-        val kafkaSinkConfiguration = KafkaSinkConfiguration.from(config)
+        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config.raw)
         StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
@@ -73,6 +73,68 @@ class KafkaSinkConfigurationTest {
         assertEquals(pollingInterval.toLong(), streamsConfig.sinkPollingInterval)
         assertTrue { streamsConfig.topics.cypherTopics.containsKey(topic) }
         assertEquals(topicValue, streamsConfig.topics.cypherTopics[topic])
+    }
+
+    @Test(expected = RuntimeException::class)
+    fun `should not validate the configuration because of unreachable kafka bootstrap server`() {
+        val zookeeper = "zookeeper:2181"
+        val bootstrap = "bootstrap:9092"
+        try {
+            val pollingInterval = "10"
+            val topic = "topic-neo"
+            val topicKey = "streams.sink.topic.cypher.$topic"
+            val topicValue = "MERGE (n:Label{ id: event.id }) "
+            val group = "foo"
+            val autoOffsetReset = "latest"
+            val autoCommit = "false"
+            val config = Config.builder()
+                    .withSetting("streams.sink.polling.interval", pollingInterval)
+                    .withSetting(topicKey, topicValue)
+                    .withSetting("kafka.zookeeper.connect", zookeeper)
+                    .withSetting("kafka.bootstrap.servers", bootstrap)
+                    .withSetting("kafka.auto.offset.reset", autoOffsetReset)
+                    .withSetting("kafka.enable.auto.commit", autoCommit)
+                    .withSetting("kafka.group.id", group)
+                    .withSetting("kafka.key.deserializer", ByteArrayDeserializer::class.java.name)
+                    .withSetting("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
+                    .build()
+            KafkaSinkConfiguration.from(config)
+        } catch (e: RuntimeException) {
+            assertEquals("The servers defined into the property `kafka.bootstrap.servers` are not reachable: [$bootstrap]", e.message)
+            throw e
+        }
+    }
+
+
+
+    @Test(expected = RuntimeException::class)
+    fun `should not validate the configuration because of empty kafka bootstrap server`() {
+        val zookeeper = "zookeeper:2181"
+        val bootstrap = ""
+        try {
+            val pollingInterval = "10"
+            val topic = "topic-neo"
+            val topicKey = "streams.sink.topic.cypher.$topic"
+            val topicValue = "MERGE (n:Label{ id: event.id }) "
+            val group = "foo"
+            val autoOffsetReset = "latest"
+            val autoCommit = "false"
+            val config = Config.builder()
+                    .withSetting("streams.sink.polling.interval", pollingInterval)
+                    .withSetting(topicKey, topicValue)
+                    .withSetting("kafka.zookeeper.connect", zookeeper)
+                    .withSetting("kafka.bootstrap.servers", bootstrap)
+                    .withSetting("kafka.auto.offset.reset", autoOffsetReset)
+                    .withSetting("kafka.enable.auto.commit", autoCommit)
+                    .withSetting("kafka.group.id", group)
+                    .withSetting("kafka.key.deserializer", ByteArrayDeserializer::class.java.name)
+                    .withSetting("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
+                    .build()
+            KafkaSinkConfiguration.from(config)
+        } catch (e: RuntimeException) {
+            assertEquals("The `kafka.bootstrap.servers` property is empty", e.message)
+            throw e
+        }
     }
 
 }
