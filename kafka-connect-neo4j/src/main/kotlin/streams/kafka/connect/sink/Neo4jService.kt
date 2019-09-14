@@ -21,8 +21,6 @@ import streams.service.TopicType
 import streams.service.TopicTypeGroup
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
-import java.lang.RuntimeException
-import java.util.concurrent.CompletionException
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException

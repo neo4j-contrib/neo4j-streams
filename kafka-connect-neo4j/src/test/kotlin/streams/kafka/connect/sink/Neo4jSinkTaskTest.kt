@@ -128,7 +128,6 @@ class Neo4jSinkTaskTest {
         val firstTopic = "neotopic"
         val secondTopic = "foo"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
@@ -367,7 +366,6 @@ class Neo4jSinkTaskTest {
     fun `should not insert data into Neo4j`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -389,11 +387,9 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    @Ignore("temporary disabled the DLQ")
     fun `should report but not fail parsing data`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -412,11 +408,9 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    @Ignore("temporary disabled the DLQ")
     fun `should report but not fail invalid schema`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -435,11 +429,9 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    @Ignore("temporary disabled the DLQ")
     fun `should fail running invalid cypher`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
-        props[Neo4jSinkConnectorConfig.ENCRYPTION_ENABLED] = false.toString()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = " No Valid Cypher "
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()

@@ -4,6 +4,7 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
+import org.junit.Ignore
 import org.junit.Test
 import org.neo4j.kernel.configuration.Config
 import streams.StreamsSinkConfiguration
@@ -76,6 +77,7 @@ class KafkaSinkConfigurationTest {
     }
 
     @Test(expected = RuntimeException::class)
+    @Ignore("Disabled, use Kafka to deal with availability of the configured services")
     fun `should not validate the configuration because of unreachable kafka bootstrap server`() {
         val zookeeper = "zookeeper:2181"
         val bootstrap = "bootstrap:9092"

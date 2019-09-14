@@ -10,19 +10,15 @@ import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
-import org.neo4j.csv.reader.Magic.define
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.v1.Config
-import streams.kafka.connect.sink.ConfigGroup.ERROR_REPORTING
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.TopicType
 import streams.service.TopicUtils
 import streams.service.Topics
-import streams.service.errors.ErrorService
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import java.io.File
 import java.net.URI
-import java.net.URISyntaxException
 import java.util.concurrent.TimeUnit
 
 enum class AuthenticationType {
@@ -71,6 +67,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
 
+    val kafkaBrokerProperties: Map<String, Any?>
+
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
         encryptionTrustStrategy = ConfigUtils
@@ -106,6 +104,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
 
         parallelBatches = getBoolean(BATCH_PARALLELIZE)
+        val kafkaPrefix = "kafka."
+        kafkaBrokerProperties = originals
+                .filterKeys { it.toString().startsWith(kafkaPrefix) }
+                .mapKeys { it.key.toString().substring(kafkaPrefix.length) }
         validateAllTopics(originals)
     }
 

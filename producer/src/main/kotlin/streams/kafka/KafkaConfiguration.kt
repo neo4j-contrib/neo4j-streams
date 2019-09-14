@@ -63,7 +63,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
 
         private fun validate(config: KafkaConfiguration) {
             validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
-            validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)
+            validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
         }
 
     }

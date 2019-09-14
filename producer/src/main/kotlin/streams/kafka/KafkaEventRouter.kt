@@ -15,6 +15,7 @@ import streams.StreamsEventRouter
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
+import streams.utils.StreamsUtils
 import java.util.*
 import java.util.concurrent.ThreadLocalRandom
 
@@ -39,9 +40,7 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
     override fun stop() {
-        if (::producer.isInitialized) {
-            producer.close()
-        }
+        StreamsUtils.ignoreExceptions({ producer.close() }, UninitializedPropertyAccessException::class.java)
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {

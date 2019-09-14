@@ -1,6 +1,7 @@
 package streams.service.errors
 
 import org.apache.commons.lang3.exception.ExceptionUtils
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerConfig
@@ -8,21 +9,27 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.record.RecordBatch
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.neo4j.util.VisibleForTesting
+import streams.utils.ValidationUtils.validateConnection
 import java.util.*
 
 class KafkaErrorService(private val producer: Producer<ByteArray, ByteArray>?, private val errorConfig: ErrorConfig, private val log: (String, Exception?)->Unit): ErrorService() {
 
     constructor(config: Properties, errorConfig: ErrorConfig,
-                log: (String, Exception?) -> Unit) : this(producer(errorConfig, config), errorConfig, log)
+                log: (String, Exception?) -> Unit) : this(producer(errorConfig, config, log), errorConfig, log)
 
     companion object {
-        private fun producer(errorConfig: ErrorConfig, config: Properties) =
+        private fun producer(errorConfig: ErrorConfig, config: Properties, log: (String, Exception?) -> Unit) =
                 errorConfig.dlqTopic?.let {
-                    val props = Properties()
-                    props.putAll(config)
-                    props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
-                    props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
-                    KafkaProducer<ByteArray,ByteArray>(props)
+                    try {
+                        val bootstrapServers = config.getOrDefault(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, "").toString()
+                        validateConnection(bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
+                        config[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
+                        config[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java.name
+                        KafkaProducer<ByteArray, ByteArray>(config)
+                    } catch (e: Exception) {
+                        log("Cannot initialize the custom DLQ because of the following exception: ", e)
+                        null
+                    }
                 }
     }
 
@@ -35,8 +42,9 @@ class KafkaErrorService(private val producer: Producer<ByteArray, ByteArray>?, p
                 errorDatas.map { it.exception }.distinct().forEach{log("Error processing ${errorDatas.size} messages",it)}
             }
         }
-        if (errorConfig.dlqTopic != null && producer != null) {
-            errorDatas.forEach { dlqData ->
+
+        errorDatas.forEach { dlqData ->
+            producer?.let {
                 try {
                     val producerRecord = if (dlqData.timestamp == RecordBatch.NO_TIMESTAMP) {
                         ProducerRecord(errorConfig.dlqTopic, null, dlqData.key, dlqData.value)
@@ -47,9 +55,9 @@ class KafkaErrorService(private val producer: Producer<ByteArray, ByteArray>?, p
                         val producerHeader = producerRecord.headers()
                         populateContextHeaders(dlqData).forEach { (key, value) -> producerHeader.add(key, value) }
                     }
-                    producer.send(producerRecord)
+                    it.send(producerRecord)
                 } catch (e: Exception) {
-                    log("Error writing to DLQ $e :${dlqData.toLogString()}",e) // todo only the first or all
+                    log("Error writing to DLQ $e: ${dlqData.toLogString()}", e) // todo only the first or all
                 }
             }
         }
