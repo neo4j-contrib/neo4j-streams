@@ -11,6 +11,7 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.procedures.StreamsProcedures
+import streams.utils.StreamsUtils
 
 class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
     override fun newInstance(context: KernelContext, dependencies: Dependencies): Lifecycle {
@@ -69,17 +70,13 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
 
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
-            if (::streamsConstraintsService.isInitialized) {
-                streamsConstraintsService.close()
-            }
+            StreamsUtils.ignoreExceptions({ streamsConstraintsService.close() }, UninitializedPropertyAccessException::class.java)
             db.unregisterTransactionEventHandler(txHandler)
         }
     }
 
     override fun stop() {
         unregisterTransactionEventHandler()
-        if (::streamHandler.isInitialized) {
-            streamHandler.stop()
-        }
+        StreamsUtils.ignoreExceptions({ streamHandler.stop() }, UninitializedPropertyAccessException::class.java)
     }
 }

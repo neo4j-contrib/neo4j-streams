@@ -79,7 +79,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
         private fun validate(config: KafkaSinkConfiguration) {
             validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
-            validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG)
+            validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
             val schemaRegistryUrlKey = "schema.registry.url"
             if (config.extraProperties.containsKey(schemaRegistryUrlKey)) {
                 val schemaRegistryUrl = config.extraProperties.getOrDefault(schemaRegistryUrlKey, "")

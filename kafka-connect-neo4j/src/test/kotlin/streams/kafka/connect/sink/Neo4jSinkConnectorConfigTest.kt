@@ -1,5 +1,7 @@
 package streams.kafka.connect.sink
 
+import org.apache.kafka.clients.CommonClientConfigs
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkConnector
 import org.junit.Test
@@ -46,10 +48,14 @@ class Neo4jSinkConnectorConfigTest {
                 "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
                 Neo4jSinkConnectorConfig.SERVER_URI to "$a,$b", // Check for string trimming
                 Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
+                "kafka.${CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG}" to "broker:9093",
+                "kafka.${ProducerConfig.ACKS_CONFIG}" to 1,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
         val config = Neo4jSinkConnectorConfig(originals)
 
+        assertEquals(mapOf(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG to "broker:9093",
+                ProducerConfig.ACKS_CONFIG to 1), config.kafkaBrokerProperties)
         assertEquals(originals["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo"], config.topics.cypherTopics["foo"])
         assertFalse { config.encryptionEnabled }
         assertEquals(a, config.serverUri.get(0).toString())

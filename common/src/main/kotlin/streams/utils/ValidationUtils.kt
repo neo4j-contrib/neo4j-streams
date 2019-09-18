@@ -32,7 +32,7 @@ object ValidationUtils {
         if (url.isBlank()) {
             throw RuntimeException("The `kafka.$kafkaPropertyKey` property is empty")
         } else if (checkReachable) {
-            val unreachableServers = ValidationUtils.checkServersUnreachable(url)
+            val unreachableServers = checkServersUnreachable(url)
             if (unreachableServers.isNotEmpty()) {
                 throw RuntimeException("The servers defined into the property `kafka.$kafkaPropertyKey` are not reachable: $unreachableServers")
             }

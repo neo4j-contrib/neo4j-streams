@@ -483,7 +483,25 @@ Config Options
 | errors.deadletterqueue.topic.replication.factor | 3/1 | replication factor, need to set to 1 for single partition, default:3
 |===
 
-In Kafka Connect you can just configure the above properties.
+In Kafka Connect in addition to the above properties you need to define kafka broker connection properties:
+
+|===
+| Name | mandatory | Description
+
+| kafka.bootstrap.servers | true | It's the Kafka Broker url. *(please look at the description below)
+
+| kafka.<any_other_kafka_property> | false | You can also specify any other kafka Producer
+setting by adding the `kafka.` prefix (i.e the configuration `acks` become `kafka.acks`). See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+|===
+
+*As you may have noticed we're asking to provide the `bootstrap.server` property,
+this because the Kafka Connect Framework provides an out-of-the-box support
+only for deserialization errors and message transformations
+(please look into the following link for further details: https://www.confluent.io/blog/kafka-connect-deep-dive-error-handling-dead-letter-queues).
+We want to extend this feature for transient errors in order to cover the 100% of failures.
+So to do that at this moment as suggested by Confluent we need to ask again the broker location,
+until this JIRA issue will not be addressed: https://issues.apache.org/jira/browse/KAFKA-8597.
 
 For the Neo4j extension you prefix them with `streams.sink.` in the Neo4j configuration.
 

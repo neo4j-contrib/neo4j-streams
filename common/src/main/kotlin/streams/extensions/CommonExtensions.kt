@@ -12,9 +12,15 @@ import org.neo4j.graphdb.Node
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 import java.nio.ByteBuffer
+import java.util.*
 import javax.lang.model.SourceVersion
 
 fun Map<String,String>.getInt(name:String, defaultValue: Int) = this.get(name)?.toInt() ?: defaultValue
+fun Map<*, *>.asProperties() = this.let {
+    val properties = Properties()
+    properties.putAll(it)
+    properties
+}
 
 fun Node.labelNames() : List<String> {
     return this.labels.map { it.name() }
