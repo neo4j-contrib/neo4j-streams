@@ -50,8 +50,9 @@ class KafkaEventSinkSuiteIT {
                 schemaRegistry.start()
                 isRunning = true
             }, IllegalStateException::class.java)
-            assumeTrue("Kafka container has to exist", isRunning)
             assumeTrue("Kafka must be running", kafka.isRunning)
+            assumeTrue("Schema Registry must be running", schemaRegistry.isRunning)
+            assumeTrue("isRunning must be true", isRunning)
         }
 
         @AfterClass

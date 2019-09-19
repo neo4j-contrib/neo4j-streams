@@ -3,31 +3,45 @@ package integrations.kafka
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.containers.KafkaContainer.KAFKA_PORT
+import org.testcontainers.containers.KafkaContainer.ZOOKEEPER_PORT
 import org.testcontainers.containers.Network
+import org.testcontainers.containers.SocatContainer
+import java.util.stream.Stream
 
 
 class SchemaRegistryContainer(version: String): GenericContainer<SchemaRegistryContainer>("confluentinc/cp-schema-registry:$version") {
 
-    override fun start() {
-        withExposedPorts(PORT)
-        waitingFor(Wait.forHttp("/subjects").forStatusCode(200))
-        super.start()
+    private var proxy: SocatContainer? = null
+
+    override fun doStart() {
+        val networkAlias = networkAliases[0]
+        proxy = SocatContainer()
+                    .withNetwork(network)
+                    .withTarget(PORT, networkAlias)
+
+        proxy?.start()
+        waitingFor(Wait.forHttp("/subjects")
+                .forStatusCode(200))
+        super.doStart()
     }
 
     fun withKafka(kafka: KafkaContainer): SchemaRegistryContainer {
-        return withKafka(kafka.network, kafka.networkAliases[0] + ":9092")
+        return withKafka(kafka.network, kafka.networkAliases.map { "PLAINTEXT://$it:9092" }.joinToString(","))
     }
 
     fun withKafka(network: Network, bootstrapServers: String): SchemaRegistryContainer {
         withNetwork(network)
         withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
-        withEnv("SCHEMA_REGISTRY_LISTENERS", "http://0.0.0.0:8081")
-        withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", "PLAINTEXT://$bootstrapServers")
+        withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", bootstrapServers)
         return self()
     }
 
+    fun getSchemaRegistryUrl() = "http://${proxy?.containerIpAddress}:${proxy?.firstMappedPort}"
 
-    fun getSchemaRegistryUrl() = "http://localhost:${getMappedPort(PORT)}"
+    override fun stop() {
+        Stream.of(Runnable { super.stop() }, Runnable { proxy?.stop() }).parallel().forEach { it.run() }
+    }
 
     companion object {
         @JvmStatic val PORT = 8081

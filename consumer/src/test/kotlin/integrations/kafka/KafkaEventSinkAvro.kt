@@ -4,6 +4,7 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import kotlinx.coroutines.runBlocking
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecordBuilder
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
