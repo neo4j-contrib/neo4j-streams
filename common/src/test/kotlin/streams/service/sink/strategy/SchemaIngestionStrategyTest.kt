@@ -11,8 +11,9 @@ class SchemaIngestionStrategyTest {
     @Test
     fun `should create the Schema Query Strategy for mixed events`() {
         // given
-        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
-                constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname"))))
+        val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname")))
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"), constraints = constraints)
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
                         username = "user",
@@ -50,13 +51,13 @@ class SchemaIngestionStrategyTest {
                 ),
                 payload = RelationshipPayload(
                         id = "2",
-                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
-                        end = RelationshipNodeChange(id = "1", labels = listOf("User"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User", "NewLabel"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User", "NewLabel"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
                         after = RelationshipChange(properties = mapOf("since" to 2014)),
                         before = null,
                         label = "KNOWS WHO"
                 ),
-                schema = Schema()
+                schema = relSchema
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
         val txEvents = listOf(StreamsSinkEntity(cdcDataStart, cdcDataStart),
@@ -174,6 +175,9 @@ class SchemaIngestionStrategyTest {
     @Test
     fun `should create the Schema Query Strategy for relationships`() {
         // given
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = listOf(
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname")),
+                Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))))
         val cdcDataRelationship = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
                         username = "user",
@@ -184,13 +188,13 @@ class SchemaIngestionStrategyTest {
                 ),
                 payload = RelationshipPayload(
                         id = "2",
-                        start = RelationshipNodeChange(id = "0", labels = listOf("User Ext"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
-                        end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        start = RelationshipNodeChange(id = "1", labels = listOf("User Ext", "NewLabel"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        end = RelationshipNodeChange(id = "2", labels = listOf("Product Ext", "NewLabelA"), ids = mapOf("name" to "My Awesome Product")),
                         after = RelationshipChange(properties = mapOf("since" to 2014)),
                         before = null,
-                        label = "KNOWS WHO"
+                        label = "HAS BOUGHT"
                 ),
-                schema = Schema()
+                schema = relSchema
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
         val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
@@ -206,16 +210,16 @@ class SchemaIngestionStrategyTest {
         val expectedRelQuery = """
             |UNWIND {events} AS event
             |MERGE (start:`User Ext`{name: event.start.name, surname: event.start.surname})
-            |MERGE (end:`User Ext`{name: event.end.name, surname: event.end.surname})
-            |MERGE (start)-[r:`KNOWS WHO`]->(end)
+            |MERGE (end:`Product Ext`{name: event.end.name})
+            |MERGE (start)-[r:`HAS BOUGHT`]->(end)
             |SET r = event.properties
         """.trimMargin()
         assertEquals(expectedRelQuery, relQuery.trimIndent())
         val eventsRelList = relationshipEvents[0].events
         assertEquals(1, eventsRelList.size)
         val expectedRelEvents = listOf(
-                mapOf("start" to mapOf("name" to "Andrea", "surname" to "Santurbano"),
-                        "end" to mapOf("name" to "Michael", "surname" to "Hunger"),
+                mapOf("start" to mapOf("name" to "Michael", "surname" to "Hunger"),
+                        "end" to mapOf("name" to "My Awesome Product"),
                         "properties" to mapOf("since" to 2014))
         )
         assertEquals(expectedRelEvents, eventsRelList)
@@ -285,6 +289,8 @@ class SchemaIngestionStrategyTest {
     @Test
     fun `should create the Schema Query Strategy for relationships deletes`() {
         // given
+        val relSchema = Schema(properties = mapOf("since" to "Long"),
+                constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
         val cdcDataRelationship = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
                         username = "user",
@@ -295,13 +301,13 @@ class SchemaIngestionStrategyTest {
                 ),
                 payload = RelationshipPayload(
                         id = "2",
-                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
-                        end = RelationshipNodeChange(id = "1", labels = listOf("User"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User", "NewLabel"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User", "NewLabel"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
                         after = RelationshipChange(properties = mapOf("since" to 2014, "foo" to "label")),
                         before = RelationshipChange(properties = mapOf("since" to 2014)),
                         label = "KNOWS WHO"
                 ),
-                schema = Schema()
+                schema = relSchema
         )
         val cdcQueryStrategy = SchemaIngestionStrategy()
         val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
