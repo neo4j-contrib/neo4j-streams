@@ -91,8 +91,10 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
 
+        val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
-                constraints = listOf(Constraint(label = "User", type =  StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
+                constraints = constraints)
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
                         username = "user",
@@ -137,7 +139,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
                         before = null,
                         label = "KNOWS WHO"
                 ),
-                schema = Schema()
+                schema = relSchema
         )
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataStart))
         kafkaProducer.send(producerRecord).get()

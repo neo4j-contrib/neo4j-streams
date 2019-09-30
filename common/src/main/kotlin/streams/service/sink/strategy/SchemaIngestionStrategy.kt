@@ -2,38 +2,73 @@ package streams.service.sink.strategy
 
 import streams.events.*
 import streams.extensions.quote
+import streams.service.StreamsSinkEntity
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeKeysAsString
-import streams.serialization.JSONUtils
-import streams.service.StreamsSinkEntity
 import streams.utils.SchemaUtils.getNodeKeys
 import streams.utils.SchemaUtils.toStreamsTransactionEvent
 import streams.utils.StreamsUtils
 
 
-private fun prepareRelationshipEvents(events: List<StreamsTransactionEvent>, withProperties: Boolean = true): Map<RelationshipSchemaMetadata, List<Map<String, Any>>> = events
-        .mapNotNull {
-            val payload = it.payload as RelationshipPayload
+class SchemaIngestionStrategy: IngestionStrategy {
 
-            if (payload.start.ids.isEmpty() || payload.end.ids.isEmpty()) {
-                null
-            } else {
-                val properties = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
+    private fun prepareRelationshipEvents(events: List<StreamsTransactionEvent>, withProperties: Boolean = true): Map<RelationshipSchemaMetadata, List<Map<String, Any>>> = events
+            .mapNotNull {
+                val payload = it.payload as RelationshipPayload
 
-                val key = RelationshipSchemaMetadata(it.payload)
-                val value = if (withProperties) {
-                    mapOf("start" to payload.start.ids, "end" to payload.end.ids, "properties" to properties)
-                } else {
-                    mapOf("start" to payload.start.ids, "end" to payload.end.ids)
+                val startNodeConstraints = getNodeConstraints(it) {
+                    it.type == StreamsConstraintType.UNIQUE && payload.start.labels.orEmpty().contains(it.label)
+                }
+                val endNodeConstraints = getNodeConstraints(it) {
+                    it.type == StreamsConstraintType.UNIQUE && payload.end.labels.orEmpty().contains(it.label)
                 }
 
-                key to value
+                if (constraintsAreEmpty(startNodeConstraints, endNodeConstraints)) {
+                    null
+                } else {
+                    createRelationshipMetadata(payload, startNodeConstraints, endNodeConstraints, withProperties)
+                }
             }
-        }
-        .groupBy { it.first }
-        .mapValues { it.value.map { it.second } }
+            .groupBy { it.first }
+            .mapValues { it.value.map { it.second } }
 
-class SchemaIngestionStrategy: IngestionStrategy {
+    private fun createRelationshipMetadata(payload: RelationshipPayload, startNodeConstraints: List<Constraint>, endNodeConstraints: List<Constraint>, withProperties: Boolean): Pair<RelationshipSchemaMetadata, Map<String, Map<String, Any>>>? {
+        val startNodeKeys = getNodeKeys(
+                labels = payload.start.labels.orEmpty(),
+                propertyKeys = payload.start.ids.keys,
+                constraints = startNodeConstraints)
+        val endNodeKeys = getNodeKeys(
+                labels = payload.end.labels.orEmpty(),
+                propertyKeys = payload.end.ids.keys,
+                constraints = endNodeConstraints)
+        val start = payload.start.ids.filterKeys { startNodeKeys.contains(it) }
+        val end = payload.end.ids.filterKeys { endNodeKeys.contains(it) }
+
+        return if (idsAreEmpty(start, end)) {
+            null
+        } else {
+            val value = if (withProperties) {
+                val properties = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
+                mapOf("start" to start, "end" to end, "properties" to properties)
+            } else {
+                mapOf("start" to start, "end" to end)
+            }
+            val key = RelationshipSchemaMetadata(
+                    label = payload.label,
+                    startLabels = payload.start.labels.orEmpty().filter { label -> startNodeConstraints.any { it.label == label } },
+                    endLabels = payload.end.labels.orEmpty().filter { label -> endNodeConstraints.any { it.label == label } },
+                    startKeys = start.keys,
+                    endKeys = end.keys
+            )
+            key to value
+        }
+    }
+
+    private fun idsAreEmpty(start: Map<String, Any>, end: Map<String, Any>) =
+            start.isEmpty() || end.isEmpty()
+
+    private fun constraintsAreEmpty(startNodeConstraints: List<Constraint>, endNodeConstraints: List<Constraint>) =
+            startNodeConstraints.isEmpty() || endNodeConstraints.isEmpty()
 
     override fun mergeRelationshipEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return prepareRelationshipEvents(events

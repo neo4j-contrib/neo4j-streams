@@ -38,6 +38,13 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
     private fun mapToStreamsEvent(operation: OperationType, payloads: List<Payload>, txd: TransactionData, totalEventsCount: Int, accumulator: AtomicInteger,
             nodeConstraints: Map<String, Set<Constraint>>, relConstraints: Map<String, Set<Constraint>>) : List<StreamsTransactionEvent> {
+
+        val getNodeConstraintsByLabels: (Collection<String>?) -> Set<Constraint> = { labels ->
+            labels.orEmpty()
+                    .flatMap { label -> nodeConstraints[label].orEmpty() }
+                    .toSet()
+        }
+
         return payloads.map { payload ->
             accumulator.incrementAndGet()
             val schema = if (payload is NodePayload) {
@@ -52,7 +59,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
             } else  {
                 val relationshipPayload = (payload as RelationshipPayload)
                 val relType = relationshipPayload.label
-                val constraints = relConstraints[relType].orEmpty()
+                val constraints = (relConstraints[relType].orEmpty()
+                        + getNodeConstraintsByLabels(relationshipPayload.start.labels)
+                        + getNodeConstraintsByLabels(relationshipPayload.end.labels))
                 SchemaBuilder()
                         .withPayload(payload)
                         .withConstraints(constraints)
