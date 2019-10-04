@@ -21,6 +21,8 @@ abstract class StreamsEventSink(private val config: Config,
 
     open fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper = StreamsEventSinkConfigMapper(streamsConfigMap, mappingKeys)
 
+    open fun printInvalidTopics() {}
+
 }
 
 object StreamsEventSinkFactory {

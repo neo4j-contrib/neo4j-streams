@@ -30,6 +30,13 @@ data class StreamsEventRouterConfiguration(val enabled: Boolean = true,
                                            val nodeRouting: List<NodeRoutingConfiguration> = listOf(NodeRoutingConfiguration()),
                                            val relRouting: List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration()),
                                            val schemaPollingInterval: Long = 300000) {
+
+    fun allTopics(): List<String> {
+        val nodeTopics = nodeRouting.map { it.topic }
+        val relTopics = relRouting.map { it.topic }
+        return nodeTopics + relTopics
+    }
+
     companion object {
         fun from(config: Map<String, String>): StreamsEventRouterConfiguration {
             val nodeRouting = filterMap<NodeRoutingConfiguration>(config = config,

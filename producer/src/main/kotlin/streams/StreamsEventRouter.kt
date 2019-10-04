@@ -13,6 +13,8 @@ abstract class StreamsEventRouter(val logService: LogService?, val config: Confi
 
     abstract fun stop()
 
+    open fun printInvalidTopics() {}
+
 }
 
 

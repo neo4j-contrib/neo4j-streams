@@ -1,14 +1,29 @@
 package streams.kafka
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import streams.*
+import streams.StreamsEventConsumer
+import streams.StreamsEventConsumerFactory
+import streams.StreamsEventSink
+import streams.StreamsEventSinkQueryExecution
+import streams.StreamsSinkConfiguration
+import streams.StreamsSinkConfigurationConstants
+import streams.StreamsTopicService
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
+import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.Neo4jUtils
+import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 
 
@@ -115,6 +130,14 @@ class KafkaEventSink(private val config: Config,
                 eventConsumer.stop()
             }
         }
+    }
+
+    override fun printInvalidTopics() {
+        StreamsUtils.ignoreExceptions({
+            if (eventConsumer.invalidTopics().isNotEmpty()) {
+                log.warn(getInvalidTopicsError(eventConsumer.invalidTopics()))
+            }
+        }, UninitializedPropertyAccessException::class.java)
     }
 
 }

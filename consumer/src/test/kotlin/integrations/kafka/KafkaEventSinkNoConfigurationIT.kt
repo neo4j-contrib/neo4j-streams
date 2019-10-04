@@ -23,7 +23,7 @@ class KafkaEventSinkNoConfigurationIT {
     private val topic = "no-config"
 
     @Test
-    fun `the db should start even with no bootstrap servers provided()`() {
+    fun `the db should start even with no bootstrap servers provided`() {
         val db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", "")
@@ -35,7 +35,7 @@ class KafkaEventSinkNoConfigurationIT {
     }
 
     @Test
-    fun `the db should start even with AVRO serializers and no schema registry url provided()`() {
+    fun `the db should start even with AVRO serializers and no schema registry url provided`() {
         val fakeWebServer = FakeWebServer()
         fakeWebServer.start()
         val url = fakeWebServer.getUrl().replace("http://", "")

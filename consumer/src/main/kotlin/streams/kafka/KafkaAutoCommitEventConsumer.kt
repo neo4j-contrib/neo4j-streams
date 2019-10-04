@@ -42,6 +42,8 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                                         private val log: Log,
                                         private val errorService: ErrorService): StreamsEventConsumer(log, errorService) {
 
+    override fun invalidTopics(): List<String> = config.streamsSinkConfiguration.topics.invalid
+
     private var isSeekSet = false
 
     val consumer: KafkaConsumer<*, *> = when {

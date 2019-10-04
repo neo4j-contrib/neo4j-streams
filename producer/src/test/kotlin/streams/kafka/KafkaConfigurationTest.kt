@@ -22,7 +22,8 @@ class KafkaConfigurationTest {
                 "kafka.replication" to 2,
                 "kafka.transactional.id" to "foo",
                 "kafka.linger.ms" to 10,
-                "kafka.fetch.min.bytes" to 1234)
+                "kafka.fetch.min.bytes" to 1234,
+                "kafka.topic.discovery.polling.interval" to 0L)
 
         val kafkaConfig = KafkaConfiguration.create(map.mapValues { it.value.toString() })
 
@@ -46,5 +47,6 @@ class KafkaConfigurationTest {
         assertEquals(map["kafka.transactional.id"], properties["transactional.id"])
         assertEquals(map["kafka.linger.ms"], properties["linger.ms"])
         assertEquals(map["kafka.fetch.min.bytes"].toString(), properties["fetch.min.bytes"])
+        assertEquals(map["kafka.topic.discovery.polling.interval"], properties["topic.discovery.polling.interval"])
     }
 }

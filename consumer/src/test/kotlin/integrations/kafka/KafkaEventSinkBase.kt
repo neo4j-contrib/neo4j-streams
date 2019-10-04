@@ -1,5 +1,6 @@
 package integrations.kafka
 
+import integrations.kafka.KafkaTestUtils.createProducer
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -62,8 +63,11 @@ open class KafkaEventSinkBase {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-        kafkaProducer = createProducer()
-        kafkaAvroProducer = createProducer(valueSerializer = KafkaAvroSerializer::class.java.name,
+        kafkaProducer = createProducer(kafka = KafkaEventSinkSuiteIT.kafka, schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
+        kafkaAvroProducer = createProducer(
+                kafka = KafkaEventSinkSuiteIT.kafka,
+                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry,
+                valueSerializer = KafkaAvroSerializer::class.java.name,
                 keySerializer = KafkaAvroSerializer::class.java.name)
     }
 
@@ -73,36 +77,4 @@ open class KafkaEventSinkBase {
         kafkaProducer.close()
         kafkaAvroProducer.close()
     }
-
-    fun <K, V> createConsumer(keyDeserializer: String = StringDeserializer::class.java.name,
-                              valueDeserializer: String = ByteArrayDeserializer::class.java.name,
-                              vararg topics: String): KafkaConsumer<K, V> {
-        val props = Properties()
-        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = KafkaEventSinkSuiteIT.kafka.bootstrapServers
-        props["zookeeper.connect"] = KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        props["group.id"] = "neo4j"
-        props["enable.auto.commit"] = "true"
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer
-        props["auto.offset.reset"] = "earliest"
-        props["schema.registry.url"] = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl()
-        val consumer = KafkaConsumer<K, V>(props)
-        if (!topics.isNullOrEmpty()) {
-            consumer.subscribe(topics.toList())
-        }
-        return consumer
-    }
-
-    fun <K, V> createProducer(keySerializer: String = StringSerializer::class.java.name,
-                              valueSerializer: String = ByteArraySerializer::class.java.name): KafkaProducer<K, V> {
-        val props = Properties()
-        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = KafkaEventSinkSuiteIT.kafka.bootstrapServers
-        props["zookeeper.connect"] = KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        props["group.id"] = "neo4j"
-        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = keySerializer
-        props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer
-        props["schema.registry.url"] = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl()
-        return KafkaProducer(props)
-    }
-
 }

@@ -83,6 +83,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
             streamsTopicService.clearAll()
             streamsTopicService.setAll(streamsSinkConfiguration.topics)
             eventSink.start()
+            eventSink.printInvalidTopics()
         }
 
         override fun stop() {

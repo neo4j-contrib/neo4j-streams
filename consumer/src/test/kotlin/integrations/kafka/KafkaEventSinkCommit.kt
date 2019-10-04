@@ -1,5 +1,6 @@
 package integrations.kafka
 
+import integrations.kafka.KafkaTestUtils.createConsumer
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -32,7 +33,9 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
             val query = "MATCH (n:Label) RETURN count(*) AS count"
             val result = db.execute(query).columnAs<Long>("count")
 
-            val kafkaConsumer = createConsumer<String, ByteArray>()
+            val kafkaConsumer = createConsumer<String, ByteArray>(
+                    kafka = KafkaEventSinkSuiteIT.kafka,
+                    schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
             val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
             kafkaConsumer.close()
 
