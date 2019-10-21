@@ -49,7 +49,8 @@ ext {
             'developer-manual'  : "${docsBaseUri}/developer-manual/current",
             'graph-algorithms'  : "${docsBaseUri}/graph-algorithms/current",
             'apoc'              : "${apocBaseUri}/${versions.apocDocs}",
-            'streams'           : "${streamsBaseUri}/${versions.apocDocs}",
+            'neo4j-streams'           : "${streamsBaseUri}/${versions.apocDocs}",
+            'neo-semantics'  : "${docsBaseUri}/labs/nsmntx/current",
             'java-reference'    : "${docsBaseUri}/java-reference/current",
             'rest-docs'         : "${docsBaseUri}/rest-docs/current",
             'ogm-manual'        : "${docsBaseUri}/ogm-manual/current",
@@ -175,13 +176,11 @@ html {
     outputs.dir outputDir
 
     def libraryLinks = [
-        "Operations_Manual=${crossReferenceBase['operations-manual']}",
-        "Developer_Manual=${crossReferenceBase['developer-manual']}/",
-        "OGM_Manual=${crossReferenceBase['ogm-manual']}/",
-        "Graph_Algorithms=${crossReferenceBase['graph-algorithms']}/",
-        "Java_Reference=${crossReferenceBase['java-reference']}/",
-        "APOC=${crossReferenceBase['apoc']}/",
-        "Neo4j_Streams=${crossReferenceBase['streams']}/",
+            "APOC=${crossReferenceBase['apoc']}/",
+            "Neo4j_Streams=${crossReferenceBase['neo4j-streams']}/",
+            "Neo_Semantics=${crossReferenceBase['neo-semantics']}/",
+            "Graph_Algorithms=${crossReferenceBase['graph-algorithms']}/",
+            "Developer_Manual=${crossReferenceBase['developer-manual']}/",
 
     ].join(" ")
     def scripts = [
@@ -219,7 +218,7 @@ html {
           tabTheSource($('body'));
           var $header = $('header').first();
           $header.prepend(
-            $('<a href="" id="logo"><img src="https://s3.amazonaws.com/dev.assets.neo4j.com/wp-content/uploads/20190802073913/labs-logo6.png" alt="Neo4j Labs Logo"/></a>')
+            $('<a href="https://neo4j.com/docs/labs/" id="logo"><img src="https://s3.amazonaws.com/dev.assets.neo4j.com/wp-content/uploads/20190802073913/labs-logo6.png" alt="Neo4j Labs Logo"/></a>')
           );
           var sidebar = $('<div id=\"sidebar-wrapper\"/>');
           $.get('toc.html', function (d){
