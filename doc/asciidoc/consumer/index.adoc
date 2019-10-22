@@ -454,7 +454,7 @@ For the description of the `ids` and `labels` fields please please look at the n
 
 |===
 
-=== How deal with bad data
+=== How to deal with bad data
 
 The Neo4j Streams Plugin provides several means to handle processing errors.
 
