@@ -1,29 +1,31 @@
 version: '3'
 services:
   neo4j:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j
     container_name: neo4j
     ports:
-    - "7474:7474"
-    - "7687:7687"
+      - "7474:7474"
+      - "7687:7687"
     depends_on:
-    - kafka
+      - kafka
     volumes:
-    - ./neo4j/plugins:/plugins:/plugins
+      - ./neo4j/plugins:/plugins
     environment:
       NEO4J_AUTH: neo4j/streams
       NEO4J_dbms_logs_debug_level: DEBUG
       # KAFKA related configuration
       NEO4J_kafka_zookeeper_connect: zookeeper:12181
       NEO4J_kafka_bootstrap_servers: kafka:19092
+      NEO4J_streams_source_topic_nodes_neo4j: Person{*}
+      NEO4J_streams_source_topic_relationships_neo4j: KNOWS{*}
 
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
     hostname: zookeeper
     container_name: zookeeper
     ports:
-    - "12181:12181"
+      - "12181:12181"
     environment:
       ZOOKEEPER_CLIENT_PORT: 12181
 
@@ -32,9 +34,9 @@ services:
     hostname: kafka
     container_name: kafka
     ports:
-    - "19092:19092"
+      - "19092:19092"
     depends_on:
-    - zookeeper
+      - zookeeper
     environment:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:12181

@@ -2,7 +2,7 @@ version: '3'
 
 services:
   neo4j-source:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j-source
     container_name: neo4j-source
     depends_on:
@@ -24,7 +24,7 @@ services:
       NEO4J_streams_source_schema_polling_interval: 10000
 
   neo4j-sink:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j-sink
     container_name: neo4j-sink
     depends_on:
@@ -43,6 +43,45 @@ services:
       NEO4J_streams_source_enabled: "false"
       NEO4J_streams_sink_topic_cdc_schema: "neo4j"
       NEO4J_dbms_logs_debug_level: DEBUG
+      NEO4J_streams_sink_enabled: "true"
+      NEO4J_streams_sink_topic_neo4j:
+        "WITH event.value.payload AS payload, event.value.meta AS meta
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Question' THEN [1] ELSE [] END |
+          MERGE (n:Question{neo_id: toInteger(payload.id)}) ON CREATE
+            SET n += payload.after.properties
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Answer' THEN [1] ELSE [] END |
+          MERGE (n:Answer{neo_id: toInteger(payload.id)}) ON CREATE
+            SET n += payload.after.properties
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'User' THEN [1] ELSE [] END |
+          MERGE (n:User{neo_id: toInteger(payload.id)}) ON CREATE
+            SET n += payload.after.properties
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Tag' THEN [1] ELSE [] END |
+          MERGE (n:Tag{neo_id: toInteger(payload.id)}) ON CREATE
+            SET n += payload.after.properties
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation <> 'deleted' and payload.label = 'ANSWERS' THEN [1] ELSE [] END |
+          MERGE (s:Answer{neo_id: toInteger(payload.start.id)})
+          MERGE (e:Question{neo_id: toInteger(payload.end.id)})
+          CREATE (s)-[:ANSWERS{neo_id: toInteger(payload.id)}]->(e)
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation <> 'deleted' and payload.label = 'TAGGED' THEN [1] ELSE [] END |
+          MERGE (s:Question{neo_id: toInteger(payload.start.id)})
+          MERGE (e:Tag{neo_id: toInteger(payload.end.id)})
+          CREATE (s)-[:TAGGED{neo_id: toInteger(payload.id)}]->(e)
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation <> 'deleted' and payload.label = 'PROVIDED' THEN [1] ELSE [] END |
+          MERGE (s:User{neo_id: toInteger(payload.start.id)})
+          MERGE (e:Answer{neo_id: toInteger(payload.end.id)})
+          CREATE (s)-[:PROVIDED{neo_id: toInteger(payload.id)}]->(e)
+        )
+        FOREACH (ignoreMe IN CASE WHEN payload.type = 'relationship' AND meta.operation <> 'deleted' and payload.label = 'ASKED' THEN [1] ELSE [] END |
+          MERGE (s:User{neo_id: toInteger(payload.start.id)})
+          MERGE (e:Question{neo_id: toInteger(payload.end.id)})
+          CREATE (s)-[:ASKED{neo_id: toInteger(payload.id)}]->(e)
+        )"
 
   zookeeper:
     image: confluentinc/cp-zookeeper

@@ -1,0 +1,8 @@
+
+[#kafka_connect_config_policy]
+=== Kafka Connect Client Config Override Policy
+
+In Apache Kafka 2.3.0 was introduced the ability for each source and sink connector to inherit their client configurations
+from the worker properties.
+
+For further details see this link: https://cwiki.apache.org/confluence/display/KAFKA/KIP-458%3A+Connector+Client+Config+Override+Policy

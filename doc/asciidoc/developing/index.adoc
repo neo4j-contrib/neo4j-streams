@@ -1,4 +1,4 @@
-[[developing]]
+
 == Developing Neo4j Streams
 
 ifdef::env-docs[]
@@ -8,7 +8,7 @@ This chapter describes setting up Neo4j Streams for local development.
 --
 endif::env-docs[]
 
-[[build-locally]]
+
 === Build locally
 
 ----
@@ -18,11 +18,9 @@ mvn clean install
 1. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
 2. Restart Neo4j
 
-[[gendocs]]
+
 === Generating this Documentation
 
-1. `cd docs && ./gradlew clean packageHTML`
+1. `cd doc && ./gradlew clean packageHTML`
 2. `cd build/html && python3 -m http.server`
 3. Browse to http://localhost:8000/
-
-
