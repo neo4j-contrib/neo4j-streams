@@ -139,7 +139,7 @@ class PreviousTransactionDataBuilder {
                             .withId(it.id.toString())
                             .withName(it.type.name())
                             .withStartNode(it.startNode.id.toString(), startLabels, it.startNode.getProperties(*startNodeKeys))
-                            .withEndNode(it.endNode.id.toString(), endLabels, it.startNode.getProperties(*endNodeKeys))
+                            .withEndNode(it.endNode.id.toString(), endLabels, it.endNode.getProperties(*endNodeKeys))
                             .withBefore(beforeNode)
                             .withAfter(afterNode)
                             .build()
