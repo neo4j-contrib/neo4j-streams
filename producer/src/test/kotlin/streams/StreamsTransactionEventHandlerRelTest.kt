@@ -313,4 +313,94 @@ class StreamsTransactionEventHandlerRelTest {
         assertEquals(0,previous.deletedPayload.size)
         assertEquals(0,previous.createdPayload.size)
     }
+
+    @Test
+    fun beforeUpdateRelWithDiffNodeConstraint() = runBlocking {
+
+        val startLabel = "Person"
+        val endLabel = "City"
+        val relType = "LIVES_IN"
+        val relationshipProperties = mapOf("since" to 2016)
+        val mockedStartNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedStartNode.id).thenReturn(1)
+        Mockito.`when`(mockedStartNode.labels).thenReturn(listOf(Label.label(startLabel)))
+        val startNodeProperties = mapOf("name" to "James", "surname" to "Chu", "age" to 25)
+        Mockito.`when`(mockedStartNode.allProperties).thenReturn(startNodeProperties)
+        Mockito.`when`(mockedStartNode.propertyKeys).thenReturn(startNodeProperties.keys)
+        Mockito.`when`(mockedStartNode.getProperties("name", "surname")).thenReturn(startNodeProperties.filterKeys { it == "name" || it == "surname" })
+        val nodeStartConstraintDefinition = Mockito.mock(ConstraintDefinition::class.java)
+        Mockito.`when`(nodeStartConstraintDefinition.constraintType).thenReturn(ConstraintType.NODE_KEY)
+        Mockito.`when`(nodeStartConstraintDefinition.propertyKeys).thenReturn(listOf("name", "surname"))
+        Mockito.`when`(nodeStartConstraintDefinition.relationshipType).thenThrow(IllegalStateException("Constraint is associated with nodes"))
+        Mockito.`when`(nodeStartConstraintDefinition.label).thenReturn(Label.label("Person"))
+
+        val mockedEndNode = Mockito.mock(Node::class.java)
+        Mockito.`when`(mockedEndNode.id).thenReturn(2)
+        Mockito.`when`(mockedEndNode.labels).thenReturn(listOf(Label.label(endLabel)))
+        val endNodeProperties = mapOf("name" to "Beijing", "postal_code" to "100000")
+        Mockito.`when`(mockedEndNode.allProperties).thenReturn(endNodeProperties)
+        Mockito.`when`(mockedEndNode.propertyKeys).thenReturn(endNodeProperties.keys)
+        Mockito.`when`(mockedEndNode.getProperties("name")).thenReturn(endNodeProperties.filterKeys { it == "name" })
+        val nodeEndConstraintDefinition = Mockito.mock(ConstraintDefinition::class.java)
+        Mockito.`when`(nodeEndConstraintDefinition.constraintType).thenReturn(ConstraintType.UNIQUENESS)
+        Mockito.`when`(nodeEndConstraintDefinition.propertyKeys).thenReturn(listOf("name"))
+        Mockito.`when`(nodeEndConstraintDefinition.relationshipType).thenThrow(IllegalStateException("Constraint is associated with nodes"))
+        Mockito.`when`(nodeEndConstraintDefinition.label).thenReturn(Label.label("City"))
+
+        val mockedRel = Mockito.mock(Relationship::class.java)
+        Mockito.`when`(mockedRel.id).thenReturn(1)
+        Mockito.`when`(mockedRel.type).thenReturn(RelationshipType.withName(relType))
+        Mockito.`when`(mockedRel.startNode).thenReturn(mockedStartNode)
+        Mockito.`when`(mockedRel.endNode).thenReturn(mockedEndNode)
+        Mockito.`when`(mockedRel.allProperties).thenReturn(relationshipProperties)
+
+        val constraintDefinition = Mockito.mock(ConstraintDefinition::class.java)
+        Mockito.`when`(constraintDefinition.constraintType).thenReturn(ConstraintType.RELATIONSHIP_PROPERTY_EXISTENCE)
+        Mockito.`when`(constraintDefinition.relationshipType).thenReturn(RelationshipType.withName(relType))
+        Mockito.`when`(constraintDefinition.propertyKeys).thenReturn(listOf("since"))
+        Mockito.`when`(constraintDefinition.label).thenThrow(IllegalStateException("Constraint is associated with relationships"))
+
+        Mockito.`when`(schemaMock.getConstraints(RelationshipType.withName(relType))).thenReturn(listOf(constraintDefinition))
+        Mockito.`when`(schemaMock.getConstraints(Label.label(startLabel))).thenReturn(listOf(nodeStartConstraintDefinition))
+        Mockito.`when`(schemaMock.getConstraints(Label.label(endLabel))).thenReturn(listOf(nodeEndConstraintDefinition))
+        Mockito.`when`(schemaMock.constraints).thenReturn(listOf(nodeStartConstraintDefinition, nodeEndConstraintDefinition, constraintDefinition))
+
+        delay(500) // wait the StreamsConstraintsService to load the constraints
+
+        val assignedProp = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Relationship>
+        Mockito.`when`(assignedProp.entity()).thenReturn(mockedRel)
+        Mockito.`when`(assignedProp.key()).thenReturn("since")
+        Mockito.`when`(assignedProp.value()).thenReturn(2016)
+        Mockito.`when`(assignedProp.previouslyCommitedValue()).thenReturn(2008)
+
+        val txd = Mockito.mock(TransactionData::class.java)
+        Mockito.`when`(txd.removedRelationshipProperties()).thenReturn(mutableListOf())
+        Mockito.`when`(txd.assignedRelationshipProperties()).thenReturn(mutableListOf(assignedProp))
+        Mockito.`when`(txd.username()).thenReturn("mock")
+
+        val previous = handler.beforeCommit(txd).relData
+
+        assertEquals(1,previous.updatedPayloads.size)
+
+        val rel = previous.updatedPayloads[0]
+        assertEquals("1",rel.id)
+        assertEquals("LIVES_IN",rel.label)
+        assertNotNull(rel.before)
+        assertNotNull(rel.after)
+
+        assertEquals("1", rel.start.id)
+        assertEquals(mapOf("name" to "James", "surname" to "Chu"), rel.start.ids)
+        assertEquals(listOf("Person"), rel.start.labels)
+        assertEquals("2", rel.end.id)
+        assertEquals(mapOf("name" to "Beijing"), rel.end.ids)
+        assertEquals(listOf("City"), rel.end.labels)
+
+        val after : RelationshipChange = rel.after as RelationshipChange
+        assertEquals(mapOf("since" to 2016),after.properties)
+        val before : RelationshipChange = rel.before as RelationshipChange
+        assertEquals(mapOf("since" to 2008),before.properties)
+
+        assertEquals(0,previous.deletedPayload.size)
+        assertEquals(0,previous.createdPayload.size)
+    }
 }
