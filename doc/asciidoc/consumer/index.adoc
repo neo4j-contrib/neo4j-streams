@@ -478,8 +478,8 @@ Config Options
 | errors.log.enable | false/true | log errors (default: false)
 | errors.log.include.messages | false/true | log bad messages too (default: false)
 | errors.deadletterqueue.topic.name | topic-name | dead letter queue topic name, if left off no DLQ, default: not set
-| errors.deadletterqueue.context.header.enable | false/true | enrich messages with metadata headers like exception, timestamp, org. topic, org.part, default:false
-| errors.deadletterqueue.context.header.prefix | prefix-text | common prefix for header entries, e.g. `"__streams.errors."` , default: not set
+| errors.deadletterqueue.context.headers.enable | false/true | enrich messages with metadata headers like exception, timestamp, org. topic, org.part, default:false
+| errors.deadletterqueue.context.headers.prefix | prefix-text | common prefix for header entries, e.g. `"__streams.errors."` , default: not set
 | errors.deadletterqueue.topic.replication.factor | 3/1 | replication factor, need to set to 1 for single partition, default:3
 |===
 
@@ -527,7 +527,7 @@ errors.log.include.messages=true
 ----
 errors.tolerance=all
 errors.deadletterqueue.topic.name=my-dlq-topic
-errors.deadletterqueue.context.header.enable=true
+errors.deadletterqueue.context.headers.enable=true
 ----
 
 .Same Settings for Neo4j Server Plugin
@@ -535,7 +535,7 @@ errors.deadletterqueue.context.header.enable=true
 ----
 streams.sink.errors.tolerance=all
 streams.sink.errors.deadletterqueue.topic.name=my-dlq-topic
-streams.sink.errors.deadletterqueue.context.header.enable=true
+streams.sink.errors.deadletterqueue.context.headers.enable=true
 ----
 
 Every published record in the `Dead Letter Queue` contains the original record `Key` and `Value` pairs and optionally the following headers:

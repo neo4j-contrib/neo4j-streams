@@ -71,7 +71,7 @@ abstract class ErrorService(private val config: Map<String, Any> = emptyMap()) {
 
 
             "errors.log.enable": true,
-            "errors.deadletterqueue.context.header.enable"=true/false
+            "errors.deadletterqueue.context.headers.enable"=true/false
             "errors.deadletterqueue.topic.name": "test-error-topic",
             "errors.deadletterqueue.topic.replication.factor": 1,
             "errors.log.include.messages": true,
@@ -82,8 +82,8 @@ abstract class ErrorService(private val config: Map<String, Any> = emptyMap()) {
             const val LOG = "errors.log.enable"
             const val LOG_MESSAGES = "errors.log.include.messages"
             const val DLQ_TOPIC = "errors.deadletterqueue.topic.name"
-            const val DLQ_HEADERS = "errors.deadletterqueue.context.header.enable"
-            const val DLQ_HEADER_PREFIX = "errors.deadletterqueue.context.header.prefix"
+            const val DLQ_HEADERS = "errors.deadletterqueue.context.headers.enable"
+            const val DLQ_HEADER_PREFIX = "errors.deadletterqueue.context.headers.prefix"
             const val DLQ_REPLICATION = "errors.deadletterqueue.topic.replication.factor"
 
             fun from(props: Properties) = from(props.toMap() as Map<String, Any>)
