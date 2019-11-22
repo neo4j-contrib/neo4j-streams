@@ -24,6 +24,8 @@ import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations
 import streams.service.sink.strategy.CUDRelationship
 import java.util.*
+import java.util.stream.Collectors
+import java.util.stream.StreamSupport
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -310,6 +312,90 @@ class Neo4jSinkTaskTest {
                         assertEquals(1, count)
                         assertFalse { it.hasNext() }
                     }
+        }
+    }
+
+    @Test
+    fun `should insert data into Neo4j from CDC events with schema strategy`() {
+        val firstTopic = "neotopic"
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to firstTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to firstTopic)
+
+        val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
+                constraints = constraints)
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Andrea", "surname" to "Santurbano", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Michael", "surname" to "Hunger", "comp@ny" to "Neo4j"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = mapOf("name" to "Andrea", "surname" to "Santurbano")),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User"), ids = mapOf("name" to "Michael", "surname" to "Hunger")),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "KNOWS WHO"
+                ),
+                schema = relSchema
+        )
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
+                SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
+                SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 44))
+        task.put(input)
+        db.graph().beginTx().use {
+            val query = """
+                |MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})
+                |RETURN count(p) AS count
+                |""".trimMargin()
+            db.graph().execute(query)
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val count = it.next()
+                        assertEquals(1, count)
+                        assertFalse { it.hasNext() }
+                    }
+
+            val labels = db.graph().allLabels.stream().map { it.name() }.collect(Collectors.toSet())
+            assertEquals(setOf("User"), labels)
         }
     }
 
