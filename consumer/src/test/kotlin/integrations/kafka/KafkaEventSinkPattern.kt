@@ -10,7 +10,10 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.serialization.JSONUtils
+import streams.setConfig
 import java.io.PrintWriter
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -22,7 +25,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname,address.city})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano",
                 "address" to mapOf("city" to "Venice", "CAP" to "30100"))
@@ -41,7 +44,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.relationship.$topic",
                 "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
                 "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
 
@@ -62,7 +65,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
         val count = db.execute("MATCH (n:User) RETURN count(n) AS count").columnAs<Long>("count").next()

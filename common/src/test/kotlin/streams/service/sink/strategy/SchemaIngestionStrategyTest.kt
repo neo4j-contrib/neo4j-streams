@@ -4,6 +4,7 @@ import org.junit.Test
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
+import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
 class SchemaIngestionStrategyTest {
@@ -76,7 +77,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (n:User{name: event.properties.name, surname: event.properties.surname})
             |SET n = event.properties
         """.trimMargin()
@@ -93,7 +94,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (start:User{name: event.start.name, surname: event.start.surname})
             |MERGE (end:User{name: event.end.name, surname: event.end.surname})
             |MERGE (start)-[r:`KNOWS WHO`]->(end)
@@ -156,7 +157,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (n:User{name: event.properties.name, surname: event.properties.surname})
             |SET n = event.properties
             |SET n:NewLabel
@@ -208,7 +209,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (start:`User Ext`{name: event.start.name, surname: event.start.surname})
             |MERGE (end:`Product Ext`{name: event.end.name})
             |MERGE (start)-[r:`HAS BOUGHT`]->(end)
@@ -272,7 +273,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(0, nodeEvents.size)
         val nodeQuery = nodeDeleteEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MATCH (n:User{name: event.properties.name, surname: event.properties.surname})
             |DETACH DELETE n
         """.trimMargin()
@@ -321,7 +322,7 @@ class SchemaIngestionStrategyTest {
         assertEquals(0, relationshipEvents.size)
         val relQuery = relationshipDeleteEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MATCH (start:User{name: event.start.name, surname: event.start.surname})
             |MATCH (end:User{name: event.end.name, surname: event.end.surname})
             |MATCH (start)-[r:`KNOWS WHO`]->(end)

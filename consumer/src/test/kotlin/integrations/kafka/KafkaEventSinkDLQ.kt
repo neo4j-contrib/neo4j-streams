@@ -8,8 +8,11 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.errors.ErrorService
+import streams.setConfig
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -23,7 +26,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
@@ -63,7 +66,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
 

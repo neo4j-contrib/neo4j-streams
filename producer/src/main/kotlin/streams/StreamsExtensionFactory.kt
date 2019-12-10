@@ -1,24 +1,29 @@
 package streams
 
+import org.neo4j.configuration.Config
+import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.extension.ExtensionFactory
 import org.neo4j.kernel.extension.ExtensionType
-import org.neo4j.kernel.extension.KernelExtensionFactory
-import org.neo4j.kernel.impl.spi.KernelContext
+import org.neo4j.kernel.extension.context.ExtensionContext
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
+import streams.extensions.raw
 import streams.procedures.StreamsProcedures
+import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
-class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
-    override fun newInstance(context: KernelContext, dependencies: Dependencies): Lifecycle {
+class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
+    override fun newInstance(context: ExtensionContext, dependencies: Dependencies): Lifecycle {
         val db = dependencies.graphdatabaseAPI()
         val log = dependencies.log()
         val configuration = dependencies.config()
-        return StreamsEventRouterLifecycle(db, configuration, dependencies.availabilityGuard(), log)
+        val databaseManagementService = dependencies.databaseManagementService()
+        val availabilityGuard = dependencies.availabilityGuard()
+        return StreamsEventRouterLifecycle(db, configuration, databaseManagementService, availabilityGuard, log)
     }
 
     interface Dependencies {
@@ -26,10 +31,13 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
         fun log(): LogService
         fun config(): Config
         fun availabilityGuard(): AvailabilityGuard
+        fun databaseManagementService(): DatabaseManagementService
     }
 }
 
-class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: Config,
+class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
+                                  private val configuration: Config,
+                                  private val databaseManagementService: DatabaseManagementService,
                                   private val availabilityGuard: AvailabilityGuard,
                                   private val log: LogService): LifecycleAdapter() {
     private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
@@ -40,9 +48,13 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
 
     override fun start() {
         try {
+//            TODO("we should filter the data per `source.*.to.<database>`")
+            if (db.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME) {
+                return
+            }
             streamsLog.info("Initialising the Streams Source module")
             streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
-            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
+            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw())
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()
@@ -58,7 +70,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
         if (streamsEventRouterConfiguration.enabled) {
             streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
             txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
-            db.registerTransactionEventHandler(txHandler)
+            databaseManagementService.registerTransactionEventListener(db.databaseName(), txHandler)
             availabilityGuard.addListener(object: AvailabilityListener {
                 override fun unavailable() {}
 
@@ -72,7 +84,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
             StreamsUtils.ignoreExceptions({ streamsConstraintsService.close() }, UninitializedPropertyAccessException::class.java)
-            db.unregisterTransactionEventHandler(txHandler)
+            databaseManagementService.unregisterTransactionEventListener(db.databaseName(), txHandler)
         }
     }
 

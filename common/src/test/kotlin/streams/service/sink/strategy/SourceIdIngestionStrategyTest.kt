@@ -4,6 +4,7 @@ import org.junit.Test
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
+import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
 class SourceIdIngestionStrategyTest {
@@ -76,7 +77,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (n:`Custom SourceEvent`{`custom Id`: event.id})
             |SET n = event.properties
             |SET n.`custom Id` = event.id
@@ -95,7 +96,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (start:`Custom SourceEvent`{`custom Id`: event.start})
             |MERGE (end:`Custom SourceEvent`{`custom Id`: event.end})
             |MERGE (start)-[r:`KNOWS WHO`{`custom Id`: event.id}]->(end)
@@ -158,7 +159,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (n:SourceEvent{sourceId: event.id})
             |SET n = event.properties
             |SET n.sourceId = event.id
@@ -208,7 +209,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event
+            |${StreamsUtils.UNWIND}
             |MERGE (start:SourceEvent{sourceId: event.start})
             |MERGE (end:SourceEvent{sourceId: event.end})
             |MERGE (start)-[r:`KNOWS WHO`{sourceId: event.id}]->(end)
@@ -271,7 +272,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(0, nodeEvents.size)
         val nodeQuery = nodeDeleteEvents[0].query
         val expectedNodeQuery = """
-            |UNWIND {events} AS event MATCH (n:SourceEvent{sourceId: event.id}) DETACH DELETE n
+            |${StreamsUtils.UNWIND} MATCH (n:SourceEvent{sourceId: event.id}) DETACH DELETE n
         """.trimMargin()
         assertEquals(expectedNodeQuery, nodeQuery.trimIndent())
         val eventsNodeList = nodeDeleteEvents[0].events
@@ -316,7 +317,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(0, relationshipEvents.size)
         val relQuery = relationshipDeleteEvents[0].query
         val expectedRelQuery = """
-            |UNWIND {events} AS event MATCH ()-[r:`KNOWS WHO`{sourceId: event.id}]-() DELETE r
+            |${StreamsUtils.UNWIND} MATCH ()-[r:`KNOWS WHO`{sourceId: event.id}]-() DELETE r
         """.trimMargin()
         assertEquals(expectedRelQuery, relQuery.trimIndent())
         val eventsRelList = relationshipDeleteEvents[0].events

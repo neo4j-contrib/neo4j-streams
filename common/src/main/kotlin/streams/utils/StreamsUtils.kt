@@ -2,7 +2,7 @@ package streams.utils
 
 object StreamsUtils {
 
-    const val UNWIND: String = "UNWIND {events} AS event"
+    const val UNWIND: String = "UNWIND \$events AS event"
 
     const val STREAMS_CONFIG_PREFIX = "streams."
 

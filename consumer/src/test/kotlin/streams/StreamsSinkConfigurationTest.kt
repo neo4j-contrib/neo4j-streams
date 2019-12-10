@@ -1,7 +1,7 @@
 package streams
 
 import org.junit.Test
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import streams.service.TopicType
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -24,7 +24,7 @@ class StreamsSinkConfigurationTest {
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val customLabel = "CustomLabel"
         val customId = "customId"
-        val config = Config.builder()
+        val config = Config.newBuilder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
@@ -46,7 +46,7 @@ class StreamsSinkConfigurationTest {
         val topic = "topic-neo"
         val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
-        val config = Config.builder()
+        val config = Config.newBuilder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.topic.pattern.node.nodePatternTopic", "User{!userId,name,surname,address.city}")
@@ -60,7 +60,7 @@ class StreamsSinkConfigurationTest {
     fun shouldFailWithCrossDefinedCDCTopics() {
         val pollingInterval = "10"
         val topic = "topic-neo"
-        val config = Config.builder()
+        val config = Config.newBuilder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.sourceId", topic)

@@ -15,8 +15,11 @@ import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
-import org.neo4j.graphdb.factory.GraphDatabaseBuilder
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import org.neo4j.test.extension.ImpermanentDbmsExtension
+import org.neo4j.test.rule.DbmsRule
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.setConfig
 import java.util.*
 
 open class KafkaEventSinkBase {
@@ -43,9 +46,9 @@ open class KafkaEventSinkBase {
         }
     }
 
-    lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
+    lateinit var graphDatabaseBuilder: DbmsRule
 
-    lateinit var db: GraphDatabaseAPI
+    lateinit var db: ImpermanentDbmsRule
 
     lateinit var kafkaProducer: KafkaProducer<String, ByteArray>
     lateinit var kafkaAvroProducer: KafkaProducer<GenericRecord, GenericRecord>
@@ -58,10 +61,9 @@ open class KafkaEventSinkBase {
 
     @Before
     fun setUp() {
-        graphDatabaseBuilder = org.neo4j.test.TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
+        graphDatabaseBuilder = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
-                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
+//                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"] ?: "")
                 .setConfig("streams.sink.enabled", "true")
         kafkaProducer = createProducer(kafka = KafkaEventSinkSuiteIT.kafka, schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
         kafkaAvroProducer = createProducer(

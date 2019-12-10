@@ -1,28 +1,16 @@
 package streams.utils
 
-import org.junit.*
-import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.junit.ClassRule
+import org.junit.Test
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class Neo4jUtilsTest {
 
     companion object {
-        private lateinit var db: GraphDatabaseAPI
-        @BeforeClass
-        @JvmStatic
-        fun setUp() {
-            db = TestGraphDatabaseFactory()
-                    .newImpermanentDatabaseBuilder()
-                    .newGraphDatabase() as GraphDatabaseAPI
-        }
-
-        @AfterClass
-        @JvmStatic
-        fun tearDown() {
-            db.shutdown()
-        }
+        @ClassRule @JvmField
+        val db = ImpermanentDbmsRule()
     }
 
     @Test

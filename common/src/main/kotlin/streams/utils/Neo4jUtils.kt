@@ -6,14 +6,15 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.logging.internal.LogService
 import org.neo4j.logging.Log
-import org.neo4j.logging.NullLog
+import org.neo4j.logging.internal.LogService
+import streams.extensions.execute
 import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
 
 object Neo4jUtils {
     @JvmStatic val LEADER = "LEADER"
+    @JvmStatic val SYSTEM_DATABASE_NAME = "system"
     fun isWriteableInstance(db: GraphDatabaseAPI): Boolean {
         try {
             val isSlave = StreamsUtils.ignoreExceptions(

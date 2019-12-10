@@ -12,7 +12,10 @@ import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.serialization.JSONUtils
+import streams.setConfig
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -27,7 +30,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
@@ -75,7 +78,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic","(:Place{!name})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()

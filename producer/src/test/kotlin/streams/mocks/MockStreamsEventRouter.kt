@@ -1,6 +1,6 @@
 package streams.mocks
 
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
 import streams.events.StreamsEvent

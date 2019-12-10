@@ -3,32 +3,29 @@ package streams
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.neo4j.kernel.impl.core.EmbeddedProxySPI
-import org.neo4j.kernel.impl.core.GraphProperties
+import org.neo4j.dbms.api.DatabaseManagementService
+import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.kafka.KafkaSinkConfiguration
 import streams.service.TopicType
 import streams.service.Topics
+import streams.utils.Neo4jUtils
 import kotlin.test.assertEquals
 
 class StreamsTopicServiceTest {
 
-    private lateinit var db: GraphDatabaseAPI
+    private lateinit var db: ImpermanentDbmsRule
     private lateinit var streamsTopicService: StreamsTopicService
     private lateinit var kafkaConfig: KafkaSinkConfiguration
-    private lateinit var graphProperties: GraphProperties
 
     @Before
     fun setUp() {
-        db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
-                .newGraphDatabase() as GraphDatabaseAPI
+        db = ImpermanentDbmsRule()
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
-        streamsTopicService = StreamsTopicService(db)
+        streamsTopicService = StreamsTopicService(db.managementService.database(Neo4jUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI)
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
-        graphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()
     }
 
     @After

@@ -6,10 +6,12 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.mockito.Mockito
+import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.RelationshipType
+import org.neo4j.graphdb.Transaction
 import org.neo4j.graphdb.event.PropertyEntry
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.schema.ConstraintDefinition
@@ -34,11 +36,13 @@ class StreamsTransactionEventHandlerRelTest {
     @Before
     fun setUp() {
         val dbMock = Mockito.mock(GraphDatabaseAPI::class.java)
+        val txMock = Mockito.mock(Transaction::class.java)
         schemaMock = Mockito.mock(Schema::class.java)
         Mockito.`when`(schemaMock.getConstraints(Mockito.any(Label::class.java))).thenReturn(emptyList())
         Mockito.`when`(schemaMock.getConstraints(Mockito.any(RelationshipType::class.java))).thenReturn(emptyList())
         Mockito.`when`(schemaMock.constraints).thenReturn(emptyList())
-        Mockito.`when`(dbMock.schema()).thenReturn(schemaMock)
+        Mockito.`when`(dbMock.beginTx()).thenReturn(txMock)
+        Mockito.`when`(txMock.schema()).thenReturn(schemaMock)
         streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
         streamsConstraintsService.start()
         handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),
@@ -62,7 +66,7 @@ class StreamsTransactionEventHandlerRelTest {
         val txd = Mockito.mock(TransactionData::class.java)
         Mockito.`when`(txd.createdRelationships()).thenReturn(listOf(mockedRel))
 
-        val previous = handler.beforeCommit(txd).relData
+        val previous = handler.beforeCommit(txd, null, null).relData
 
         assertEquals(1,previous.createdPayload.size)
         val rel = previous.createdPayload[0]
@@ -109,19 +113,19 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(removedPropP1.entity()).thenReturn(delRel)
         Mockito.`when`(removedPropP1.key()).thenReturn("p1")
         Mockito.`when`(removedPropP1.value()).thenReturn(null)
-        Mockito.`when`(removedPropP1.previouslyCommitedValue()).thenReturn(1)
+        Mockito.`when`(removedPropP1.previouslyCommittedValue()).thenReturn(1)
 
         val removedPropP2 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Relationship>
         Mockito.`when`(removedPropP2.entity()).thenReturn(delRel)
         Mockito.`when`(removedPropP2.key()).thenReturn("p2")
         Mockito.`when`(removedPropP2.value()).thenReturn(null)
-        Mockito.`when`(removedPropP2.previouslyCommitedValue()).thenReturn("2")
+        Mockito.`when`(removedPropP2.previouslyCommittedValue()).thenReturn("2")
 
         val txd = Mockito.mock(TransactionData::class.java)
         Mockito.`when`(txd.deletedRelationships()).thenReturn(listOf(delRel))
         Mockito.`when`(txd.removedRelationshipProperties()).thenReturn(mutableListOf(removedPropP1, removedPropP2))
 
-        val previous = handler.beforeCommit(txd).relData
+        val previous = handler.beforeCommit(txd, null, null).relData
 
         assertEquals(0,previous.createdPayload.size)
         assertEquals(1,previous.deletedPayload.size)
@@ -143,7 +147,6 @@ class StreamsTransactionEventHandlerRelTest {
 
     @Test
     fun afterCreatedRel() = runBlocking {
-
         val startLabel = "Person"
         val endLabel = "City"
         val relType = "LIVES_IN"
@@ -197,8 +200,8 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(schemaMock.constraints).thenReturn(listOf(nodeStartConstraintDefinition, nodeEndConstraintDefinition, constraintDefinition))
 
         delay(500) // wait the StreamsConstraintsService to load the constraints
-        val prev = handler.beforeCommit(txd)
-        handler.afterCommit(txd, prev)
+        val prev = handler.beforeCommit(txd, null, null)
+        handler.afterCommit(txd, prev, null)
 
         assertEquals(1, MockStreamsEventRouter.events.size)
         assertEquals(OperationType.created, MockStreamsEventRouter.events[0].meta.operation)
@@ -230,21 +233,21 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(removedPropP1.entity()).thenReturn(delRel)
         Mockito.`when`(removedPropP1.key()).thenReturn("p1")
         Mockito.`when`(removedPropP1.value()).thenReturn(null)
-        Mockito.`when`(removedPropP1.previouslyCommitedValue()).thenReturn(1)
+        Mockito.`when`(removedPropP1.previouslyCommittedValue()).thenReturn(1)
 
         val removedPropP2 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Relationship>
         Mockito.`when`(removedPropP2.entity()).thenReturn(delRel)
         Mockito.`when`(removedPropP2.key()).thenReturn("p2")
         Mockito.`when`(removedPropP2.value()).thenReturn(null)
-        Mockito.`when`(removedPropP2.previouslyCommitedValue()).thenReturn("2")
+        Mockito.`when`(removedPropP2.previouslyCommittedValue()).thenReturn("2")
 
         val txd = Mockito.mock(TransactionData::class.java)
         Mockito.`when`(txd.deletedRelationships()).thenReturn(listOf(delRel))
         Mockito.`when`(txd.removedRelationshipProperties()).thenReturn(mutableListOf(removedPropP1, removedPropP2))
         Mockito.`when`(txd.username()).thenReturn("mock")
 
-        val prev = handler.beforeCommit(txd)
-        handler.afterCommit(txd, prev)
+        val prev = handler.beforeCommit(txd, null, null)
+        handler.afterCommit(txd, prev, null)
 
         assertEquals(1, MockStreamsEventRouter.events.size)
         assertEquals(OperationType.deleted, MockStreamsEventRouter.events[0].meta.operation)
@@ -267,26 +270,26 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(removedProp.entity()).thenReturn(mockedRel)
         Mockito.`when`(removedProp.key()).thenReturn("p3")
         Mockito.`when`(removedProp.value()).thenReturn(null)
-        Mockito.`when`(removedProp.previouslyCommitedValue()).thenReturn(3)
+        Mockito.`when`(removedProp.previouslyCommittedValue()).thenReturn(3)
 
         val assignedPropP1 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Relationship>
         Mockito.`when`(assignedPropP1.entity()).thenReturn(mockedRel)
         Mockito.`when`(assignedPropP1.key()).thenReturn("p1")
         Mockito.`when`(assignedPropP1.value()).thenReturn(1)
-        Mockito.`when`(assignedPropP1.previouslyCommitedValue()).thenReturn(null)
+        Mockito.`when`(assignedPropP1.previouslyCommittedValue()).thenReturn(null)
 
         val assignedPropP2 = Mockito.mock(PropertyEntry::class.java) as PropertyEntry<Relationship>
         Mockito.`when`(assignedPropP2.entity()).thenReturn(mockedRel)
         Mockito.`when`(assignedPropP2.key()).thenReturn("p2")
         Mockito.`when`(assignedPropP2.value()).thenReturn("2")
-        Mockito.`when`(assignedPropP2.previouslyCommitedValue()).thenReturn("noval")
+        Mockito.`when`(assignedPropP2.previouslyCommittedValue()).thenReturn("noval")
 
         val txd = Mockito.mock(TransactionData::class.java)
         Mockito.`when`(txd.removedRelationshipProperties()).thenReturn(mutableListOf(removedProp))
         Mockito.`when`(txd.assignedRelationshipProperties()).thenReturn(mutableListOf(assignedPropP1, assignedPropP2))
         Mockito.`when`(txd.username()).thenReturn("mock")
 
-        val previous = handler.beforeCommit(txd).relData
+        val previous = handler.beforeCommit(txd, null, null).relData
 
         assertEquals(1,previous.updatedPayloads.size)
 

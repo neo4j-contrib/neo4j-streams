@@ -6,9 +6,11 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.Ignore
 import org.junit.Test
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationTest
+import streams.extensions.raw
+import streams.withSetting
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -39,7 +41,7 @@ class KafkaSinkConfigurationTest {
         val group = "foo"
         val autoOffsetReset = "latest"
         val autoCommit = "false"
-        val config = Config.builder()
+        val config = Config.newBuilder()
                 .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("kafka.zookeeper.connect", zookeeper)
@@ -57,7 +59,7 @@ class KafkaSinkConfigurationTest {
                 "key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
-        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config.raw)
+        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config.raw())
         StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
@@ -89,7 +91,7 @@ class KafkaSinkConfigurationTest {
             val group = "foo"
             val autoOffsetReset = "latest"
             val autoCommit = "false"
-            val config = Config.builder()
+            val config = Config.newBuilder()
                     .withSetting("streams.sink.polling.interval", pollingInterval)
                     .withSetting(topicKey, topicValue)
                     .withSetting("kafka.zookeeper.connect", zookeeper)
@@ -121,7 +123,7 @@ class KafkaSinkConfigurationTest {
             val group = "foo"
             val autoOffsetReset = "latest"
             val autoCommit = "false"
-            val config = Config.builder()
+            val config = Config.newBuilder()
                     .withSetting("streams.sink.polling.interval", pollingInterval)
                     .withSetting(topicKey, topicValue)
                     .withSetting("kafka.zookeeper.connect", zookeeper)

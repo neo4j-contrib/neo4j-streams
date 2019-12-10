@@ -9,7 +9,10 @@ import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.serialization.JSONUtils
+import streams.setConfig
 import java.util.*
 import java.util.concurrent.TimeUnit
 
@@ -20,7 +23,7 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
     @Test
     fun shouldWriteDataFromSink() = runBlocking {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -47,7 +50,7 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
 
     @Test
     fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -74,7 +77,7 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         val props = mapOf("id" to 1, "name" to "My Awesome Product")
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),

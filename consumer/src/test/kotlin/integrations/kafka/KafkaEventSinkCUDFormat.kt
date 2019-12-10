@@ -6,11 +6,14 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.sink.strategy.CUDNode
 import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations
 import streams.service.sink.strategy.CUDRelationship
+import streams.setConfig
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
@@ -37,7 +40,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
 
         // when
         list.forEach {
@@ -60,7 +63,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
-                db.allNodes.stream().map { it.allProperties }.toList()
+                it.allNodes.stream().map { it.allProperties }.toList()
             }
             nodes.size == 10 && nodes.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -76,12 +79,12 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val key = "_id"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         val idList = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})").close()
-            assertEquals(10, db.allNodes.count())
-            it.success()
-            db.allNodes.stream()
+            assertEquals(10, it.allNodes.count())
+            it.commit()
+            it.allNodes.stream()
                     .limit(5)
                     .toList()
                     .map { it.id }
@@ -111,7 +114,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
-                db.allNodes.stream().map { it.allProperties }.toList()
+                it.allNodes.stream().map { it.allProperties }.toList()
             }
             val nodesUpdated = nodes.filter { props ->
                 when (props.containsKey("id")) {
@@ -140,11 +143,11 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})").close()
-            assertEquals(10, db.allNodes.count())
-            it.success()
+            assertEquals(10, it.allNodes.count())
+            it.commit()
         }
 
         // when
@@ -178,11 +181,11 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
             db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})").close()
-            assertEquals(10, db.allNodes.count())
-            it.success()
+            assertEquals(10, it.allNodes.count())
+            it.commit()
         }
 
         // when
@@ -215,15 +218,15 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
             db.execute("""
                 UNWIND range(1, 10) AS id
                 CREATE (:Foo:Bar {key: id})
                 CREATE (:FooBar {key: id})
             """.trimIndent()).close()
-            assertEquals(20, db.allNodes.count())
-            it.success()
+            assertEquals(20, it.allNodes.count())
+            it.commit()
         }
 
         // when
@@ -242,7 +245,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val rels = db.beginTx().use {
-                db.allRelationships.stream().map { it.allProperties }.toList()
+                it.allRelationships.stream().map { it.allProperties }.toList()
             }
             rels.size == 10 && rels.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -266,11 +269,11 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
-            assertEquals(10, db.allRelationships.count())
-            it.success()
+            assertEquals(10, it.allRelationships.count())
+            it.commit()
         }
 
         // when
@@ -306,12 +309,12 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val rel_type = "MY_REL"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
         val idMap = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
-            assertEquals(10, db.allRelationships.count())
-            it.success()
-            db.allRelationships.stream()
+            assertEquals(10, it.allRelationships.count())
+            it.commit()
+            it.allRelationships.stream()
                     .limit(5)
                     .toList()
                     .map { it.startNodeId to it.endNodeId }

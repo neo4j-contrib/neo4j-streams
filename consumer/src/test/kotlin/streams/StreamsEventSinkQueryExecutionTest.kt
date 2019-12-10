@@ -3,10 +3,10 @@ package streams
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.NullLog
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.kafka.KafkaSinkConfiguration
 import streams.service.StreamsSinkEntity
 import streams.service.TopicType
@@ -14,14 +14,12 @@ import streams.service.Topics
 import kotlin.test.assertEquals
 
 class StreamsEventSinkQueryExecutionTest {
-    private lateinit var db: GraphDatabaseService
+    private lateinit var db: ImpermanentDbmsRule
     private lateinit var streamsEventSinkQueryExecution: StreamsEventSinkQueryExecution
 
     @Before
     fun setUp() {
-        db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
-                .newGraphDatabase()
+        db = ImpermanentDbmsRule()
         val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
         val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI)

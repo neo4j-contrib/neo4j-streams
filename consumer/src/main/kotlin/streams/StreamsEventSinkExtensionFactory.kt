@@ -2,10 +2,10 @@ package streams
 
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import org.neo4j.kernel.extension.ExtensionType
-import org.neo4j.kernel.extension.KernelExtensionFactory
-import org.neo4j.kernel.impl.spi.KernelContext
+import org.neo4j.kernel.extension.ExtensionFactory
+import org.neo4j.kernel.extension.context.ExtensionContext
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
@@ -15,9 +15,9 @@ import streams.service.TopicUtils
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
-class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Consumer") {
+class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Consumer") {
 
-    override fun newInstance(context: KernelContext, dependencies: Dependencies): Lifecycle {
+    override fun newInstance(context: ExtensionContext, dependencies: Dependencies): Lifecycle {
         return StreamsEventLifecycle(dependencies)
     }
 

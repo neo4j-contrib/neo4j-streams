@@ -6,13 +6,14 @@ import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.AuthorizationException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
 import org.apache.kafka.common.errors.ProducerFencedException
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
+import streams.extensions.raw
 import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
@@ -40,9 +41,9 @@ class KafkaEventRouter: StreamsEventRouter {
 
     override fun start() {
         log.info("Initializing Kafka Connector")
-        kafkaConfig = KafkaConfiguration.from(config?.raw ?: emptyMap())
+        kafkaConfig = KafkaConfiguration.from(config?.raw() ?: emptyMap())
         val props = kafkaConfig.asProperties()
-        val definedTopics = StreamsEventRouterConfiguration.from(config?.raw ?: emptyMap()).allTopics()
+        val definedTopics = StreamsEventRouterConfiguration.from(config?.raw() ?: emptyMap()).allTopics()
         kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
         kafkaAdminService.start()
         producer = Neo4jKafkaProducer(props)

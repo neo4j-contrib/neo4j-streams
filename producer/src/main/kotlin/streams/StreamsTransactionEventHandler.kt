@@ -1,8 +1,26 @@
 package streams
 
+import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.graphdb.Transaction
 import org.neo4j.graphdb.event.TransactionData
-import org.neo4j.graphdb.event.TransactionEventHandler
-import streams.events.*
+import org.neo4j.graphdb.event.TransactionEventListener
+import streams.events.Constraint
+import streams.events.EntityType
+import streams.events.NodeChangeBuilder
+import streams.events.NodePayload
+import streams.events.NodePayloadBuilder
+import streams.events.OperationType
+import streams.events.Payload
+import streams.events.PreviousTransactionData
+import streams.events.PreviousTransactionDataBuilder
+import streams.events.RelationshipChangeBuilder
+import streams.events.RelationshipPayload
+import streams.events.RelationshipPayloadBuilder
+import streams.events.Schema
+import streams.events.SchemaBuilder
+import streams.events.StreamsEventMetaBuilder
+import streams.events.StreamsTransactionEvent
+import streams.events.StreamsTransactionEventBuilder
 import streams.extensions.labelNames
 import streams.utils.SchemaUtils.getNodeKeys
 import java.net.InetAddress
@@ -12,7 +30,7 @@ import java.util.concurrent.atomic.AtomicInteger
 class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                                      private val streamsConstraintsService: StreamsConstraintsService,
                                      private val configuration: StreamsEventRouterConfiguration)
-    : TransactionEventHandler<PreviousTransactionData> {
+    : TransactionEventListener<PreviousTransactionData> {
 
     /**
      * Wrap the payload into a StreamsTransactionEvent for the eventId
@@ -92,7 +110,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         // labels and properties of deleted nodes are unreachable
         val deletedNodeProperties = txd.removedNodeProperties()
                 .filter { txd.deletedNodes().contains( it.entity() )}
-                .map { it.entity().id to (it.key() to it.previouslyCommitedValue()) }
+                .map { it.entity().id to (it.key() to it.previouslyCommittedValue()) }
                 .groupBy({it.first},{it.second}) // { nodeId -> [(k,v)] }
                 .mapValues { it.value.toMap() }
 
@@ -133,7 +151,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
     private fun buildRelationshipChanges(txd: TransactionData, builder: PreviousTransactionDataBuilder, nodeConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder{
         val deletedRelProperties = txd.removedRelationshipProperties()
                 .filter { txd.deletedRelationships().contains( it.entity() )}
-                .map { it.entity().id to (it.key() to it.previouslyCommitedValue()) }
+                .map { it.entity().id to (it.key() to it.previouslyCommittedValue()) }
                 .groupBy({ it.first }, { it.second }) // { nodeId -> [(k,v)] }
                 .mapValues { it.value.toMap() }
 
@@ -236,9 +254,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .withRelDeletedPayloads(deletedRelPayload)
     }
 
-    override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?) {}
+    override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?, db: GraphDatabaseService?) {}
 
-    override fun afterCommit(txd: TransactionData, previousTxd: PreviousTransactionData) {
+    override fun afterCommit(txd: TransactionData, previousTxd: PreviousTransactionData, db: GraphDatabaseService?) {
 
         val nodePrevious = previousTxd.nodeData
         val relPrevious = previousTxd.relData
@@ -275,7 +293,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         }
     }
 
-    override fun beforeCommit(txd: TransactionData): PreviousTransactionData {
+    override fun beforeCommit(txd: TransactionData, tx: Transaction?, db: GraphDatabaseService?): PreviousTransactionData {
         val nodeConstraints = streamsConstraintsService.allForLabels()
         val relConstraints = streamsConstraintsService.allForRelationshipType()
         var builder = PreviousTransactionDataBuilder()

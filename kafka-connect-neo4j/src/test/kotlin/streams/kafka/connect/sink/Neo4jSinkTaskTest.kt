@@ -10,12 +10,13 @@ import org.apache.kafka.connect.sink.SinkTaskContext
 import org.junit.After
 import org.junit.Before
 import org.junit.Ignore
+import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
+import org.neo4j.configuration.GraphDatabaseSettings
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
-import org.neo4j.harness.ServerControls
-import org.neo4j.harness.TestServerBuilders
+import org.neo4j.harness.junit.rule.Neo4jRule
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.service.errors.ErrorService
@@ -33,19 +34,9 @@ import kotlin.test.assertTrue
 
 class Neo4jSinkTaskTest {
 
-    private lateinit var db: ServerControls
-
-    @Before
-    fun setUp() {
-        db = TestServerBuilders.newInProcessBuilder()
-                .withConfig("dbms.security.auth_enabled", "false")
-                .newServer()
-    }
-
-    @After
-    fun tearDown() {
-        db.close()
-    }
+    @Rule @JvmField val db = Neo4jRule()
+            .withDisabledServer()
+            .withConfig(GraphDatabaseSettings.auth_enabled, false)
 
     private val PERSON_SCHEMA = SchemaBuilder.struct().name("com.example.Person")
             .field("firstName", Schema.STRING_SCHEMA)
@@ -110,17 +101,17 @@ class Neo4jSinkTaskTest {
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, Neo4jValueConverterTest.getTreeStruct(), 42))
         task.put(input)
-        db.graph().beginTx().use {
-            assertEquals(1, db.graph().findNodes(Label.label("BODY")).stream().count())
-            assertEquals(2, db.graph().findNodes(Label.label("P")).stream().count())
-            assertEquals(2, db.graph().findNodes(Label.label("UL")).stream().count())
-            assertEquals(4, db.graph().findNodes(Label.label("LI")).stream().count())
+        db.defaultDatabaseService().beginTx().use {
+            assertEquals(1, it.findNodes(Label.label("BODY")).stream().count())
+            assertEquals(2, it.findNodes(Label.label("P")).stream().count())
+            assertEquals(2, it.findNodes(Label.label("UL")).stream().count())
+            assertEquals(4, it.findNodes(Label.label("LI")).stream().count())
 
-            assertEquals(2, db.graph().execute("MATCH (b:BODY)-[r:HAS_P]->(p:P) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
-            assertEquals(2, db.graph().execute("MATCH (b:BODY)-[r:HAS_UL]->(ul:UL) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
-            assertEquals(4, db.graph().execute("MATCH (ul:UL)-[r:HAS_LI]->(li:LI) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(2, it.execute("MATCH (b:BODY)-[r:HAS_P]->(p:P) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(2, it.execute("MATCH (b:BODY)-[r:HAS_UL]->(ul:UL) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(4, it.execute("MATCH (ul:UL)-[r:HAS_LI]->(li:LI) RETURN COUNT(r) AS COUNT").columnAs<Long>("COUNT").next())
 
-            assertEquals(1, db.graph().execute("MATCH (li:LI{class:['ClassA', 'ClassB']}) RETURN COUNT(li) AS COUNT").columnAs<Long>("COUNT").next())
+            assertEquals(1, it.execute("MATCH (li:LI{class:['ClassA', 'ClassB']}) RETURN COUNT(li) AS COUNT").columnAs<Long>("COUNT").next())
         }
     }
 
@@ -159,11 +150,11 @@ class Neo4jSinkTaskTest {
                 SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
                 SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43))
         task.put(input)
-        db.graph().beginTx().use {
-            val personCount = db.graph().execute("MATCH (p:Person) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
+        db.defaultDatabaseService().beginTx().use {
+            val personCount = it.execute("MATCH (p:Person) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
             val expectedPersonCount = input.filter { it.topic() == secondTopic }.size
             assertEquals(expectedPersonCount, personCount.toInt())
-            val personExtCount = db.graph().execute("MATCH (p:PersonExt) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
+            val personExtCount = it.execute("MATCH (p:PersonExt) RETURN COUNT(p) as COUNT").columnAs<Long>("COUNT").next()
             val expectedPersonExtCount = input.filter { it.topic() == firstTopic }.size
             assertEquals(expectedPersonExtCount, personExtCount.toInt())
         }
@@ -228,8 +219,8 @@ class Neo4jSinkTaskTest {
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 44))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 MATCH p = (s:User{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
                     -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
                     (e:`User Ext`{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
@@ -246,13 +237,13 @@ class Neo4jSinkTaskTest {
 
     @Test
     fun `should update data into Neo4j from CDC events`() {
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 CREATE (s:User:OldLabel:SourceEvent{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
                     -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
                     (e:`User Ext`:SourceEvent{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
             """.trimIndent()).close()
-            it.success()
+            it.commit()
         }
         val firstTopic = "neotopic"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
@@ -299,8 +290,8 @@ class Neo4jSinkTaskTest {
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 43))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 MATCH p = (s:User{name:'Andrea', `comp@ny`:'LARUS-BA, Venice', sourceId:'0', age:34})
                     -[r:`KNOWS WHO`{since:2014, sourceId:'2', foo:'bar'}]->
                     (e:`User Ext`{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
@@ -401,13 +392,13 @@ class Neo4jSinkTaskTest {
 
     @Test
     fun `should delete data into Neo4j from CDC events`() {
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 CREATE (s:User:OldLabel:SourceEvent{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})
                     -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
                     (e:`User Ext`:SourceEvent{name:'Michael', `comp@ny`:'Neo4j', sourceId:'1'})
             """.trimIndent()).close()
-            it.success()
+            it.commit()
         }
         val firstTopic = "neotopic"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
@@ -434,8 +425,8 @@ class Neo4jSinkTaskTest {
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, null, cdcDataStart, 42))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                     MATCH (s:SourceEvent)
                     RETURN count(s) as count
                 """.trimIndent())
@@ -466,8 +457,8 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
-        db.graph().beginTx().use {
-            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+        db.defaultDatabaseService().beginTx().use {
+            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -487,8 +478,8 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, null, "a", 42)))
-        db.graph().beginTx().use {
-            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+        db.defaultDatabaseService().beginTx().use {
+            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -508,8 +499,8 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, 42, null, "true", 42)))
-        db.graph().beginTx().use {
-            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+        db.defaultDatabaseService().beginTx().use {
+            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -529,8 +520,8 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, 42, null, "{\"foo\":42}", 42)))
-        db.graph().beginTx().use {
-            val node: Node? = db.graph().findNode(Label.label("Person"), "name", "Alex")
+        db.defaultDatabaseService().beginTx().use {
+            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -552,8 +543,8 @@ class Neo4jSinkTaskTest {
         task.start(props)
         val input = listOf(SinkRecord(topic, 1, null, null, null, data, 42))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("MATCH (n:User{name: 'Andrea', surname: 'Santurbano', userId: 1, `address.city`: 'Venice'}) RETURN count(n) AS count")
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("MATCH (n:User{name: 'Andrea', surname: 'Santurbano', userId: 1, `address.city`: 'Venice'}) RETURN count(n) AS count")
                     .columnAs<Long>("count").use {
                         assertTrue { it.hasNext() }
                         val count = it.next()
@@ -580,8 +571,8 @@ class Neo4jSinkTaskTest {
         task.start(props)
         val input = listOf(SinkRecord(topic, 1, null, null, null, data, 42))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
                 RETURN count(p) AS count
             """.trimIndent())
@@ -596,12 +587,12 @@ class Neo4jSinkTaskTest {
 
     @Test
     fun `should work with node pattern topic for tombstone record`() {
-        db.graph().beginTx().use {
-            db.graph().execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
-            it.success()
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
+            it.commit()
         }
-        val count = db.graph().beginTx().use {
-            db.graph().execute("MATCH (n) RETURN count(n) AS count")
+        val count = db.defaultDatabaseService().beginTx().use {
+            it.execute("MATCH (n) RETURN count(n) AS count")
                     .columnAs<Long>("count")
                     .next()
         }
@@ -620,8 +611,8 @@ class Neo4jSinkTaskTest {
         task.start(props)
         val input = listOf(SinkRecord(topic, 1, null, data, null, null, 42))
         task.put(input)
-        db.graph().beginTx().use {
-            db.graph().execute("MATCH (n) RETURN count(n) AS count")
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("MATCH (n) RETURN count(n) AS count")
                     .columnAs<Long>("count").use {
                         assertTrue { it.hasNext() }
                         val count = it.next()
@@ -663,12 +654,12 @@ class Neo4jSinkTaskTest {
         task.put(data)
 
         // then
-        db.graph().beginTx().use {
-            val countFooBarLabel = db.graph().execute("MATCH (n:Foo:Bar:Label) RETURN count(n) AS count")
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("MATCH (n:Foo:Bar:Label) RETURN count(n) AS count")
                     .columnAs<Long>("count")
                     .next()
             assertEquals(5L, countFooBarLabel)
-            val countFooBar = db.graph().execute("MATCH (n:Foo:Bar) RETURN count(n) AS count")
+            val countFooBar = it.execute("MATCH (n:Foo:Bar) RETURN count(n) AS count")
                     .columnAs<Long>("count")
                     .next()
             assertEquals(10L, countFooBar)
@@ -693,15 +684,15 @@ class Neo4jSinkTaskTest {
         props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
-        db.graph().beginTx().use {
-            db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
                 UNWIND range(1, 10) AS id
                 CREATE (:Foo:Bar {key: id})
                 CREATE (:FooBar {key: id})
             """.trimIndent()).close()
-            assertEquals(0, db.graph().allRelationships.count())
-            assertEquals(20, db.graph().allNodes.count())
-            it.success()
+            assertEquals(0, it.allRelationships.count())
+            assertEquals(20, it.allNodes.count())
+            it.commit()
         }
 
         // when
@@ -711,8 +702,8 @@ class Neo4jSinkTaskTest {
         task.put(data)
 
         // then
-        db.graph().beginTx().use {
-            val countFooBarLabel = db.graph().execute("""
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
             """.trimIndent())

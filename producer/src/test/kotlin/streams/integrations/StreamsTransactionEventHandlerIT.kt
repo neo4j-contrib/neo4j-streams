@@ -4,26 +4,27 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.events.NodeChange
 import streams.events.OperationType
 import streams.events.RelationshipPayload
+import streams.extensions.execute
 import streams.mocks.MockStreamsEventRouter
+import streams.setConfig
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 @Suppress("DEPRECATION")
 class StreamsTransactionEventHandlerIT {
 
-    private var db: GraphDatabaseService? = null
+    private var db: ImpermanentDbmsRule? = null
 
     @Before
     fun setUp() {
         MockStreamsEventRouter.reset()
-        db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
-                .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter")
-                .newGraphDatabase()
+        db = ImpermanentDbmsRule().startLazily()
+                .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter") as ImpermanentDbmsRule
+        db?.restartDatabase()
     }
 
     @After

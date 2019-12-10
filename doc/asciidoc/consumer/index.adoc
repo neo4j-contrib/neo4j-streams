@@ -62,7 +62,7 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-Where `{batch}` is a json list, so continuing with the example above a possible full representation could be:
+Where `{events}` is a json list, so continuing with the example above a possible full representation could be:
 
 [source,cypher]
 ----

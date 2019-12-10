@@ -8,11 +8,14 @@ import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.Test
-import org.neo4j.kernel.impl.proc.Procedures
+import org.neo4j.kernel.api.procedure.GlobalProcedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
+import streams.setConfig
 import java.util.*
 import kotlin.test.*
 
@@ -35,8 +38,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
     @Test
     fun shouldConsumeDataFromProcedureWithSinkDisabled() {
         graphDatabaseBuilder.setConfig("streams.sink.enabled", "false")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "bar"
         testProcedure(topic)
@@ -44,8 +47,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldConsumeDataFromProcedure() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "foo"
         testProcedure(topic)
@@ -53,8 +56,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldTimeout() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val result = db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event")
         assertFalse { result.hasNext() }
@@ -62,8 +65,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadArrayOfJson() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "array-topic"
         val list = listOf(data, data)
@@ -83,8 +86,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadSimpleDataType() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "simple-data"
         val simpleInt = 1
@@ -115,8 +118,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadATopicPartitionStartingFromAnOffset() = runBlocking {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "read-from-range"
         val simpleInt = 1
@@ -145,8 +148,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadFromLatest() = runBlocking {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "simple-data-from-latest"
         val simpleInt = 1
@@ -179,8 +182,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldNotCommit() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val topic = "simple-data"
         val simpleInt = 1
@@ -210,8 +213,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun `should consume AVRO messages`() {
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()

@@ -2,6 +2,7 @@ package streams
 
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
+import streams.extensions.execute
 import streams.service.StreamsSinkService
 import streams.service.TopicType
 import streams.service.sink.strategy.*

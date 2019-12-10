@@ -9,7 +9,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.StreamsEventConsumer
@@ -19,6 +19,7 @@ import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
+import streams.extensions.raw
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -36,7 +37,7 @@ class KafkaEventSink(private val config: Config,
     private lateinit var eventConsumer: StreamsEventConsumer
     private lateinit var job: Job
 
-    override val streamsConfigMap = config.raw.filterKeys {
+    override val streamsConfigMap = config.raw().filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
     }.toMap()
 
@@ -77,7 +78,7 @@ class KafkaEventSink(private val config: Config,
         }
         log.info("Starting the Kafka Sink")
         this.eventConsumer = getEventConsumerFactory()
-                .createStreamsEventConsumer(config.raw, log)
+                .createStreamsEventConsumer(config.raw(), log)
                 .withTopics(topics)
         this.eventConsumer.start()
         this.job = createJob()

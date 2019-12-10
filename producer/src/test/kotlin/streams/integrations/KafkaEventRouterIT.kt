@@ -2,17 +2,37 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import org.junit.*
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.ByteArrayDeserializer
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.junit.After
+import org.junit.AfterClass
+import org.junit.Assume
+import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Rule
+import org.junit.Test
 import org.junit.rules.TestName
-import org.neo4j.kernel.impl.proc.Procedures
-import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.kernel.api.procedure.GlobalProcedures
+import org.neo4j.test.rule.DbmsRule
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
-import streams.events.*
+import streams.events.Constraint
+import streams.events.EntityType
+import streams.events.NodeChange
+import streams.events.NodePayload
+import streams.events.OperationType
+import streams.events.RelationshipPayload
+import streams.events.StreamsConstraintType
+import streams.events.StreamsEvent
+import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
+import streams.setConfig
+import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
@@ -32,7 +52,7 @@ class KafkaEventRouterIT {
          *
          * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
          */
-        private const val confluentPlatformVersion = "4.0.2"
+        private const val confluentPlatformVersion = "5.3.1-1"
         @JvmStatic
         lateinit var kafka: KafkaContainer
 
@@ -56,7 +76,7 @@ class KafkaEventRouterIT {
         }
     }
 
-    lateinit var db: GraphDatabaseAPI
+    val db: ImpermanentDbmsRule = ImpermanentDbmsRule()
 
     private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
@@ -69,36 +89,33 @@ class KafkaEventRouterIT {
 
     @Before
     fun setUp() {
-        var graphDatabaseBuilder = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
-                .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
+        db.setConfig("kafka.bootstrap.servers", kafka.bootstrapServers) as ImpermanentDbmsRule
         if (testName.methodName.endsWith(WITH_REL_ROUTING_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}")
+            db.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}")
         }
         if (testName.methodName.endsWith(WITH_NODE_ROUTING_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.person", "Person{*}")
+            db.setConfig("streams.source.topic.nodes.person", "Person{*}")
         }
         if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
+            db.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
                     .setConfig("streams.source.topic.nodes.neo4j-color", "Color{*}")
                     .setConfig("streams.source.topic.nodes.neo4j-basket", "Basket{*}")
                     .setConfig("streams.source.topic.relationships.neo4j-isin", "IS_IN{month,day}")
                     .setConfig("streams.source.topic.relationships.neo4j-hascolor", "HAS_COLOR{*}")
         }
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.personConstraints", "PersonConstr{*}")
+            db.setConfig("streams.source.topic.nodes.personConstraints", "PersonConstr{*}")
                     .setConfig("streams.source.topic.nodes.productConstraints", "ProductConstr{*}")
                     .setConfig("streams.source.topic.relationships.boughtConstraints", "BOUGHT{*}")
                     .setConfig("streams.source.schema.polling.interval", "0")
         }
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
-        db.dependencyResolver.resolveDependency(Procedures::class.java)
+        db.start()
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
             db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
             db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
         }
-
     }
 
     @After
@@ -248,7 +265,7 @@ class KafkaEventRouterIT {
             |MATCH (p:PersonConstr {name:'Andrea'})
             |MATCH (pp:ProductConstr {name:'My Awesome Product'})
             |MERGE (p)-[:BOUGHT]->(pp)
-        """.trimMargin())
+        """.trimMargin()).close()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("personConstraints", "productConstraints", "boughtConstraints"))

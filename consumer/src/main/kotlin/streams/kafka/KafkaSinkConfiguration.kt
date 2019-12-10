@@ -4,8 +4,9 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.configuration.Config
 import streams.StreamsSinkConfiguration
+import streams.extensions.raw
 import streams.extensions.toPointCase
 import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopics
@@ -43,7 +44,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
     companion object {
 
         fun from(cfg: Config): KafkaSinkConfiguration {
-            return from(cfg.raw)
+            return from(cfg.raw())
         }
 
         fun from(cfg: Map<String, String>): KafkaSinkConfiguration {

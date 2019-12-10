@@ -186,23 +186,23 @@ class PreviousTransactionDataBuilder {
 
     fun withNodeProperties(assignedNodeProperties: Iterable<PropertyEntry<Node>>, removedNodeProperties: Iterable<PropertyEntry<Node>>): PreviousTransactionDataBuilder {
         val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
-        assignedNodeProperties.filter { it.previouslyCommitedValue() == null }
+        assignedNodeProperties.filter { it.previouslyCommittedValue() == null }
                 .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.remove(it.key())
                     allProps.putIfAbsent(it.entity().id, props)
                 }
 
-        assignedNodeProperties.filter { it.previouslyCommitedValue() != null }
+        assignedNodeProperties.filter { it.previouslyCommittedValue() != null }
                 .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
-                    props.put(it.key(), it.previouslyCommitedValue())
+                    props.put(it.key(), it.previouslyCommittedValue())
                     allProps.putIfAbsent(it.entity().id, props)
                 }
 
         removedNodeProperties.forEach {
             var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
-            props.put(it.key(), it.previouslyCommitedValue())
+            props.put(it.key(), it.previouslyCommittedValue())
             allProps.putIfAbsent(it.entity().id, props)
         }
 
@@ -241,23 +241,23 @@ class PreviousTransactionDataBuilder {
 
     fun withRelProperties(assignedRelProperties: Iterable<PropertyEntry<Relationship>>, removedRelProperties: Iterable<PropertyEntry<Relationship>>): PreviousTransactionDataBuilder {
         val allProps = mutableMapOf<Long, MutableMap<String, Any>>()
-        assignedRelProperties.filter { it.previouslyCommitedValue() == null }
+        assignedRelProperties.filter { it.previouslyCommittedValue() == null }
                 .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
                     props.remove(it.key())
                     allProps.putIfAbsent(it.entity().id, props)
                 }
 
-        assignedRelProperties.filter { it.previouslyCommitedValue() != null }
+        assignedRelProperties.filter { it.previouslyCommittedValue() != null }
                 .forEach {
                     var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
-                    props.put(it.key(), it.previouslyCommitedValue())
+                    props.put(it.key(), it.previouslyCommittedValue())
                     allProps.putIfAbsent(it.entity().id, props)
                 }
 
         removedRelProperties.forEach {
             var props = allProps.getOrDefault(it.entity().id, it.entity().allProperties.toMutableMap())
-            props.put(it.key(), it.previouslyCommitedValue())
+            props.put(it.key(), it.previouslyCommittedValue())
             allProps.putIfAbsent(it.entity().id, props)
         }
 
