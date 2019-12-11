@@ -24,13 +24,15 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
             return from(cfg.raw)
         }
 
-        fun from(cfg: Map<String, String>): StreamsSinkConfiguration {
+        fun from(cfg: Map<String, String>, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
             val default = StreamsSinkConfiguration()
             val config = cfg
                     .filterKeys { it.startsWith(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX) }
                     .mapKeys { it.key.substring(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX.length) }
 
-            val topics = Topics.from(config, StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX)
+            val topics = Topics.from(config = config,
+                    prefix = StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX,
+                    invalidTopics = invalidTopics)
 
             TopicUtils.validate<RuntimeException>(topics)
 

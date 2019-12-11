@@ -2,10 +2,6 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.KafkaConsumer
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.kernel.impl.proc.Procedures
@@ -14,10 +10,10 @@ import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
 import streams.events.*
 import streams.kafka.KafkaConfiguration
+import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
-import java.lang.RuntimeException
 import kotlin.test.assertEquals
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
@@ -174,16 +170,6 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
-    }
-
-    private fun createConsumer(config: KafkaConfiguration): KafkaConsumer<String, ByteArray> {
-        val props = config.asProperties()
-        props["group.id"] = "neo4j"
-        props["enable.auto.commit"] = "true"
-        props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java
-        props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = ByteArrayDeserializer::class.java
-        props["auto.offset.reset"] = "earliest"
-        return KafkaConsumer(props)
     }
 
     @Test

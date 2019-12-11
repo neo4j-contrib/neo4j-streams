@@ -1,9 +1,7 @@
 package streams.kafka
 
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.Producer
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.AuthorizationException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
@@ -12,41 +10,65 @@ import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
+import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
+import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
-import java.util.*
+import java.util.Properties
+import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Producer<String, ByteArray>
+    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
     private lateinit var kafkaConfig: KafkaConfiguration
-
+    private lateinit var kafkaAdminService: KafkaAdminService
 
     constructor(logService: LogService, config: Config): super(logService, config) {
         log = logService.getUserLog(KafkaEventRouter::class.java)
+    }
+
+    override fun printInvalidTopics() {
+        val invalidTopics = kafkaAdminService.getInvalidTopics()
+        if (invalidTopics.isNotEmpty()) {
+            log.warn(getInvalidTopicsError(invalidTopics))
+        }
     }
 
     override fun start() {
         log.info("Initializing Kafka Connector")
         kafkaConfig = KafkaConfiguration.from(config?.raw ?: emptyMap())
         val props = kafkaConfig.asProperties()
-        producer = Neo4jKafkaProducer<String, ByteArray>(props)
+        val definedTopics = StreamsEventRouterConfiguration.from(config?.raw ?: emptyMap()).allTopics()
+        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
+        kafkaAdminService.start()
+        producer = Neo4jKafkaProducer(props)
         producer.initTransactions()
         log.info("Kafka Connector started")
     }
 
     override fun stop() {
         StreamsUtils.ignoreExceptions({ producer.close() }, UninitializedPropertyAccessException::class.java)
+        StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
-        producer.send(producerRecord) { meta: RecordMetadata?, error: Exception? ->
-            if (log.isDebugEnabled) {
-                log.debug("Sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}", error)
+        if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
+            // TODO add logging system here
+            return
+        }
+        producer.send(producerRecord) { meta, error ->
+            if (meta != null && log.isDebugEnabled) {
+                log.debug("Successfully sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}")
+            }
+            if (error != null) {
+                if (log.isDebugEnabled) {
+                    log.debug("Error while sending record to ${producerRecord.topic()}, because of the following exception:", error)
+                }
+                // TODO add logging system here
             }
         }
     }

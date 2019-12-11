@@ -1,18 +1,13 @@
 package streams
 
-import org.apache.commons.lang3.StringUtils
 import org.neo4j.kernel.impl.core.EmbeddedProxySPI
 import org.neo4j.kernel.impl.core.GraphProperties
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.serialization.JSONUtils
 import streams.service.STREAMS_TOPIC_KEY
 import streams.service.TopicType
-import streams.service.TopicTypeGroup
-import streams.service.sink.strategy.NodePatternConfiguration
-import streams.service.sink.strategy.RelationshipPatternConfiguration
-import streams.utils.Neo4jUtils
-import streams.service.TopicUtils
 import streams.service.Topics
+import streams.utils.Neo4jUtils
 
 class StreamsTopicService(private val db: GraphDatabaseAPI) {
     private val properties: GraphProperties = db.dependencyResolver.resolveDependency(EmbeddedProxySPI::class.java).newGraphPropertiesProxy()

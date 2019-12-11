@@ -8,7 +8,8 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
                   val cdcSchemaTopics: Set<String> = emptySet(),
                   val cudTopics: Set<String> = emptySet(),
                   val nodePatternTopics: Map<String, NodePatternConfiguration> = emptyMap(),
-                  val relPatternTopics: Map<String, RelationshipPatternConfiguration> = emptyMap()) {
+                  val relPatternTopics: Map<String, RelationshipPatternConfiguration> = emptyMap(),
+                  val invalid: List<String> = emptyList()) {
 
     fun allTopics(): List<String> = this.asMap()
             .map {
@@ -25,7 +26,7 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
             TopicType.PATTERN_NODE to nodePatternTopics, TopicType.PATTERN_RELATIONSHIP to relPatternTopics)
 
     companion object {
-        fun from(config: Map<*, *>, prefix: String, toReplace: String = ""): Topics {
+        fun from(config: Map<*, *>, prefix: String, toReplace: String = "", invalidTopics: List<String> = emptyList()): Topics {
             val cypherTopicPrefix = TopicType.CYPHER.key.replace(prefix, toReplace)
             val sourceIdKey = TopicType.CDC_SOURCE_ID.key.replace(prefix, toReplace)
             val schemaKey = TopicType.CDC_SCHEMA.key.replace(prefix, toReplace)
@@ -34,14 +35,14 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
             val relPatterKey = TopicType.PATTERN_RELATIONSHIP.key.replace(prefix, toReplace)
             val cypherTopics = TopicUtils.filterByPrefix(config, cypherTopicPrefix)
             val nodePatternTopics = TopicUtils
-                    .filterByPrefix(config, nodePatterKey)
+                    .filterByPrefix(config, nodePatterKey, invalidTopics)
                     .mapValues { NodePatternConfiguration.parse(it.value) }
             val relPatternTopics = TopicUtils
-                    .filterByPrefix(config, relPatterKey)
+                    .filterByPrefix(config, relPatterKey, invalidTopics)
                     .mapValues { RelationshipPatternConfiguration.parse(it.value) }
-            val cdcSourceIdTopics = TopicUtils.splitTopics(config[sourceIdKey] as? String)
-            val cdcSchemaTopics = TopicUtils.splitTopics(config[schemaKey] as? String)
-            val cudTopics = TopicUtils.splitTopics(config[cudKey] as? String)
+            val cdcSourceIdTopics = TopicUtils.splitTopics(config[sourceIdKey] as? String, invalidTopics)
+            val cdcSchemaTopics = TopicUtils.splitTopics(config[schemaKey] as? String, invalidTopics)
+            val cudTopics = TopicUtils.splitTopics(config[cudKey] as? String, invalidTopics)
             return Topics(cypherTopics, cdcSourceIdTopics, cdcSchemaTopics, cudTopics, nodePatternTopics, relPatternTopics)
         }
     }
@@ -51,19 +52,22 @@ object TopicUtils {
 
     @JvmStatic val TOPIC_SEPARATOR = ";"
 
-    fun filterByPrefix(config: Map<*, *>, prefix: String): Map<String, String> {
+    fun filterByPrefix(config: Map<*, *>, prefix: String, invalidTopics: List<String> = emptyList()): Map<String, String> {
         val fullPrefix = "$prefix."
         return config
                 .filterKeys { it.toString().startsWith(fullPrefix) }
                 .mapKeys { it.key.toString().replace(fullPrefix, "") }
+                .filterKeys { !invalidTopics.contains(it) }
                 .mapValues { it.value.toString() }
     }
 
-    fun splitTopics(cdcMergeTopicsString: String?): Set<String> {
+    fun splitTopics(cdcMergeTopicsString: String?, invalidTopics: List<String> = emptyList()): Set<String> {
         return if (cdcMergeTopicsString.isNullOrBlank()) {
             emptySet()
         } else {
-            cdcMergeTopicsString.split(TOPIC_SEPARATOR).toSet()
+            cdcMergeTopicsString.split(TOPIC_SEPARATOR)
+                    .filter { !invalidTopics.contains(it) }
+                    .toSet()
         }
     }
 

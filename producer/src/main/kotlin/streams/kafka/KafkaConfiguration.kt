@@ -9,7 +9,8 @@ import streams.extensions.getInt
 import streams.extensions.toPointCase
 import streams.serialization.JSONUtils
 import streams.utils.ValidationUtils.validateConnection
-import java.util.*
+import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 private val configPrefix = "kafka."
 
@@ -26,6 +27,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val replication: Int = 1,
                               val transactionalId: String = StringUtils.EMPTY,
                               val lingerMs: Int = 1,
+                              val topicDiscoveryPollingInterval: Long = TimeUnit.MINUTES.toMillis(5),
                               val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -51,17 +53,19 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     replication = config.getInt("replication", default.replication),
                     transactionalId = config.getOrDefault("transactional.id", default.transactionalId),
                     lingerMs = config.getInt("linger.ms", default.lingerMs),
+                    topicDiscoveryPollingInterval = config.getOrDefault("topic.discovery.polling.interval",
+                            default.topicDiscoveryPollingInterval).toString().toLong(),
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
         }
 
         fun from(cfg: Map<String, String>): KafkaConfiguration {
-            val cfg = create(cfg)
-            validate(cfg)
-            return cfg
+            val kafkaCfg = create(cfg)
+            validate(kafkaCfg, cfg)
+            return kafkaCfg
         }
 
-        private fun validate(config: KafkaConfiguration) {
+        private fun validate(config: KafkaConfiguration, rawConfig: Map<String, String>) {
             validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
             validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
         }

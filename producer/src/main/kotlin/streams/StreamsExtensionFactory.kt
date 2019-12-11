@@ -46,6 +46,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()
+            streamHandler.printInvalidTopics()
             registerTransactionEventHandler()
             streamsLog.info("Streams Source module initialised")
         } catch (e: Exception) {

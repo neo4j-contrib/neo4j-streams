@@ -14,7 +14,7 @@ Is the transaction event handler events that sends data to a Kafka topic
 
 === Configuration
 
-include::configuration.adoc[]
+include::configurqation.adoc[]
 
 [[producer-patterns]]
 === Patterns

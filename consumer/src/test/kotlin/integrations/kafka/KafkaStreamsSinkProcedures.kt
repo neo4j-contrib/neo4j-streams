@@ -1,5 +1,6 @@
 package integrations.kafka
 
+import integrations.kafka.KafkaTestUtils.createConsumer
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import kotlinx.coroutines.*
 import org.apache.avro.SchemaBuilder
@@ -200,7 +201,9 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
         assertTrue { searchResultMap.containsKey("count") }
         assertEquals(1L, searchResultMap["count"])
 
-        val kafkaConsumer = createConsumer<String, ByteArray>()
+        val kafkaConsumer = createConsumer<ByteArray, ByteArray>(
+                kafka = KafkaEventSinkSuiteIT.kafka,
+                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
         val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
         assertNull(offsetAndMetadata)
     }
