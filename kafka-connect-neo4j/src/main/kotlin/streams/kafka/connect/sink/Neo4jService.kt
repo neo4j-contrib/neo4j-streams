@@ -76,18 +76,19 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         driver.close()
     }
 
-    override fun getTopicType(topic: String): TopicType? = TopicType.values()
-            .filter { topicType ->
-                when (topicType.group) {
-                    TopicTypeGroup.CUD -> config.topics.cudTopics.contains(topic)
-                    TopicTypeGroup.CDC -> (config.topics.cdcSourceIdTopics.contains(topic))
-                            || (config.topics.cdcSchemaTopics.contains(topic))
-                    TopicTypeGroup.CYPHER -> config.topics.cypherTopics.containsKey(topic)
-                    TopicTypeGroup.PATTERN -> (topicType == TopicType.PATTERN_NODE && config.topics.nodePatternTopics.containsKey(topic))
-                            || (topicType == TopicType.PATTERN_RELATIONSHIP && config.topics.relPatternTopics.containsKey(topic))
+    override fun getTopicType(topic: String): TopicType? {
+        val topicConfigMap = config.topics.asMap()
+        return TopicType.values()
+                .filter { topicType ->
+                    val topicConfig = topicConfigMap.getOrDefault(topicType, emptyList<Any>())
+                    when (topicConfig) {
+                        is Collection<*> -> topicConfig.contains(topic)
+                        is Map<*, *> -> topicConfig.containsKey(topic)
+                        else -> false
+                    }
                 }
-            }
-            .firstOrNull()
+                .firstOrNull()
+    }
 
     override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
 
