@@ -15,7 +15,7 @@ class StreamsSinkProcedures {
     @JvmField @Context
     var log: Log? = null
 
-    @Procedure(mode = Mode.SCHEMA, name = "streams.consume")
+    @Procedure(mode = Mode.READ, name = "streams.consume")
     @Description("streams.consume(topic, {timeout: <long value>, from: <string>, groupId: <string>, commit: <boolean>, partitions:[{partition: <number>, offset: <number>}]}) " +
             "YIELD event - Allows to consume custom topics")
     fun consume(@Name("topic") topic: String?,

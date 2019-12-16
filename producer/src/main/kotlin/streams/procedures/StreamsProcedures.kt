@@ -12,7 +12,7 @@ class StreamsProcedures {
 
     @JvmField @Context var log: Log? = null
 
-    @Procedure(mode = Mode.SCHEMA, name = "streams.publish")
+    @Procedure(mode = Mode.READ, name = "streams.publish")
     @Description("streams.publish(topic, config) - Allows custom streaming from Neo4j to the configured stream environment")
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?) {
