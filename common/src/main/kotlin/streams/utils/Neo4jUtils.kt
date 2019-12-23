@@ -27,7 +27,7 @@ object Neo4jUtils {
                 return false
             }
 
-            val role = db.execute("CALL dbms.cluster.role()").columnAs<String>("role").next()
+            val role = db.execute("CALL dbms.cluster.role()") { it.columnAs<String>("role").next() }
             return role.equals(LEADER, ignoreCase = true)
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
@@ -44,7 +44,7 @@ object Neo4jUtils {
 
     fun isCluster(db: GraphDatabaseAPI): Boolean {
         try {
-            db.execute("CALL dbms.cluster.role()").columnAs<String>("role").next()
+            db.execute("CALL dbms.cluster.role()") { it.columnAs<String>("role").next() }
             return true
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
@@ -59,11 +59,12 @@ object Neo4jUtils {
             return db.execute("""
                 CALL dbms.cluster.overview() YIELD role
                 RETURN role
-            """.trimIndent())
-                    .columnAs<String>("role")
-                    .stream()
-                    .toList()
-                    .contains(LEADER)
+            """.trimIndent()) {
+                it.columnAs<String>("role")
+                        .stream()
+                        .toList()
+                        .contains(LEADER)
+            }
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return false

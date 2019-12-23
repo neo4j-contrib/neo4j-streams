@@ -56,7 +56,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
                 |MATCH (p:Place)
                 |RETURN p""".trimMargin()
             val result = db.beginTx().use {
-                val result = db.execute(query).columnAs<Node>("p")
+                val result = it.execute(query).columnAs<Node>("p")
                 if (result.hasNext()) {
                     result.next().allProperties
                 } else {
@@ -104,7 +104,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
                 |MATCH (p:Place)
                 |RETURN p""".trimMargin()
             val result = db.beginTx().use {
-                val result = db.execute(query).columnAs<Node>("p")
+                val result = it.execute(query).columnAs<Node>("p")
                 if (result.hasNext()) {
                     result.next().allProperties
                 } else {

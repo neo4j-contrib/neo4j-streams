@@ -42,8 +42,10 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
             val query = """
                 |MATCH (n:Label) WHERE properties(n) = {props}
                 |RETURN count(*) AS count""".trimMargin()
-            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query, mapOf("props" to props)) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
     }
@@ -60,8 +62,10 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
             val query = """
                 |MATCH (n:Label)
                 |RETURN n""".trimMargin()
-            val result = db.execute(query).columnAs<Node>("n")
-            result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Node>("n")
+                result.hasNext()
+            }
         }, Matchers.equalTo(false), 30, TimeUnit.SECONDS)
     }
 
@@ -89,8 +93,10 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
                 WHERE properties(p) = {props}
                 RETURN count(p) AS count
             """.trimIndent()
-            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query, mapOf("props" to props)) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 }

@@ -3,9 +3,8 @@ package streams
 import org.neo4j.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import streams.extensions.raw
 
-abstract class StreamsEventSink(private val config: Config,
+abstract class StreamsEventSink(private val config: Map<String, String>,
                                 private val queryExecution: StreamsEventSinkQueryExecution,
                                 private val streamsTopicService: StreamsTopicService,
                                 private val log: Log,
@@ -27,9 +26,9 @@ abstract class StreamsEventSink(private val config: Config,
 }
 
 object StreamsEventSinkFactory {
-    fun getStreamsEventSink(config: Config, streamsQueryExecution: StreamsEventSinkQueryExecution,
+    fun getStreamsEventSink(config: Map<String, String>, streamsQueryExecution: StreamsEventSinkQueryExecution,
                             streamsTopicService: StreamsTopicService, log: Log, db: GraphDatabaseAPI): StreamsEventSink {
-        return Class.forName(config.raw().getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
+        return Class.forName(config.getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
                 .getConstructor(Config::class.java,
                         StreamsEventSinkQueryExecution::class.java,
                         StreamsTopicService::class.java,

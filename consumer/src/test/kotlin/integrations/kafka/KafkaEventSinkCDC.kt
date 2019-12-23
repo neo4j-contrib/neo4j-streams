@@ -82,8 +82,10 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
             val query = """
                 |MATCH p = (s:User:`CustomLabelN@me`{name:'Andrea', `comp@ny`:'LARUS-BA', `customIdN@me`: '0'})-[r:`KNOWS WHO`{since:2014, `customIdN@me`: '3'}]->(e:`User Ext`:`CustomLabelN@me`{name:'Michael', `comp@ny`:'Neo4j', `customIdN@me`: '1'})
                 |RETURN count(p) AS count""".trimMargin()
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
     }
@@ -156,8 +158,10 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
                 |MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})
                 |RETURN count(p) AS count
                 |""".trimMargin()
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
@@ -167,7 +171,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
 
-        db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})").close()
+        db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})")
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),
                 constraints = listOf(Constraint(label = "User", type =  StreamsConstraintType.UNIQUE, properties = setOf("name", "surname"))))
         val cdcDataStart = StreamsTransactionEvent(
@@ -193,8 +197,10 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
                 |MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})
                 |RETURN count(p) AS count
                 |""".trimMargin()
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 0L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 0L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 }

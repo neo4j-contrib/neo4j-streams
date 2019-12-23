@@ -53,11 +53,11 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             val fooBarLabel = db.execute("""
                 MATCH (n:Foo:Bar:Label)
                 RETURN count(n) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             fooBarLabel.hasNext() && fooBarLabel.next() == 5L && !fooBarLabel.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
@@ -81,7 +81,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         val idList = db.beginTx().use {
-            db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})").close()
+            db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
             it.commit()
             it.allNodes.stream()
@@ -109,7 +109,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
@@ -145,7 +145,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
-            db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})").close()
+            db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
             it.commit()
         }
@@ -162,7 +162,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
                 MATCH (n:Foo:Bar)
                 WHERE n.key > 5
                 RETURN n.key AS key
-            """.trimIndent()).columnAs<Long>("key").stream().toList()
+            """.trimIndent()) { it.columnAs<Long>("key").stream().toList() }
             fooBar == (6L..10L).toList()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
@@ -183,7 +183,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
-            db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})").close()
+            db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})")
             assertEquals(10, it.allNodes.count())
             it.commit()
         }
@@ -199,7 +199,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
@@ -224,7 +224,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
                 UNWIND range(1, 10) AS id
                 CREATE (:Foo:Bar {key: id})
                 CREATE (:FooBar {key: id})
-            """.trimIndent()).close()
+            """.trimIndent())
             assertEquals(20, it.allNodes.count())
             it.commit()
         }
@@ -240,7 +240,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH p = (:Foo:Bar)-[:$rel_type]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
@@ -271,7 +271,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.beginTx().use {
-            db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
+            db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, it.allRelationships.count())
             it.commit()
         }
@@ -287,17 +287,18 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val ids = db.execute("""
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
-                    """.trimIndent())
-                    .columnAs<Long>("id")
-                    .stream()
-                    .toList()
+                    """.trimIndent()) {
+                it.columnAs<Long>("id")
+                        .stream()
+                        .toList()
+            }
             ids == (6L..10L).toList()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
@@ -311,7 +312,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         val idMap = db.beginTx().use {
-            db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
+            it.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, it.allRelationships.count())
             it.commit()
             it.allRelationships.stream()
@@ -339,17 +340,19 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             val fooBar = db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()).columnAs<Long>("count")
+            """.trimIndent()) { it.columnAs<Long>("count") }
             fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val ids = db.execute("""
+        val ids = db.execute("""
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
-                    """.trimIndent())
-                    .columnAs<Long>("id")
-                    .stream()
-                    .toList()
+                    """.trimIndent()) {
+                    it.columnAs<Long>("id")
+                            .stream()
+                            .toList()
+                }
+
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             ids == (6L..10L).toList()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }

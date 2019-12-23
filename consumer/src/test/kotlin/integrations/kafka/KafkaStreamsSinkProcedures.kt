@@ -2,22 +2,29 @@ package integrations.kafka
 
 import integrations.kafka.KafkaTestUtils.createConsumer
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.Test
 import org.neo4j.kernel.api.procedure.GlobalProcedures
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import streams.setConfig
-import java.util.*
-import kotlin.test.*
+import java.util.UUID
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
@@ -25,14 +32,15 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
     private fun testProcedure(topic: String) {
         val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        val result = db.execute("CALL streams.consume('$topic', {timeout: 5000}) YIELD event RETURN event")
-        assertTrue { result.hasNext() }
-        val resultMap = result.next()
-        assertTrue { resultMap.containsKey("event") }
-        assertNotNull(resultMap["event"], "should contain event")
-        val event = resultMap["event"] as Map<String, Any?>
-        val resultData = event["data"] as Map<String, Any?>
-        assertEquals(data, resultData)
+        db.execute("CALL streams.consume('$topic', {timeout: 5000}) YIELD event RETURN event") { result ->
+            assertTrue { result.hasNext() }
+            val resultMap = result.next()
+            assertTrue { resultMap.containsKey("event") }
+            assertNotNull(resultMap["event"], "should contain event")
+            val event = resultMap["event"] as Map<String, Any?>
+            val resultData = event["data"] as Map<String, Any?>
+            assertEquals(data, resultData)
+        }
     }
 
     @Test
@@ -59,8 +67,9 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
         db = graphDatabaseBuilder as ImpermanentDbmsRule
         db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsSinkProcedures::class.java, true)
-        val result = db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event")
-        assertFalse { result.hasNext() }
+        db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event") {
+            assertFalse { it.hasNext() }
+        }
     }
 
     @Test
@@ -76,12 +85,13 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             CALL streams.consume('$topic', {timeout: 5000}) YIELD event
             UNWIND event.data AS data
             CREATE (t:TEST) SET t += data.properties
-        """.trimIndent()).close()
-        val searchResult = db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties))
-        assertTrue { searchResult.hasNext() }
-        val searchResultMap = searchResult.next()
-        assertTrue { searchResultMap.containsKey("count") }
-        assertEquals(2L, searchResultMap["count"])
+        """.trimIndent())
+        db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties)) { searchResult ->
+            assertTrue { searchResult.hasNext() }
+            val searchResultMap = searchResult.next()
+            assertTrue { searchResultMap.containsKey("count") }
+            assertEquals(2L, searchResultMap["count"])
+        }
     }
 
     @Test
@@ -103,17 +113,17 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             CALL streams.consume('$topic', {timeout: 5000}) YIELD event
             MERGE (t:LOG{simpleData: event.data})
             RETURN count(t) AS insert
-        """.trimIndent()).close()
-        val searchResult = db.execute("""
+        """.trimIndent())
+        db.execute("""
             MATCH (l:LOG)
             WHERE l.simpleData IN [$simpleInt, $simpleBoolean, "$simpleString"]
             RETURN count(l) as count
-        """.trimIndent())
-        assertTrue { searchResult.hasNext() }
-        val searchResultMap = searchResult.next()
-        assertTrue { searchResultMap.containsKey("count") }
-        assertEquals(3L, searchResultMap["count"])
-
+        """.trimIndent()) { searchResult ->
+            assertTrue { searchResult.hasNext() }
+            val searchResultMap = searchResult.next()
+            assertTrue { searchResultMap.containsKey("count") }
+            assertEquals(3L, searchResultMap["count"])
+        }
     }
 
     @Test
@@ -137,12 +147,14 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             CALL streams.consume('$topic', {timeout: 5000, partitions: [{partition: $partition, offset: $start}]}) YIELD event
             CREATE (t:LOG{simpleData: event.data})
             RETURN count(t) AS insert
-        """.trimIndent()).close()
+        """.trimIndent())
 
         val count = db.execute("""
             MATCH (l:LOG)
             RETURN count(l) as count
-        """.trimIndent()).columnAs<Long>("count").next()
+        """.trimIndent()) {
+            it.columnAs<Long>("count").next()
+        }
         assertEquals(5L, count)
     }
 
@@ -169,15 +181,16 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             CALL streams.consume('$topic', {timeout: 5000, from: 'latest', groupId: 'foo'}) YIELD event
             CREATE (t:LOG{simpleData: event.data})
             RETURN count(t) AS insert
-        """.trimIndent()).close()
-        val searchResult = db.execute("""
+        """.trimIndent())
+        db.execute("""
             MATCH (l:LOG)
             RETURN count(l) AS count
-        """.trimIndent())
-        assertTrue { searchResult.hasNext() }
-        val searchResultMap = searchResult.next()
-        assertTrue { searchResultMap.containsKey("count") }
-        assertEquals(1L, searchResultMap["count"])
+        """.trimIndent()) { searchResult ->
+            assertTrue { searchResult.hasNext() }
+            val searchResultMap = searchResult.next()
+            assertTrue { searchResultMap.containsKey("count") }
+            assertEquals(1L, searchResultMap["count"])
+        }
     }
 
     @Test
@@ -194,16 +207,16 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             CALL streams.consume('$topic', {timeout: 5000, autoCommit: false, commit:false}) YIELD event
             MERGE (t:LOG{simpleData: event.data})
             RETURN count(t) AS insert
-        """.trimIndent()).close()
-        val searchResult = db.execute("""
+        """.trimIndent())
+        db.execute("""
             MATCH (l:LOG)
             RETURN count(l) as count
-        """.trimIndent())
-        assertTrue { searchResult.hasNext() }
-        val searchResultMap = searchResult.next()
-        assertTrue { searchResultMap.containsKey("count") }
-        assertEquals(1L, searchResultMap["count"])
-
+        """.trimIndent()) { searchResult ->
+            assertTrue { searchResult.hasNext() }
+            val searchResultMap = searchResult.next()
+            assertTrue { searchResultMap.containsKey("count") }
+            assertEquals(1L, searchResultMap["count"])
+        }
         val kafkaConsumer = createConsumer<ByteArray, ByteArray>(
                 kafka = KafkaEventSinkSuiteIT.kafka,
                 schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
@@ -234,16 +247,17 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
         val valueDeserializer = KafkaAvroDeserializer::class.java.name
         kafkaAvroProducer.send(ProducerRecord(topic, null, struct)).get()
         val schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl()
-        val result = db.execute("""
+        db.execute("""
             CALL streams.consume('$topic', {timeout: 5000, keyDeserializer: '$keyDeserializer', valueDeserializer: '$valueDeserializer', schemaRegistryUrl: '$schemaRegistryUrl'}) YIELD event
             RETURN event
-        """.trimIndent())
-        assertTrue { result.hasNext() }
-        val resultMap = result.next()
-        assertTrue { resultMap.containsKey("event") }
-        assertNotNull(resultMap["event"], "should contain event")
-        val event = resultMap["event"] as Map<String, Any?>
-        val resultData = event["data"] as Map<String, Any?>
-        assertEquals(struct.toMap(), resultData)
+        """.trimIndent()) { result ->
+            assertTrue { result.hasNext() }
+            val resultMap = result.next()
+            assertTrue { resultMap.containsKey("event") }
+            assertNotNull(resultMap["event"], "should contain event")
+            val event = resultMap["event"] as Map<String, Any?>
+            val resultData = event["data"] as Map<String, Any?>
+            assertEquals(struct.toMap(), resultData)
+        }
     }
 }

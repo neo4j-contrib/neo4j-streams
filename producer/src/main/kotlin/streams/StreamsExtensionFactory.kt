@@ -11,7 +11,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
-import streams.extensions.raw
+import streams.config.StreamsConfig
 import streams.procedures.StreamsProcedures
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
@@ -20,7 +20,7 @@ class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Depende
     override fun newInstance(context: ExtensionContext, dependencies: Dependencies): Lifecycle {
         val db = dependencies.graphdatabaseAPI()
         val log = dependencies.log()
-        val configuration = dependencies.config()
+        val configuration = dependencies.streamsConfig()
         val databaseManagementService = dependencies.databaseManagementService()
         val availabilityGuard = dependencies.availabilityGuard()
         return StreamsEventRouterLifecycle(db, configuration, databaseManagementService, availabilityGuard, log)
@@ -29,14 +29,14 @@ class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Depende
     interface Dependencies {
         fun graphdatabaseAPI(): GraphDatabaseAPI
         fun log(): LogService
-        fun config(): Config
         fun availabilityGuard(): AvailabilityGuard
         fun databaseManagementService(): DatabaseManagementService
+        fun streamsConfig(): StreamsConfig
     }
 }
 
 class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
-                                  private val configuration: Config,
+                                  private val configuration: StreamsConfig,
                                   private val databaseManagementService: DatabaseManagementService,
                                   private val availabilityGuard: AvailabilityGuard,
                                   private val log: LogService): LifecycleAdapter() {
@@ -53,8 +53,8 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
                 return
             }
             streamsLog.info("Initialising the Streams Source module")
-            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
-            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw())
+            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration.config)
+            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.config)
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()

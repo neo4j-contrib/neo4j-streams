@@ -10,6 +10,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
+import streams.config.StreamsConfig
 import streams.procedures.StreamsSinkProcedures
 import streams.service.TopicUtils
 import streams.utils.Neo4jUtils
@@ -24,14 +25,14 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
     interface Dependencies {
         fun graphdatabaseAPI(): GraphDatabaseAPI
         fun log(): LogService
-        fun config(): Config
+        fun streamsConfig(): StreamsConfig
         fun availabilityGuard(): AvailabilityGuard
     }
 
     class StreamsEventLifecycle(private val dependencies: Dependencies): LifecycleAdapter() {
         private val db = dependencies.graphdatabaseAPI()
         private val logService = dependencies.log()
-        private val configuration = dependencies.config()
+        private val configuration = dependencies.streamsConfig()
         private var streamsLog = logService.getUserLog(StreamsEventLifecycle::class.java)
 
         private lateinit var eventSink: StreamsEventSink
@@ -43,7 +44,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
                     override fun available() {
                         try {
                             streamsLog.info("Initialising the Streams Sink module")
-                            val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration)
+                            val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration.config)
                             val streamsTopicService = StreamsTopicService(db)
                             val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
                                     streamsSinkConfiguration.sourceIdStrategyConfig)
@@ -54,7 +55,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
                             // Create the Sink
                             val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
                             eventSink = StreamsEventSinkFactory
-                                    .getStreamsEventSink(configuration,
+                                    .getStreamsEventSink(configuration.config,
                                             streamsQueryExecution,
                                             streamsTopicService,
                                             log,

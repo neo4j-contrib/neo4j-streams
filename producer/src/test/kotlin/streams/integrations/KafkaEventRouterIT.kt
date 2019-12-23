@@ -32,7 +32,6 @@ import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.setConfig
-import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
@@ -76,7 +75,9 @@ class KafkaEventRouterIT {
         }
     }
 
-    val db: ImpermanentDbmsRule = ImpermanentDbmsRule()
+    @Rule
+    @JvmField
+    val db: DbmsRule = ImpermanentDbmsRule()
 
     private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
@@ -89,7 +90,7 @@ class KafkaEventRouterIT {
 
     @Before
     fun setUp() {
-        db.setConfig("kafka.bootstrap.servers", kafka.bootstrapServers) as ImpermanentDbmsRule
+        db.setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
         if (testName.methodName.endsWith(WITH_REL_ROUTING_METHOD_SUFFIX)) {
             db.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}")
         }
@@ -109,18 +110,12 @@ class KafkaEventRouterIT {
                     .setConfig("streams.source.topic.relationships.boughtConstraints", "BOUGHT{*}")
                     .setConfig("streams.source.schema.polling.interval", "0")
         }
-        db.start()
         db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
-            db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
-            db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
+            db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE")
+            db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE")
         }
-    }
-
-    @After
-    fun tearDown() {
-        db.shutdown()
     }
 
     @Test
@@ -129,7 +124,7 @@ class KafkaEventRouterIT {
                 zookeeperConnect = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]!!)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
-        db.execute("CREATE (:Person {name:'John Doe', age:42})").close()
+        db.execute("CREATE (:Person {name:'John Doe', age:42})")
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
@@ -151,7 +146,7 @@ class KafkaEventRouterIT {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("knows"))
-        db.execute("CREATE (:Person {name:'Andrea'})-[:KNOWS{since: 2014}]->(:Person {name:'Michael'})").close()
+        db.execute("CREATE (:Person {name:'Andrea'})-[:KNOWS{since: 2014}]->(:Person {name:'Michael'})")
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
@@ -172,7 +167,7 @@ class KafkaEventRouterIT {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("person"))
-        db.execute("CREATE (:Person {name:'Andrea'})").close()
+        db.execute("CREATE (:Person {name:'Andrea'})")
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
@@ -195,7 +190,7 @@ class KafkaEventRouterIT {
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
         val message = "Hello World"
-        db.execute("CALL streams.publish('neo4j', '$message')").close()
+        db.execute("CALL streams.publish('neo4j', '$message')")
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
@@ -220,7 +215,7 @@ class KafkaEventRouterIT {
         db.execute("""
             CREATE (p:Product{id: "A1", code: "X1", name: "Name X1", price: 1000})-[:IS_IN{month:4, day:4, year:2018}]->(b:Basket{name:"Basket-A", created: "20181228"}),
 	            (p)-[:HAS_COLOR]->(c:Color{name: "Red"})
-        """.trimIndent()).close()
+        """.trimIndent())
 
         val recordsProduct = async { getRecordCount(config, "neo4j-product") }
         val recordsColor = async { getRecordCount(config, "neo4j-color") }
@@ -240,7 +235,7 @@ class KafkaEventRouterIT {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("personConstraints"))
-        db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
+        db.execute("CREATE (:PersonConstr {name:'Andrea'})")
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
@@ -259,13 +254,13 @@ class KafkaEventRouterIT {
 
     @Test
     fun testCreateRelationshipWithConstraints() {
-        db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
-        db.execute("CREATE (:ProductConstr {name:'My Awesome Product', price: '100€'})").close()
+        db.execute("CREATE (:PersonConstr {name:'Andrea'})")
+        db.execute("CREATE (:ProductConstr {name:'My Awesome Product', price: '100€'})")
         db.execute("""
             |MATCH (p:PersonConstr {name:'Andrea'})
             |MATCH (pp:ProductConstr {name:'My Awesome Product'})
             |MERGE (p)-[:BOUGHT]->(pp)
-        """.trimMargin()).close()
+        """.trimMargin())
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("personConstraints", "productConstraints", "boughtConstraints"))

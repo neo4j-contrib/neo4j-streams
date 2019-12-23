@@ -40,9 +40,9 @@ class StreamsEventSinkQueryExecutionTest {
         streamsEventSinkQueryExecution.writeForTopic("shouldWriteCypherQuery", listOf(StreamsSinkEntity(first, first),
                 StreamsSinkEntity(second, second)))
 
-        db.execute("MATCH (n:Label) RETURN count(n) AS count").columnAs<Long>("count").use {
-            assertEquals(2, it.next())
-        }
+        db.execute("MATCH (n:Label) RETURN count(n) AS count")
+        { it.columnAs<Long>("count") }
+                .use { assertEquals(2, it.next()) }
 
     }
 

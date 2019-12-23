@@ -24,14 +24,13 @@ class StreamsSinkConfigurationTest {
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val customLabel = "CustomLabel"
         val customId = "customId"
-        val config = Config.newBuilder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
-                .withSetting(topicKey, topicValue)
-                .withSetting("streams.sink.enabled", "false")
-                .withSetting("streams.sink.topic.cdc.sourceId", cdctopic)
-                .withSetting("streams.sink.topic.cdc.sourceId.labelName", customLabel)
-                .withSetting("streams.sink.topic.cdc.sourceId.idName", customId)
-                .build()
+        val config = mapOf(
+                "streams.sink.polling.interval" to pollingInterval,
+                topicKey to topicValue,
+                "streams.sink.enabled" to "false",
+                "streams.sink.topic.cdc.sourceId" to cdctopic,
+                "streams.sink.topic.cdc.sourceId.labelName" to customLabel,
+                "streams.sink.topic.cdc.sourceId.idName" to customId)
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, pollingInterval, topic, topicValue)
         assertFalse { streamsConfig.enabled }
@@ -46,13 +45,11 @@ class StreamsSinkConfigurationTest {
         val topic = "topic-neo"
         val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
-        val config = Config.newBuilder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
-                .withSetting(topicKey, topicValue)
-                .withSetting("streams.sink.topic.pattern.node.nodePatternTopic", "User{!userId,name,surname,address.city}")
-                .withSetting("streams.sink.enabled", "false")
-                .withSetting("streams.sink.topic.cdc.sourceId", topic)
-                .build()
+        val config = mapOf("streams.sink.polling.interval" to pollingInterval,
+                topicKey to topicValue,
+                "streams.sink.topic.pattern.node.nodePatternTopic" to "User{!userId,name,surname,address.city}",
+                "streams.sink.enabled" to "false",
+                "streams.sink.topic.cdc.sourceId" to topic)
         StreamsSinkConfiguration.from(config)
     }
 
@@ -60,12 +57,10 @@ class StreamsSinkConfigurationTest {
     fun shouldFailWithCrossDefinedCDCTopics() {
         val pollingInterval = "10"
         val topic = "topic-neo"
-        val config = Config.newBuilder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
-                .withSetting("streams.sink.enabled", "false")
-                .withSetting("streams.sink.topic.cdc.sourceId", topic)
-                .withSetting("streams.sink.topic.cdc.schema", topic)
-                .build()
+        val config = mapOf("streams.sink.polling.interval" to pollingInterval,
+                "streams.sink.enabled" to "false",
+                "streams.sink.topic.cdc.sourceId" to topic,
+                "streams.sink.topic.cdc.schema" to topic)
         StreamsSinkConfiguration.from(config)
     }
 

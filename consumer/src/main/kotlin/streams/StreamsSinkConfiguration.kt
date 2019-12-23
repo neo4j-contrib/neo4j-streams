@@ -1,10 +1,8 @@
 package streams
 
-import org.neo4j.configuration.Config
-import streams.extensions.raw
 import streams.service.TopicUtils
-import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
+import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 
 
 object StreamsSinkConfigurationConstants {
@@ -21,10 +19,6 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     companion object {
-        fun from(cfg: Config): StreamsSinkConfiguration {
-            return from(cfg.raw())
-        }
-
         fun from(cfg: Map<String, String>, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
             val default = StreamsSinkConfiguration()
             val config = cfg

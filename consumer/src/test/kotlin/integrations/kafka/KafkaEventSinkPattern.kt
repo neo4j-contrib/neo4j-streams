@@ -34,8 +34,10 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         kafkaProducer.send(producerRecord).get()
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:User{name: 'Andrea', surname: 'Santurbano', userId: 1, `address.city`: 'Venice'}) RETURN count(n) AS count"
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
@@ -55,8 +57,10 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
                 MATCH p = (s:User{sourceName: 'Andrea', sourceSurname: 'Santurbano', sourceId: 1})-[:KNOWS{since: 2014}]->(e:User{targetName: 'Michael', targetSurname: 'Hunger', targetId: 1})
                 RETURN count(p) AS count
             """.trimIndent()
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
@@ -67,8 +71,8 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
                 "(:User{!userId,name,surname})")
         db = graphDatabaseBuilder as ImpermanentDbmsRule
 
-        db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
-        val count = db.execute("MATCH (n:User) RETURN count(n) AS count").columnAs<Long>("count").next()
+        db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})")
+        val count = db.execute("MATCH (n:User) RETURN count(n) AS count") { it.columnAs<Long>("count").next() }
         assertEquals(1L, count)
 
 
@@ -87,8 +91,10 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         kafkaProducer.send(producerRecord).get()
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:User) RETURN count(n) AS count"
-            val result = db.execute(query).columnAs<Long>("count")
-            result.hasNext() && result.next() == 0L && !result.hasNext()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 0L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 }

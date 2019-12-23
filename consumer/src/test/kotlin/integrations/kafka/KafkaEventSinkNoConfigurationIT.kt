@@ -29,7 +29,7 @@ class KafkaEventSinkNoConfigurationIT {
                 .setConfig("kafka.bootstrap.servers", "")
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})") as ImpermanentDbmsRule
-        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count").columnAs<Long>("count").next()
+        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") { it.columnAs<Long>("count").next() }
         assertEquals(0L, count)
     }
 
@@ -45,7 +45,7 @@ class KafkaEventSinkNoConfigurationIT {
                 .setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})")
                 .setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
                 .setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name) as ImpermanentDbmsRule
-        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count").columnAs<Long>("count").next()
+        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") { it.columnAs<Long>("count").next() }
         assertEquals(0L, count)
         fakeWebServer.stop()
     }

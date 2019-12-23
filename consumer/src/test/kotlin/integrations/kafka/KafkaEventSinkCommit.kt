@@ -34,7 +34,6 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
 
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = "MATCH (n:Label) RETURN count(*) AS count"
-            val result = db.execute(query).columnAs<Long>("count")
 
             val kafkaConsumer = createConsumer<String, ByteArray>(
                     kafka = KafkaEventSinkSuiteIT.kafka,
@@ -42,7 +41,10 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
             val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
             kafkaConsumer.close()
 
-            result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
     }
@@ -72,7 +74,7 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
                 WHERE properties(p) = {props}
                 RETURN count(p) AS count
             """.trimIndent()
-            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
+            val result = db.execute(query, mapOf("props" to props)) { it.columnAs<Long>("count") }
             result.hasNext() && result.next() == 1L && !result.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }

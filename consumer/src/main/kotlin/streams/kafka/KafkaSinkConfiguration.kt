@@ -4,14 +4,12 @@ import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.neo4j.configuration.Config
 import streams.StreamsSinkConfiguration
-import streams.extensions.raw
 import streams.extensions.toPointCase
 import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopics
 import streams.utils.ValidationUtils.validateConnection
-import java.util.*
+import java.util.Properties
 
 
 private const val kafkaConfigPrefix = "kafka."
@@ -42,10 +40,6 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                                   val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
-
-        fun from(cfg: Config): KafkaSinkConfiguration {
-            return from(cfg.raw())
-        }
 
         fun from(cfg: Map<String, String>): KafkaSinkConfiguration {
             val kafkaCfg = create(cfg)
