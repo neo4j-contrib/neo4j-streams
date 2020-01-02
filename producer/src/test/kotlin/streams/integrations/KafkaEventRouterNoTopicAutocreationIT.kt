@@ -1,7 +1,6 @@
 package streams.integrations
 
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.apache.kafka.clients.admin.AdminClient
@@ -11,14 +10,15 @@ import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
+import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils
+import streams.setConfig
+import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterNoTopicAutocreationIT {
@@ -70,16 +70,15 @@ class KafkaEventRouterNoTopicAutocreationIT {
     @Test
     fun `should start even with no topic created`() {
         // when
-        val db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
+        val db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.personNotDefined", "Person{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
 
         // then
-        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count")
-                .columnAs<Long>("count")
-                .next()
+        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") {
+            it.columnAs<Long>("count")
+                    .next()
+        }
         assertEquals(0L, count)
     }
 
@@ -90,14 +89,13 @@ class KafkaEventRouterNoTopicAutocreationIT {
         val customerTopic = "customer"
         val neo4jTopic = "neo4j"
         val expectedTopics = listOf(personTopic, customerTopic, neo4jTopic)
-        val db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
+        val db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.$personTopic", "Person{*}")
                 .setConfig("streams.source.topic.nodes.$customerTopic", "Customer{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .start()
         // we create a new node an check that the source plugin is working
-        db.execute("CREATE (p:Person{id: 1})").close()
+        db.execute("CREATE (p:Person{id: 1})")
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = KafkaTestUtils.createConsumer(config)
         consumer.subscribe(expectedTopics)
@@ -110,13 +108,11 @@ class KafkaEventRouterNoTopicAutocreationIT {
         // when
         val waitFor = 10000L
         withTimeout(waitFor) { // n.b. the default value for `max.block.ms` is 60 seconds so if exceeds `waitFor` throws a CancellationException
-            async { db.execute("CREATE (p:Customer{id: 2})").close() }.await()
+            async { db.execute("CREATE (p:Customer{id: 2})") }.await()
         }
 
         // then
-        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count")
-                .columnAs<Long>("count")
-                .next()
+        val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") { it.columnAs<Long>("count").next() }
         assertEquals(2L, count)
     }
 

@@ -4,9 +4,8 @@ import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.SchemaBuilder
 import org.apache.kafka.connect.data.Struct
 import org.junit.Test
-import org.neo4j.driver.v1.Value
-import org.neo4j.driver.v1.Values
-import streams.kafka.connect.sink.converters.MapValueConverter
+import org.neo4j.driver.Value
+import org.neo4j.driver.Values
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
 import kotlin.test.assertEquals
 

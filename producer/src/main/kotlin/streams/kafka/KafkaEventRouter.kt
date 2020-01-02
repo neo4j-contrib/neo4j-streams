@@ -41,7 +41,7 @@ class KafkaEventRouter: StreamsEventRouter {
         log.info("Initializing Kafka Connector")
         kafkaConfig = KafkaConfiguration.from(config)
         val props = kafkaConfig.asProperties()
-        val definedTopics = StreamsEventRouterConfiguration.from(config?.raw() ?: emptyMap()).allTopics()
+        val definedTopics = StreamsEventRouterConfiguration.from(config).allTopics()
         kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
         kafkaAdminService.start()
         producer = Neo4jKafkaProducer(props)

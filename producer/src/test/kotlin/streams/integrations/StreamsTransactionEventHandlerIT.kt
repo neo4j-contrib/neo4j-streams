@@ -2,8 +2,10 @@ package streams.integrations
 
 import org.junit.After
 import org.junit.Before
+import org.junit.Rule
 import org.junit.Test
 import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.events.NodeChange
 import streams.events.OperationType
@@ -17,23 +19,24 @@ import kotlin.test.assertNotNull
 @Suppress("DEPRECATION")
 class StreamsTransactionEventHandlerIT {
 
-    private var db: ImpermanentDbmsRule? = null
+    @Rule
+    @JvmField
+    val db: DbmsRule = ImpermanentDbmsRule().startLazily()
+            .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter")
 
     @Before
     fun setUp() {
         MockStreamsEventRouter.reset()
-        db = ImpermanentDbmsRule().startLazily()
-                .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter") as ImpermanentDbmsRule
-        db?.restartDatabase()
+        db.ensureStarted()
     }
 
-    @After
-    fun tearDown() {
-        db?.shutdown()
-    }
+//    @After
+//    fun tearDown() {
+//        db.shutdown()
+//    }
 
     @Test fun testNodes(){
-        db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
+        db.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
 
         assertEquals(2,MockStreamsEventRouter.events.size)
         assertEquals(OperationType.created,MockStreamsEventRouter.events[0].meta.operation)
@@ -47,7 +50,7 @@ class StreamsTransactionEventHandlerIT {
 
         MockStreamsEventRouter.reset()
 
-        db!!.execute("MATCH (o:Person {name:'Omar'}), (a:Person {name:'Andrea'}) " +
+        db.execute("MATCH (o:Person {name:'Omar'}), (a:Person {name:'Andrea'}) " +
                 "SET o:Test " +
                 "REMOVE o:Person " +
                 "SET o.age = 31 " +
@@ -70,7 +73,7 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(mapOf("name" to "Andrea", "age" to 31L) , beforeAndreaSet.properties)
 
         MockStreamsEventRouter.reset()
-        db!!.execute("MATCH (o:Marked) DELETE o ")
+        db.execute("MATCH (o:Marked) DELETE o ")
 
         assertEquals(1,MockStreamsEventRouter.events.size)
         assertEquals(OperationType.deleted,MockStreamsEventRouter.events[0].meta.operation)
@@ -84,10 +87,10 @@ class StreamsTransactionEventHandlerIT {
     }
 
     @Test fun testRelationships() {
-        db!!.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
+        db.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
         MockStreamsEventRouter.reset()
 
-        db!!.execute("MATCH (o:Person {name:'Omar', age: 30}), (a:Person {name:'Andrea', age: 31}) " +
+        db.execute("MATCH (o:Person {name:'Omar', age: 30}), (a:Person {name:'Andrea', age: 31}) " +
                 "CREATE (o)-[r:KNOWS]->(a)")
 
         assertEquals(1,MockStreamsEventRouter.events.size)
@@ -96,7 +99,7 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
 
         MockStreamsEventRouter.reset()
-        db!!.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
+        db.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
                 "SET r.touched = true")
 
         assertEquals(1,MockStreamsEventRouter.events.size)
@@ -105,7 +108,7 @@ class StreamsTransactionEventHandlerIT {
         assertEquals(0,MockStreamsEventRouter.events[0].meta.txEventId)
 
         MockStreamsEventRouter.reset()
-        db!!.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
+        db.execute("MATCH (o:Person {name:'Omar', age: 30})-[r:KNOWS]->(a:Person {name:'Andrea', age: 31}) " +
                 "DELETE r")
 
         assertEquals(1,MockStreamsEventRouter.events.size)
@@ -115,9 +118,9 @@ class StreamsTransactionEventHandlerIT {
     }
 
     @Test fun testDetachDelete() {
-        db!!.execute("CREATE (o:Person:Start {name:'Omar', age: 30})-[r:KNOWS {since: datetime()}]->(a:Person:End {name:'Andrea', age: 31})")
+        db.execute("CREATE (o:Person:Start {name:'Omar', age: 30})-[r:KNOWS {since: datetime()}]->(a:Person:End {name:'Andrea', age: 31})")
         MockStreamsEventRouter.reset()
-        db!!.execute("MATCH (n) DETACH DELETE n")
+        db.execute("MATCH (n) DETACH DELETE n")
 
         assertEquals(3,MockStreamsEventRouter.events.size)
         assertEquals(OperationType.deleted,MockStreamsEventRouter.events[0].meta.operation)

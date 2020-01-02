@@ -36,18 +36,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                 else -> throw RuntimeException("Unsupported data $data for topic type $topicType")
             }
             node.setProperty("data", newData)
-//            if (properties.hasProperty(topicType.key)) {
-//                val topicData = JSONUtils.readValue<Any>(properties.getProperty(topicType.key))
-//                val newData = when (topicData) {
-//                    is Map<*, *> -> topicData + (data as Map<String, Any?>)
-//                    is Collection<*> -> topicData + (data as Collection<String>)
-//                    else -> throw RuntimeException("Unsupported data $data for topic type $topicType")
-//                }
-//                properties.setProperty(topicType.key, JSONUtils.writeValueAsString(newData))
-//            } else {
-//                properties.setProperty(topicType.key, JSONUtils.writeValueAsString(data))
-//            }
-//            it.success()
         }
     }
 
@@ -76,25 +64,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
             } else {
                 node.setProperty(topicType.key, filteredData)
             }
-//            if (properties.hasProperty(topicType.key)) {
-//                val topicData = JSONUtils.readValue<Any>(properties.getProperty(topicType.key))
-//                val newData = when (topicData) {
-//                    is Map<*, *> -> topicData.filterKeys { it.toString() != topic }
-//                    is Collection<*> -> topicData.filter { it.toString() != topic }
-//                    else -> throw RuntimeException("Unsupported data $topicData for topic type $topicType")
-//                }
-//                val isEmpty = when (newData) {
-//                    is Map<*, *> -> newData.isEmpty()
-//                    is Collection<*> -> newData.isEmpty()
-//                    else -> throw RuntimeException("Unsupported data $topicData for topic type $topicType")
-//                }
-//                if (isEmpty) {
-//                    properties.removeProperty(topicType.key)
-//                } else {
-//                    properties.setProperty(topicType.key, JSONUtils.writeValueAsString(newData))
-//                }
-//            }
-//            it.success()
         }
     }
 
@@ -116,18 +85,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                             }
                         }
                     }
-//                    .find {
-//                        if (!properties.hasProperty(it.key)) {
-//                            false
-//                        } else {
-//                            val data = JSONUtils.readValue<Any>(properties.getProperty(it.key))
-//                            when (data) {
-//                                is Map<*, *> -> data.containsKey(topic)
-//                                is Collection<*> -> data.contains(topic)
-//                                else -> false
-//                            }
-//                        }
-//                    }
         }
     }
 
@@ -148,16 +105,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                     }
 
                 }.toSet() as Set<String>
-//        TopicType.values()
-//                .filter { properties.hasProperty(it.key) }
-//                .flatMap {
-//                    val data = JSONUtils.readValue<Any>(properties.getProperty(it.key))
-//                    when (data) {
-//                        is Map<*, *> -> data.keys
-//                        is Collection<*> -> data.toSet()
-//                        else -> emptySet()
-//                    }
-//                }.toSet() as Set<String>
     }
 
     fun setAll(topics: Topics) {
@@ -167,12 +114,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
     }
 
     fun getCypherTemplate(topic: String) = db.beginTx().use {
-//        if (properties.hasProperty(TopicType.CYPHER.key)) {
-//            val data = JSONUtils.readValue<Map<String, String>>(properties.getProperty(TopicType.CYPHER.key))
-//            data[topic]
-//        } else {
-//            null
-//        }
         db.beginTx().use {
             val topicTypeLabel = Label.label(TopicType.CYPHER.key)
             val findNodes = it.findNodes(topicTypeLabel)
@@ -197,10 +138,6 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                     }
                 }
                 .toMap()
-//        TopicType.values()
-//                .filter { properties.hasProperty(it.key) }
-//                .map { it to JSONUtils.readValue<Any>(properties.getProperty(it.key)) }
-//                .toMap()
     }
 
 }

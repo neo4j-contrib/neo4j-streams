@@ -12,14 +12,16 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
 import org.neo4j.test.assertion.Assert
+import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
+import streams.extensions.execute
 import streams.serialization.JSONUtils
+import streams.setConfig
+import streams.start
 import streams.utils.StreamsUtils
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class KafkaEventSinkNoTopicAutoCreationIT {
@@ -75,13 +77,12 @@ class KafkaEventSinkNoTopicAutoCreationIT {
         val topicList = client.listTopics().names().get()
         val notRegisteredTopic = "notRegistered"
         assertTrue { topicList.containsAll(expectedTopics.toSet()) && !topicList.contains(notRegisteredTopic) }
-        val db = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
+        val db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.sink.topic.cypher.$notRegisteredTopic", "MERGE (p:NotRegisteredTopic{name: event.name})")
                 .setConfig("streams.sink.topic.cypher.$topic", "MERGE (p:Person{name: event.name})")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .start()
         val kafkaProducer: KafkaProducer<String, ByteArray> = createProducer(kafka = kafka)
 
         // when
@@ -91,9 +92,10 @@ class KafkaEventSinkNoTopicAutoCreationIT {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val count = db.execute("MATCH (n:Person) RETURN COUNT(n) AS count")
-                    .columnAs<Long>("count")
-                    .next()
+            val count = db.execute("MATCH (n:Person) RETURN COUNT(n) AS count") {
+                it.columnAs<Long>("count")
+                        .next()
+            }
             val topics = client.listTopics().names().get()
             count == 1L && !topics.contains(notRegisteredTopic)
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)

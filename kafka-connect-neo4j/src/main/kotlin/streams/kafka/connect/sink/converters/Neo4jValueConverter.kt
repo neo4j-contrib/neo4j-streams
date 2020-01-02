@@ -1,10 +1,10 @@
 package streams.kafka.connect.sink.converters
 
-import org.neo4j.driver.v1.Value
-import org.neo4j.driver.v1.Values
+import org.neo4j.driver.Value
+import org.neo4j.driver.Values
 import java.time.LocalTime
 import java.time.ZoneId
-import java.util.*
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 

@@ -1,13 +1,22 @@
 package streams.serialization
 
 import org.junit.Test
-import org.neo4j.driver.v1.Values
-import org.neo4j.values.storable.CoordinateReferenceSystem.*
+import org.neo4j.driver.Values
+import org.neo4j.values.storable.CoordinateReferenceSystem.Cartesian
+import org.neo4j.values.storable.CoordinateReferenceSystem.Cartesian_3D
+import org.neo4j.values.storable.CoordinateReferenceSystem.WGS84
+import org.neo4j.values.storable.CoordinateReferenceSystem.WGS84_3D
 import org.neo4j.values.storable.DateTimeValue.datetime
 import org.neo4j.values.storable.DateValue.date
 import org.neo4j.values.storable.TimeValue.time
 import org.neo4j.values.storable.Values.pointValue
-import streams.events.*
+import streams.events.EntityType
+import streams.events.Meta
+import streams.events.NodeChange
+import streams.events.NodePayload
+import streams.events.OperationType
+import streams.events.Schema
+import streams.events.StreamsTransactionEvent
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
 import kotlin.test.assertFails

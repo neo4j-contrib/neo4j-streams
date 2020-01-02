@@ -29,12 +29,10 @@ class StreamsConfig(private val neo4jConfig: Config, logService: LogService) : L
 
     override fun init() {
         log.debug("Init StreamsConfig")
-
         loadConfiguration()
         afterInitListeners.forEach { it(config) }
+        println("Neo4j Streams configuration initialised: $config")
     }
-
-
 
     private fun loadConfiguration() {
         val neo4jConfFolder = System.getenv().getOrDefault("NEO4J_CONF", determineNeo4jConfFolder())

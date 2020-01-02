@@ -27,6 +27,7 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
     fun start() {
         job = GlobalScope.launch(Dispatchers.IO) {
             while (isActive) {
+                if (!db.isAvailable(5000)) return@launch
                 StreamsUtils.ignoreExceptions({
                     db.beginTx().use {
                         it.schema().constraints

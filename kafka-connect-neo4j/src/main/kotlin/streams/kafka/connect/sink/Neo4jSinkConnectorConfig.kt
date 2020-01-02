@@ -11,7 +11,7 @@ import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.driver.internal.async.pool.PoolSettings
-import org.neo4j.driver.v1.Config
+import org.neo4j.driver.Config
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.TopicType
 import streams.service.TopicUtils
@@ -52,7 +52,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val connectionLifenessCheckTimeout: Long
     val connectionPoolMaxSize: Int
     val connectionAcquisitionTimeout: Long
-    val loadBalancingStrategy: Config.LoadBalancingStrategy
 
     val retryBackoff: Long
     val retryMaxAttempts: Int
@@ -90,8 +89,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         connectionMaxConnectionLifetime = getLong(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS)
         connectionPoolMaxSize = getInt(CONNECTION_POOL_MAX_SIZE)
         connectionAcquisitionTimeout = getLong(CONNECTION_MAX_CONNECTION_ACQUISITION_TIMEOUT_MSECS)
-        loadBalancingStrategy = ConfigUtils
-                .getEnum(Config.LoadBalancingStrategy::class.java, this, CONNECTION_LOAD_BALANCE_STRATEGY)
 
         retryBackoff = getLong(RETRY_BACKOFF_MSECS)
         retryMaxAttempts = getInt(RETRY_MAX_ATTEMPTS)
@@ -253,14 +250,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .defaultValue(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
                             .group(ConfigGroup.CONNECTION)
                             .validator(ConfigDef.Range.atLeast(1))
-                            .build())
-                    .define(ConfigKeyBuilder
-                            .of(CONNECTION_LOAD_BALANCE_STRATEGY, ConfigDef.Type.STRING)
-                            .documentation(PropertiesUtil.getProperty(CONNECTION_LOAD_BALANCE_STRATEGY))
-                            .importance(ConfigDef.Importance.LOW)
-                            .defaultValue(Config.LoadBalancingStrategy.LEAST_CONNECTED.toString())
-                            .group(ConfigGroup.CONNECTION)
-                            .validator(ValidEnum.of(Config.LoadBalancingStrategy::class.java))
                             .build())
                     .define(ConfigKeyBuilder
                             .of(ENCRYPTION_ENABLED, ConfigDef.Type.BOOLEAN)

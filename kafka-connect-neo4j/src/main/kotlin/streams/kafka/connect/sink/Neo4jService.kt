@@ -1,24 +1,29 @@
 package streams.kafka.connect.sink
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.ObsoleteCoroutinesApi
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.ticker
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
-import org.neo4j.driver.v1.AuthTokens
-import org.neo4j.driver.v1.Config
-import org.neo4j.driver.v1.Driver
-import org.neo4j.driver.v1.GraphDatabase
-import org.neo4j.driver.v1.exceptions.ClientException
-import org.neo4j.driver.v1.exceptions.TransientException
-import org.neo4j.driver.v1.net.ServerAddress
+import org.neo4j.driver.AuthTokens
+import org.neo4j.driver.Config
+import org.neo4j.driver.Driver
+import org.neo4j.driver.GraphDatabase
+import org.neo4j.driver.exceptions.ClientException
+import org.neo4j.driver.exceptions.TransientException
+import org.neo4j.driver.net.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
 import streams.service.StreamsSinkEntity
 import streams.service.StreamsSinkService
 import streams.service.TopicType
-import streams.service.TopicTypeGroup
 import streams.utils.StreamsUtils
 import streams.utils.retryForException
 import java.util.concurrent.CopyOnWriteArraySet
@@ -35,7 +40,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     private val driver: Driver
 
     init {
-        val configBuilder = Config.build()
+        val configBuilder = Config.builder()
         if (this.config.encryptionEnabled) {
             configBuilder.withEncryption()
             val trustStrategy: Config.TrustStrategy = when (this.config.encryptionTrustStrategy) {
@@ -64,10 +69,9 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         configBuilder.withMaxConnectionPoolSize(this.config.connectionPoolMaxSize)
         configBuilder.withMaxConnectionLifetime(this.config.connectionMaxConnectionLifetime, TimeUnit.MILLISECONDS)
         configBuilder.withConnectionAcquisitionTimeout(this.config.connectionAcquisitionTimeout, TimeUnit.MILLISECONDS)
-        configBuilder.withLoadBalancingStrategy(this.config.loadBalancingStrategy)
         configBuilder.withMaxTransactionRetryTime(config.retryBackoff, TimeUnit.MILLISECONDS)
         configBuilder.withResolver { address -> this.config.serverUri.map { ServerAddress.of(it.host, it.port) }.toSet() }
-        val neo4jConfig = configBuilder.toConfig()
+        val neo4jConfig = configBuilder.build()
 
         this.driver = GraphDatabase.driver(this.config.serverUri.firstOrNull(), authToken, neo4jConfig)
     }

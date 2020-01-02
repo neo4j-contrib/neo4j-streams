@@ -374,14 +374,14 @@ class StreamsTransactionEventHandlerRelTest {
         Mockito.`when`(assignedProp.entity()).thenReturn(mockedRel)
         Mockito.`when`(assignedProp.key()).thenReturn("since")
         Mockito.`when`(assignedProp.value()).thenReturn(2016)
-        Mockito.`when`(assignedProp.previouslyCommitedValue()).thenReturn(2008)
+        Mockito.`when`(assignedProp.previouslyCommittedValue()).thenReturn(2008)
 
         val txd = Mockito.mock(TransactionData::class.java)
         Mockito.`when`(txd.removedRelationshipProperties()).thenReturn(mutableListOf())
         Mockito.`when`(txd.assignedRelationshipProperties()).thenReturn(mutableListOf(assignedProp))
         Mockito.`when`(txd.username()).thenReturn("mock")
 
-        val previous = handler.beforeCommit(txd).relData
+        val previous = handler.beforeCommit(txd, null, null).relData
 
         assertEquals(1,previous.updatedPayloads.size)
 

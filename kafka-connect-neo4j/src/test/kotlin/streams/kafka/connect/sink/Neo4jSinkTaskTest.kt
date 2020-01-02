@@ -372,12 +372,12 @@ class Neo4jSinkTaskTest {
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataEnd, 43),
                 SinkRecord(firstTopic, 1, null, null, null, cdcDataRelationship, 44))
         task.put(input)
-        db.graph().beginTx().use {
+        db.defaultDatabaseService().beginTx().use {
             val query = """
                 |MATCH p = (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})
                 |RETURN count(p) AS count
                 |""".trimMargin()
-            db.graph().execute(query)
+            it.execute(query)
                     .columnAs<Long>("count").use {
                         assertTrue { it.hasNext() }
                         val count = it.next()
@@ -385,7 +385,8 @@ class Neo4jSinkTaskTest {
                         assertFalse { it.hasNext() }
                     }
 
-            val labels = db.graph().allLabels.stream().map { it.name() }.collect(Collectors.toSet())
+            val labels = db.defaultDatabaseService().beginTx()
+                    .use { StreamSupport.stream(it.allLabels.spliterator(), false).map { it.name() }.collect(Collectors.toSet()) }
             assertEquals(setOf("User"), labels)
         }
     }

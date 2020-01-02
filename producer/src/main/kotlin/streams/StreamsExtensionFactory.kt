@@ -48,7 +48,6 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
 
     override fun start() {
         try {
-//            TODO("we should filter the data per `source.*.to.<database>`")
             if (db.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME) {
                 return
             }

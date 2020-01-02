@@ -32,6 +32,7 @@ import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.setConfig
+import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
@@ -77,7 +78,7 @@ class KafkaEventRouterIT {
 
     @Rule
     @JvmField
-    val db: DbmsRule = ImpermanentDbmsRule()
+    val db: DbmsRule = ImpermanentDbmsRule().startLazily()
 
     private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
@@ -110,6 +111,8 @@ class KafkaEventRouterIT {
                     .setConfig("streams.source.topic.relationships.boughtConstraints", "BOUGHT{*}")
                     .setConfig("streams.source.schema.polling.interval", "0")
         }
+//        db.start()
+        db.ensureStarted()
         db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
@@ -117,6 +120,11 @@ class KafkaEventRouterIT {
             db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE")
         }
     }
+
+//    @After
+//    fun after() {
+//        db.shutdown()
+//    }
 
     @Test
     fun testCreateNode() {
