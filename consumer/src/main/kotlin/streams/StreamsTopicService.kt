@@ -7,8 +7,15 @@ import streams.service.STREAMS_TOPIC_KEY
 import streams.service.TopicType
 import streams.service.Topics
 import streams.utils.Neo4jUtils
+import java.lang.IllegalArgumentException
 
 class StreamsTopicService(private val db: GraphDatabaseAPI) {
+
+    init {
+        if (db.databaseName() != Neo4jUtils.SYSTEM_DATABASE_NAME) {
+            throw IllegalArgumentException("GraphDatabaseAPI must be an instance of ${Neo4jUtils.SYSTEM_DATABASE_NAME} database")
+        }
+    }
 
     private fun isEmpty(data: Any, excOnError: Exception) = when (data) {
         is Map<*, *> -> data.isEmpty()
@@ -78,9 +85,9 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                 else -> throw runtimeException
             }
             if (isEmpty(filteredData, runtimeException)) {
-                node.removeProperty(topicType.key)
+                node.removeProperty("data")
             } else {
-                node.setProperty(topicType.key, filteredData)
+                node.setProperty("data", JSONUtils.writeValueAsString(filteredData))
             }
             it.commit()
         }
@@ -138,7 +145,12 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
             if (!findNodes.hasNext()) {
                 null
             } else {
-                val data = JSONUtils.readValue<Map<String, String>>(findNodes.next().getProperty("data"))
+                val node = findNodes.next()
+                val data = if (node.hasProperty("data")) {
+                    JSONUtils.readValue<Map<String, String>>(node.getProperty("data"))
+                } else {
+                    emptyMap()
+                }
                 data[topic]
             }
         }
@@ -147,12 +159,17 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
     fun getAll() = db.beginTx().use { tx ->
         TopicType.values()
                 .mapNotNull {
-                    val topicTypeLabel = Label.label(TopicType.CYPHER.key)
+                    val topicTypeLabel = Label.label(it.key)
                     val findNodes = tx.findNodes(topicTypeLabel)
                     if (!findNodes.hasNext()) {
                         null
                     } else {
-                        it to JSONUtils.readValue<Any>(findNodes.next().getProperty(it.key))
+                        val node = findNodes.next()
+                        if (node.hasProperty("data")) {
+                            it to JSONUtils.readValue<Any>(node.getProperty("data"))
+                        } else {
+                             null
+                        }
                     }
                 }
                 .toMap()

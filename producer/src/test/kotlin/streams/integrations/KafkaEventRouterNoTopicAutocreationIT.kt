@@ -16,6 +16,7 @@ import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils
 import streams.setConfig
+import streams.shutdownSilently
 import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
@@ -73,13 +74,14 @@ class KafkaEventRouterNoTopicAutocreationIT {
         val db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.personNotDefined", "Person{*}")
+                .start()
 
         // then
         val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") {
-            it.columnAs<Long>("count")
-                    .next()
+            it.columnAs<Long>("count").next()
         }
         assertEquals(0L, count)
+        db.shutdownSilently()
     }
 
     @Test

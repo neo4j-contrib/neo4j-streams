@@ -12,21 +12,26 @@ import streams.events.RelationshipPayload
 import streams.extensions.execute
 import streams.mocks.MockStreamsEventRouter
 import streams.setConfig
+import streams.shutdownSilently
+import streams.start
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
 @Suppress("DEPRECATION")
 class StreamsTransactionEventHandlerIT {
 
-    @Rule
-    @JvmField
-    val db: DbmsRule = ImpermanentDbmsRule().startLazily()
+    val db: DbmsRule = ImpermanentDbmsRule()
             .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter")
 
     @Before
     fun setUp() {
         MockStreamsEventRouter.reset()
-        db.ensureStarted()
+        db.start()
+    }
+
+    @After
+    fun tearDown() {
+        db.shutdownSilently()
     }
 
     @Test fun testNodes(){

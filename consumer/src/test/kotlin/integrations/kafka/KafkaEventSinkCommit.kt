@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 
 class KafkaEventSinkCommit : KafkaEventSinkBase() {
     @Test
-    fun shouldWriteLastOffsetWithNoAutoCommit() = runBlocking {
+    fun `should write last offset with auto commit false`() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
         graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
@@ -49,7 +49,7 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
     }
 
     @Test
-    fun `should fix issue 186 with auto commit false`() = runBlocking {
+    fun `should fix issue 186 with auto commit false`() {
         val product = "product" to "MERGE (p:Product {id: event.id}) ON CREATE SET p.name = event.name"
         val customer = "customer" to "MERGE (c:Customer {id: event.id}) ON CREATE SET c.name = event.name"
         val bought = "bought" to """
