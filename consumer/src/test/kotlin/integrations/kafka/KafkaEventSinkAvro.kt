@@ -1,22 +1,17 @@
 package integrations.kafka
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
-import kotlinx.coroutines.runBlocking
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecordBuilder
-import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import org.neo4j.test.rule.ImpermanentDbmsRule
-import streams.extensions.execute
-import streams.serialization.JSONUtils
 import streams.setConfig
-import java.util.*
+import streams.start
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 
@@ -30,7 +25,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
@@ -78,7 +73,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic","(:Place{!name})")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()

@@ -4,9 +4,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.sink.strategy.CUDNode
@@ -14,7 +12,8 @@ import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations
 import streams.service.sink.strategy.CUDRelationship
 import streams.setConfig
-import java.util.*
+import streams.start
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
 import kotlin.test.assertEquals
@@ -40,7 +39,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         // when
         list.forEach {
@@ -50,16 +49,21 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            val hasFooBar = db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            val fooBarLabel = db.execute("""
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            }
+            val hasFooBarLabel = db.execute("""
                 MATCH (n:Foo:Bar:Label)
                 RETURN count(n) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
-            fooBarLabel.hasNext() && fooBarLabel.next() == 5L && !fooBarLabel.hasNext()
+            """.trimIndent()) {
+                val fooBarLabel = it.columnAs<Long>("count")
+                fooBarLabel.hasNext() && fooBarLabel.next() == 5L && !fooBarLabel.hasNext()
+            }
+            hasFooBar && hasFooBarLabel
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
@@ -79,15 +83,16 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val key = "_id"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         val idList = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
-            it.commit()
-            it.allNodes.stream()
+            val ret = it.allNodes.stream()
                     .limit(5)
                     .toList()
                     .map { it.id }
+            it.commit()
+            ret
         }
         val list = idList.map {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
@@ -106,11 +111,13 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
@@ -143,7 +150,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
@@ -181,7 +188,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})")
             assertEquals(10, it.allNodes.count())
@@ -196,11 +203,13 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            db.execute("""
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
@@ -218,7 +227,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         db.beginTx().use {
             db.execute("""
                 UNWIND range(1, 10) AS id
@@ -237,11 +246,13 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            db.execute("""
                 MATCH p = (:Foo:Bar)-[:$rel_type]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val rels = db.beginTx().use {
@@ -269,7 +280,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, it.allRelationships.count())
@@ -284,11 +295,13 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val ids = db.execute("""
@@ -310,16 +323,18 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val rel_type = "MY_REL"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        val idMap = db.beginTx().use {
-            it.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
-            assertEquals(10, it.allRelationships.count())
-            it.commit()
-            it.allRelationships.stream()
-                    .limit(5)
+        db = graphDatabaseBuilder.start()
+        val idMap = db.beginTx().use { tx ->
+            tx.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
+            assertEquals(10, tx.allRelationships.count())
+            val res = tx.allRelationships.stream()
                     .toList()
+                    .sortedBy { it.id }
+                    .subList(0, 5)
                     .map { it.startNodeId to it.endNodeId }
                     .toMap()
+            tx.commit()
+            res
         }
         val list = idMap.map {
             val properties = emptyMap<String, Any>()
@@ -337,23 +352,22 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            db.execute("""
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()) { it.columnAs<Long>("count") }
-            fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         val ids = db.execute("""
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
                     """.trimIndent()) {
-                    it.columnAs<Long>("id")
-                            .stream()
-                            .toList()
-                }
-
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            ids == (6L..10L).toList()
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            it.columnAs<Long>("id")
+                    .stream()
+                    .toList()
+        }
+        assertEquals(ids, (6L..10L).toList())
     }
 }

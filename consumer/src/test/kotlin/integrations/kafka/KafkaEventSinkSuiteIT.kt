@@ -61,7 +61,8 @@ class KafkaEventSinkSuiteIT {
             StreamsUtils.ignoreExceptions({
                 kafka.stop()
                 schemaRegistry.stop()
-            }, kotlin.UninitializedPropertyAccessException::class.java)
+                isRunning = false
+            }, UninitializedPropertyAccessException::class.java)
         }
     }
 }

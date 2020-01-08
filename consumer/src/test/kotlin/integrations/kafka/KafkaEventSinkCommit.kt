@@ -8,13 +8,12 @@ import org.apache.kafka.common.TopicPartition
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
-import java.util.*
+import streams.start
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class KafkaEventSinkCommit : KafkaEventSinkBase() {
@@ -23,7 +22,7 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
         graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         val partition = 0
         var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -62,7 +61,7 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
         graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
         graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val props = mapOf("id" to 1, "name" to "My Awesome Product")
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),
@@ -71,11 +70,13 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val query = """
                 MATCH (p:Product)
-                WHERE properties(p) = {props}
+                WHERE properties(p) = ${'$'}props
                 RETURN count(p) AS count
             """.trimIndent()
-            val result = db.execute(query, mapOf("props" to props)) { it.columnAs<Long>("count") }
-            result.hasNext() && result.next() == 1L && !result.hasNext()
+            db.execute(query, mapOf("props" to props)) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 }

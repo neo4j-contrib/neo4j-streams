@@ -13,12 +13,12 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.Test
 import org.neo4j.kernel.api.procedure.GlobalProcedures
-import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import streams.setConfig
+import streams.start
 import java.util.UUID
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -30,6 +30,7 @@ import kotlin.test.assertTrue
 class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     private fun testProcedure(topic: String) {
+        registerProcedure()
         val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
         db.execute("CALL streams.consume('$topic', {timeout: 5000}) YIELD event RETURN event") { result ->
@@ -46,27 +47,22 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
     @Test
     fun shouldConsumeDataFromProcedureWithSinkDisabled() {
         graphDatabaseBuilder.setConfig("streams.sink.enabled", "false")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
         val topic = "bar"
         testProcedure(topic)
     }
 
     @Test
     fun shouldConsumeDataFromProcedure() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
         val topic = "foo"
         testProcedure(topic)
     }
 
     @Test
     fun shouldTimeout() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event") {
             assertFalse { it.hasNext() }
         }
@@ -74,9 +70,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadArrayOfJson() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val topic = "array-topic"
         val list = listOf(data, data)
         val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(list))
@@ -86,7 +81,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             UNWIND event.data AS data
             CREATE (t:TEST) SET t += data.properties
         """.trimIndent())
-        db.execute("MATCH (t:TEST) WHERE properties(t) = {props} RETURN count(t) AS count", mapOf("props" to dataProperties)) { searchResult ->
+        db.execute("MATCH (t:TEST) WHERE properties(t) = ${'$'}props RETURN count(t) AS count", mapOf("props" to dataProperties)) { searchResult ->
             assertTrue { searchResult.hasNext() }
             val searchResultMap = searchResult.next()
             assertTrue { searchResultMap.containsKey("count") }
@@ -96,9 +91,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadSimpleDataType() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val topic = "simple-data"
         val simpleInt = 1
         val simpleBoolean = true
@@ -128,9 +122,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadATopicPartitionStartingFromAnOffset() = runBlocking {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val topic = "read-from-range"
         val simpleInt = 1
         val partition = 0
@@ -160,9 +153,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadFromLatest() = runBlocking {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val topic = "simple-data-from-latest"
         val simpleInt = 1
         val simpleString = "test"
@@ -195,9 +187,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldNotCommit() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val topic = "simple-data"
         val simpleInt = 1
         val partition = 0
@@ -226,9 +217,8 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun `should consume AVRO messages`() {
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
-        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
-                .registerProcedure(StreamsSinkProcedures::class.java, true)
+        db = graphDatabaseBuilder.start()
+        registerProcedure()
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
                 .name("name").type().stringType().noDefault()
@@ -259,5 +249,10 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             val resultData = event["data"] as Map<String, Any?>
             assertEquals(struct.toMap(), resultData)
         }
+    }
+
+    private fun registerProcedure() {
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
     }
 }

@@ -71,8 +71,6 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
 
     override fun stop() {
         consumer.close()
-        // doesn't make sense to close it if you don't own it
-        errorService.close()
     }
 
     fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {

@@ -29,7 +29,7 @@ object StreamsEventSinkFactory {
     fun getStreamsEventSink(config: Map<String, String>, streamsQueryExecution: StreamsEventSinkQueryExecution,
                             streamsTopicService: StreamsTopicService, log: Log, db: GraphDatabaseAPI): StreamsEventSink {
         return Class.forName(config.getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
-                .getConstructor(Config::class.java,
+                .getConstructor(Map::class.java,
                         StreamsEventSinkQueryExecution::class.java,
                         StreamsTopicService::class.java,
                         Log::class.java,

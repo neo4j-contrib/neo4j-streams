@@ -49,19 +49,29 @@ class KafkaEventSink(private val config: Map<String, String>,
             "schemaRegistryUrl" to "kafka.schema.registry.url",
             "groupId" to "kafka.${ConsumerConfig.GROUP_ID_CONFIG}")
 
+    private lateinit var errorService: ErrorService
+
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
             override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
-
-                val errorService = KafkaErrorService(kafkaConfig.asProperties(), ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),{ s, e -> log.error(s,e as Throwable)})
                 return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log, errorService)
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, getErrorService())
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log, errorService)
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, getErrorService())
                 }
             }
         }
+    }
+
+    private fun getErrorService(): ErrorService {
+        if (!this::errorService.isInitialized) {
+            val kafkaConfig = KafkaSinkConfiguration.create(config)
+            this.errorService = KafkaErrorService(kafkaConfig.asProperties(),
+                    ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),
+                    { s, e -> log.error(s,e as Throwable) })
+        }
+        return this.errorService
     }
 
     override fun start() { // TODO move to the abstract class
@@ -92,12 +102,17 @@ class KafkaEventSink(private val config: Map<String, String>,
         log.info("Kafka Sink started")
     }
 
-    override fun stop() = runBlocking { // TODO move to the abstract class
+    override fun stop() { // TODO move to the abstract class
         log.info("Stopping Kafka Sink daemon Job")
-        try {
-            job.cancelAndJoin()
-            log.info("Kafka Sink daemon Job stopped")
-        } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
+        StreamsUtils.ignoreExceptions({ errorService.close() }, UninitializedPropertyAccessException::class.java)
+        StreamsUtils.ignoreExceptions({
+            runBlocking {
+                if (job.isActive) {
+                    job.cancelAndJoin()
+                }
+                log.info("Kafka Sink daemon Job stopped")
+            }
+        }, UninitializedPropertyAccessException::class.java)
     }
 
     private fun createJob(): Job {
@@ -123,9 +138,14 @@ class KafkaEventSink(private val config: Map<String, String>,
                     delay(timeMillis)
                 }
                 eventConsumer.stop()
-            } catch (e: Throwable) {
-                val message = e.message ?: "Generic error, please check the stack trace: "
-                log.error(message, e)
+            } catch (e: Exception) {
+                when (e) {
+                    is kotlinx.coroutines.CancellationException -> null
+                    else -> {
+                        val message = e.message ?: "Generic error, please check the stack trace: "
+                        log.error(message, e)
+                    }
+                }
                 eventConsumer.stop()
             }
         }

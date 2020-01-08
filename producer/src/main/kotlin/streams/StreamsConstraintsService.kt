@@ -18,10 +18,8 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
 
     private lateinit var job: Job
 
-    override fun close() = runBlocking {
-        if (::job.isInitialized) {
-            job.cancelAndJoin()
-        }
+    override fun close() {
+        StreamsUtils.ignoreExceptions({ runBlocking { job.cancelAndJoin() } }, UninitializedPropertyAccessException::class.java)
     }
 
     fun start() {

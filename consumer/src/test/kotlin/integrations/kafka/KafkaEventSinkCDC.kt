@@ -5,14 +5,23 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import org.neo4j.test.rule.ImpermanentDbmsRule
-import streams.events.*
+import streams.events.Constraint
+import streams.events.Meta
+import streams.events.NodeChange
+import streams.events.NodePayload
+import streams.events.OperationType
+import streams.events.RelationshipChange
+import streams.events.RelationshipNodeChange
+import streams.events.RelationshipPayload
+import streams.events.Schema
+import streams.events.StreamsConstraintType
+import streams.events.StreamsTransactionEvent
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
-import java.util.*
+import streams.start
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class KafkaEventSinkCDC: KafkaEventSinkBase() {
@@ -23,7 +32,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId", topic)
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.idName", "customIdN@me")
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.labelName", "CustomLabelN@me")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -94,7 +103,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     fun shouldWriteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
@@ -169,7 +178,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     fun shouldDeleteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})")
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),

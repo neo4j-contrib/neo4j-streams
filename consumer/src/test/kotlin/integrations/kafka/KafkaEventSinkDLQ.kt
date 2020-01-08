@@ -6,14 +6,13 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.errors.ErrorService
 import streams.setConfig
-import java.util.*
+import streams.start
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class KafkaEventSinkDLQ : KafkaEventSinkBase() {
@@ -26,7 +25,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
         val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
@@ -68,7 +67,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder as ImpermanentDbmsRule
+        db = graphDatabaseBuilder.start()
 
         val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
 
@@ -87,15 +86,15 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
                 MATCH (c:Customer)
                 RETURN count(c) AS count
             """.trimIndent()
-                val result = db.execute(query) { it.columnAs<Long>("count") }
-
-
-                val records = dlqConsumer.poll(5000)
-                val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
-                val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
-                val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
-                !records.isEmpty && headers.size == 7 && data == value && result.hasNext() && result.next() == 0L && !result.hasNext()
-                        && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+                db.execute(query) { result ->
+                    val count = result.columnAs<Long>("count")
+                    val records = dlqConsumer.poll(5000)
+                    val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
+                    val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
+                    val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
+                    !records.isEmpty && headers.size == 7 && data == value && count.hasNext() && count.next() == 0L && !count.hasNext()
+                            && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+                }
             }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
             it.close()
         }

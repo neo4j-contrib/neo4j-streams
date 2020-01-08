@@ -8,7 +8,8 @@ fun GraphDatabaseService.execute(cypher: String, params: Map<String, Any>) = thi
 
 fun <T> GraphDatabaseService.execute(cypher: String, lambda: ((Result) -> T)) = this.execute(cypher, emptyMap(), lambda)
 fun <T> GraphDatabaseService.execute(cypher: String, params: Map<String, Any>, lambda: ((Result) -> T)) = this.beginTx().use {
-    val resp = it.execute(cypher, params)
+    val result = it.execute(cypher, params)
+    val ret = lambda(result)
     it.commit()
-    lambda.let { it(resp) }
+    ret
 }

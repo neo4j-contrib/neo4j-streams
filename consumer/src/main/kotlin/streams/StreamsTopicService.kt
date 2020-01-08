@@ -10,6 +10,12 @@ import streams.utils.Neo4jUtils
 
 class StreamsTopicService(private val db: GraphDatabaseAPI) {
 
+    private fun isEmpty(data: Any, excOnError: Exception) = when (data) {
+        is Map<*, *> -> data.isEmpty()
+        is Collection<*> -> data.isEmpty()
+        else -> throw excOnError
+    }
+
     fun clearAll() { // TODO move to Neo4jUtils#executeInWriteableInstance
         if (!Neo4jUtils.isWriteableInstance(db)) {
             return
@@ -17,6 +23,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         return db.beginTx().use {
             it.findNodes(Label.label(STREAMS_TOPIC_KEY))
                     .forEach { it.delete() }
+            it.commit()
         }
     }
 
@@ -29,13 +36,25 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
             } else {
                 it.createNode(Label.label(STREAMS_TOPIC_KEY), topicTypeLabel)
             }
-            val oldData = JSONUtils.readValue<Any>(node.getProperty("data"))
+            val runtimeException = RuntimeException("Unsupported data $data for topic type $topicType")
+            val oldData = if (node.hasProperty("data")) {
+                JSONUtils.readValue<Any>(node.getProperty("data"))
+            } else {
+                when (data) {
+                    is Map<*, *> -> emptyMap<String, Any?>()
+                    is Collection<*> -> emptyList<String>()
+                    else -> throw runtimeException
+                }
+            }
             val newData = when (oldData) {
                 is Map<*, *> -> oldData + (data as Map<String, Any?>)
                 is Collection<*> -> oldData + (data as Collection<String>)
-                else -> throw RuntimeException("Unsupported data $data for topic type $topicType")
+                else -> throw runtimeException
             }
-            node.setProperty("data", newData)
+            if (!isEmpty(newData, runtimeException)) {
+                node.setProperty("data", JSONUtils.writeValueAsString(newData))
+                it.commit()
+            }
         }
     }
 
@@ -48,22 +67,22 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
             } else {
                 return@executeInWriteableInstance
             }
+            if (!node.hasProperty("data")) {
+                return@executeInWriteableInstance
+            }
             val topicData = JSONUtils.readValue<Any>(node.getProperty("data"))
+            val runtimeException = RuntimeException("Unsupported data $topicData for topic type $topicType")
             val filteredData = when (topicData) {
                 is Map<*, *> -> topicData.filterKeys { it.toString() != topic }
                 is Collection<*> -> topicData.filter { it.toString() != topic }
-                else -> throw RuntimeException("Unsupported data $topicData for topic type $topicType")
+                else -> throw runtimeException
             }
-            val isEmpty = when (filteredData) {
-                is Map<*, *> -> filteredData.isEmpty()
-                is Collection<*> -> filteredData.isEmpty()
-                else -> throw RuntimeException("Unsupported data $topicData for topic type $topicType")
-            }
-            if (isEmpty) {
+            if (isEmpty(filteredData, runtimeException)) {
                 node.removeProperty(topicType.key)
             } else {
                 node.setProperty(topicType.key, filteredData)
             }
+            it.commit()
         }
     }
 
@@ -94,16 +113,15 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                     val topicTypeLabel = Label.label(it.key)
                     val findNodes = tx.findNodes(topicTypeLabel)
                     if (!findNodes.hasNext()) {
-                        emptySet<Any>()
+                        emptySet<String>()
                     } else {
                         val data = JSONUtils.readValue<Any>(findNodes.next().getProperty("data"))
                         when (data) {
                             is Map<*, *> -> data.keys
                             is Collection<*> -> data.toSet()
-                            else -> emptySet()
+                            else -> emptySet<String>()
                         }
                     }
-
                 }.toSet() as Set<String>
     }
 

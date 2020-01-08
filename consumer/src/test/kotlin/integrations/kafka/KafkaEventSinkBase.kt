@@ -20,6 +20,7 @@ import org.neo4j.test.extension.ImpermanentDbmsExtension
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.setConfig
+import streams.shutdownSilently
 import java.util.*
 
 open class KafkaEventSinkBase {
@@ -48,7 +49,7 @@ open class KafkaEventSinkBase {
 
     lateinit var graphDatabaseBuilder: DbmsRule
 
-    lateinit var db: ImpermanentDbmsRule
+    lateinit var db: DbmsRule
 
     lateinit var kafkaProducer: KafkaProducer<String, ByteArray>
     lateinit var kafkaAvroProducer: KafkaProducer<GenericRecord, GenericRecord>
@@ -63,7 +64,7 @@ open class KafkaEventSinkBase {
     fun setUp() {
         graphDatabaseBuilder = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
-//                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"] ?: "")
+                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"] ?: "")
                 .setConfig("streams.sink.enabled", "true")
         kafkaProducer = createProducer(kafka = KafkaEventSinkSuiteIT.kafka, schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
         kafkaAvroProducer = createProducer(
@@ -75,7 +76,7 @@ open class KafkaEventSinkBase {
 
     @After
     fun tearDown() {
-        db.shutdown()
+        db.shutdownSilently()
         kafkaProducer.close()
         kafkaAvroProducer.close()
     }

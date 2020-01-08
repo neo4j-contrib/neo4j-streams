@@ -56,18 +56,20 @@ class KafkaEventRouter: StreamsEventRouter {
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
+            if (log.isDebugEnabled) {
+                log.debug("Error while sending record to ${producerRecord.topic()}, because it doesn't exists")
+            }
             // TODO add logging system here
             return
         }
         producer.send(producerRecord) { meta, error ->
             if (meta != null && log.isDebugEnabled) {
-                log.debug("Successfully sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}")
+                log.debug("Successfully sent record in partition ${meta.partition()} offset ${meta.offset()} data ${meta.topic()} key size ${meta.serializedKeySize()}")
             }
             if (error != null) {
                 if (log.isDebugEnabled) {
                     log.debug("Error while sending record to ${producerRecord.topic()}, because of the following exception:", error)
                 }
-                // TODO add logging system here
             }
         }
     }

@@ -1,6 +1,5 @@
 package streams.config
 
-import org.neo4j.configuration.Config
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import java.io.FileInputStream
@@ -10,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
-class StreamsConfig(private val neo4jConfig: Config, logService: LogService) : LifecycleAdapter() {
+class StreamsConfig(logService: LogService) : LifecycleAdapter() {
 
     val config = ConcurrentHashMap<String, String>()
 
@@ -28,10 +27,15 @@ class StreamsConfig(private val neo4jConfig: Config, logService: LogService) : L
     }
 
     override fun init() {
-        log.debug("Init StreamsConfig")
+        if (log.isDebugEnabled) {
+            log.debug("Init StreamsConfig...")
+        }
         loadConfiguration()
         afterInitListeners.forEach { it(config) }
-        println("Neo4j Streams configuration initialised: $config")
+    }
+
+    override fun stop() {
+        afterInitListeners.clear()
     }
 
     private fun loadConfiguration() {
@@ -60,6 +64,7 @@ class StreamsConfig(private val neo4jConfig: Config, logService: LogService) : L
         config.putAll(filteredValues)
     }
 
+    // Taken from ApocConfig.java
     private fun determineNeo4jConfFolder(): String? { // sun.java.command=com.neo4j.server.enterprise.CommercialEntryPoint --home-dir=/home/myid/neo4j-enterprise-4.0.0-alpha09mr02 --config-dir=/home/myid/neo4j-enterprise-4.0.0-alpha09mr02/conf
         val command = System.getProperty(SUN_JAVA_COMMAND)
         val matcher: Matcher = CONF_DIR_PATTERN.matcher(command)

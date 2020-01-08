@@ -10,9 +10,18 @@ fun DbmsRule.setConfig(key: String, value: String): DbmsRule {
 }
 
 fun DbmsRule.start(timeout: Long = 5000): DbmsRule {
-    val before = DbmsRule::class.java.getDeclaredMethod("before")
-    before.isAccessible = true
-    before.invoke(this)
+    try {
+        this.restartDatabase()
+    } catch (e: NullPointerException) {
+        val before = DbmsRule::class.java.getDeclaredMethod("before")
+        before.isAccessible = true
+        before.invoke(this)
+    }
     Assume.assumeTrue(this.isAvailable(timeout))
+    return this
+}
+
+fun DbmsRule.shutdownSilently(): DbmsRule {
+    try { this.shutdown() } catch (ignored: Exception) {} // the PageCacheLifecycle throws an exception, investigate why
     return this
 }

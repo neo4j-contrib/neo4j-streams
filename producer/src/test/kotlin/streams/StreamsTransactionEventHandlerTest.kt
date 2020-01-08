@@ -40,6 +40,7 @@ class StreamsTransactionEventHandlerTest {
         Mockito.`when`(schemaMock.getConstraints(Mockito.any(RelationshipType::class.java))).thenReturn(emptyList())
         Mockito.`when`(dbMock.beginTx()).thenReturn(txMock)
         Mockito.`when`(txMock.schema()).thenReturn(schemaMock)
+        Mockito.`when`(dbMock.isAvailable(Mockito.anyLong())).thenReturn(true)
         streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
         streamsConstraintsService.start()
         handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),

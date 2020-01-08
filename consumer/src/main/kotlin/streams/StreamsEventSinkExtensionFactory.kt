@@ -3,6 +3,7 @@ package streams
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.configuration.Config
+import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.ExtensionFactory
 import org.neo4j.kernel.extension.context.ExtensionContext
@@ -24,6 +25,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
 
     interface Dependencies {
         fun graphdatabaseAPI(): GraphDatabaseAPI
+        fun dbms(): DatabaseManagementService
         fun log(): LogService
         fun streamsConfig(): StreamsConfig
         fun availabilityGuard(): AvailabilityGuard
@@ -31,6 +33,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
 
     class StreamsEventLifecycle(private val dependencies: Dependencies): LifecycleAdapter() {
         private val db = dependencies.graphdatabaseAPI()
+        private val dbms = dependencies.dbms()
         private val logService = dependencies.log()
         private val configuration = dependencies.streamsConfig()
         private var streamsLog = logService.getUserLog(StreamsEventLifecycle::class.java)
@@ -38,46 +41,49 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
         private lateinit var eventSink: StreamsEventSink
 
         override fun start() {
-                dependencies.availabilityGuard().addListener(object: AvailabilityListener {
-                    override fun unavailable() {}
+            if (db.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME) {
+                return
+            }
+            dependencies.availabilityGuard().addListener(object: AvailabilityListener {
+                override fun unavailable() {}
 
-                    override fun available() {
-                        try {
-                            streamsLog.info("Initialising the Streams Sink module")
-                            val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration.config)
-                            val streamsTopicService = StreamsTopicService(db)
-                            val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
-                                    streamsSinkConfiguration.sourceIdStrategyConfig)
-                            val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
-                                    logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
-                                    strategyMap)
+                override fun available() {
+                    try {
+                        streamsLog.info("Initialising the Streams Sink module")
+                        val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration.config)
+                        val streamsTopicService = StreamsTopicService(dbms.database(Neo4jUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI)
+                        val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
+                                streamsSinkConfiguration.sourceIdStrategyConfig)
+                        val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
+                                logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
+                                strategyMap)
 
-                            // Create the Sink
-                            val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
-                            eventSink = StreamsEventSinkFactory
-                                    .getStreamsEventSink(configuration.config,
-                                            streamsQueryExecution,
-                                            streamsTopicService,
-                                            log,
-                                            db)
-                            // start the Sink
-                            if (Neo4jUtils.isCluster(db)) {
-                                log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
-                                Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
-                            } else {
-                                // check if is writeable instance
-                                Neo4jUtils.executeInWriteableInstance(db) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
-                            }
-
-                            // Register required services for the Procedures
-                            StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
-                            StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
-                            StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
-                        } catch (e: Exception) {
-                            streamsLog.error("Error initializing the streaming sink:", e)
+                        // Create the Sink
+                        val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
+                        eventSink = StreamsEventSinkFactory
+                                .getStreamsEventSink(configuration.config,
+                                        streamsQueryExecution,
+                                        streamsTopicService,
+                                        log,
+                                        db)
+                        // start the Sink
+                        if (Neo4jUtils.isCluster(db)) {
+                            log.info("The Sink module is running in a cluster, checking for the ${Neo4jUtils.LEADER}")
+                            Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
+                        } else {
+                            // check if is writeable instance
+                            Neo4jUtils.executeInWriteableInstance(db) { initSinkModule(streamsTopicService, streamsSinkConfiguration) }
                         }
+
+                        // Register required services for the Procedures
+                        StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
+                        StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
+                        StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                    } catch (e: Exception) {
+                        streamsLog.error("Error initializing the streaming sink:", e)
                     }
-                })
+                }
+            })
         }
 
         private fun initSinkModule(streamsTopicService: StreamsTopicService, streamsSinkConfiguration: StreamsSinkConfiguration) {

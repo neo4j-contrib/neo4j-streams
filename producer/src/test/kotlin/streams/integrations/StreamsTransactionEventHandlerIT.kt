@@ -4,7 +4,6 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.events.NodeChange
@@ -29,11 +28,6 @@ class StreamsTransactionEventHandlerIT {
         MockStreamsEventRouter.reset()
         db.ensureStarted()
     }
-
-//    @After
-//    fun tearDown() {
-//        db.shutdown()
-//    }
 
     @Test fun testNodes(){
         db.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
