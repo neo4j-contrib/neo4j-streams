@@ -28,6 +28,11 @@
             <artifactId>neo4j-streams-consumer</artifactId>
             <version>${project.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-streams-common</artifactId>
+            <version>4.0.0</version>
+        </dependency>
     </dependencies>
 
     <build>

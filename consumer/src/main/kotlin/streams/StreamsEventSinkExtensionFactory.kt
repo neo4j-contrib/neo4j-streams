@@ -1,17 +1,18 @@
 package streams
 
+import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
-import org.neo4j.configuration.Config
-import org.neo4j.dbms.api.DatabaseManagementService
-import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.ExtensionFactory
+import org.neo4j.kernel.extension.ExtensionType
 import org.neo4j.kernel.extension.context.ExtensionContext
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.config.StreamsConfig
+import streams.extensions.getSystemDb
+import streams.extensions.isSystemDb
 import streams.procedures.StreamsSinkProcedures
 import streams.service.TopicUtils
 import streams.utils.Neo4jUtils
@@ -41,7 +42,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
         private lateinit var eventSink: StreamsEventSink
 
         override fun start() {
-            if (db.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME) {
+            if (db.isSystemDb()) {
                 return
             }
             dependencies.availabilityGuard().addListener(object: AvailabilityListener {
@@ -51,7 +52,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
                     try {
                         streamsLog.info("Initialising the Streams Sink module")
                         val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration.config)
-                        val streamsTopicService = StreamsTopicService(dbms.database(Neo4jUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI)
+                        val streamsTopicService = StreamsTopicService(dbms.getSystemDb())
                         val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
                                 streamsSinkConfiguration.sourceIdStrategyConfig)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,

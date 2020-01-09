@@ -2,6 +2,7 @@ package streams
 
 import org.neo4j.graphdb.Label
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.extensions.isSystemDb
 import streams.serialization.JSONUtils
 import streams.service.STREAMS_TOPIC_KEY
 import streams.service.TopicType
@@ -9,10 +10,10 @@ import streams.service.Topics
 import streams.utils.Neo4jUtils
 import java.lang.IllegalArgumentException
 
-class StreamsTopicService(private val db: GraphDatabaseAPI) {
+class StreamsTopicService(private val systemDb: GraphDatabaseAPI) {
 
     init {
-        if (db.databaseName() != Neo4jUtils.SYSTEM_DATABASE_NAME) {
+        if (!systemDb.isSystemDb()) {
             throw IllegalArgumentException("GraphDatabaseAPI must be an instance of ${Neo4jUtils.SYSTEM_DATABASE_NAME} database")
         }
     }
@@ -24,18 +25,18 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
     }
 
     fun clearAll() { // TODO move to Neo4jUtils#executeInWriteableInstance
-        if (!Neo4jUtils.isWriteableInstance(db)) {
+        if (!Neo4jUtils.isWriteableInstance(systemDb)) {
             return
         }
-        return db.beginTx().use {
+        return systemDb.beginTx().use {
             it.findNodes(Label.label(STREAMS_TOPIC_KEY))
                     .forEach { it.delete() }
             it.commit()
         }
     }
 
-    fun set(topicType: TopicType, data: Any) = Neo4jUtils.executeInWriteableInstance(db) {
-        db.beginTx().use {
+    fun set(topicType: TopicType, data: Any) = Neo4jUtils.executeInWriteableInstance(systemDb) {
+        systemDb.beginTx().use {
             val topicTypeLabel = Label.label(topicType.key)
             val findNodes = it.findNodes(topicTypeLabel)
             val node = if (findNodes.hasNext()) {
@@ -65,8 +66,8 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun remove(topicType: TopicType, topic: String) = Neo4jUtils.executeInWriteableInstance(db) {
-        db.beginTx().use {
+    fun remove(topicType: TopicType, topic: String) = Neo4jUtils.executeInWriteableInstance(systemDb) {
+        systemDb.beginTx().use {
             val topicTypeLabel = Label.label(topicType.key)
             val findNodes = it.findNodes(topicTypeLabel)
             val node = if (findNodes.hasNext()) {
@@ -93,8 +94,8 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun getTopicType(topic: String) = Neo4jUtils.executeInWriteableInstance(db) {
-        db.beginTx().use { tx ->
+    fun getTopicType(topic: String) = Neo4jUtils.executeInWriteableInstance(systemDb) {
+        systemDb.beginTx().use { tx ->
             TopicType.values()
                     .find {
                         val topicTypeLabel = Label.label(it.key)
@@ -114,7 +115,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun getTopics() = db.beginTx().use { tx ->
+    fun getTopics() = systemDb.beginTx().use { tx ->
         TopicType.values()
                 .flatMap {
                     val topicTypeLabel = Label.label(it.key)
@@ -138,8 +139,8 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun getCypherTemplate(topic: String) = db.beginTx().use {
-        db.beginTx().use {
+    fun getCypherTemplate(topic: String) = systemDb.beginTx().use {
+        systemDb.beginTx().use {
             val topicTypeLabel = Label.label(TopicType.CYPHER.key)
             val findNodes = it.findNodes(topicTypeLabel)
             if (!findNodes.hasNext()) {
@@ -156,7 +157,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
         }
     }
 
-    fun getAll() = db.beginTx().use { tx ->
+    fun getAll() = systemDb.beginTx().use { tx ->
         TopicType.values()
                 .mapNotNull {
                     val topicTypeLabel = Label.label(it.key)

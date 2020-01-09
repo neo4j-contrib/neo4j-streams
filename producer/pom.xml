@@ -22,6 +22,7 @@
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
             <version>4.0.0</version>
+            <scope>provided</scope>
         </dependency>
         
     </dependencies>

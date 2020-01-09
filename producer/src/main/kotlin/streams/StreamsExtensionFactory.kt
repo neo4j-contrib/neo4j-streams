@@ -1,6 +1,5 @@
 package streams
 
-import org.neo4j.configuration.Config
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
@@ -12,8 +11,8 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.config.StreamsConfig
+import streams.extensions.isSystemDb
 import streams.procedures.StreamsProcedures
-import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
 class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
@@ -48,7 +47,7 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
 
     override fun start() {
         try {
-            if (db.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME) {
+            if (db.isSystemDb()) {
                 return
             }
             streamsLog.info("Initialising the Streams Source module")
@@ -83,7 +82,7 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
             StreamsUtils.ignoreExceptions({ streamsConstraintsService.close() }, UninitializedPropertyAccessException::class.java)
-            databaseManagementService.unregisterTransactionEventListener(db.databaseName(), txHandler)
+            StreamsUtils.ignoreExceptions({ databaseManagementService.unregisterTransactionEventListener(db.databaseName(), txHandler) }, UninitializedPropertyAccessException::class.java)
         }
     }
 

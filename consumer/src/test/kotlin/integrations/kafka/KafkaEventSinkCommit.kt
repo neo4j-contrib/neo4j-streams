@@ -32,17 +32,19 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
         val resp = kafkaProducer.send(producerRecord).get()
 
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val query = "MATCH (n:Label) RETURN count(*) AS count"
-
             val kafkaConsumer = createConsumer<String, ByteArray>(
                     kafka = KafkaEventSinkSuiteIT.kafka,
                     schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
             val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
             kafkaConsumer.close()
-
-            db.execute(query) {
-                val result = it.columnAs<Long>("count")
-                result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
+            if (offsetAndMetadata == null) {
+                false
+            } else {
+                val query = "MATCH (n:Label) RETURN count(*) AS count"
+                db.execute(query) {
+                    val result = it.columnAs<Long>("count")
+                    result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
+                }
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
