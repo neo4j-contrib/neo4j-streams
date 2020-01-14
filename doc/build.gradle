@@ -29,12 +29,12 @@ plugins {
     id 'org.neo4j.doc.build.docbook' version '1.0-alpha12'
 }
 
-if (!project.hasProperty('streamsVersion')) { ext.streamsVersion = '3.5.6.0' }
+if (!project.hasProperty('streamsVersion')) { ext.streamsVersion = '4.0.0.0' }
 
 ext {
     copyrightYear = '2019'
     versionParts = streamsVersion.split('-')
-    branch = '3.5'
+    branch = '4.0'
     versions = [
         'apoc' : streamsVersion,
         'apocDocs' : versionParts[0].split('\\.')[0..1].join('.')
