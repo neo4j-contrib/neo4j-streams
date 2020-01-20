@@ -16,6 +16,10 @@
         <version>4.0.0</version>
     </parent>
 
+    <properties>
+        <buildSubDirectory></buildSubDirectory>
+    </properties>
+
     <!-- Include here all the required dependencies of the final package -->
     <dependencies>
         <dependency>
@@ -31,7 +35,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>4.0.0</version>
+            <version>${project.version}</version>
         </dependency>
     </dependencies>
 
@@ -54,7 +58,7 @@
                             <appendAssemblyId>false</appendAssemblyId>
                             <finalName>neo4j-streams-${project.version}</finalName>
                             <appendAssemblyId>false</appendAssemblyId>
-                            <outputDirectory>../target</outputDirectory>
+                            <outputDirectory>${project.parent.basedir}/target/${buildSubDirectory}</outputDirectory>
                         </configuration>
                     </execution>
                 </executions>

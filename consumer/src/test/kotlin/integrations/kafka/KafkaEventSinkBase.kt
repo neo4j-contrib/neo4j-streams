@@ -1,6 +1,5 @@
 package integrations.kafka
 
-import integrations.kafka.KafkaTestUtils.createProducer
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerConfig
@@ -19,6 +18,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.extension.ImpermanentDbmsExtension
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
+import streams.KafkaTestUtils
 import streams.setConfig
 import streams.shutdownSilently
 import java.util.*
@@ -64,14 +64,14 @@ open class KafkaEventSinkBase {
     fun setUp() {
         graphDatabaseBuilder = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
-                .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"] ?: "")
                 .setConfig("streams.sink.enabled", "true")
-        kafkaProducer = createProducer(kafka = KafkaEventSinkSuiteIT.kafka, schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
-        kafkaAvroProducer = createProducer(
-                kafka = KafkaEventSinkSuiteIT.kafka,
-                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry,
-                valueSerializer = KafkaAvroSerializer::class.java.name,
-                keySerializer = KafkaAvroSerializer::class.java.name)
+        kafkaProducer = KafkaTestUtils.createProducer(
+                bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers)
+        kafkaAvroProducer = KafkaTestUtils.createProducer(
+                bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl(),
+                keySerializer = KafkaAvroSerializer::class.java.name,
+                valueSerializer = KafkaAvroSerializer::class.java.name)
     }
 
     @After

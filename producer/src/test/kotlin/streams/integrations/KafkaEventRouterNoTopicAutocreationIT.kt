@@ -9,12 +9,11 @@ import org.junit.AfterClass
 import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
 import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
-import streams.kafka.KafkaTestUtils
+import streams.KafkaTestUtils
 import streams.setConfig
 import streams.shutdownSilently
 import streams.start
@@ -99,7 +98,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
         // we create a new node an check that the source plugin is working
         db.execute("CREATE (p:Person{id: 1})")
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = KafkaTestUtils.createConsumer(config)
+        val consumer = KafkaTestUtils.createConsumer<String, ByteArray>(bootstrapServers = kafka.bootstrapServers)
         consumer.subscribe(expectedTopics)
         // the consumer consumes the message from the topic
         consumer.use {

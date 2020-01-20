@@ -1,6 +1,5 @@
 package integrations.kafka
 
-import integrations.kafka.KafkaTestUtils.createProducer
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -11,10 +10,10 @@ import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
+import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
@@ -83,7 +82,7 @@ class KafkaEventSinkNoTopicAutoCreationIT {
                 .setConfig("streams.sink.topic.cypher.$notRegisteredTopic", "MERGE (p:NotRegisteredTopic{name: event.name})")
                 .setConfig("streams.sink.topic.cypher.$topic", "MERGE (p:Person{name: event.name})")
                 .start()
-        val kafkaProducer: KafkaProducer<String, ByteArray> = createProducer(kafka = kafka)
+        val kafkaProducer: KafkaProducer<String, ByteArray> = KafkaTestUtils.createProducer(bootstrapServers = kafka.bootstrapServers)
 
         // when
         val data = mapOf<String, Any>("name" to "Andrea")

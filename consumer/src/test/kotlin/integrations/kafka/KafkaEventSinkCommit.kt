@@ -1,7 +1,5 @@
 package integrations.kafka
 
-import integrations.kafka.KafkaTestUtils.createConsumer
-import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
@@ -9,6 +7,7 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.test.assertion.Assert
+import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
@@ -32,9 +31,9 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
         val resp = kafkaProducer.send(producerRecord).get()
 
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val kafkaConsumer = createConsumer<String, ByteArray>(
-                    kafka = KafkaEventSinkSuiteIT.kafka,
-                    schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
+            val kafkaConsumer = KafkaTestUtils.createConsumer<String, ByteArray>(
+                    bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                    schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
             val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
             kafkaConsumer.close()
             if (offsetAndMetadata == null) {

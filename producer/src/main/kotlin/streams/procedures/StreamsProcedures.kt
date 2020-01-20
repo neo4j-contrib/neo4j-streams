@@ -27,21 +27,21 @@ class StreamsProcedures {
         }
         val streamsEvent = StreamsEventBuilder()
                 .withPayload(payload)
-                .withNodeRoutingConfiguration(StreamsProcedures.eventRouterConfiguration
+                .withNodeRoutingConfiguration(eventRouterConfiguration
                         .nodeRouting
                         .filter { it.topic == topic }
                         .firstOrNull())
-                .withRelationshipRoutingConfiguration(StreamsProcedures.eventRouterConfiguration
+                .withRelationshipRoutingConfiguration(eventRouterConfiguration
                         .relRouting
                         .filter { it.topic == topic }
                         .firstOrNull())
                 .withTopic(topic)
                 .build()
-        StreamsProcedures.eventRouter.sendEvents(topic, listOf(streamsEvent))
+        eventRouter.sendEvents(topic, listOf(streamsEvent))
     }
 
     private fun checkEnabled() {
-        if (!StreamsProcedures.eventRouterConfiguration.proceduresEnabled) {
+        if (!eventRouterConfiguration.proceduresEnabled) {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }

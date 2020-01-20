@@ -50,9 +50,10 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
             if (db.isSystemDb()) {
                 return
             }
+            configuration.loadStreamsConfiguration()
             streamsLog.info("Initialising the Streams Source module")
-            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration.config)
-            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.config)
+            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration, db.databaseName())
+            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration, db.databaseName())
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()
@@ -76,6 +77,11 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
                     streamsConstraintsService.start()
                 }
             })
+            if (streamsLog.isDebugEnabled) {
+                streamsLog.info("Streams Source transaction handler initialised with the following configuration: $streamsEventRouterConfiguration")
+            } else {
+                streamsLog.info("Streams Source transaction handler initialised")
+            }
         }
     }
 

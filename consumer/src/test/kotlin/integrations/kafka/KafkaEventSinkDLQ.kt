@@ -1,12 +1,12 @@
 package integrations.kafka
 
-import integrations.kafka.KafkaTestUtils.createConsumer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.test.assertion.Assert
+import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.errors.ErrorService
@@ -30,9 +30,9 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
-        val dlqConsumer = createConsumer<ByteArray, ByteArray>(
-                kafka = KafkaEventSinkSuiteIT.kafka,
-                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry,
+        val dlqConsumer = KafkaTestUtils.createConsumer<ByteArray, ByteArray>(
+                bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl(),
                 keyDeserializer = ByteArrayDeserializer::class.java.name,
                 valueDeserializer = ByteArrayDeserializer::class.java.name,
                 topics = *arrayOf(dlqTopic))
@@ -74,9 +74,9 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(),
                 data.toByteArray())
         kafkaProducer.send(producerRecord).get()
-        val dlqConsumer = createConsumer<ByteArray, ByteArray>(
-                kafka = KafkaEventSinkSuiteIT.kafka,
-                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry,
+        val dlqConsumer = KafkaTestUtils.createConsumer<ByteArray, ByteArray>(
+                bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl(),
                 keyDeserializer = ByteArrayDeserializer::class.java.name,
                 valueDeserializer = ByteArrayDeserializer::class.java.name,
                 topics = *arrayOf(dlqTopic))
