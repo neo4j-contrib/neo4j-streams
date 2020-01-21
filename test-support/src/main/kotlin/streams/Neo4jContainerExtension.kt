@@ -17,6 +17,7 @@ import org.testcontainers.containers.wait.strategy.WaitAllStrategy
 import org.testcontainers.utility.MountableFile
 import streams.utils.Neo4jUtils
 import java.io.File
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitStrategy() {
@@ -28,12 +29,11 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
     }
 
     override fun waitUntilReady() {
-        val containerName = waitStrategyTarget.containerInfo.name
         val boltUrl = "bolt://${waitStrategyTarget.containerIpAddress}:${waitStrategyTarget.getMappedPort(7687)}"
         val driver = GraphDatabase.driver(boltUrl, auth)
         val systemSession = driver.session(SessionConfig.forDatabase(Neo4jUtils.SYSTEM_DATABASE_NAME))
         systemSession.beginTransaction().use { tx ->
-            databases.forEach { tx.run("CREATE DATABASE $it") }
+            databases.forEach { tx.run("CREATE DATABASE $it IF NOT EXISTS") }
             tx.commit()
         }
         Unreliables.retryUntilSuccess(startupTimeout.seconds.toInt(), TimeUnit.SECONDS) {
@@ -113,7 +113,7 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
     override fun start() {
         if (databases.isNotEmpty()) {
             val waitAllStrategy = waitStrategy as WaitAllStrategy
-            waitAllStrategy.withStrategy(DatabasesWaitStrategy(createAuth()).forDatabases(*databases))
+            waitAllStrategy.withStrategy(DatabasesWaitStrategy(createAuth()).forDatabases(*databases).withStartupTimeout(Duration.ofMinutes(2)))
         }
         if (withLogger) {
             withLogConsumer(Slf4jLogConsumer(logger))

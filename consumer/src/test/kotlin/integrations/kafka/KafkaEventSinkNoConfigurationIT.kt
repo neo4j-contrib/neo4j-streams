@@ -49,7 +49,6 @@ class KafkaEventSinkNoConfigurationIT {
         fakeWebServer.start()
         val url = fakeWebServer.getUrl().replace("http://", "")
         db.setConfig("kafka.bootstrap.servers", url)
-            .setConfig("kafka.zookeeper.connect", url)
             .setConfig("streams.sink.enabled", "true")
             .setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})")
             .setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)

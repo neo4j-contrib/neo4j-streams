@@ -15,13 +15,13 @@ import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class KafkaEventSinkCommit : KafkaEventSinkBase() {
+class KafkaEventSinkCommitTSE : KafkaEventSinkBaseTSE() {
     @Test
     fun `should write last offset with auto commit false`() {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
-        graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
+        db.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+        db.start()
         val partition = 0
         var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -58,11 +58,11 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
             MERGE (p:Product {id: event.id})
             MERGE (c)-[:BOUGHT]->(p)
         """.trimIndent()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
-        graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
+        db.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
+        db.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
+        db.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+        db.start()
 
         val props = mapOf("id" to 1, "name" to "My Awesome Product")
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),

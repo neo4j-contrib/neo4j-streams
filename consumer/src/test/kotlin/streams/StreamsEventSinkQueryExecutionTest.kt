@@ -12,7 +12,6 @@ import streams.kafka.KafkaSinkConfiguration
 import streams.service.StreamsSinkEntity
 import streams.service.TopicType
 import streams.service.Topics
-import streams.utils.Neo4jUtils
 import kotlin.test.assertEquals
 
 class StreamsEventSinkQueryExecutionTest {
@@ -24,7 +23,7 @@ class StreamsEventSinkQueryExecutionTest {
         db = ImpermanentDbmsRule().start()
         val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
-        val streamsTopicService = StreamsTopicService(db.managementService.database(Neo4jUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI)
+        val streamsTopicService = StreamsTopicService()
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
         streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI,
                 NullLog.getInstance(), emptyMap())

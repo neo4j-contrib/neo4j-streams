@@ -15,14 +15,14 @@ import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class KafkaEventSinkSimple: KafkaEventSinkBase() {
+class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
 
     private val topics = listOf("shouldWriteCypherQuery")
 
     @Test
     fun shouldWriteDataFromSink() = runBlocking {
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+        db.start()
 
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -51,7 +51,7 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
 
     @Test
     fun shouldNotWriteDataFromSinkWithNoTopicLoaded() = runBlocking {
-        db = graphDatabaseBuilder.start()
+        db.start()
 
         val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
@@ -77,10 +77,10 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
             MERGE (p:Product {id: event.id})
             MERGE (c)-[:BOUGHT]->(p)
         """.trimIndent()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.${product.first}", product.second)
+        db.setConfig("streams.sink.topic.cypher.${customer.first}", customer.second)
+        db.setConfig("streams.sink.topic.cypher.${bought.first}", bought.second)
+        db.start()
 
         val props = mapOf("id" to 1, "name" to "My Awesome Product")
         var producerRecord = ProducerRecord(product.first, UUID.randomUUID().toString(),

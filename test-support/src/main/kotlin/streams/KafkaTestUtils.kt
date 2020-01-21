@@ -13,14 +13,12 @@ import java.util.UUID
 
 object KafkaTestUtils {
     fun <K, V> createConsumer(bootstrapServers: String,
-                              zookeeper: String = "localhost:2181",
                               schemaRegistryUrl: String? = null,
                               keyDeserializer: String = StringDeserializer::class.java.name,
                               valueDeserializer: String = ByteArrayDeserializer::class.java.name,
                               vararg topics: String = emptyArray()): KafkaConsumer<K, V> {
         val props = Properties()
         props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
-        props["zookeeper.connect"] = zookeeper
         props["group.id"] = "neo4j" // UUID.randomUUID().toString()
         props["enable.auto.commit"] = "true"
         props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
@@ -37,16 +35,14 @@ object KafkaTestUtils {
     }
 
     fun <K, V> createProducer(bootstrapServers: String,
-                              zookeeper: String = "localhost:2181",
                               schemaRegistryUrl: String? = null,
                               keySerializer: String = StringSerializer::class.java.name,
                               valueSerializer: String = ByteArraySerializer::class.java.name): KafkaProducer<K, V> {
         val props = Properties()
         props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
-        props["zookeeper.connect"] = zookeeper
         props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = keySerializer
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer
-        if (schemaRegistryUrl != null) {
+        if (!schemaRegistryUrl.isNullOrBlank()) {
             props["schema.registry.url"] = schemaRegistryUrl
         }
         return KafkaProducer(props)

@@ -3,15 +3,11 @@ package streams
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.neo4j.dbms.api.DatabaseManagementService
-import org.neo4j.graphdb.GraphDatabaseService
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.kafka.KafkaSinkConfiguration
 import streams.service.TopicType
 import streams.service.Topics
-import streams.utils.Neo4jUtils
 import kotlin.test.assertEquals
 
 class StreamsTopicServiceTest {
@@ -25,7 +21,7 @@ class StreamsTopicServiceTest {
         db = ImpermanentDbmsRule().start()
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
-        streamsTopicService = StreamsTopicService(db.managementService.database(Neo4jUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI)
+        streamsTopicService = StreamsTopicService()
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
     }
 

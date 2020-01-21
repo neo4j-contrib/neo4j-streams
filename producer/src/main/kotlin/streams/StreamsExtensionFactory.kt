@@ -51,9 +51,9 @@ class StreamsEventRouterLifecycle(private val db: GraphDatabaseAPI,
                 return
             }
             configuration.loadStreamsConfiguration()
+            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration, db.databaseName())
             streamsLog.info("Initialising the Streams Source module")
             streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration, db.databaseName())
-            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration, db.databaseName())
             StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
             StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
             streamHandler.start()

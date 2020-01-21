@@ -50,6 +50,7 @@ class Neo4jSinkConnectorConfigTest {
                 Neo4jSinkConnectorConfig.BATCH_SIZE to 10,
                 "kafka.${CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG}" to "broker:9093",
                 "kafka.${ProducerConfig.ACKS_CONFIG}" to 1,
+                Neo4jSinkConnectorConfig.DATABASE to "customers",
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME to "FOO",
                 Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD to "BAR")
         val config = Neo4jSinkConnectorConfig(originals)
@@ -65,7 +66,7 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals(AuthenticationType.BASIC, config.authenticationType)
         assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_USERNAME], config.authenticationUsername)
         assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD], config.authenticationPassword)
-        assertEquals(originals[Neo4jSinkConnectorConfig.AUTHENTICATION_BASIC_PASSWORD], config.authenticationPassword)
+        assertEquals(originals[Neo4jSinkConnectorConfig.DATABASE], config.database)
         assertEquals("", config.authenticationKerberosTicket)
         assertNull(config.encryptionCACertificateFile, "encryptionCACertificateFile should be null")
 
@@ -73,6 +74,7 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionLifenessCheckTimeout)
         assertEquals(Neo4jSinkConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
+        assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
         assertEquals(Neo4jSinkConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
     }
 

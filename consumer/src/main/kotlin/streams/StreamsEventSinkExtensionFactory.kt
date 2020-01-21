@@ -11,7 +11,6 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.config.StreamsConfig
-import streams.extensions.getSystemDb
 import streams.extensions.isSystemDb
 import streams.procedures.StreamsSinkProcedures
 import streams.service.TopicUtils
@@ -50,9 +49,10 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
 
                 override fun available() {
                     try {
+                        configuration.loadStreamsConfiguration()
                         streamsLog.info("Initialising the Streams Sink module")
-                        val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration.config)
-                        val streamsTopicService = StreamsTopicService(dbms.getSystemDb())
+                        val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration, db.databaseName())
+                        val streamsTopicService = StreamsTopicService()
                         val strategyMap = TopicUtils.toStrategyMap(streamsSinkConfiguration.topics,
                                 streamsSinkConfiguration.sourceIdStrategyConfig)
                         val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
@@ -62,7 +62,7 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
                         // Create the Sink
                         val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
                         eventSink = StreamsEventSinkFactory
-                                .getStreamsEventSink(configuration.config,
+                                .getStreamsEventSink(configuration,
                                         streamsQueryExecution,
                                         streamsTopicService,
                                         log,

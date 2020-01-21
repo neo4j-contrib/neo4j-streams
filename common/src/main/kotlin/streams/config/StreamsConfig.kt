@@ -2,22 +2,22 @@ package streams.config
 
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
-import org.neo4j.logging.internal.LogService
+import org.neo4j.logging.Log
 import streams.extensions.getDefaultDbName
 import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
 
-class StreamsConfig(logService: LogService, private val dbms: DatabaseManagementService) : LifecycleAdapter() {
+data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementService) : LifecycleAdapter() {
 
     val config = ConcurrentHashMap<String, String>()
 
-    private val log = logService.getUserLog(StreamsConfig::class.java)
 
     private lateinit var neo4jConfFolder: String
 
     companion object {
+        private lateinit var INSTANCE: StreamsConfig
         private val SUPPORTED_PREFIXES = listOf("streams", "kafka")
         private const val SUN_JAVA_COMMAND = "sun.java.command"
         private const val CONF_DIR_ARG = "config-dir="
@@ -25,12 +25,16 @@ class StreamsConfig(logService: LogService, private val dbms: DatabaseManagement
         const val SOURCE_ENABLED_VALUE = true
         const val PROCEDURES_ENABLED = "streams.procedures.enabled"
         const val PROCEDURES_ENABLED_VALUE = true
+        const val SINK_ENABLED = "streams.sink.enabled"
+        const val SINK_ENABLED_VALUE = false
         const val DEFAULT_PATH = "."
         private var afterInitListeners = mutableListOf<((MutableMap<String, String>) -> Unit)>()
 
         fun registerListener(after: (MutableMap<String, String>) -> Unit) {
             afterInitListeners.add(after)
         }
+
+        fun getInstance() = INSTANCE
     }
 
     override fun init() {
@@ -40,6 +44,7 @@ class StreamsConfig(logService: LogService, private val dbms: DatabaseManagement
         neo4jConfFolder = getNeo4jConfFolder()
         loadConfiguration()
         afterInitListeners.forEach { it(config) }
+        INSTANCE = this
     }
 
     override fun stop() {
@@ -88,10 +93,10 @@ class StreamsConfig(logService: LogService, private val dbms: DatabaseManagement
 
         val properties = Properties()
         try {
-            log.info("the retrieved NEO4J_CONF dirs is $neo4jConfFolder")
+            log.info("The retrieved NEO4J_CONF dir is $neo4jConfFolder")
             properties.load(FileInputStream("$neo4jConfFolder/neo4j.conf"))
         } catch (e: FileNotFoundException) {
-            log.error("the neo4j.conf file is not under the directory defined into the directory $neo4jConfFolder, please set the NEO4J_CONF env correctly")
+            log.error("The neo4j.conf file is not under the directory defined into the directory $neo4jConfFolder, please set the NEO4J_CONF env correctly")
         }
         return properties
     }
@@ -124,4 +129,9 @@ class StreamsConfig(logService: LogService, private val dbms: DatabaseManagement
     fun hasProceduresGloballyEnabled() = this.config.getOrDefault(PROCEDURES_ENABLED, PROCEDURES_ENABLED_VALUE).toString().toBoolean()
 
     fun hasProceduresEnabled(dbName: String) = this.config.getOrDefault("${PROCEDURES_ENABLED}.$dbName", hasProceduresGloballyEnabled()).toString().toBoolean()
+
+    fun isSinkGloballyEnabled() = this.config.getOrDefault(SINK_ENABLED, SINK_ENABLED_VALUE).toString().toBoolean()
+
+    fun isSinkEnabled(dbName: String) = this.config.getOrDefault("${SINK_ENABLED}.to.$dbName", isSinkGloballyEnabled()).toString().toBoolean()
+
 }

@@ -10,14 +10,15 @@ import streams.utils.StreamsUtils
 
 @RunWith(Suite::class)
 @Suite.SuiteClasses(
-        KafkaEventSinkCDC::class,
-        KafkaEventSinkCommit::class,
-        KafkaEventSinkDLQ::class,
-        KafkaEventSinkPattern::class,
-        KafkaEventSinkSimple::class,
-        KafkaStreamsSinkProcedures::class,
-        KafkaEventSinkCUDFormat::class,
-        KafkaEventSinkAvro::class
+        KafkaEventSinkCDCTSE::class,
+        KafkaEventSinkCommitTSE::class,
+        KafkaEventSinkDLQTSE::class,
+        KafkaEventSinkPatternTSE::class,
+        KafkaEventSinkSimpleTSE::class,
+        KafkaStreamsSinkProceduresTSE::class,
+        KafkaEventSinkCUDFormatTSE::class,
+        KafkaEventSinkAvroTSE::class/*,
+        KafkaEventSinkEnterpriseTSE::class*/
 )
 class KafkaEventSinkSuiteIT {
     companion object {
@@ -33,7 +34,8 @@ class KafkaEventSinkSuiteIT {
          *
          * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
          */
-        private const val confluentPlatformVersion = "4.0.2"
+//        private const val confluentPlatformVersion = "4.0.2"
+        private const val confluentPlatformVersion = "5.3.1-1"
         @JvmStatic lateinit var kafka: KafkaContainer
         @JvmStatic lateinit var schemaRegistry: SchemaRegistryContainer
 

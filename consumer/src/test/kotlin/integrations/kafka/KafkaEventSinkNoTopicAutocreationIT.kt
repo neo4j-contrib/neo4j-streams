@@ -98,5 +98,6 @@ class KafkaEventSinkNoTopicAutoCreationIT {
             val topics = client.listTopics().names().get()
             count == 1L && !topics.contains(notRegisteredTopic)
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        client.close()
     }
 }

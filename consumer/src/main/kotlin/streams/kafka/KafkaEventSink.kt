@@ -1,5 +1,6 @@
 package streams.kafka
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -9,6 +10,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.errors.WakeupException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.StreamsEventConsumer
@@ -16,8 +18,8 @@ import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSink
 import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
-import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
+import streams.config.StreamsConfig
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -26,16 +28,16 @@ import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 
 
-class KafkaEventSink(private val config: Map<String, String>,
+class KafkaEventSink(private val config: StreamsConfig,
                      private val queryExecution: StreamsEventSinkQueryExecution,
                      private val streamsTopicService: StreamsTopicService,
                      private val log: Log,
                      private val db: GraphDatabaseAPI): StreamsEventSink(config, queryExecution, streamsTopicService, log, db) {
 
-    private lateinit var eventConsumer: StreamsEventConsumer
+    private lateinit var eventConsumer: KafkaEventConsumer
     private lateinit var job: Job
 
-    override val streamsConfigMap = config.filterKeys {
+    override val streamsConfigMap = config.config.filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
     }.toMap()
 
@@ -53,8 +55,8 @@ class KafkaEventSink(private val config: Map<String, String>,
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
-            override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
-                val kafkaConfig = KafkaSinkConfiguration.from(config)
+            override fun createStreamsEventConsumer(config: StreamsConfig, log: Log): StreamsEventConsumer {
+                val kafkaConfig = KafkaSinkConfiguration.from(config, db.databaseName())
                 return if (kafkaConfig.enableAutoCommit) {
                     KafkaAutoCommitEventConsumer(kafkaConfig, log, getErrorService())
                 } else {
@@ -66,7 +68,7 @@ class KafkaEventSink(private val config: Map<String, String>,
 
     private fun getErrorService(): ErrorService {
         if (!this::errorService.isInitialized) {
-            val kafkaConfig = KafkaSinkConfiguration.create(config)
+            val kafkaConfig = KafkaSinkConfiguration.create(config, db.databaseName())
             this.errorService = KafkaErrorService(kafkaConfig.asProperties(),
                     ErrorService.ErrorConfig.from(kafkaConfig.streamsSinkConfiguration.errorConfig),
                     { s, e -> log.error(s,e as Throwable) })
@@ -75,19 +77,20 @@ class KafkaEventSink(private val config: Map<String, String>,
     }
 
     override fun start() { // TODO move to the abstract class
-        val streamsConfig = StreamsSinkConfiguration.from(config)
+        val streamsConfig = StreamsSinkConfiguration.from(config, db.databaseName())
         val topics = streamsTopicService.getTopics()
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         if (!streamsConfig.enabled) {
             if (topics.isNotEmpty() && isWriteableInstance) {
-                log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
+                log.warn("You configured the following topics: $topics, in order to make the Sink work please set ${StreamsConfig.SINK_ENABLED}=true")
             }
+            log.info("The Kafka Sink is disabled")
             return
         }
         log.info("Starting the Kafka Sink")
         this.eventConsumer = getEventConsumerFactory()
                 .createStreamsEventConsumer(config, log)
-                .withTopics(topics)
+                .withTopics(topics) as KafkaEventConsumer
         this.eventConsumer.start()
         this.job = createJob()
         if (isWriteableInstance) {
@@ -97,6 +100,10 @@ class KafkaEventSink(private val config: Map<String, String>,
                 }
             } else {
                 log.info("Subscribed topics: $topics")
+            }
+        } else {
+            if (log.isDebugEnabled) {
+                log.info("Not a writeable instance")
             }
         }
         log.info("Kafka Sink started")
@@ -108,6 +115,7 @@ class KafkaEventSink(private val config: Map<String, String>,
         StreamsUtils.ignoreExceptions({
             runBlocking {
                 if (job.isActive) {
+                    eventConsumer.wakeup()
                     job.cancelAndJoin()
                 }
                 log.info("Kafka Sink daemon Job stopped")
@@ -137,15 +145,15 @@ class KafkaEventSink(private val config: Map<String, String>,
                     }
                     delay(timeMillis)
                 }
-                eventConsumer.stop()
             } catch (e: Exception) {
                 when (e) {
-                    is kotlinx.coroutines.CancellationException -> null
+                    is CancellationException, is WakeupException -> null
                     else -> {
                         val message = e.message ?: "Generic error, please check the stack trace: "
                         log.error(message, e)
                     }
                 }
+            } finally {
                 eventConsumer.stop()
             }
         }

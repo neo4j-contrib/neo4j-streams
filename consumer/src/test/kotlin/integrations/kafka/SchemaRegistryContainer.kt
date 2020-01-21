@@ -12,7 +12,7 @@ import java.util.stream.Stream
 
 class SchemaRegistryContainer(version: String): GenericContainer<SchemaRegistryContainer>("confluentinc/cp-schema-registry:$version") {
 
-    private var proxy: SocatContainer? = null
+    private lateinit var proxy: SocatContainer
 
     override fun doStart() {
         val networkAlias = networkAliases[0]
@@ -20,8 +20,9 @@ class SchemaRegistryContainer(version: String): GenericContainer<SchemaRegistryC
                     .withNetwork(network)
                     .withTarget(PORT, networkAlias)
 
-        proxy?.start()
+        proxy.start()
         waitingFor(Wait.forHttp("/subjects")
+                .forPort(PORT)
                 .forStatusCode(200))
         super.doStart()
     }
@@ -37,10 +38,10 @@ class SchemaRegistryContainer(version: String): GenericContainer<SchemaRegistryC
         return self()
     }
 
-    fun getSchemaRegistryUrl() = "http://${proxy?.containerIpAddress}:${proxy?.firstMappedPort}"
+    fun getSchemaRegistryUrl() = "http://${proxy.containerIpAddress}:${proxy.firstMappedPort}"
 
     override fun stop() {
-        Stream.of(Runnable { super.stop() }, Runnable { proxy?.stop() }).parallel().forEach { it.run() }
+        Stream.of(Runnable { super.stop() }, Runnable { proxy.stop() }).parallel().forEach { it.run() }
     }
 
     companion object {

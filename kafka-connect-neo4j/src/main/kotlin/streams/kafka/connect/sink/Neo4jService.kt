@@ -15,6 +15,7 @@ import org.neo4j.driver.AuthTokens
 import org.neo4j.driver.Config
 import org.neo4j.driver.Driver
 import org.neo4j.driver.GraphDatabase
+import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.exceptions.ClientException
 import org.neo4j.driver.exceptions.TransientException
 import org.neo4j.driver.net.ServerAddress
@@ -97,7 +98,11 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
 
     override fun write(query: String, events: Collection<Any>) {
-        val session = driver.session()
+        val sessionConfigBuilder = SessionConfig.builder()
+        if (config.database.isNotBlank()) {
+            sessionConfigBuilder.withDatabase(config.database)
+        }
+        val session = driver.session(sessionConfigBuilder.build())
         val records = events.map { converter.convert(it) }
         val data = mapOf<String, Any>("events" to records)
         try {
@@ -107,7 +112,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                     session.writeTransaction {
                         val summary = it.run(query, data).consume()
                         if (log.isDebugEnabled) {
-                            log.debug("Successfully executed query: `$query`. Summary: ${summary}")
+                            log.debug("Successfully executed query: `$query`. Summary: $summary")
                         }
                     }
                 }
@@ -141,7 +146,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
 
             timeout.onReceive {
                 jobs.forEach { it.cancel() }
-                throw TimeoutException("Tasks ${size} cancelled after timeout of $timeoutMs ms.")
+                throw TimeoutException("Tasks $size cancelled after timeout of $timeoutMs ms.")
             }
         }
 
