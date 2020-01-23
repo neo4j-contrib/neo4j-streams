@@ -52,7 +52,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
             Assume.assumeTrue("Kafka container has to exist", exists)
             Assume.assumeTrue("Kafka must be running", kafka.isRunning)
 
-            val client = AdminClient.create(mapOf("bootstrap.servers" to "localhost:" + kafka.firstMappedPort))
+            val client = AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers.substring("PLAINTEXT://".length)))
             val topicsToCreate = listOf("person")
             client.createTopics(topicsToCreate.map { NewTopic(it, 1, 1) })
                     .all()
