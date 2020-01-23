@@ -67,7 +67,7 @@ class KafkaEventSinkNoTopicAutoCreationIT {
     fun `should consume only the registered topic`() {
         // given
         val topic = "shouldWriteCypherQuery"
-        val client = AdminClient.create(mapOf("bootstrap.servers" to "localhost:" + kafka.firstMappedPort))
+        val client = AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers.substring("PLAINTEXT://".length)))
         val expectedTopics = listOf(topic)
         client.createTopics(expectedTopics.map { NewTopic(it, 1, 1) })
                 .all()
