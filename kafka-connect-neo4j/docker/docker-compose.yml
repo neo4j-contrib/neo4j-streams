@@ -2,7 +2,7 @@
 version: '2'
 services:
   neo4j:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j
     container_name: neo4j
     ports:
@@ -13,7 +13,6 @@ services:
       NEO4J_kafka_bootstrap_servers: broker:9093
       NEO4J_AUTH: neo4j/connect
       NEO4J_dbms_memory_heap_max__size: 8G
-      NEO4J_ACCEPT_LICENSE_AGREEMENT: 'yes'
 
   zookeeper:
     image: confluentinc/cp-zookeeper
@@ -98,7 +97,7 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      CONNECT_PLUGIN_PATH: /usr/share/java,/tmp/connect-plugins,/usr/share/confluent-hub-components
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=DEBUG,org.I0Itec.zkclient=DEBUG,org.reflections=ERROR
     command: 
 #      - bash 

@@ -1,6 +1,7 @@
 You can set the following Kafka configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf
+[subs="verbatim,attributes"]
 ----
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
@@ -10,12 +11,13 @@ kafka.enable.auto.commit=true
 kafka.key.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
 kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
 
-streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
-streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-streams.sink.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
-streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-streams.sink.enabled=<true/false, default=true>
+{environment}.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
+{environment}.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.cud=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
+{environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
+{environment}.enabled=<true/false, default=true>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

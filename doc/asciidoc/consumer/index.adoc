@@ -1,11 +1,14 @@
-[[consumer]]
-== Consumer: Kafka -> Neo4j
+
+[#neo4j_streams_sink]
+== Neo4j Streams - Sink: Kafka -> Neo4j
+:environment: streams.sink
+:id: streams_sink
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes the Neo4j Streams Consumer in the Neo4j Streams Library. Use this section
-to configure Neo4j to consume data from Kafka and create new nodes and relationships.
+This chapter describes the Neo4j Streams Sink in the Neo4j Streams Library.
+Use this section to configure Neo4j to ingest the data from Kafka into Neo4j.
 --
 endif::env-docs[]
 
@@ -24,9 +27,10 @@ It works in several ways:
 
 It works with template Cypher queries stored into properties with the following format:
 
-[source,ini]
+.neo4j.conf
+[source,ini,subs="verbatim,attributes"]
 ----
-streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
+{environment}.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 ----
 
 Each Cypher template must refer to an *event* object that will be injected by the Sink
@@ -47,10 +51,9 @@ For this event
 ----
 
 .neo4j.conf
-[source,ini]
+[source,ini,subs="attributes"]
 ----
-streams.sink.topic.cypher.my-topic=MERGE (n:Label {id: event.id}) \
-    ON CREATE SET n += event.properties
+include::sink-cypher-template-example.adoc[]
 ----
 
 Under the hood the Sink inject the event object as a parameter in this way
@@ -74,387 +77,12 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-==== Change Data Capture Event
+include::../sink-strategies/index.adoc[]
 
-This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
+include::../cud-file-format/index.adoc[]
 
- * The `SourceId` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID)
- * The `Schema` strategy which merges the nodes/relationships by the constraints (UNIQUENESS, NODE_KEY) defined in your graph model
-
-===== The `SourceId` strategy
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-streams.sink.topic.cdc.sourceId=<list of topics separated by semicolon>
-streams.sink.topic.cdc.sourceId.labelName=<the label attached to the node, default=SourceEvent>
-streams.sink.topic.cdc.sourceId.idName=<the id name given to the CDC id field, default=sourceId>
-----
-
-[source,ini]
-----
-streams.sink.topic.cdc.sourceId=my-topic;my-other.topic
-----
-
-Each streams event will be projected into the related graph entity, for instance the following event:
-
-[source,json]
-----
-include::../producer/data/node.created.json[]
-----
-
-will be persisted as the following node:
-
-```
-Person:SourceEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", sourceId: "1004"}
-```
-
-as you can notice, ingested event has been projected with two peculiarities:
-
-* the `id` field has transformed into `sourceId`;
-* the node has an additional label `SourceEvent`;
-
-these two fields will be used in order to match the node/relationship for future updates/deletes
-
-===== The `schema` strategy
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-----
-
-[source,ini]
-----
-streams.sink.topic.cdc.schema=my-topic;my-other.topic
-----
-
-Each streams event will be projected into the related graph entity, for instance the following event:
-
-[source,json]
-----
-include::../producer/data/node.created.json[]
-----
-
-will be persisted as the following node:
-
-```
-Person{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org"}
-```
-
-The `Schema` strategy leverages the `schema` field in order to insert/update the nodes so no extra fields will be created.
-
-In case of relationship
-
-[source,json]
-----
-include::../producer/data/relationship.created.json[]
-----
-
-the `Schema` strategy leverages the `ids` fields in order to insert/update the relationships so no extra fields will be created.
-
-===== The `Pattern` strategy
-
-The `Pattern` strategy allows you to extract nodes and relationships from a json by providing a extraction pattern
-
-Each property can be prefixed with:
-
-* `!`: identify the id (could be more than one property), it's *mandatory*
-* `-`: exclude the property from the extraction
-If no prefix is specified this means that the property will be included
-
-*Note*: you cannot mix inclusion and exclusion so if your pattern must contains all exclusion
-or inclusion properties
-
-Labels can be chained via `:`
-
-.Tombstone Record Management
-The pattern strategy come out with the support to the https://en.wikipedia.org/wiki/Tombstone_(data_store)[Tombstone Record],
-in order to leverage it your event should contain as key the record that you want to delete and `null` for the value.
-
-====== The `Node Pattern` configuration
-
-You can configure the node pattern extraction in the following way:
-
-```
-streams.sink.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
-```
-
-So for instance, given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{"userId": 1, "name": "Andrea", "surname": "Santurbano", "address": {"city": "Venice", "cap": "30100"}}
-----
-
-You can transform it into a node by providing the following configuration:
-
-
-by specifying a simpler pattern:
-
-```
-streams.sink.topic.pattern.node.user=User{!userId}
-```
-
-or by specifying a Cypher like node pattern:
-
-```
-streams.sink.topic.pattern.node.user=(:User{!userId})
-```
-
-Similar to the CDC pattern you can provide:
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| User:Actor{!userId} or User:Actor{!userId,*}
-| the userId will be used as ID field and all properties of the json will be attached to the node with the provided
-labels (`User` and `Actor`) so the persisted node will be: *(User:Actor{userId: 1, name: 'Andrea', surname: 'Santurbano', `address.city`: 'Venice', `address.cap`: 30100})*
-
-| User{!userId, surname}
-| the userId will be used as ID field and *only* the surname property of the json will be attached to the node with the provided
-labels (`User`) so the persisted node will be: *(User:Actor{userId: 1, surname: 'Santurbano'})*
-
-| User{!userId, surname, address.city}
-| the userId will be used as ID field and *only* the surname and the `address.city` property of the json will be attached to the node with the provided
-labels (`User`) so the persisted node will be: *(User:Actor{userId: 1, surname: 'Santurbano', `address.city`: 'Venice'})*
-
-| User{!userId,-address}
-| the userId will be used as ID field and the `address` property will be excluded
-so the persisted node will be: *(User:Actor{userId: 1, name: 'Andrea', surname: 'Santurbano'})*
-
-|===
-
-====== The `Relationship Pattern` configuration
-
-You can configure the relationship pattern extraction in the following way:
-
-```
-streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-```
-
-So for instance, given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{"userId": 1, "productId": 100, "price": 10, "currency": "€", "shippingAddress": {"city": "Venice", cap: "30100"}}
-----
-
-You can transform it into a node by providing the following configuration:
-
-By specifying a simpler pattern:
-
-```
-streams.sink.topic.pattern.relationship.user=User{!userId} BOUGHT{price, currency} Product{!productId}
-```
-
-or by specifying a Cypher like node pattern:
-
-```
-streams.sink.topic.pattern.relationship.user=(:User{!userId})-[:BOUGHT{price, currency}]->(:Product{!productId})
-```
-
-in this last case the we assume that `User` is the source node and `Product` the target node
-
-
-Similar to the CDC pattern you can provide:
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| (User{!userId})-[:BOUGHT]->(Product{!productId}) or (User{!userId})-[:BOUGHT{price, currency}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the other json properties on them so the persisted data will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice', `shippingAddress.cap`: 30100}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{price}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{-shippingAddress}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties (by the exclusion) so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{price,currency, shippingAddress.city}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice'}]->(Product{productId: 100})*
-
-|===
-
-
-*Attach properties to node*
-
-By default no properties will be attached to the edge nodes but you can specify which property attach to each node. Given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{
-    "userId": 1,
-    "userName": "Andrea",
-    "userSurname": "Santurbano",
-    "productId": 100,
-    "productName": "My Awesome Product!",
-    "price": 10,
-    "currency": "€"
-}
-----
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| (User{!userId, userName, userSurname})-[:BOUGHT]->(Product{!productId, productName})
-| this will merge two nodes and the `BOUGHT` relationship between with all json properties them so the persisted pattern will be:
-*(User{userId: 1, userName: 'Andrea', userSurname: 'Santurbano'})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100, name: 'My Awesome Product!'})*
-
-|===
-
-====== CUD File Format
-
-The CUD file format is JSON file that represents Graph Entities (Nodes/Relationships) and how to mange them in term
-of **C**reate/**U**pdate/**D**elete operations.
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-streams.sink.topic.cud=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-----
-
-[source,ini]
-----
-streams.sink.topic.cud=my-topic;my-other.topic
-----
-
-We have one format for nodes:
-
-[source,json]
-----
-{
-  "op": "merge",
-  "properties": {
-    "foo": "value",
-    "key": 1
-  },
-  "ids": {"key": 1, "otherKey":  "foo"},
-  "labels": ["Foo","Bar"],
-  "type": "node",
-  "detach": true
-}
-----
-
-Lets describe the fields:
-
-[cols="3",opts=header]
-|===
-
-| field
-| mandatory
-| Description
-
-| op
-| yes
-| The operation type: create/merge/update/delete
-
-*N.B.* delete messages are for **individual nodes** it’s not intended to be a generic way of doing cypher query building from JSON
-
-| properties
-| no in case the operation is `delete`, otherwise yes
-| The properties attached to the node
-
-| ids
-| no in case the operation is `create`, otherwise yes
-| In case the operation is merge/update/delete this field is **mandatory** and contains
-the primary/unique keys of the node that will be use to do the lookup to the entity.
-In case you use as key the `_id` name the cud format will refer to Neo4j's node internal for the node lookup.
-
-*N.B.* If you'll use the `_id` reference with the op `merge` it will work as simple update, this means that if the node
-with the passed internal id does not exists it will not be created.
-
-| labels
-| no
-| The labels attached to the node.
-
-*N.B.* Neo4j allows to create nodes without labels, but from a performance perspective, it's a bad idea don't provide them.
-
-| type
-| yes
-| The entity type: node/relationship => node in this case
-
-| detach
-| no
-| In case the operation is delete you can specify if perform a https://neo4j.com/docs/cypher-manual/current/clauses/delete/["detach" delete] that means delete any incident relationships when you delete a node
-
-*N.B.* if no value is provided, the default is true
-
-|===
-
-And one for relationships:
-
-[source,json]
-----
-{
-  "op": "create",
-  "properties": {
-    "foo": "rel-value",
-    "key": 1
-  },
-  "rel_type": "MY_REL",
-  "from": {
-    "ids": {"key": 1},
-    "labels": ["Foo","Bar"]
-  },
-  "to": {
-    "ids": {"otherKey":1},
-    "labels": ["FooBar"]
-  },
-  "type":"relationship"
-}
-----
-
-Lets describe the fields:
-
-[cols="3",opts=header]
-|===
-| field
-| mandatory
-| Description
-
-| op
-| yes
-| The operation type: create/merge/update/delete
-
-| properties
-| no
-| The properties attached to the relationship
-
-| rel_type
-| yes
-| The relationship type
-
-| from
-| yes, if you use the `_id` field reference into `ids` you can left labels blank
-| Contains the info about the source node of the relationship.
-For the description of the `ids` and `labels` fields please please look at the node fields description above
-
-| to
-| yes, if you use the `_id` field reference into `ids` you can left labels blank
-| Contains the info about the target node of the relationship.
-For the description of the `ids` and `labels` fields please please look at the node fields description above
-
-| type
-| yes
-| The entity type: node/relationship => relationship in this case
-
-|===
-
-=== How to deal with bad data
+[#neo4j_streams_dlq]
+=== How deal with bad data
 
 The Neo4j Streams Plugin provides several means to handle processing errors.
 
@@ -470,6 +98,8 @@ NOTE: It behaves by default like Kafka Connect, see this https://www.confluent.i
 
 Config Options
 
+[[dlq-table]]
+.Dead Letter Queue configuration parameters
 [%autowidth,cols="m,m,a",opts=header]
 |===
 | Name | Value | Note
@@ -483,27 +113,7 @@ Config Options
 | errors.deadletterqueue.topic.replication.factor | 3/1 | replication factor, need to set to 1 for single partition, default:3
 |===
 
-In Kafka Connect in addition to the above properties you need to define kafka broker connection properties:
-
-|===
-| Name | mandatory | Description
-
-| kafka.bootstrap.servers | true | It's the Kafka Broker url. *(please look at the description below)
-
-| kafka.<any_other_kafka_property> | false | You can also specify any other kafka Producer
-setting by adding the `kafka.` prefix (i.e the configuration `acks` become `kafka.acks`). See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
-
-|===
-
-*As you may have noticed we're asking to provide the `bootstrap.server` property,
-this because the Kafka Connect Framework provides an out-of-the-box support
-only for deserialization errors and message transformations
-(please look into the following link for further details: https://www.confluent.io/blog/kafka-connect-deep-dive-error-handling-dead-letter-queues).
-We want to extend this feature for transient errors in order to cover the 100% of failures.
-So to do that at this moment as suggested by Confluent we need to ask again the broker location,
-until this JIRA issue will not be addressed: https://issues.apache.org/jira/browse/KAFKA-8597.
-
-For the Neo4j extension you prefix them with `streams.sink.` in the Neo4j configuration.
+For the Neo4j extension you prefix them with `{environment}` in the Neo4j configuration.
 
 Example settings:
 
@@ -531,11 +141,9 @@ errors.deadletterqueue.context.headers.enable=true
 ----
 
 .Same Settings for Neo4j Server Plugin
-[source]
+[source,subs="attributes"]
 ----
-streams.sink.errors.tolerance=all
-streams.sink.errors.deadletterqueue.topic.name=my-dlq-topic
-streams.sink.errors.deadletterqueue.context.headers.enable=true
+include::sink-handle-errors.adoc[]
 ----
 
 Every published record in the `Dead Letter Queue` contains the original record `Key` and `Value` pairs and optionally the following headers:
@@ -567,7 +175,6 @@ Every published record in the `Dead Letter Queue` contains the original record `
 | The exception stack trace
 |===
 
-
 === Supported Kafka deserializers
 
 The Neo4j Streams plugin supports 2 deserializers:
@@ -575,8 +182,8 @@ The Neo4j Streams plugin supports 2 deserializers:
 * `org.apache.kafka.common.serialization.ByteArrayDeserializer`: if you want manage JSON messages
 * `io.confluent.kafka.serializers.KafkaAvroDeserializer`: if you want manage AVRO messages
 
-You can define the independently for `Key` and `Value` as specified in the Configuration paragraph
+You can define them independently for `Key` and `Value` as specified in the Configuration paragraph
 
-=== Configuration
+=== Configuration summary
 
 include::configuration.adoc[]

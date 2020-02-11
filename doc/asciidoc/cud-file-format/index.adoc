@@ -1,0 +1,295 @@
+==== CUD File Format
+
+The CUD file format is JSON file that represents Graph Entities (Nodes/Relationships) and how to manage them in term
+of **C**reate/**U**pdate/**D**elete operations.
+
+You can configure the topic in the following way:
+
+[source,ini,subs="verbatim,attributes"]
+----
+include::sink-cud-template.adoc[]
+----
+
+[source,ini,subs="attributes"]
+----
+include::sink-cud-example.adoc[]
+----
+
+We have two formats:
+
+* One for *nodes*:
+
++
+We provide an example of a `MERGE` operation
+
++
+[source,json]
+----
+{
+  "op": "merge",
+  "properties": {
+    "foo": "value",
+    "key": 1
+  },
+  "ids": {"key": 1, "otherKey":  "foo"},
+  "labels": ["Foo","Bar"],
+  "type": "node",
+  "detach": true
+}
+----
+
++
+which would be transformed into the following Cypher query:
+
++
+[source,cypher]
+----
+UNWIND [..., {
+  "op": "merge",
+  "properties": {
+    "foo": "value",
+    "key": 1
+  },
+  "ids": {"key": 1, "otherKey":  "foo"},
+  "labels": ["Foo","Bar"],
+  "type": "node",
+  "detach": true
+}, ...] AS event
+MERGE (n:Foo:Bar {key: event.ids.key, otherkey: event.ids.otherkey})
+SET n += event.properties
+----
+
++
+Lets describe the fields:
+
++
+[#{id}_table_cud_node_fields]
+.CUD file **Node format** fields description
+[cols="3",opts=header]
+|===
+
+| field
+| mandatory
+| Description
+
+| op
+| yes
+| The operation type: create/merge/update/delete
+
+*N.B.* delete messages are for **individual nodes** it’s not intended to be a generic way of doing cypher query building from JSON
+
+| properties
+| no in case the operation is `delete`, otherwise yes
+| The properties attached to the node
+
+| ids
+| no in case the operation is `create`, otherwise yes
+| In case the operation is merge/update/delete this field is **mandatory** and contains
+the primary/unique keys of the node that will be use to do the lookup to the entity.
+In case you use as key the `_id` name the cud format will refer to Neo4j's node internal for the node lookup.
+
+*N.B.* If you'll use the `_id` reference with the op `merge` it will work as simple update, this means that if the node
+with the passed internal id does not exists it will not be created.
+
+| labels
+| no
+| The labels attached to the node.
+
+*N.B.* Neo4j allows to create nodes without labels, but from a performance perspective, it's a bad idea don't provide them.
+
+| type
+| yes
+| The entity type: node/relationship => node in this case
+
+| detach
+| no
+| In case the operation is delete you can specify if perform a https://neo4j.com/docs/cypher-manual/current/clauses/delete/["detach" delete] that means delete any incident relationships when you delete a node
+
+*N.B.* if no value is provided, the default is true
+
+|===
+
+* And one for *relationships*:
+
++
+We provide an example of a `CREATE` operation
+
++
+[source,json]
+----
+{
+  "op": "create",
+  "properties": {
+    "foo": "rel-value",
+    "key": 1
+  },
+  "rel_type": "MY_REL",
+  "from": {
+    "ids": {"key": 1},
+    "labels": ["Foo","Bar"]
+  },
+  "to": {
+    "ids": {"otherKey":1},
+    "labels": ["FooBar"]
+  },
+  "type":"relationship"
+}
+----
+
++
+which would be transformed into the following Cypher query:
+
++
+[source,cypher]
+----
+UNWIND [..., {
+  "op": "create",
+  "properties": {
+    "foo": "rel-value",
+    "key": 1
+  },
+  "rel-type": "MY-REL",
+  "from": {
+    "ids": {"key": 1},
+    "labels": ["Foo","Bar"]
+  },
+  "to": {
+    "ids": {"otherKey":1},
+    "labels": ["FooBar"]
+  },
+  "type":"relationship"
+}, ...] AS event
+MATCH (from:Foo:Bar {key: event.from.ids.key})
+MATCH (to:FooBar {otherKey: event.to.ids.otherKey})
+CREATE (from)-[r:MY_REL]->(to)
+SET r = event.properties
+----
+
++
+Lets describe the fields:
+
++
+[#{id}_table_cud_rels_fields]
+.CUD file **Relationship format** fields description
+[cols="3",opts=header]
+|===
+| field
+| mandatory
+| Description
+
+| op
+| yes
+| The operation type: create/merge/update/delete
+
+| properties
+| no
+| The properties attached to the relationship
+
+| rel_type
+| yes
+| The relationship type
+
+| from
+| yes, if you use the `_id` field reference into `ids` you can left labels blank
+| Contains the info about the source node of the relationship.
+For the description of the `ids` and `labels` fields please please look at the node fields description above
+
+| to
+| yes, if you use the `_id` field reference into `ids` you can left labels blank
+| Contains the info about the target node of the relationship.
+For the description of the `ids` and `labels` fields please please look at the node fields description above
+
+| type
+| yes
+| The entity type: node/relationship => relationship in this case
+
+|===
+
+Following another example of `DELETE` operation for both node and relationship.
+
+* For **Node**, the following JSON:
+
++
+[source,json]
+----
+{
+  "op": "delete",
+  "properties": {},
+  "ids": {"key": 1, "otherKey":  "foo"},
+  "labels": ["Foo","Bar"],
+  "type": "node",
+  "detach": false
+}
+----
++
+will be transformed in the following Cypher query:
++
+[source,cypher]
+----
+UNWIND [..., {
+  "op": "delete",
+  "properties": {},
+  "ids": {"key": 1, "otherKey":  "foo"},
+  "labels": ["Foo","Bar"],
+  "type": "node",
+  "detach": false
+}, ...] AS event
+MATCH (n:Foo:Bar {key: event.ids.key, otherkey: event.ids.otherkey})
+DELETE n
+----
++
+Note that if you set `"detach": true` then the transformation will be:
++
+[source,cypher]
+----
+UNWIND [
+...
+] AS event
+...
+DETACH DELETE n
+----
+
+* For **Relationship**, the following JSON:
+
++
+[source,json]
+----
+{
+  "op": "create",
+  "properties": {},
+  "rel_type": "MY_REL",
+  "from": {
+    "ids": {"key": 1},
+    "labels": ["Foo","Bar"]
+  },
+  "to": {
+    "ids": {"otherKey":1},
+    "labels": ["FooBar"]
+  },
+  "type":"relationship"
+}
+----
++
+will be transformed in the following Cypher query:
++
+[source,cypher]
+----
+UNWIND [..., {
+  "op": "create",
+  "properties": {},
+  "rel_type": "MY_REL",
+  "from": {
+    "ids": {"key": 1},
+    "labels": ["Foo","Bar"]
+  },
+  "to": {
+    "ids": {"otherKey":1},
+    "labels": ["FooBar"]
+  },
+  "type":"relationship"
+}, ...] AS event
+MATCH (from:Foo:Bar {key: event.from.ids.key})
+MATCH (to:FooBar {otherkey: event.to.ids.otherkey})
+MATCH (from)-[r:MY_REL]->(to)
+DELETE r
+----

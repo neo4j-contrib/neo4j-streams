@@ -1,0 +1,1 @@
+{environment}.topic.pattern.node.user=User{!userId}

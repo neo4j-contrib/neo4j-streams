@@ -1,0 +1,1 @@
+{environment}.topic.cud=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>

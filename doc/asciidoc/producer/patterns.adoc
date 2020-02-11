@@ -1,3 +1,4 @@
+
 ==== Nodes
 
 To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
@@ -31,6 +32,7 @@ Label{*};Label1{prop1, prop2};Label3{-prop1,-prop2}
 
 |===
 
+
 ==== Relationships
 
 To control which relationships are sent to Kafka, and which of their properties you can define relationships-patterns in the config.
@@ -53,10 +55,10 @@ KNOWS{*};MEET{prop1, prop2};ANSWER{-prop1,-prop2}
 | KNOWS{*}
 | all relationship with this label with all their properties go to the related topic
 
-| KNOWS{prop1,prop2}
+| MEET{prop1,prop2}
 | the `prop1` and `prop2` of all relationship with this type are sent to the related topic
 
-| KNOWS{-prop1,-prop2}
+| ANSWER{-prop1,-prop2}
 | in the relationship with type KNOWS properties `prop1` and `prop2` are excluded
 
 |===

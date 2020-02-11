@@ -1,0 +1,28 @@
+
+== Confluent Cloud
+
+Configuring a connection to a Confluent Cloud instance should follow
+link:https://docs.confluent.io/current/cloud/using/config-client.html#java-client[Confluent's Java Client]
+configuration advice, and the advice in <<_kafka_settings, Kafka Settings>> section.
+At a minimum, to configure this, you will need:
+
+* `BOOTSTRAP_SERVER_URL`
+* `API_KEY`
+* `API_SECRET`
+
+More specifically the plugin has to be configured as follow:
+
+.neo4j.conf
+[source,ini]
+----
+kafka.bootstrap.servers=${BOOTSTRAP_SERVER_URL}
+kafka.sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="${API_KEY}" password="${API_SECRET}";
+kafka.ssl.endpoint.identification.algorithm=https
+kafka.security.protocol=SASL_SSL
+kafka.sasl.mechanism=PLAIN
+kafka.request.timeout.ms=20000
+kafka.retry.backoff.ms=500
+----
+
+Make sure to replace `BOOTSTRAP_SERVER_URL`, `API_SECRET`, and `API_KEY` with the values that Confluent Cloud
+gives you when you generate an API access key.

@@ -1,0 +1,44 @@
+
+== Project Overview
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter provides an introduction to the Neo4j Streams Library and Kafka Connect plugin.
+--
+endif::env-docs[]
+
+Many user and customers want to integrate Kafka and other streaming solutions with Neo4j.
+Either to ingest data into the graph from other sources.
+Or to send update events (change data capture - CDC) to the event log for later consumption.
+
+This extension was developed to satisfy all these use-cases and more to come.
+
+Neo4j Streams can run in two modes:
+
+* as a Neo4j plugin:
+
+** **Neo4j Streams Source**: a transaction event handler events that sends data to a Kafka topic
+** **Neo4j Streams Sink**: a Neo4j application that ingest data from Kafka topics into Neo4j via templated Cypher Statements
+** **Neo4j Streams Procedures**: two procedures `streams.publish`, which allows custom message streaming from Neo4j to the configured environment, and `streams.consume` which allows to consume messages from a given topic.
+* as a **Kafka-Connect Plugin**: a plugin for the Confluent Platform that allows to ingest data into Neo4j, from Kafka topics, via Cypher queries. At the moment it
+offers only the Sink functionality.
+
+Experienced Neo4j users will likely prefer running the software as a Neo4j Plugin.  Kafka administrators
+may prefer using the Kafka Connect method.
+
+[NOTE]
+**Be aware of not configuring both Neo4j plugin and Kafka Connect worker. They will generate errors if used simultaneously, so
+just one at a time has to be used.**
+
+=== Neo4j Streams Plugin
+
+As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
+to Kafka.
+
+[#kafka_connect_plugin_overview]
+=== Kafka Connect Plugin
+
+As a **Kafka Connect plugin**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
+the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support
+change data capture (CDC) coming _from_ Neo4j.
