@@ -1,22 +1,25 @@
-[[producer]]
-== Producer: Neo4j -> Kafka
+
+[#neo4j_streams_source]
+== Neo4j Streams - Source: Neo4j -> Kafka
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes the Neo4j Streams Producer in the Neo4j Streams Library.  Use this section
-to configure Neo4j to publish CDC style data to Kafka.
+This chapter describes the Neo4j Streams Source in the Neo4j Streams Library.
+Use this section to configure Neo4j to publish CDC style data to Kafka.
 --
 endif::env-docs[]
-
 
 Is the transaction event handler events that sends data to a Kafka topic
 
 === Configuration
 
-include::configurqation.adoc[]
+You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
-[[producer-patterns]]
+[source,adoc,subs="verbatim"]
+include::configuration.adoc[]
+
+[#source-patterns]
 === Patterns
 
 include::patterns.adoc[]
@@ -37,37 +40,43 @@ The Producer streams three kind of events:
 
 Following an example of the node creation event:
 
-```json
+[source,json]
+----
 include::data/node.created.json[]
-```
+----
 
-```json
+[source,json]
+----
 include::data/relationship.created.json[]
-```
+----
 
 ===== Updated
 
 Following an example of the node update event:
 
-```json
+[source,json]
+----
 include::data/node.updated.json[]
-```
+----
 
-```json
+[source,json]
+----
 include::data/relationship.updated.json[]
-```
+----
 
 ===== Deleted
 
 Following an example of the node creation event:
 
-```json
+[source,json]
+----
 include::data/node.deleted.json[]
-```
+----
 
-```json
+[source,json]
+----
 include::data/relationship.deleted.json[]
-```
+----
 
 ==== Meta
 
@@ -121,7 +130,6 @@ The *meta* field contains the metadata related to the transaction event:
 |The information about the source
 |===
 
-
 ==== Payload
 
 The *payload* field contains the information about the the data related to the event
@@ -149,11 +157,11 @@ The *payload* field contains the information about the the data related to the e
 |The data after the transaction event
 |===
 
-===== Payload: before and after
+==== Payload: before and after
 
 We must distinguish two cases:
 
-====== Nodes
+===== Nodes
 
 [cols="3*",options="header"]
 |===
@@ -170,7 +178,7 @@ We must distinguish two cases:
 |List of properties attached to the node, the `K` is the property name
 |===
 
-====== Relationships
+===== Relationships
 
 [cols="3*",options="header"]
 |===
@@ -195,7 +203,7 @@ We must distinguish two cases:
 |The ending node of the relationship
 |===
 
-====== Relationships: startNode and endNode
+===== Relationships: startNode and endNode
 
 [cols="3*",options="header"]
 |===
@@ -217,7 +225,6 @@ We must distinguish two cases:
 
 |===
 
-
 ==== Schema
 
 [cols="3*",options="header"]
@@ -235,7 +242,7 @@ We must distinguish two cases:
 |List of properties attached to the entity, where the `K` is the property name and the `V` is the class type
 |===
 
-===== Constraints
+==== Constraints
 
 Nodes and Relationships can have a list of constraints attached to them:
 

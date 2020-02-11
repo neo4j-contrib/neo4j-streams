@@ -6,7 +6,7 @@ Build the project by running the following command:
 
 Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`
 
-= Configuring the stack
+== Configuring the stack
 
 Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it, then start the compose file
 
@@ -87,7 +87,7 @@ and click to the **Sink** tab. You must find a table just like this:
 |my-topic
 |===
 
-= Use the data generator
+== Use the data generator
 
 You can download and use the https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar[neo4j-streams-sink-tester-1.0.jar] in order to generate a sample dataset.
 

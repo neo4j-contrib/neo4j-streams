@@ -1,14 +1,16 @@
-[[procedures]]
-== Cypher Procedures
+
+[#neo4j_streams_procedures]
+== Neo4j Streams - Procedures
+:environment: streams
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes consumer and producer procedures in the Neo4j Streams Library.  Procedures
-allow the functionality of the plugin to be used ad-hoc in any Cypher query.
+This chapter describes the Neo4j Streams Procedures in the Neo4j Streams Library.
+Use this section to configure Neo4j to know how procedures allow the functionality of the plugin
+to be used ad-hoc in any Cypher query.
 --
 endif::env-docs[]
-
 
 The Streams project comes out with a list of procedures.
 
@@ -17,9 +19,28 @@ The Streams project comes out with a list of procedures.
 You can enable/disable the procedures by changing this variable inside the `neo4j.conf`
 
 .neo4j.conf
+[subs="verbatim,attributes"]
 ----
-streams.procedures.enabled=<true/false, default=true>
+{environment}.procedures.enabled=<true/false, default=true>
 ----
+
+[NOTE]
+====
+Please note that by default the `dbms.security.procedures.whitelist` property is disabled, so Neo4j will load all
+procedures found.
+If you enable it then you have also to declare a comma separated list of procedures to be loaded by default. For example:
+
+[source, properties]
+----
+dbms.security.procedures.whitelist=streams.*,apoc.*
+----
+
+If you try to CALL one of the Streams procedures without declaring them into the whitelist, you will receive an error like
+the following:
+
+image::../../images/procedure_not_found.png[title="Neo4j Streams procedure not found", align="center"]
+
+====
 
 === streams.publish
 
@@ -33,7 +54,7 @@ The message retrieved from the Consumer is the following:
 
 `{"payload":"Hello world from Neo4j!"}`
 
-If you use a local <<docker,docker (compose) setup>>, you can check for these messages with:
+If you use a local <<neo4j_streams_docker,docker (compose) setup>>, you can check for these messages with:
 
 `docker exec -it kafka kafka-console-consumer --topic my-topic --bootstrap-server kafka:9092`
 
@@ -165,7 +186,7 @@ Supported deserializers are: `org.apache.kafka.common.serialization.ByteArrayDes
 
 |===
 
-===== Partitions
+==== Partitions
 
 [cols="3*",options="header"]
 |===

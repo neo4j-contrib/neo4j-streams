@@ -1,54 +1,65 @@
 
-=== Configuration parameters
+==== Configuration parameters
+:environment: neo4j
+:id: neo4j
 
 You can set the following configuration values via Confluent Connect UI, or via REST endpoint
 
-[cols="3*",options="header"]
+[cols="3*",subs="attributes",options="header"]
 |===
 |Field|Type|Description
 
-|neo4j.server.uri|String|The Bolt URI (default bolt://localhost:7687)
-|neo4j.authentication.type|enum[NONE, BASIC, KERBEROS]| The authentication type (default BASIC)
-|neo4j.batch.size|Int|The max number of events processed by the Cypher query (default 1000)
-|neo4j.batch.timeout.msecs|Long|The execution timeout for the cypher query (default 30000)
-|neo4j.authentication.basic.username|String| The authentication username
-|neo4j.authentication.basic.password|String| The authentication password
-|neo4j.authentication.basic.realm|String| The authentication realm
-|neo4j.authentication.kerberos.ticket|String| The Kerberos ticket
-|neo4j.encryption.enabled|Boolean| If the encryption is enabled (default false)
-|neo4j.encryption.trust.strategy|enum[TRUST_ALL_CERTIFICATES, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]| The Neo4j trust strategy (default TRUST_ALL_CERTIFICATES)
-|neo4j.encryption.ca.certificate.path|String| The path of the certificate
-|neo4j.connection.max.lifetime.msecs|Long| The max Neo4j connection lifetime (default 1 hour)
-|neo4j.connection.acquisition.timeout.msecs|Long| The max Neo4j acquisition timeout (default 1 hour)
-|neo4j.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
-|neo4j.connection.max.pool.size|Int| The max pool size (default 100)
-|neo4j.load.balance.strategy|enum[ROUND_ROBIN, LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
-|neo4j.batch.parallelize|Boolean|(default true) While concurrent batch processing improves throughput, it might cause out-of-order handling of events.  Set to `false` if you need application of messages with strict ordering, e.g. for change-data-capture (CDC) events.
+|{environment}.server.uri|String|The Bolt URI (default bolt://localhost:7687)
+|{environment}.authentication.type|enum[NONE, BASIC, KERBEROS]| The authentication type (default BASIC)
+|{environment}.batch.size|Int|The max number of events processed by the Cypher query (default 1000)
+|{environment}.batch.timeout.msecs|Long|The execution timeout for the cypher query (default 30000)
+|{environment}.authentication.basic.username|String| The authentication username
+|{environment}.authentication.basic.password|String| The authentication password
+|{environment}.authentication.basic.realm|String| The authentication realm
+|{environment}.authentication.kerberos.ticket|String| The Kerberos ticket
+|{environment}.encryption.enabled|Boolean| If the encryption is enabled (default false)
+|{environment}.encryption.trust.strategy|enum[TRUST_ALL_CERTIFICATES, TRUST_CUSTOM_CA_SIGNED_CERTIFICATES, TRUST_SYSTEM_CA_SIGNED_CERTIFICATES]| The Neo4j trust strategy (default TRUST_ALL_CERTIFICATES)
+|{environment}.encryption.ca.certificate.path|String| The path of the certificate
+|{environment}.connection.max.lifetime.msecs|Long| The max Neo4j connection lifetime (default 1 hour)
+|{environment}.connection.acquisition.timeout.msecs|Long| The max Neo4j acquisition timeout (default 1 hour)
+|{environment}.connection.liveness.check.timeout.msecs|Long| The max Neo4j liveness check timeout (default 1 hour)
+|{environment}.connection.max.pool.size|Int| The max pool size (default 100)
+|{environment}.load.balance.strategy|enum[ROUND_ROBIN, LEAST_CONNECTED]| The Neo4j load balance strategy (default LEAST_CONNECTED)
+|{environment}.batch.parallelize|Boolean|(default true) While concurrent batch processing improves throughput, it might cause out-of-order handling of events.  Set to `false` if you need application of messages with strict ordering, e.g. for change-data-capture (CDC) events.
 |===
 
-=== Configuring the stack
+==== Configuring the stack
 
 Start the compose file
 
-    docker-compose up -d
+[source,bash]
+----
+docker-compose up -d
+----
 
 You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
 
-==== Plugin installation
+===== Plugin installation
 
-You can choose your preferred way in order to install the plugin
+You can choose your preferred way in order to install the plugin:
 
-===== Build it locally
-
+* *Build it locally*
++
+--
 Build the project by running the following command:
 
-    $ mvn clean install
-
+[source,bash]
+----
+mvn clean install
+----
 
 Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
+--
 
-===== Download the zip from the Confluent Hub
+* *Download the zip from the Confluent Hub*
 
++
+--
 Please go to the Confluent Hub page of the plugin:
 
 https://www.confluent.io/connector/kafka-connect-neo4j-sink/
@@ -56,16 +67,18 @@ https://www.confluent.io/connector/kafka-connect-neo4j-sink/
 And click to the **Download Connector** button.
 
 Create a directory `plugins` at the same level of the compose file and unzip the file `neo4j-kafka-connect-neo4j-<VERSION>.zip` inside it.
+--
 
-===== Download and install the plugin via Confluent Hub client
-
+* *Download and install the plugin via Confluent Hub client*
++
+--
 If you are using the provided compose file you can easily install the plugin by using the Confluent Hub.
 
 Once the compose file is up and running you can install the plugin by executing the following command:
 
 [source,bash]
 ----
-docker exec -it connect confluent-hub install neo4j/kafka-connect-neo4j:1.0.0
+docker exec -it connect confluent-hub install neo4j/kafka-connect-neo4j:<version>
 ----
 
 When the installation will ask:
@@ -78,619 +91,18 @@ The component can be installed in any of the following Confluent Platform instal
 Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
 
 At the end of the process the plugin is automatically installed.
-
-==== Configure Neo4j
-
-In order to speed up the import process please create these two indexes:
-
-[source,cypher]
-----
-CREATE INDEX ON :Person(surname);
-CREATE CONSTRAINT ON (f:Family) ASSERT f.name IS UNIQUE;
-----
+--
 
 ==== Create the Sink Instance
 
-Create the Sink instance:
+To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described
+into <<kafka-connect-sink-instance, Create the Sink Instance>> and <<kafka-connect-sink-strategies, Sink Ingestion Strategies>>
+sections.
 
-We'll define the Sink configuration in several ways:
+===== Use the Kafka Connect Datagen
 
-* by providing a Cypher template
-* by ingesting the events emitted from another Neo4j instance via the Change Data Capture module
-* by providing a pattern extraction to a JSON or AVRO file
-* by managing a CUD file format
+In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<neo4j_confluent, `Example with Kafka Connect Datagen`>> section.
 
-===== Cypher query
-
-[source,json]
-----
-include::contrib.sink.avro.neo4j.json[]
-----
-
-In particular this line:
-
-----
-"neo4j.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
-----
-
-defines that all the data that comes from the topic `neo4j` will be unpacked by the Sink into Neo4j with the following Cypher query:
-
-[source,cypher]
-----
-MERGE (p:Person{name: event.name, surname: event.surname})
-MERGE (f:Family{name: event.surname})
-MERGE (p)-[:BELONGS_TO]->(f)
-----
-
-Under the hood the Sink inject the event object in this way
-
-[source,cypher]
-----
-UNWIND {batch} AS event
-MERGE (p:Person{name: event.name, surname: event.surname})
-MERGE (f:Family{name: event.surname})
-MERGE (p)-[:BELONGS_TO]->(f)
-----
-
-Where `{batch}` is a list of event objects.
-
-You can change the query or remove the property and add your own, but you must follow the following convention:
-
-[source,javascript]
-----
-"neo4j.topic.cypher.<YOUR_TOPIC>": "<YOUR_CYPHER_QUERY>"
-----
-
-Let's load the configuration into the Confluent Platform with this REST call:
-
-[source,shell]
-----
-curl -X POST http://localhost:8083/connectors \
-  -H 'Content-Type:application/json' \
-  -H 'Accept:application/json' \
-  -d @contrib.sink.avro.neo4j.json
-----
-
-The file `contrib.sink.string-json.neo4j.json` contains a configuration that manage a simple JSON producer example
-
-Please check that everything is fine by going into:
-
-http://localhost:9021/management/connect
-
-and click to the **Sink** tab. You must find a table just like this:
-
-[cols="4*",options="header"]
-|===
-|Status
-|Active Tasks
-|Name
-|Topics
-
-|Running
-|1
-|Neo4jSinkConnector
-|my-topic
-|===
-
-==== Change Data Capture Event
-
-This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
-
- * The `SourceId` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID)
- * The `Schema` strategy which merges the nodes/relationships by the constraints (UNIQUENESS, NODE_KEY) defined in your graph model
-
-===== The `SourceId` strategy
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-neo4j.topic.cdc.sourceId=<list of topics separated by semicolon>
-neo4j.topic.cdc.sourceId.labelName=<the label attached to the node, default=SourceEvent>
-neo4j.topic.cdc.sourceId.idName=<the id name given to the CDC id field, default=sourceId>
-----
-
-[source,ini]
-----
-neo4j.topic.cdc.sourceId=my-topic;my-other.topic
-----
-
-Each streams event will be projected into the related graph entity, for instance the following event:
-
-[source,json]
-----
-include::../../doc/asciidoc/producer/data/node.created.json[]
-----
-
-will be persisted as the following node:
-
-```
-Person:SourceEvent{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org", sourceId: "1004"}
-```
-
-as you can notice, ingested event has been projected with two peculiarities:
-
-* the `id` field has transformed into `sourceId`;
-* the node has an additional label `SourceEvent`;
-
-these two fields will be used in order to match the node/relationship for future updates/deletes
-
-===== The `Schema` strategy
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-neo4j.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-----
-
-[source,ini]
-----
-neo4j.topic.cdc.schema=my-topic;my-other.topic
-----
-
-Each streams event will be projected into the related graph entity, for instance the following event:
-
-[source,json]
-----
-{
-  "meta": {
-    "timestamp": 1532597182604,
-    "username": "neo4j",
-    "tx_id": 3,
-    "tx_event_id": 0,
-    "tx_events_count": 2,
-    "operation": "created",
-    "source": {
-      "hostname": "neo4j.mycompany.com"
-    }
-  },
-  "payload": {
-    "id": "123",
-    "type": "relationship",
-    "label": "KNOWS",
-    "start": {
-      "labels": ["Person"],
-      "id": "123",
-      "ids": {
-        "last_name": "Andrea",
-        "first_name": "Santurbano"
-      }
-    },
-    "end": {
-      "labels": ["Person"],
-      "id": "456",
-      "ids": {
-        "last_name": "Michael",
-        "first_name": "Hunger"
-      }
-    },
-    "after": {
-      "properties": {
-        "since": "2018-04-05T12:34:00[Europe/Berlin]"
-      }
-    }
-  },
-  "schema": {
-    "properties": {
-      "since": "ZonedDateTime"
-    },
-    "constraints": [{
-      "label": "KNOWS",
-      "properties": ["since"],
-      "type": "RELATIONSHIP_PROPERTY_EXISTENCE"
-    },{
-      "label": "Person",
-      "properties": ["first_name", "last_name"],
-      "type": "NODE_KEY"
-    }]
-  }
-}
-----
-
-will be persisted as the following node:
-
-```
-Person{first_name: "Anne Marie", last_name: "Kretchmar", email: "annek@noanswer.org"}
-```
-
-The `Schema` strategy leverages the `schema` field in order to insert/update the nodes so no extra fields will be created.
-
-In case of relationship
-
-[source,json]
-----
-{
-  "meta": {
-    "timestamp": 1532597182604,
-    "username": "neo4j",
-    "tx_id": 3,
-    "tx_event_id": 0,
-    "tx_events_count": 2,
-    "operation": "created",
-    "source": {
-      "hostname": "neo4j.mycompany.com"
-    }
-  },
-  "payload": {
-    "id": "1004",
-    "type": "node",
-    "after": {
-      "labels": ["Person"],
-      "properties": {
-        "email": "annek@noanswer.org",
-        "last_name": "Kretchmar",
-        "first_name": "Anne Marie"
-      }
-    }
-  },
-  "schema": {
-    "properties": {
-      "last_name": "String",
-      "email": "String",
-      "first_name": "String"
-    },
-    "constraints": [{
-      "label": "Person",
-      "properties": ["first_name", "last_name"],
-      "type": "NODE_KEY"
-    }]
-  }
-}
-----
-
-===== The `Pattern` strategy
-
-The `Pattern` strategy allows you to extract nodes and relationships from a json by providing a extraction pattern
-
-Each property can be prefixed with:
-
-* `!`: identify the id (could be more than one property), it's *mandatory*
-* `-`: exclude the property from the extraction
-If no prefix is specified this means that the property will be included
-
-*Note*: you cannot mix inclusion and exclusion so if your pattern must contains all exclusion
-or inclusion properties
-
-Labels can be chained via `:`
-
-.Tombstone Record Management
-The pattern strategy come out with the support to the https://en.wikipedia.org/wiki/Tombstone_(data_store)[Tombstone Record],
-in order to leverage it your event should contain as key the record that you want to delete and `null` for the value.
-
-
-====== The `Node Pattern` configuration
-
-You can configure the node pattern extraction in the following way:
-
-```
-neo4j.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
-```
-
-So for instance, given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{"userId": 1, "name": "Andrea", "surname": "Santurbano", "address": {"city": "Venice", cap: "30100"}}
-----
-
-You can transform it into a node by providing the following configuration:
-
-
-by specifying a simpler pattern:
-
-```
-neo4j.topic.pattern.node.user=User{!userId}
-```
-
-or by specifying a Cypher like node pattern:
-
-```
-neo4j.topic.pattern.node.user=(:User{!userId})
-```
-
-Similar to the CDC pattern you can provide:
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| User:Actor{!userId} or User:Actor{!userId,*}
-| the userId will be used as ID field and all properties of the json will be attached to the node with the provided
-labels (`User` and `Actor`) so the persisted node will be: *(User:Actor{userId: 1, name: 'Andrea', surname: 'Santurbano', `address.city`: 'Venice', `address.cap`: 30100})*
-
-| User{!userId, surname}
-| the userId will be used as ID field and *only* the surname property of the json will be attached to the node with the provided
-labels (`User`) so the persisted node will be: *(User:Actor{userId: 1, surname: 'Santurbano'})*
-
-| User{!userId, surname, address.city}
-| the userId will be used as ID field and *only* the surname and the `address.city` property of the json will be attached to the node with the provided
-labels (`User`) so the persisted node will be: *(User:Actor{userId: 1, surname: 'Santurbano', `address.city`: 'Venice'})*
-
-| User{!userId,-address}
-| the userId will be used as ID field and the `address` property will be excluded
-so the persisted node will be: *(User:Actor{userId: 1, name: 'Andrea', surname: 'Santurbano'})*
-
-|===
-
-====== The `Relationship Pattern` configuration
-
-You can configure the relationship pattern extraction in the following way:
-
-```
-neo4j.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-```
-
-So for instance, given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{"userId": 1, "productId": 100, "price": 10, "currency": "€", "shippingAddress": {"city": "Venice", cap: "30100"}}
-----
-
-You can transform it into a node by providing the following configuration:
-
-by specifying a simpler pattern:
-
-```
-neo4j.topic.pattern.relationship.user=User{!userId} BOUGHT{price, currency} Product{!productId}
-```
-
-or specifying a Cypher like node pattern:
-
-```
-neo4j.topic.pattern.relationship.user=(:User{!userId})-[:BOUGHT{price, currency}]->(:Product{!productId})
-```
-
-in this last case the we assume that `User` is the source node and `Product` the target node
-
-
-Similar to the CDC pattern you can provide:
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| (User{!userId})-[:BOUGHT]->(Product{!productId}) or (User{!userId})-[:BOUGHT{price, currency}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the other json properties on them so the persisted data will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice', `shippingAddress.cap`: 30100}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{price}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{-shippingAddress}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties (by the exclusion) so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100})*
-
-| (User{!userId})-[:BOUGHT{price,currency, shippingAddress.city}]->(Product{!productId})
-| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
-*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice'}]->(Product{productId: 100})*
-
-|===
-
-
-*Attach properties to node*
-
-By default no properties will be attached to the edge nodes but you can specify which property attach to each node. Given the following `json` published via the `user` topic:
-
-[source,json]
-----
-{
-    "userId": 1,
-    "userName": "Andrea",
-    "userSurname": "Santurbano",
-    "productId": 100,
-    "productName": "My Awesome Product!",
-    "price": 10,
-    "currency": "€"
-}
-----
-
-[cols="1m,3a",opts=header]
-|===
-| pattern
-| meaning
-
-| (User{!userId, userName, userSurname})-[:BOUGHT]->(Product{!productId, productName})
-| this will merge fetch/create the two nodes by the provided identifier (in case of creation also the declared properties are created) and the `BOUGHT` relationship between with all json properties them so the persisted pattern will be:
-*(User{userId: 1, userName: 'Andrea', userSurname: 'Santurbano'})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100, name: 'My Awesome Product!'})*
-
-|===
-
-====== CUD File Format
-
-The CUD file format is JSON file that represents Graph Entities (Nodes/Relationships) and how to mange them in term
-of **C**reate/**U**pdate/**D**elete operations.
-
-You can configure the topic in the following way:
-
-[source,ini]
-----
-neo4j.topic.cud=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
-----
-
-[source,ini]
-----
-neo4j.topic.cud=my-topic;my-other.topic
-----
-
-We have one format for nodes:
-
-[source,json]
-----
-{
-  "op": "merge",
-  "properties": {
-    "foo": "value",
-    "key": 1
-  },
-  "ids": {"key": 1, "otherKey":  "foo"},
-  "labels": ["Foo","Bar"],
-  "type": "node",
-  "detach": true
-}
-----
-
-Lets describe the fields:
-
-[cols="3",opts=header]
-|===
-
-| field
-| mandatory
-| Description
-
-| op
-| yes
-| The operation type: create/merge/update/delete
-
-*N.B.* delete messages are for **individual nodes** it’s not intended to be a generic way of doing cypher query building from JSON
-
-| properties
-| no in case the operation is `delete`, otherwise yes
-| The properties attached to the node
-
-| ids
-| no in case the operation is `create`, otherwise yes
-| In case the operation is merge/update/delete this field is **mandatory** and contains
-the primary/unique keys of the node that will be use to do the lookup to the entity.
-In case you use as key the `_id` name the cud format will refer to Neo4j's node internal for the node lookup.
-
-*N.B.* If you'll use the `_id` reference with the op `merge` it will work as simple update, this means that if the node
-with the passed internal id does not exists it will not be created.
-
-| labels
-| no
-| The labels attached to the node.
-
-*N.B.* Neo4j allows to create nodes without labels, but from a performance perspective, it's a bad idea don't provide them.
-
-| type
-| yes
-| The entity type: node/relationship => node in this case
-
-| detach
-| no
-| In case the operation is delete you can specify if perform a https://neo4j.com/docs/cypher-manual/current/clauses/delete/["detach" delete] that means delete any incident relationships when you delete a node
-
-*N.B.* if no value is provided, the default is true
-
-|===
-
-And one for relationships:
-
-[source,json]
-----
-{
-  "op": "create",
-  "properties": {
-    "foo": "rel-value",
-    "key": 1
-  },
-  "rel_type": "MY_REL",
-  "from": {
-    "ids": {"key": 1},
-    "labels": ["Foo","Bar"]
-  },
-  "to": {
-    "ids": {"otherKey":1},
-    "labels": ["FooBar"]
-  },
-  "type":"relationship"
-}
-----
-
-Lets describe the fields:
-
-[cols="3",opts=header]
-|===
-| field
-| mandatory
-| Description
-
-| op
-| yes
-| The operation type: create/merge/update/delete
-
-| properties
-| no
-| The properties attached to the relationship
-
-| rel_type
-| yes
-| The relationship type
-
-| from
-| yes, if you use the `_id` field reference into `ids` you can left labels blank
-| Contains the info about the source node of the relationship.
-For the description of the `ids` and `labels` fields please please look at the node fields description above
-
-| to
-| yes, if you use the `_id` field reference into `ids` you can left labels blank
-| Contains the info about the target node of the relationship.
-For the description of the `ids` and `labels` fields please please look at the node fields description above
-
-| type
-| yes
-| The entity type: node/relationship => relationship in this case
-
-|===
-
-==== Use the data generator
-
-You can download and use the https://github.com/conker84/neo4j-streams-sink-tester/releases/download/1/neo4j-streams-sink-tester-1.0.jar[neo4j-streams-sink-tester-1.0.jar] in order to generate a sample dataset.
-
-This package sends records to the Neo4j Kafka Sink by using the following in two data formats:
-
-JSON example:
-
-[source,json]
-----
-{"name": "Name", "surname": "Surname"}
-----
-
-AVRO, with the schema:
-
-[source,json]
-----
-{
- "type":"record",
- "name":"User",
- "fields":[{"name":"name","type":"string"}, {"name":"surname","type":"string"}]
-}
-----
-
-_Note_: Before start using the data generator please create the following indexes on Neo4j (in order to speed-up the import process):
-
-[source,cypher]
-----
-CREATE INDEX ON :Person(name)
-----
-
-[source,cypher]
-----
-CREATE INDEX ON :Family(name)
-----
-
-Please type:
-
-----
-java -jar neo4j-streams-sink-tester-1.0.jar -h
-----
-
-to print the option list with default values.
-
-In order to choose the data format please use the `-f` flag: `-f AVRO` or `-f JSON` (the default value).
-So:
-
-----
-java -jar neo4j-streams-sink-tester-1.0.jar -f AVRO
-----
-
-Will send data in AVRO format.
-
-For a complete overview of the **Neo4j Steams Sink Tester** please refer to https://github.com/conker84/neo4j-streams-sink-tester[this repo]
+[NOTE]
+Before start using the data generator please create indexes in Neo4j (in order to speed-up the import process)
 

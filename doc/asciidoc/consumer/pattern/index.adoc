@@ -1,0 +1,172 @@
+
+===== The `Pattern` strategy
+
+The `Pattern` strategy allows you to extract nodes and relationships from a json by providing a extraction pattern
+
+Each property can be prefixed with:
+
+* `!`: identify the id (could be more than one property), it's *mandatory*
+* `-`: exclude the property from the extraction
+If no prefix is specified this means that the property will be included
+
+[NOTE]
+**You cannot mix inclusion and exclusion so your pattern must contains all exclusion
+or inclusion properties**
+
+Labels can be chained via `:`
+
+.Tombstone Record Management
+The pattern strategy come out with the support to the https://en.wikipedia.org/wiki/Tombstone_(data_store)[Tombstone Record],
+in order to leverage it your event should contain as key the record that you want to delete and `null` for the value.
+
+[NOTE]
+**Currently you can't concatenate multiple pattern (for example in case you use the same topic for producing more then one node/relationship type).
+So you have to use a different topic for each type of node/relationship and define a pattern for each of them**
+
+====== The `Node Pattern` configuration
+
+You can configure the node pattern extraction in the following way:
+
+[subs="verbatim,attributes"]
+```
+include::sink-node-pattern-template.adoc[]
+```
+
+So for instance, given the following `json` published via the `user` topic:
+
+[source,json]
+----
+{"userId": 1, "name": "Andrea", "surname": "Santurbano", "address": {"city": "Venice", "cap": "30100"}}
+----
+
+You can transform it into a node by providing the following configuration:
+
+
+by specifying a simpler pattern:
+
+[subs="attributes"]
+```
+include::sink-node-pattern-example.adoc[]
+```
+
+or by specifying a Cypher like node pattern:
+
+[subs="attributes"]
+```
+include::sink-node-pattern-cypher-example.adoc[]
+```
+
+Similar to the CDC pattern you can provide:
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| User:Actor{!userId} or User:Actor{!userId,*}
+| the userId will be used as ID field and all properties of the json will be attached to the node with the provided
+labels (`User` and `Actor`) so the persisted node will be: *(User:Actor{userId: 1, name: 'Andrea', surname: 'Santurbano', `address.city`: 'Venice', `address.cap`: 30100})*
+
+| User{!userId, surname}
+| the userId will be used as ID field and *only* the surname property of the json will be attached to the node with the provided
+labels (`User`) so the persisted node will be: *(User{userId: 1, surname: 'Santurbano'})*
+
+| User{!userId, surname, address.city}
+| the userId will be used as ID field and *only* the surname and the `address.city` property of the json will be attached to the node with the provided
+labels (`User`) so the persisted node will be: *(User{userId: 1, surname: 'Santurbano', `address.city`: 'Venice'})*
+
+| User{!userId,-address}
+| the userId will be used as ID field and the `address` property will be excluded
+so the persisted node will be: *(User{userId: 1, name: 'Andrea', surname: 'Santurbano'})*
+
+|===
+
+
+====== The `Relationship Pattern` configuration
+
+You can configure the relationship pattern extraction in the following way:
+
+[subs="verbatim,attributes"]
+```
+include::sink-rel-pattern-template.adoc[]
+```
+
+So for instance, given the following `json` published via the `user` topic:
+
+[source,json]
+----
+{"userId": 1, "productId": 100, "price": 10, "currency": "€", "shippingAddress": {"city": "Venice", cap: "30100"}}
+----
+
+You can transform it into a path, like (n)-[r]->(m), by providing the following configuration:
+
+By specifying a simpler pattern:
+
+[subs="attributes"]
+```
+include::sink-rel-pattern-example.adoc[]
+```
+
+or by specifying a Cypher like node pattern:
+
+[subs="attributes"]
+```
+include::sink-rel-pattern-cypher-example.adoc[]
+```
+
+in this last case the we assume that `User` is the source node and `Product` the target node
+
+
+Similar to the CDC pattern you can provide:
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| (User{!userId})-[:BOUGHT]->(Product{!productId}) or (User{!userId})-[:BOUGHT{price, currency}]->(Product{!productId})
+| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the other json properties on them so the persisted data will be:
+*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice', `shippingAddress.cap`: 30100}]->(Product{productId: 100})*
+
+| (User{!userId})-[:BOUGHT{price}]->(Product{!productId})
+| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
+*(User{userId: 1})-[:BOUGHT{price: 10}]->(Product{productId: 100})*
+
+| (User{!userId})-[:BOUGHT{-shippingAddress}]->(Product{!productId})
+| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties (by the exclusion) so the persisted pattern will be:
+*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100})*
+
+| (User{!userId})-[:BOUGHT{price,currency, shippingAddress.city}]->(Product{!productId})
+| this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
+*(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice'}]->(Product{productId: 100})*
+
+|===
+
+
+*Attach properties to node*
+
+By default no properties will be attached to the edge nodes but you can specify which property attach to each node. Given the following `json` published via the `user` topic:
+
+[source,json]
+----
+{
+    "userId": 1,
+    "userName": "Andrea",
+    "userSurname": "Santurbano",
+    "productId": 100,
+    "productName": "My Awesome Product!",
+    "price": 10,
+    "currency": "€"
+}
+----
+
+[cols="1m,3a",opts=header]
+|===
+| pattern
+| meaning
+
+| (User{!userId, userName, userSurname})-[:BOUGHT]->(Product{!productId, productName})
+| this will merge two nodes and the `BOUGHT` relationship between with all json properties them so the persisted pattern will be:
+*(User{userId: 1, userName: 'Andrea', userSurname: 'Santurbano'})-[:BOUGHT{price: 10, currency: '€'}]->(Product{productId: 100, name: 'My Awesome Product!'})*
+
+|===

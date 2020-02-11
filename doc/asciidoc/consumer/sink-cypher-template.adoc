@@ -1,0 +1,1 @@
+{environment}.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>

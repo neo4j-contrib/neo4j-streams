@@ -11,14 +11,14 @@ The project contains these components:
 
 == Neo4j Kafka Connect Plugin
 
-A https://www.confluent.io/connector/kafka-connect-neo4j-sink/[Kafka Connect Sink plugin] that allows to ingest events from Kafka to Neo4j via templated Cypher statements. (link:{docs}#_kafka_connect[docs], https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[article])
+A https://www.confluent.io/connector/kafka-connect-neo4j-sink/[Kafka Connect Sink plugin] that allows to ingest events from Kafka to Neo4j via templated Cypher statements. (link:{docs}#_kafka_connect_sink_plugin[docs], https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[article])
 
 image::https://www.confluent.io/wp-content/uploads/Kafka_Connect_Neo4j_Sink.png[width=300,link=https://www.confluent.io/connector/kafka-connect-neo4j-sink/]
 
 == Neo4j Server Extension
 
-* Source: a Change-Data-Capture (CDC) implementation sends change data to Kafka topics (link:{docs}#_neo4j_streams_producer[docs])
-* Sink: a Neo4j extension that ingest data from Kafka topics into Neo4j via templated Cypher statements (link:{docs}#_neo4j_streams_consumer[docs])
+* Source: a Change-Data-Capture (CDC) implementation sends change data to Kafka topics (link:{docs}#_neo4j_streams_source[docs])
+* Sink: a Neo4j extension that ingest data from Kafka topics into Neo4j via templated Cypher statements (link:{docs}#_neo4j_streams_sink[docs])
 * Neo4j Streams Procedures (Read & Write): Procedures to write to and read from topics interactively/programmatically (link:{docs}#_procedures[docs])
 
 == Documentation & Articles
