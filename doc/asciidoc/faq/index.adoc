@@ -1,6 +1,11 @@
 
 == Neo4j Streams FAQ
 
+=== Source Code License
+
+The source code to Neo4j Streams is available under the terms of the Apache License, version 2.0.  See the LICENSE file in
+the source code repository for full terms and conditions.
+
 === How to integrate Neo4j and Kafka
 
 When integrating Neo4j and Kafka using Neo4j Streams plugin or Kafka Connect plugin
