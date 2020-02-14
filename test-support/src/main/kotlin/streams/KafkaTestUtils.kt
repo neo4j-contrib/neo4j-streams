@@ -1,4 +1,4 @@
-package integrations.kafka
+package streams
 
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -8,25 +8,26 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
-import org.testcontainers.containers.KafkaContainer
-import java.util.*
+import java.util.Properties
+import java.util.UUID
 
 object KafkaTestUtils {
-    fun <K, V> createConsumer(kafka: KafkaContainer,
-                              schemaRegistry: SchemaRegistryContainer?,
+    fun <K, V> createConsumer(bootstrapServers: String,
+                              zookeeper: String = "localhost:2181",
+                              schemaRegistryUrl: String? = null,
                               keyDeserializer: String = StringDeserializer::class.java.name,
                               valueDeserializer: String = ByteArrayDeserializer::class.java.name,
-                              vararg topics: String): KafkaConsumer<K, V> {
+                              vararg topics: String = emptyArray()): KafkaConsumer<K, V> {
         val props = Properties()
-        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
-        props["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        props["group.id"] = "neo4j"
+        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+        props["zookeeper.connect"] = zookeeper
+        props["group.id"] = "neo4j" // UUID.randomUUID().toString()
         props["enable.auto.commit"] = "true"
         props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = valueDeserializer
         props["auto.offset.reset"] = "earliest"
-        if (schemaRegistry != null) {
-            props["schema.registry.url"] = schemaRegistry.getSchemaRegistryUrl()
+        if (schemaRegistryUrl != null) {
+            props["schema.registry.url"] = schemaRegistryUrl
         }
         val consumer = KafkaConsumer<K, V>(props)
         if (!topics.isNullOrEmpty()) {
@@ -35,19 +36,20 @@ object KafkaTestUtils {
         return consumer
     }
 
-    fun <K, V> createProducer(kafka: KafkaContainer,
-                              schemaRegistry: SchemaRegistryContainer? = null,
+    fun <K, V> createProducer(bootstrapServers: String,
+                              zookeeper: String = "localhost:2181",
+                              schemaRegistryUrl: String? = null,
                               keySerializer: String = StringSerializer::class.java.name,
                               valueSerializer: String = ByteArraySerializer::class.java.name): KafkaProducer<K, V> {
         val props = Properties()
-        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
-        props["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
-        props["group.id"] = "neo4j"
+        props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
+        props["zookeeper.connect"] = zookeeper
         props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = keySerializer
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer
-        if (schemaRegistry != null) {
-            props["schema.registry.url"] = schemaRegistry.getSchemaRegistryUrl()
+        if (schemaRegistryUrl != null) {
+            props["schema.registry.url"] = schemaRegistryUrl
         }
         return KafkaProducer(props)
     }
+
 }

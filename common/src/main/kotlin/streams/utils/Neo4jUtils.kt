@@ -27,7 +27,7 @@ object Neo4jUtils {
                 return false
             }
 
-            val role = db.execute("CALL dbms.cluster.role()") { it.columnAs<String>("role").next() }
+            val role = getMemberRole(db)
             return role.equals(LEADER, ignoreCase = true)
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
@@ -44,7 +44,7 @@ object Neo4jUtils {
 
     fun isCluster(db: GraphDatabaseAPI): Boolean {
         try {
-            db.execute("CALL dbms.cluster.role()") { it.columnAs<String>("role").next() }
+            getMemberRole(db)
             return true
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
@@ -54,12 +54,15 @@ object Neo4jUtils {
         }
     }
 
+    private fun getMemberRole(db: GraphDatabaseAPI) = db.execute("CALL dbms.cluster.role(\$database)",
+            mapOf("database" to db.databaseName())) { it.columnAs<String>("role").next() }
+
     fun clusterHasLeader(db: GraphDatabaseAPI): Boolean {
         try {
             return db.execute("""
-                CALL dbms.cluster.overview() YIELD role
-                RETURN role
-            """.trimIndent()) {
+                |CALL dbms.cluster.overview() YIELD databases
+                |RETURN databases[${'$'}database] AS role
+            """.trimMargin(), mapOf("database" to db.databaseName())) {
                 it.columnAs<String>("role")
                         .stream()
                         .toList()

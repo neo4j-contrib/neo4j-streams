@@ -1,32 +1,43 @@
 package streams
 
 import org.apache.commons.lang3.StringUtils
+import streams.config.StreamsConfig
 import streams.events.EntityType
 
 
-private inline fun <reified T> filterMap(config: Map<String, String>, routingPrefix: String): List<T> {
+private inline fun <reified T> filterMap(config: Map<String, String>, routingPrefix: String, dbName: String = ""): List<T> {
     val entityType = when (T::class) {
         NodeRoutingConfiguration::class -> EntityType.node
         RelationshipRoutingConfiguration::class -> EntityType.relationship
         else -> throw IllegalArgumentException("The class must be an instance of RoutingConfiguration")
     }
     return config
-            .filterKeys { it.startsWith(routingPrefix) }
-            .flatMap { RoutingConfigurationFactory
-                    .getRoutingConfiguration(it.key.replace(routingPrefix, StringUtils.EMPTY) , it.value, entityType) as List<T>
+            .filterKeys {
+                if (it.contains(StreamsRoutingConfigurationConstants.FROM)) {
+                    val topicDbName = it.replace(routingPrefix, StringUtils.EMPTY)
+                            .split(StreamsRoutingConfigurationConstants.FROM)[1]
+                    it.startsWith(routingPrefix) && topicDbName == dbName // for `from.<db>` we compare the routing prefix and the db name
+                } else {
+                    dbName == "" && it.startsWith(routingPrefix) // for the default db we only filter by routingPrefix
+                }
+            }
+            .flatMap {
+                val topic = it.key.replace(routingPrefix, StringUtils.EMPTY)
+                        .split(StreamsRoutingConfigurationConstants.FROM)[0]
+                RoutingConfigurationFactory
+                    .getRoutingConfiguration(topic, it.value, entityType) as List<T>
             }
 }
 
 private object StreamsRoutingConfigurationConstants {
     const val NODE_ROUTING_KEY_PREFIX: String = "streams.source.topic.nodes."
     const val REL_ROUTING_KEY_PREFIX: String = "streams.source.topic.relationships."
-    const val ENABLED = "streams.source.enabled"
     const val SCHEMA_POLLING_INTERVAL = "streams.source.schema.polling.interval"
-    const val PROCEDURES_ENABLED = "streams.procedures.enabled"
+    const val FROM = ".from."
 }
 
-data class StreamsEventRouterConfiguration(val enabled: Boolean = true,
-                                           val proceduresEnabled: Boolean = true,
+data class StreamsEventRouterConfiguration(val enabled: Boolean = StreamsConfig.SOURCE_ENABLED_VALUE,
+                                           val proceduresEnabled: Boolean = StreamsConfig.PROCEDURES_ENABLED_VALUE,
                                            val nodeRouting: List<NodeRoutingConfiguration> = listOf(NodeRoutingConfiguration()),
                                            val relRouting: List<RelationshipRoutingConfiguration> = listOf(RelationshipRoutingConfiguration()),
                                            val schemaPollingInterval: Long = 300000) {
@@ -38,19 +49,34 @@ data class StreamsEventRouterConfiguration(val enabled: Boolean = true,
     }
 
     companion object {
-        fun from(config: Map<String, String>): StreamsEventRouterConfiguration {
-            val nodeRouting = filterMap<NodeRoutingConfiguration>(config = config,
-                    routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX)
 
-            val relRouting = filterMap<RelationshipRoutingConfiguration>(config = config,
-                    routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX)
+        fun from(streamsConfig: StreamsConfig, dbName: String): StreamsEventRouterConfiguration {
+            val isDefaultDb = streamsConfig.isDefaultDb(dbName)
+
+            var nodeRouting = filterMap<NodeRoutingConfiguration>(config = streamsConfig.config,
+                    routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
+                    dbName = dbName)
+            var relRouting = filterMap<RelationshipRoutingConfiguration>(config = streamsConfig.config,
+                    routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
+                    dbName = dbName)
+
+            if (isDefaultDb) {
+                nodeRouting += filterMap(config = streamsConfig.config,
+                        routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX)
+                relRouting += filterMap(config = streamsConfig.config,
+                        routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX)
+            }
 
             val default = StreamsEventRouterConfiguration()
-            return default.copy(enabled = config.getOrDefault(StreamsRoutingConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
-                    proceduresEnabled = config.getOrDefault(StreamsRoutingConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled).toString().toBoolean(),
-                    nodeRouting = if (nodeRouting.isEmpty()) default.nodeRouting else nodeRouting,
-                    relRouting = if (relRouting.isEmpty()) default.relRouting else relRouting,
-                    schemaPollingInterval = config.getOrDefault(StreamsRoutingConfigurationConstants.SCHEMA_POLLING_INTERVAL, default.schemaPollingInterval).toString().toLong())
+            return default.copy(
+                    enabled = streamsConfig.isSourceEnabled(dbName),
+                    proceduresEnabled = streamsConfig.hasProceduresEnabled(dbName),
+                    nodeRouting = if (nodeRouting.isEmpty()) listOf(NodeRoutingConfiguration(topic = dbName)) else nodeRouting,
+                    relRouting = if (relRouting.isEmpty()) listOf(RelationshipRoutingConfiguration(topic = dbName)) else relRouting,
+                    schemaPollingInterval = streamsConfig.config
+                            .getOrDefault(StreamsRoutingConfigurationConstants.SCHEMA_POLLING_INTERVAL, default.schemaPollingInterval).toString().toLong()
+            )
         }
+
     }
 }

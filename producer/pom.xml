@@ -21,10 +21,15 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>4.0.0</version>
+            <version>${project.version}</version>
             <scope>provided</scope>
         </dependency>
-        
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-streams-test-support</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

@@ -37,6 +37,7 @@
 
     <modules>
         <module>common</module>
+        <module>test-support</module>
         <module>kafka-connect-neo4j</module>
         <module>producer</module>
         <module>consumer</module>
@@ -54,9 +55,10 @@
         <jackson.version>2.9.7</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.0.0</neo4j.java.driver.version>
-        <testcontainers.version>1.9.1</testcontainers.version>
+        <testcontainers.version>1.11.0</testcontainers.version>
         <avro.version>1.8.2</avro.version>
         <mokito.version>3.2.0</mokito.version>
+        <junit.version>4.12</junit.version>
         <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
     </properties>
 
@@ -95,6 +97,36 @@
                 <groupId>io.confluent</groupId>
                 <artifactId>kafka-avro-serializer</artifactId>
                 <version>${kafka.avro.serializer.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j.community</groupId>
+                <artifactId>it-test-support</artifactId>
+                <version>${neo4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>kafka</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>neo4j</artifactId>
+                <version>${testcontainers.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j.driver</groupId>
+                <artifactId>neo4j-java-driver</artifactId>
+                <version>${neo4j.java.driver.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>junit</groupId>
+                <artifactId>junit</artifactId>
+                <version>${junit.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -176,7 +208,6 @@
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.12</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -185,23 +216,33 @@
             <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
+
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>testcontainers</artifactId>
-            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>kafka</artifactId>
-            <version>${testcontainers.version}</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>neo4j</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- enable it for debug -->
+        <!-- <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.30</version>
+            <scope>test</scope>
+        </dependency> -->
 
         <dependency>
             <groupId>org.neo4j.community</groupId>
             <artifactId>it-test-support</artifactId>
-            <version>${neo4j.version}</version>
             <scope>test</scope>
         </dependency>
 
@@ -227,10 +268,8 @@
     </dependencies>
 
     <build>
-
         <sourceDirectory>${project.basedir}/src/main/kotlin</sourceDirectory>
         <testSourceDirectory>${project.basedir}/src/test/kotlin</testSourceDirectory>
-
         <plugins>
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>
@@ -267,7 +306,6 @@
                             <goal>compile</goal>
                         </goals>
                     </execution>
-
                     <execution>
                         <id>test-compile</id>
                         <goals>

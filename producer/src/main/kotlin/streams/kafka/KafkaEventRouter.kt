@@ -10,6 +10,7 @@ import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
+import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
@@ -26,7 +27,7 @@ class KafkaEventRouter: StreamsEventRouter {
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
 
-    constructor(logService: LogService, config: Map<String, String>): super(logService, config) {
+    constructor(logService: LogService, config: StreamsConfig, dbName: String): super(logService, config, dbName) {
         log = logService.getUserLog(KafkaEventRouter::class.java)
     }
 
@@ -39,9 +40,11 @@ class KafkaEventRouter: StreamsEventRouter {
 
     override fun start() {
         log.info("Initializing Kafka Connector")
-        kafkaConfig = KafkaConfiguration.from(config)
+        kafkaConfig = KafkaConfiguration.from(config.config)
         val props = kafkaConfig.asProperties()
-        val definedTopics = StreamsEventRouterConfiguration.from(config).allTopics()
+        val definedTopics = StreamsEventRouterConfiguration
+                .from(config, dbName)
+                .allTopics()
         kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
         kafkaAdminService.start()
         producer = Neo4jKafkaProducer(props)

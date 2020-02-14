@@ -1,6 +1,5 @@
 package integrations.kafka
 
-import integrations.kafka.KafkaTestUtils.createConsumer
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -13,6 +12,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
 import org.junit.Test
 import org.neo4j.kernel.api.procedure.GlobalProcedures
+import streams.KafkaTestUtils
 import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
@@ -208,9 +208,9 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
             assertTrue { searchResultMap.containsKey("count") }
             assertEquals(1L, searchResultMap["count"])
         }
-        val kafkaConsumer = createConsumer<ByteArray, ByteArray>(
-                kafka = KafkaEventSinkSuiteIT.kafka,
-                schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
+        val kafkaConsumer = KafkaTestUtils.createConsumer<String, ByteArray>(
+                bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
         val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
         assertNull(offsetAndMetadata)
     }
