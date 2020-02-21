@@ -85,8 +85,9 @@ Other references to how to configure it to connect to the Confluent Cloud can be
 
 === Kafka output events description
 
-If you configure the Neo4j Streams plugin as Sink, using a Cypher query in order to ingest data from Kafka into Neo4j,
-watching the Kafka console consumer output you will see JSON events which describes nodes and relationships creation.
+If you configure the Neo4j Streams plugin as Source, using a Cypher query in order to send data from Neo4j to Kafka
+(i.e. see <<streams_docker_source_module, Source module>> section for more details), watching the Kafka console consumer
+output you will see JSON events, which describes nodes and relationships creation.
 They looks like as following:
 
 [source, json]

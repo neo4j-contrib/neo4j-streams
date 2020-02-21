@@ -74,6 +74,7 @@ From the same directory where the compose file is, you can launch this command:
 docker-compose up -d
 ----
 
+[#streams_docker_source_module]
 ==== Source module
 
 Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper in order to test the application.
@@ -147,7 +148,7 @@ one configured as `Source` and one as `Sink`, allowing you to share any data fro
     environment:
       NEO4J_streams_sink_enabled: "true"
       NEO4J_streams_sink_topic_neo4j:
-        "WITH event.value.payload AS payload, event.value.meta AS meta
+        "WITH event.payload AS payload, event.value.meta AS meta
         FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Question' THEN [1] ELSE [] END |
           MERGE (n:Question{neo_id: toInteger(payload.id)}) ON CREATE
             SET n += payload.after.properties
