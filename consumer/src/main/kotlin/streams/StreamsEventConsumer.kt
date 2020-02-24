@@ -1,6 +1,7 @@
 package streams
 
 import org.neo4j.logging.Log
+import streams.config.StreamsConfig
 import streams.service.StreamsSinkEntity
 import streams.service.errors.ErrorService
 
@@ -23,5 +24,5 @@ abstract class StreamsEventConsumer(private val log: Log, private val dlqService
 
 
 abstract class StreamsEventConsumerFactory {
-    abstract fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer
+    abstract fun createStreamsEventConsumer(config: StreamsConfig, log: Log): StreamsEventConsumer
 }

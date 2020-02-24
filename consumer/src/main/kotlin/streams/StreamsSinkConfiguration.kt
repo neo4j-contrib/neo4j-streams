@@ -1,48 +1,48 @@
 package streams
 
+import streams.config.StreamsConfig
 import streams.service.TopicUtils
+import streams.service.TopicValidationException
 import streams.service.Topics
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 
-
-object StreamsSinkConfigurationConstants {
-    const val STREAMS_CONFIG_PREFIX: String = "streams."
-    const val ENABLED = "sink.enabled"
-    const val PROCEDURES_ENABLED = "procedures.enabled"
-}
-
-data class StreamsSinkConfiguration(val enabled: Boolean = false,
-                                    val proceduresEnabled: Boolean = true,
+data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_ENABLED_VALUE,
+                                    val proceduresEnabled: Boolean = StreamsConfig.PROCEDURES_ENABLED_VALUE,
                                     val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     companion object {
-        fun from(cfg: Map<String, String>, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
+        fun from(cfg: StreamsConfig, dbName: String, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
             val default = StreamsSinkConfiguration()
-            val config = cfg
-                    .filterKeys { it.startsWith(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX) }
-                    .mapKeys { it.key.substring(StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX.length) }
 
-            val topics = Topics.from(config = config,
-                    prefix = StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX,
-                    invalidTopics = invalidTopics)
+            var topics = Topics.from(map = cfg.config, dbName = dbName, invalidTopics = invalidTopics)
+            val isDefaultDb = cfg.isDefaultDb(dbName)
+            if (isDefaultDb) {
+                topics += Topics.from(map = cfg.config, invalidTopics = invalidTopics)
+            }
 
-            TopicUtils.validate<RuntimeException>(topics)
+            TopicUtils.validate<TopicValidationException>(topics)
 
+            val sourceIdStrategyConfigPrefix = "streams.sink.topic.cdc.sourceId"
+            val (sourceIdStrategyLabelNameKey, sourceIdStrategyIdNameKey) = if (isDefaultDb) {
+                "labelName" to "idName"
+            } else {
+                "labelName.to.$dbName" to "idName.to.$dbName"
+            }
             val defaultSourceIdStrategyConfig = SourceIdIngestionStrategyConfig()
-
             val sourceIdStrategyConfig = SourceIdIngestionStrategyConfig(
-                    config.getOrDefault("sink.topic.cdc.sourceId.labelName", defaultSourceIdStrategyConfig.labelName),
-                    config.getOrDefault("sink.topic.cdc.sourceId.idName", defaultSourceIdStrategyConfig.idName))
+                    cfg.config.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyLabelNameKey", defaultSourceIdStrategyConfig.labelName),
+                    cfg.config.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyIdNameKey", defaultSourceIdStrategyConfig.idName))
 
-            val errorHandler = config.filterKeys { it.startsWith("sink.error") }.mapKeys { it.key.substring("sink.".length) }
+            val errorHandler = cfg.config
+                    .filterKeys { it.startsWith("streams.sink.error") }
+                    .mapKeys { it.key.substring("streams.sink.".length) }
 
-            return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
-                    proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
-                            .toString().toBoolean(),
-                    sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
+            return default.copy(enabled = cfg.isSinkEnabled(dbName),
+                    proceduresEnabled = cfg.hasProceduresEnabled(dbName),
+                    sinkPollingInterval = cfg.config.getOrDefault("streams.sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
                     errorConfig = errorHandler,
                     sourceIdStrategyConfig = sourceIdStrategyConfig)

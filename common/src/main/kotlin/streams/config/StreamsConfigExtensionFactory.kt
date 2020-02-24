@@ -16,6 +16,6 @@ class StreamsConfigExtensionFactory: ExtensionFactory<StreamsConfigExtensionFact
     }
 
     override fun newInstance(context: ExtensionContext, dependencies: Dependencies): Lifecycle {
-        return StreamsConfig(dependencies.log(), dependencies.dbms())
+        return StreamsConfig(dependencies.log().getUserLog(StreamsConfig::class.java), dependencies.dbms())
     }
 }

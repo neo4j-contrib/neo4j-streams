@@ -16,16 +16,20 @@ import java.util.concurrent.ConcurrentHashMap
 
 class KafkaAdminService(private val props: KafkaConfiguration, private val allTopics: List<String>) {
     private val client = AdminClient.create(props.asProperties())
-    private val kafkaTopics: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val isAutoCreateTopicsEnabled = KafkaValidationUtils.isAutoCreateTopicsEnabled(client)
+    private val kafkaTopics: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private lateinit var job: Job
 
     fun start() {
         if (!isAutoCreateTopicsEnabled) {
             job = GlobalScope.launch(Dispatchers.IO) {
-                while (isActive) {
-                    kafkaTopics += client.listTopics().names().get()
-                    delay(props.topicDiscoveryPollingInterval)
+                try {
+                    while (isActive) {
+                        kafkaTopics += client.listTopics().names().get()
+                        delay(props.topicDiscoveryPollingInterval)
+                    }
+                } finally {
+                    client.close()
                 }
             }
         }

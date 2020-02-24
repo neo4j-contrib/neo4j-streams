@@ -24,15 +24,15 @@ import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class KafkaEventSinkCDC: KafkaEventSinkBase() {
+class KafkaEventSinkCDCTSE: KafkaEventSinkBaseTSE() {
 
     @Test
     fun shouldWriteDataFromSinkWithCDCTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId", topic)
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.idName", "customIdN@me")
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.labelName", "CustomLabelN@me")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cdc.sourceId", topic)
+        db.setConfig("streams.sink.topic.cdc.sourceId.idName", "customIdN@me")
+        db.setConfig("streams.sink.topic.cdc.sourceId.labelName", "CustomLabelN@me")
+        db.start()
 
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -102,8 +102,8 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     @Test
     fun shouldWriteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cdc.schema", topic)
+        db.start()
 
         val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
@@ -177,8 +177,8 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     @Test
     fun shouldDeleteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cdc.schema", topic)
+        db.start()
 
         db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})")
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),

@@ -53,8 +53,8 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
     override fun stop() {
-        StreamsUtils.ignoreExceptions({ producer.close() }, UninitializedPropertyAccessException::class.java)
-        StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
+        StreamsUtils.ignoreExceptions({ producer.close() }, Exception::class.java)
+        StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, Exception::class.java)
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {

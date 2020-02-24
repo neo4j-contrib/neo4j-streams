@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
 import kotlin.test.assertEquals
 
-class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
+class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
     @Test
     fun `should ingest node data from CUD Events`() {
         // given
@@ -38,8 +38,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
 
         // when
         list.forEach {
@@ -82,8 +82,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         // given
         val key = "_id"
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         val idList = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
@@ -149,8 +149,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
@@ -187,8 +187,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})")
             assertEquals(10, it.allNodes.count())
@@ -226,8 +226,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             JSONUtils.writeValueAsBytes(rel)
         }
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         db.beginTx().use {
             db.execute("""
                 UNWIND range(1, 10) AS id
@@ -279,8 +279,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
             JSONUtils.writeValueAsBytes(rel)
         }
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, it.allRelationships.count())
@@ -322,8 +322,8 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val key = "_id"
         val rel_type = "MY_REL"
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
         val idMap = db.beginTx().use { tx ->
             tx.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, tx.allRelationships.count())

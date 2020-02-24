@@ -2,28 +2,18 @@ package integrations.kafka
 
 import io.confluent.kafka.serializers.KafkaAvroSerializer
 import org.apache.avro.generic.GenericRecord
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.clients.producer.KafkaProducer
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.ByteArrayDeserializer
-import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringDeserializer
-import org.apache.kafka.common.serialization.StringSerializer
 import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
-import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.extension.ImpermanentDbmsExtension
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.KafkaTestUtils
 import streams.setConfig
 import streams.shutdownSilently
-import java.util.*
 
-open class KafkaEventSinkBase {
+open class KafkaEventSinkBaseTSE {
 
     companion object {
 
@@ -47,8 +37,6 @@ open class KafkaEventSinkBase {
         }
     }
 
-    lateinit var graphDatabaseBuilder: DbmsRule
-
     lateinit var db: DbmsRule
 
     lateinit var kafkaProducer: KafkaProducer<String, ByteArray>
@@ -62,7 +50,7 @@ open class KafkaEventSinkBase {
 
     @Before
     fun setUp() {
-        graphDatabaseBuilder = ImpermanentDbmsRule()
+        db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("streams.sink.enabled", "true")
         kafkaProducer = KafkaTestUtils.createProducer(
@@ -74,10 +62,15 @@ open class KafkaEventSinkBase {
                 valueSerializer = KafkaAvroSerializer::class.java.name)
     }
 
+    private fun <K, V> KafkaProducer<K, V>.flushAndClose() {
+        this.flush()
+        this.close()
+    }
+
     @After
     fun tearDown() {
         db.shutdownSilently()
-        kafkaProducer.close()
-        kafkaAvroProducer.close()
+        kafkaProducer.flushAndClose()
+        kafkaAvroProducer.flushAndClose()
     }
 }

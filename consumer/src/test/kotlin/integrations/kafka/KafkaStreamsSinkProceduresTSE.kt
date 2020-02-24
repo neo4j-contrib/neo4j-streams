@@ -27,7 +27,7 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
-class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
+class KafkaStreamsSinkProceduresTSE : KafkaEventSinkBaseTSE() {
 
     private fun testProcedure(topic: String) {
         registerProcedure()
@@ -46,22 +46,22 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldConsumeDataFromProcedureWithSinkDisabled() {
-        graphDatabaseBuilder.setConfig("streams.sink.enabled", "false")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.enabled", "false")
+        db.start()
         val topic = "bar"
         testProcedure(topic)
     }
 
     @Test
     fun shouldConsumeDataFromProcedure() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         val topic = "foo"
         testProcedure(topic)
     }
 
     @Test
     fun shouldTimeout() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         db.execute("CALL streams.consume('foo1', {timeout: 2000}) YIELD event RETURN event") {
             assertFalse { it.hasNext() }
@@ -70,7 +70,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadArrayOfJson() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val topic = "array-topic"
         val list = listOf(data, data)
@@ -91,7 +91,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadSimpleDataType() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val topic = "simple-data"
         val simpleInt = 1
@@ -122,7 +122,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadATopicPartitionStartingFromAnOffset() = runBlocking {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val topic = "read-from-range"
         val simpleInt = 1
@@ -153,7 +153,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldReadFromLatest() = runBlocking {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val topic = "simple-data-from-latest"
         val simpleInt = 1
@@ -187,7 +187,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun shouldNotCommit() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val topic = "simple-data"
         val simpleInt = 1
@@ -217,7 +217,7 @@ class KafkaStreamsSinkProcedures : KafkaEventSinkBase() {
 
     @Test
     fun `should consume AVRO messages`() {
-        db = graphDatabaseBuilder.start()
+        db.start()
         registerProcedure()
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()

@@ -64,11 +64,14 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val strategyMap: Map<TopicType, Any>
 
-    val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
+    private val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
 
     val kafkaBrokerProperties: Map<String, Any?>
 
+    val database: String
+
     init {
+        database = getString(DATABASE)
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
         encryptionTrustStrategy = ConfigUtils
                 .getEnum(Config.TrustStrategy.Strategy::class.java, this, ENCRYPTION_TRUST_STRATEGY)
@@ -97,14 +100,14 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         batchSize = getInt(BATCH_SIZE)
 
         sourceIdStrategyConfig = SourceIdIngestionStrategyConfig(getString(TOPIC_CDC_SOURCE_ID_LABEL_NAME), getString(TOPIC_CDC_SOURCE_ID_ID_NAME))
-        topics = Topics.from(originals, "streams.sink.", "neo4j.")
+        topics = Topics.from(originals as Map<String, Any?>, "streams.sink." to "neo4j.")
         strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
 
         parallelBatches = getBoolean(BATCH_PARALLELIZE)
         val kafkaPrefix = "kafka."
         kafkaBrokerProperties = originals
-                .filterKeys { it.toString().startsWith(kafkaPrefix) }
-                .mapKeys { it.key.toString().substring(kafkaPrefix.length) }
+                .filterKeys { it.startsWith(kafkaPrefix) }
+                .mapKeys { it.key.substring(kafkaPrefix.length) }
         validateAllTopics(originals)
     }
 
@@ -128,6 +131,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     companion object {
         const val SERVER_URI = "neo4j.server.uri"
+        const val DATABASE = "neo4j.database"
 
         const val AUTHENTICATION_TYPE = "neo4j.authentication.type"
         const val AUTHENTICATION_BASIC_USERNAME = "neo4j.authentication.basic.username"
@@ -143,7 +147,6 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val CONNECTION_MAX_CONNECTION_ACQUISITION_TIMEOUT_MSECS = "neo4j.connection.acquisition.timeout.msecs"
         const val CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS = "neo4j.connection.liveness.check.timeout.msecs"
         const val CONNECTION_POOL_MAX_SIZE = "neo4j.connection.max.pool.size"
-        const val CONNECTION_LOAD_BALANCE_STRATEGY = "neo4j.load.balance.strategy"
 
         const val BATCH_SIZE = "neo4j.batch.size"
         const val BATCH_TIMEOUT_MSECS = "neo4j.batch.timeout.msecs"
@@ -330,6 +333,13 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                     .define(ConfigKeyBuilder.of(TOPIC_CUD, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(TOPIC_CUD)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder
+                            .of(DATABASE, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(DATABASE))
+                            .importance(ConfigDef.Importance.HIGH)
+                            .group(ConfigGroup.CONNECTION)
+                            .defaultValue("")
                             .build())
         }
     }

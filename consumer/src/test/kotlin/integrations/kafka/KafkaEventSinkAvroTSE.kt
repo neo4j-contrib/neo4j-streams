@@ -2,6 +2,7 @@ package integrations.kafka
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import org.apache.avro.SchemaBuilder
+import org.apache.avro.generic.GenericRecord
 import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
@@ -15,17 +16,17 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 
-class KafkaEventSinkAvro : KafkaEventSinkBase() {
+class KafkaEventSinkAvroTSE : KafkaEventSinkBaseTSE() {
 
     @Test
     fun `should insert AVRO data`() {
         //given
         val topic = "avro"
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})")
-        graphDatabaseBuilder.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
-        graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
-        graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})")
+        db.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
+        db.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
+        db.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
+        db.start()
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
@@ -42,7 +43,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
                 .build()
 
         // when
-        kafkaAvroProducer.send(ProducerRecord(topic, null, struct))
+        kafkaAvroProducer.send(ProducerRecord<GenericRecord, GenericRecord>(topic, null, struct)).get()
 
         // then
         val props = mapOf("name" to "Foo", "coordinates" to coordinates.toDoubleArray(), "citizens" to citizens)
@@ -69,11 +70,11 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
     fun `the node pattern strategy must work also with AVRO data`() {
         //given
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
-        graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
-        graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
-        graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic","(:Place{!name})")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
+        db.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
+        db.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
+        db.setConfig("streams.sink.topic.pattern.node.$topic","(:Place{!name})")
+        db.start()
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
@@ -90,7 +91,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
                 .build()
 
         // when
-        kafkaAvroProducer.send(ProducerRecord(topic, null, struct))
+        kafkaAvroProducer.send(ProducerRecord<GenericRecord, GenericRecord>(topic, null, struct)).get()
 
         // then
         val props = mapOf("name" to "Foo", "coordinates" to coordinates.toDoubleArray(), "citizens" to citizens)

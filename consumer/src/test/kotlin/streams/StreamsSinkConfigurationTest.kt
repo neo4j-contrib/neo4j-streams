@@ -1,13 +1,78 @@
 package streams
 
+import org.junit.Before
 import org.junit.Test
-import org.neo4j.configuration.Config
+import org.mockito.Mockito
+import org.neo4j.dbms.api.DatabaseManagementService
+import org.neo4j.graphdb.ResourceIterator
+import org.neo4j.graphdb.Result
+import org.neo4j.graphdb.Transaction
+import org.neo4j.kernel.internal.GraphDatabaseAPI
+import org.neo4j.logging.NullLog
+import streams.config.StreamsConfig
 import streams.service.TopicType
+import streams.service.TopicValidationException
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 class StreamsSinkConfigurationTest {
+
+    lateinit var streamsConfig: StreamsConfig
+    val defalutDbName = "neo4j"
+
+    @Before
+    fun setUp() {
+        val dbms = Mockito.mock(DatabaseManagementService::class.java)
+        val db = Mockito.mock(GraphDatabaseAPI::class.java)
+        val tx = Mockito.mock(Transaction::class.java)
+        val result = Mockito.mock(Result::class.java)
+        val resource = Mockito.mock(ResourceIterator::class.java) as ResourceIterator<String>
+        Mockito.`when`(dbms.database(Mockito.anyString())).thenReturn(db)
+        Mockito.`when`(db.beginTx()).thenReturn(tx)
+        Mockito.`when`(tx.execute(Mockito.anyString())).thenReturn(result)
+        Mockito.`when`(result.columnAs<String>(Mockito.anyString())).thenReturn(resource)
+        Mockito.`when`(resource.hasNext()).thenReturn(true)
+        Mockito.`when`(resource.next()).thenReturn(defalutDbName)
+        streamsConfig = StreamsConfig(NullLog.getInstance(), dbms)
+    }
+
+    @Test
+    fun `should manage only topics for default db`() {
+        val pollingInterval = "10"
+        val topicKey = "streams.sink.topic.cypher.myTopic"
+        val topicValue = "MERGE (n:Label{ id: event.id })"
+        val topicKeyNeo = "streams.sink.topic.cypher.myTopicNeo.to.neo4j"
+        val topicValueNeo = "MERGE (n:Neo4j{ id: event.id })"
+        val topicKeyFoo = "streams.sink.topic.cypher.myTopicFoo.to.foo"
+        val topicValueFoo = "MERGE (n:Foo{ id: event.id })"
+        val config = mapOf("streams.sink.polling.interval" to pollingInterval,
+                topicKey to topicValue,
+                topicKeyNeo to topicValueNeo,
+                topicKeyFoo to topicValueFoo)
+        streamsConfig.config.putAll(config)
+        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        val cypherTopics = streamsSinkConf.topics.asMap()[TopicType.CYPHER] as Map<String, String>
+        assertEquals(mapOf("myTopic" to topicValue, "myTopicNeo" to topicValueNeo), cypherTopics)
+    }
+
+    @Test
+    fun `should manage only topics for non default db`() {
+        val pollingInterval = "10"
+        val topicKey = "streams.sink.topic.cypher.myTopic"
+        val topicValue = "MERGE (n:Label{ id: event.id })"
+        val topicKeyNeo = "streams.sink.topic.cypher.myTopicNeo.to.neo4j"
+        val topicValueNeo = "MERGE (n:Neo4j{ id: event.id })"
+        val topicKeyFoo = "streams.sink.topic.cypher.myTopicFoo.to.foo"
+        val topicValueFoo = "MERGE (n:Foo{ id: event.id })"
+        val config = mapOf("streams.sink.polling.interval" to pollingInterval,
+                topicKey to topicValue,
+                topicKeyNeo to topicValueNeo,
+                topicKeyFoo to topicValueFoo)
+        streamsConfig.config.putAll(config)
+        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, "foo")
+        val cypherTopics = streamsSinkConf.topics.asMap()[TopicType.CYPHER] as Map<String, String>
+        assertEquals(mapOf("myTopicFoo" to topicValueFoo), cypherTopics)
+    }
 
     @Test
     fun shouldReturnDefaultConfiguration() {
@@ -31,15 +96,16 @@ class StreamsSinkConfigurationTest {
                 "streams.sink.topic.cdc.sourceId" to cdctopic,
                 "streams.sink.topic.cdc.sourceId.labelName" to customLabel,
                 "streams.sink.topic.cdc.sourceId.idName" to customId)
-        val streamsConfig = StreamsSinkConfiguration.from(config)
-        testFromConf(streamsConfig, pollingInterval, topic, topicValue)
-        assertFalse { streamsConfig.enabled }
-        assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
-        assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
-        assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
+        streamsConfig.config.putAll(config)
+        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        testFromConf(streamsSinkConf, pollingInterval, topic, topicValue)
+        assertFalse { streamsSinkConf.enabled }
+        assertEquals(setOf(cdctopic), streamsSinkConf.topics.asMap()[TopicType.CDC_SOURCE_ID])
+        assertEquals(customLabel, streamsSinkConf.sourceIdStrategyConfig.labelName)
+        assertEquals(customId, streamsSinkConf.sourceIdStrategyConfig.idName)
     }
 
-    @Test(expected = RuntimeException::class)
+    @Test(expected = TopicValidationException::class)
     fun shouldFailWithCrossDefinedTopics() {
         val pollingInterval = "10"
         val topic = "topic-neo"
@@ -50,10 +116,11 @@ class StreamsSinkConfigurationTest {
                 "streams.sink.topic.pattern.node.nodePatternTopic" to "User{!userId,name,surname,address.city}",
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to topic)
-        StreamsSinkConfiguration.from(config)
+        streamsConfig.config.putAll(config)
+        StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
     }
 
-    @Test(expected = RuntimeException::class)
+    @Test(expected = TopicValidationException::class)
     fun shouldFailWithCrossDefinedCDCTopics() {
         val pollingInterval = "10"
         val topic = "topic-neo"
@@ -61,7 +128,8 @@ class StreamsSinkConfigurationTest {
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to topic,
                 "streams.sink.topic.cdc.schema" to topic)
-        StreamsSinkConfiguration.from(config)
+        streamsConfig.config.putAll(config)
+        StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
     }
 
     companion object {

@@ -38,9 +38,15 @@ data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<Top
     }
 }
 
+abstract class KafkaEventConsumer(private val config: KafkaSinkConfiguration,
+                                  private val log: Log,
+                                  private val dlqService: ErrorService): StreamsEventConsumer(log, dlqService) {
+    abstract fun wakeup()
+}
+
 open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
                                         private val log: Log,
-                                        private val errorService: ErrorService): StreamsEventConsumer(log, errorService) {
+                                        private val errorService: ErrorService): KafkaEventConsumer(config, log, errorService) {
 
     override fun invalidTopics(): List<String> = config.streamsSinkConfiguration.topics.invalid
 
@@ -154,6 +160,10 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
                 else -> consumer.seek(it.key, it.value)
             }
         }
+    }
+
+    override fun wakeup() {
+        consumer.wakeup()
     }
 }
 

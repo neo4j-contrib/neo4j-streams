@@ -93,6 +93,14 @@ Please prefer the solution `(where this tool is installed)` and then go ahead wi
 At the end of the process the plugin is automatically installed.
 --
 
+==== Multi Database Support
+
+Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
+in order to support this feature you can define into the json (or via the Confluent UI)
+a param named `database` which is the targeted database name.
+
+*N.b.* If no value is specified the connector will use the Neo4j's default db.
+
 ==== Create the Sink Instance
 
 To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described

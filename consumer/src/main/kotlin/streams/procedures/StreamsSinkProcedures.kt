@@ -6,6 +6,7 @@ import streams.StreamsEventConsumer
 import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSinkConfigMapper
 import streams.StreamsSinkConfiguration
+import streams.config.StreamsConfig
 import java.util.stream.Stream
 
 class StreamResult(@JvmField val event: Map<String, *>)
@@ -27,7 +28,7 @@ class StreamsSinkProcedures {
         }
 
         val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-        val configuration = StreamsSinkProcedures.streamsEventSinkConfigMapper.convert(config = properties)
+        val configuration = streamsEventSinkConfigMapper.convert(config = properties)
 
         val data = readData(topic, config ?: emptyMap(), configuration)
 
@@ -60,13 +61,16 @@ class StreamsSinkProcedures {
     }
 
     private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer {
+        val copy = StreamsConfig.getInstance().copy()
+        copy.config.clear()
+        copy.config.putAll(consumerConfig)
         return streamsEventConsumerFactory
-                .createStreamsEventConsumer(consumerConfig, log!!)
+                .createStreamsEventConsumer(copy, log!!)
                 .withTopics(setOf(topic))
     }
 
     private fun checkEnabled() {
-        if (!StreamsSinkProcedures.streamsSinkConfiguration.proceduresEnabled) {
+        if (!streamsSinkConfiguration.proceduresEnabled) {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }

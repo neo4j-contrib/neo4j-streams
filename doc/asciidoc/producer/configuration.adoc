@@ -84,7 +84,8 @@ are still valid and they refer to Neo4j's default db instance.
 [abstract]
 .How manage the Neo4j's default db
 --
- The default database is controlled by Neo4j's dbms.default_database configuration property so we're being clear about which default database applies for this user
+ The default database is controlled by Neo4j's dbms.default_database configuration property so we're being clear about which default database applies for this user.
+ Database names are case-sensitive, and must follow Neo4j database naming rules (Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
 --
 
 In particular the following two properties will be used ad default values

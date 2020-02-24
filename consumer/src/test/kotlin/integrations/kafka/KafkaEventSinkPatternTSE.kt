@@ -18,13 +18,13 @@ import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
-class KafkaEventSinkPattern : KafkaEventSinkBase() {
+class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
     @Test
     fun shouldWorkWithNodePatternTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
+        db.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname,address.city})")
-        db = graphDatabaseBuilder.start()
+        db.start()
 
         val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano",
                 "address" to mapOf("city" to "Venice", "CAP" to "30100"))
@@ -43,9 +43,9 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
     @Test
     fun shouldWorkWithRelPatternTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.relationship.$topic",
+        db.setConfig("streams.sink.topic.pattern.relationship.$topic",
                 "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})")
-        db = graphDatabaseBuilder.start()
+        db.start()
         val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
                 "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
 
@@ -66,9 +66,9 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
     @Test
     fun `should mange the Tombstone record for the Node Pattern Strategy`() = runBlocking {
         val topic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
+        db.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname})")
-        db = graphDatabaseBuilder.start()
+        db.start()
 
         db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})")
         val count = db.execute("MATCH (n:User) RETURN count(n) AS count") { it.columnAs<Long>("count").next() }

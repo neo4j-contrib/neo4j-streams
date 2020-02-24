@@ -51,28 +51,11 @@ class Neo4jSinkTaskTest {
             .field("modified", Timestamp.SCHEMA)
             .build()
 
-
     private val PLACE_SCHEMA = SchemaBuilder.struct().name("com.example.Place")
             .field("name", Schema.STRING_SCHEMA)
             .field("latitude", Schema.FLOAT32_SCHEMA)
             .field("longitude", Schema.FLOAT32_SCHEMA)
             .build()
-
-    private val PERSON_SCHEMA_EXT = SchemaBuilder.struct().name("com.example.Person")
-            .field("firstName", Schema.STRING_SCHEMA)
-            .field("lastName", Schema.STRING_SCHEMA)
-            .field("age", Schema.OPTIONAL_INT32_SCHEMA)
-            .field("bool", Schema.OPTIONAL_BOOLEAN_SCHEMA)
-            .field("short", Schema.OPTIONAL_INT16_SCHEMA)
-            .field("byte", Schema.OPTIONAL_INT8_SCHEMA)
-            .field("long", Schema.OPTIONAL_INT64_SCHEMA)
-            .field("float", Schema.OPTIONAL_FLOAT32_SCHEMA)
-            .field("double", Schema.OPTIONAL_FLOAT64_SCHEMA)
-            .field("modified", Timestamp.SCHEMA)
-            .field("visited", SchemaBuilder.array(PLACE_SCHEMA))
-            .build()
-
-
 
     @Test
     fun `test array of struct`() {
@@ -114,7 +97,6 @@ class Neo4jSinkTaskTest {
             assertEquals(1, it.execute("MATCH (li:LI{class:['ClassA', 'ClassB']}) RETURN COUNT(li) AS COUNT").columnAs<Long>("COUNT").next())
         }
     }
-
 
     @Test
     fun `should insert data into Neo4j`() {

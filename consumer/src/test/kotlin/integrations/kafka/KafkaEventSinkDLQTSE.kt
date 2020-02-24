@@ -15,17 +15,17 @@ import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 
-class KafkaEventSinkDLQ : KafkaEventSinkBase() {
+class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
     @Test
     fun `should send data to the DLQ because of QueryExecutionException`() {
         val topic = UUID.randomUUID().toString()
         val dlqTopic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.TOLERANCE, "all")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.TOLERANCE, "all")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
+        db.start()
         val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
@@ -62,12 +62,12 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
     fun `should send data to the DLQ because of JsonParseException`() {
         val topic = UUID.randomUUID().toString()
         val dlqTopic = UUID.randomUUID().toString()
-        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.TOLERANCE, "all")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
-        graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.start()
+        db.setConfig("streams.sink.topic.cypher.$topic","MERGE (c:Customer {id: event.id})")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.TOLERANCE, "all")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
+        db.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
+        db.start()
 
         val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
 

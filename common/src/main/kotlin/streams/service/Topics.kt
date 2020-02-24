@@ -3,6 +3,13 @@ package streams.service
 import streams.service.sink.strategy.*
 import kotlin.reflect.jvm.javaType
 
+class TopicValidationException(message: String): RuntimeException(message)
+
+private fun TopicType.replaceKeyBy(replacePrefix: Pair<String, String>) = if (replacePrefix.first.isNullOrBlank())
+        this.key
+    else
+        this.key.replace(replacePrefix.first, replacePrefix.second)
+
 data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
                   val cdcSourceIdTopics: Set<String> = emptySet(),
                   val cdcSchemaTopics: Set<String> = emptySet(),
@@ -10,6 +17,16 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
                   val nodePatternTopics: Map<String, NodePatternConfiguration> = emptyMap(),
                   val relPatternTopics: Map<String, RelationshipPatternConfiguration> = emptyMap(),
                   val invalid: List<String> = emptyList()) {
+
+    operator fun plus(other: Topics): Topics {
+        return Topics(cypherTopics = this.cypherTopics + other.cypherTopics,
+                cdcSourceIdTopics = this.cdcSourceIdTopics + other.cdcSourceIdTopics,
+                cdcSchemaTopics = this.cdcSchemaTopics + other.cdcSchemaTopics,
+                cudTopics = this.cudTopics + other.cudTopics,
+                nodePatternTopics = this.nodePatternTopics + other.nodePatternTopics,
+                relPatternTopics = this.relPatternTopics + other.relPatternTopics,
+                invalid = this.invalid + other.invalid)
+    }
 
     fun allTopics(): List<String> = this.asMap()
             .map {
@@ -26,13 +43,16 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
             TopicType.PATTERN_NODE to nodePatternTopics, TopicType.PATTERN_RELATIONSHIP to relPatternTopics)
 
     companion object {
-        fun from(config: Map<*, *>, prefix: String, toReplace: String = "", invalidTopics: List<String> = emptyList()): Topics {
-            val cypherTopicPrefix = TopicType.CYPHER.key.replace(prefix, toReplace)
-            val sourceIdKey = TopicType.CDC_SOURCE_ID.key.replace(prefix, toReplace)
-            val schemaKey = TopicType.CDC_SCHEMA.key.replace(prefix, toReplace)
-            val cudKey = TopicType.CUD.key.replace(prefix, toReplace)
-            val nodePatterKey = TopicType.PATTERN_NODE.key.replace(prefix, toReplace)
-            val relPatterKey = TopicType.PATTERN_RELATIONSHIP.key.replace(prefix, toReplace)
+        fun from(map: Map<String, Any?>, replacePrefix: Pair<String, String> = ("" to ""), dbName: String = "", invalidTopics: List<String> = emptyList()): Topics {
+            val config = map
+                    .filterKeys { if (dbName.isNotBlank()) it.endsWith(".to.$dbName") else !it.contains(".to.") }
+                    .mapKeys { if (dbName.isNotBlank()) it.key.replace(".to.$dbName", "") else it.key }
+            val cypherTopicPrefix = TopicType.CYPHER.replaceKeyBy(replacePrefix)
+            val sourceIdKey = TopicType.CDC_SOURCE_ID.replaceKeyBy(replacePrefix)
+            val schemaKey = TopicType.CDC_SCHEMA.replaceKeyBy(replacePrefix)
+            val cudKey = TopicType.CUD.replaceKeyBy(replacePrefix)
+            val nodePatterKey = TopicType.PATTERN_NODE.replaceKeyBy(replacePrefix)
+            val relPatterKey = TopicType.PATTERN_RELATIONSHIP.replaceKeyBy(replacePrefix)
             val cypherTopics = TopicUtils.filterByPrefix(config, cypherTopicPrefix)
             val nodePatternTopics = TopicUtils
                     .filterByPrefix(config, nodePatterKey, invalidTopics)

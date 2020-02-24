@@ -5,6 +5,7 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import streams.StreamsSinkConfiguration
+import streams.config.StreamsConfig
 import streams.extensions.toPointCase
 import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopics
@@ -41,20 +42,20 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
     companion object {
 
-        fun from(cfg: Map<String, String>): KafkaSinkConfiguration {
-            val kafkaCfg = create(cfg)
+        fun from(cfg: StreamsConfig, dbName: String): KafkaSinkConfiguration {
+            val kafkaCfg = create(cfg, dbName)
             validate(kafkaCfg)
             val invalidTopics = getInvalidTopics(kafkaCfg.asProperties(), kafkaCfg.streamsSinkConfiguration.topics.allTopics())
             return if (invalidTopics.isNotEmpty()) {
-                kafkaCfg.copy(streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, invalidTopics))
+                kafkaCfg.copy(streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, dbName, invalidTopics))
             } else {
                 kafkaCfg
             }
         }
 
         // Visible for testing
-        fun create(cfg: Map<String, String>): KafkaSinkConfiguration {
-            val config = cfg
+        fun create(cfg: StreamsConfig, dbName: String): KafkaSinkConfiguration {
+            val config = cfg.config
                     .filterKeys { it.startsWith(kafkaConfigPrefix) }
                     .mapKeys { it.key.substring(kafkaConfigPrefix.length) }
             val default = KafkaSinkConfiguration()
@@ -62,13 +63,16 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
             val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
-            val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg)
+            val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, dbName)
+
+            val isDefaultDb = cfg.isDefaultDb(dbName)
+
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
                     keyDeserializer = config.getOrDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, default.keyDeserializer),
                     valueDeserializer = config.getOrDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, default.valueDeserializer),
                     bootstrapServers = config.getOrDefault(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, default.bootstrapServers),
                     autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
-                    groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId),
+                    groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId) + (if (isDefaultDb) "" else "-$dbName"),
                     enableAutoCommit = config.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, default.enableAutoCommit).toString().toBoolean(),
                     streamsSinkConfiguration = streamsSinkConfiguration,
                     extraProperties = extraProperties // for what we don't provide a default configuration

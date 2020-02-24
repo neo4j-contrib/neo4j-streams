@@ -57,6 +57,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
             client.createTopics(topicsToCreate.map { NewTopic(it, 1, 1) })
                     .all()
                     .get()
+            client.close()
         }
 
         @AfterClass @JvmStatic

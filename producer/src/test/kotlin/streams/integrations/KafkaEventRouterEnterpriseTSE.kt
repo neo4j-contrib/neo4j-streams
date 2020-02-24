@@ -25,7 +25,7 @@ class KafkaEventRouterEnterpriseTSE {
 
         @JvmStatic
         val neo4j = Neo4jContainerExtension()
-                .withLogging()
+//                .withLogging()
 
         @BeforeClass
         @JvmStatic
