@@ -72,7 +72,7 @@ class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: C
     private fun unregisterTransactionEventHandler() {
         if (streamsEventRouterConfiguration.enabled) {
             StreamsUtils.ignoreExceptions({ streamsConstraintsService.close() }, UninitializedPropertyAccessException::class.java)
-            db.unregisterTransactionEventHandler(txHandler)
+            StreamsUtils.ignoreExceptions({ db.unregisterTransactionEventHandler(txHandler) }, UninitializedPropertyAccessException::class.java)
         }
     }
 
