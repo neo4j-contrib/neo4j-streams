@@ -17,7 +17,7 @@ kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserial
 {environment}.topic.cud=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
 {environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
 {environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-{environment}.enabled=<true/false, default=true>
+{environment}.enabled=<true/false, default=false>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

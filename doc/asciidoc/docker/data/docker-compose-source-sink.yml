@@ -45,7 +45,7 @@ services:
       NEO4J_dbms_logs_debug_level: DEBUG
       NEO4J_streams_sink_enabled: "true"
       NEO4J_streams_sink_topic_neo4j:
-        "WITH event.value.payload AS payload, event.value.meta AS meta
+        "WITH event.payload AS payload, event.value.meta AS meta
         FOREACH (ignoreMe IN CASE WHEN payload.type = 'node' AND meta.operation <> 'deleted' and payload.after.labels[0] = 'Question' THEN [1] ELSE [] END |
           MERGE (n:Question{neo_id: toInteger(payload.id)}) ON CREATE
             SET n += payload.after.properties
