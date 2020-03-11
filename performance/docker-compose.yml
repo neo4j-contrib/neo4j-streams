@@ -2,7 +2,7 @@
 version: '2'
 services:
   neo4j-producer:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j-producer
     container_name: neo4j-producer
     depends_on:
@@ -12,19 +12,21 @@ services:
       - "8474:7474"
       - "8687:7687"
     volumes:
-      - $HOME/app/neo4j-streams/neo4j-community-3.4.7-producer/data:/data
-      - $HOME/app/neo4j-streams/neo4j-community-3.4.7-producer/plugins:/plugins
+      - ./producer/data:/data
+      - ./producer/plugins:/plugins
     environment:
       NEO4J_kafka_zookeeper_connect: zookeeper:2181
       NEO4J_kafka_bootstrap_servers: broker:9092
       NEO4J_AUTH: neo4j/producer
-      NEO4J_dbms_memory_heap_max__size: 8G
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,streams.*
       # NEO4J_dbms_logs_debug_level: DEBUG
       NEO4J_kafka_batch_size: 16384
       NEO4J_streams_sink_enabled: "false"
+      NEO4J_streams_source_enabled: "true"
 
   neo4j-consumer:
-    image: neo4j:3.4
+    image: neo4j:3.5
     hostname: neo4j-consumer
     container_name: neo4j-consumer
     depends_on:
@@ -33,13 +35,14 @@ services:
       - "7474:7474"
       - "7687:7687"
     volumes:
-      - $HOME/app/neo4j-streams/neo4j-community-3.4.7-consumer/data:/data
-      - $HOME/app/neo4j-streams/neo4j-community-3.4.7-consumer/plugins:/plugins
+      - ./consumer/data:/data
+      - ./consumer/plugins:/plugins
     environment:
       NEO4J_kafka_zookeeper_connect: zookeeper:2181
       NEO4J_kafka_bootstrap_servers: broker:9092
       NEO4J_AUTH: neo4j/consumer
-      NEO4J_dbms_memory_heap_max__size: 2G
+      NEO4J_dbms_memory_heap_max__size: 1G
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,streams.*
       NEO4J_kafka_max_poll_records: 16384
       NEO4J_streams_source_enabled: "false"
       NEO4J_streams_sink_enabled: "true"
@@ -52,7 +55,7 @@ services:
 #      NEO4J_dbms_logs_debug_level: DEBUG
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:5.0.0
+    image: confluentinc/cp-zookeeper
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -62,7 +65,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-enterprise-kafka:5.0.0
+    image: confluentinc/cp-enterprise-kafka
     hostname: broker
     container_name: broker
     depends_on:

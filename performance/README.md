@@ -1,10 +1,27 @@
 # neo4j-streams performance test
 
-This part of the project aims to give a standard way to understand the performances of the platform and highlight the configuration results.
+This part of the project aims to give a standard way to understand the performance of the platform and highlight the configuration results.
 
 Currently, it's available only the test of neo4j to neo4j configuration, in remote too.
 
 ## Setup
+
+The docker-compose file in this directory runs the relevant stack, and can be started
+with:
+
+```
+docker-compose up
+```
+
+You'll want to make sure that producer/plugins and consumer/plugins exist as
+subdirectories under this directory and that they contain the build of Neo4j Streams
+you're testing, as well as APOC.
+
+Once the stack is running, run ./setup.sh manually.  If your use case changes you
+can adjust this script, but this is running the setup cypher actions on each Neo4j
+instance, for example creating indexes.
+
+### Unit of Work
 
 The basic unit of work used to test the performances needs a specific cypher part in order to get the timestamp of creation and receiving of the event. The elapsed time is calculated using these timestamps through cypher queries using:
 $$
@@ -18,9 +35,12 @@ Default kafka configuration, running on sigle instance on the same machine of th
 
 - Kafka 2.11-0.10.1.1
 
+Adjust the docker image versions of the confluent platform in docker-compose.yml to
+customize this or test against a particular version.
+
 ### Producer
 
-- neo4j 3.4.7 community edition
+- neo4j 3.5 community edition
 - APOC 3.4.0.3
 - 8 GB heap memory
 - CREATE INDEX ON :Performance(group)
@@ -33,6 +53,7 @@ The  creation query used by the tester:
 	CREATE (n:Performance)
 	SET n.group = {uuid}, n.creation_time = apoc.date.currentTimestamp()
 	RETURN min(n.creation_time) as creation_time
+
 ### Consumer
 
 - neo4j 3.4.7 community edition
@@ -57,8 +78,6 @@ payload.type = 'node' AND meta.operation = 'created', \
 
 YIELD value RETURN count(value)
 ```
-
-
 
 ## Run the tests
 
@@ -93,9 +112,7 @@ repeat = 5
 nodes = 1000
 ```
 
-
-
-### start
+### Running the Performance Test
 
 To check the coniguration or to get a fast result you can run the command
 
@@ -105,7 +122,7 @@ python3 neo4j-streams-pt.py --start
 
 The output is a windows that show you the distribution of the test. See result session to better understand the values. You can use the option `--plot-out file.png` to not show the result but save it on file. The details of the execution are dumped on standard output as CSV or you can redirect it on file using the option `--csv-out file.csv`
 
-### baseline
+### Baseline
 
 This is the main command you have to test the system. By command line arguments you can specify the series to test. The arguments are the number of  node's unit to use. 
 
