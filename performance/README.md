@@ -117,7 +117,8 @@ nodes = 1000
 To check the coniguration or to get a fast result you can run the command
 
 ```shell
-python3 neo4j-streams-pt.py --start
+$ pipenv install
+$ pipenv run python3 neo4j-streams-pt.py --start 
 ```
 
 The output is a windows that show you the distribution of the test. See result session to better understand the values. You can use the option `--plot-out file.png` to not show the result but save it on file. The details of the execution are dumped on standard output as CSV or you can redirect it on file using the option `--csv-out file.csv`
