@@ -9,7 +9,6 @@ import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.KafkaTestUtils
 import streams.setConfig
-import streams.shutdownSilently
 
 open class KafkaEventRouterBaseTSE { // TSE (Test Suit Element)
 
@@ -47,7 +46,7 @@ open class KafkaEventRouterBaseTSE { // TSE (Test Suit Element)
 
     @After
     fun tearDown() {
-        db.shutdownSilently()
+        db.shutdown()
         kafkaConsumer.close()
     }
 }

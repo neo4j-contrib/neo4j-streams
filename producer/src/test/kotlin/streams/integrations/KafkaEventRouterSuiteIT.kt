@@ -48,7 +48,7 @@ class KafkaEventRouterSuiteIT {
                 exists = true
             }, IllegalStateException::class.java)
             Assume.assumeTrue("Kafka container has to exist", exists)
-            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+            Assume.assumeTrue("Kafka must be running", ::kafka.isInitialized && kafka.isRunning)
         }
 
         @AfterClass @JvmStatic

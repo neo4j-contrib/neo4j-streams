@@ -15,7 +15,6 @@ import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.KafkaTestUtils
 import streams.setConfig
-import streams.shutdownSilently
 import streams.start
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
@@ -50,7 +49,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
                 exists = true
             }, IllegalStateException::class.java)
             Assume.assumeTrue("Kafka container has to exist", exists)
-            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+            Assume.assumeTrue("Kafka must be running", ::kafka.isInitialized && kafka.isRunning)
 
             val client = AdminClient.create(mapOf("bootstrap.servers" to "localhost:" + kafka.firstMappedPort))
             val topicsToCreate = listOf("person")
@@ -81,7 +80,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
             it.columnAs<Long>("count").next()
         }
         assertEquals(0L, count)
-        db.shutdownSilently()
+        db.shutdown()
     }
 
     @Test
@@ -116,6 +115,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
         // then
         val count = db.execute("MATCH (n) RETURN COUNT(n) AS count") { it.columnAs<Long>("count").next() }
         assertEquals(2L, count)
+        db.shutdown()
     }
 
 }

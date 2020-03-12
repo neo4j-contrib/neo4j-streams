@@ -183,6 +183,7 @@ class KafkaStreamsSinkProceduresTSE : KafkaEventSinkBaseTSE() {
             assertTrue { searchResultMap.containsKey("count") }
             assertEquals(1L, searchResultMap["count"])
         }
+        Unit
     }
 
     @Test

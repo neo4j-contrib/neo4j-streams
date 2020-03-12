@@ -12,7 +12,6 @@ import streams.events.RelationshipPayload
 import streams.extensions.execute
 import streams.mocks.MockStreamsEventRouter
 import streams.setConfig
-import streams.shutdownSilently
 import streams.start
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -31,10 +30,10 @@ class StreamsTransactionEventHandlerIT {
 
     @After
     fun tearDown() {
-        db.shutdownSilently()
+        db.shutdown()
     }
 
-    @Test fun testNodes(){
+    @Test fun testNodes() {
         db.execute("CREATE (:Person {name:'Omar', age: 30}), (:Person {name:'Andrea', age: 31})")
 
         assertEquals(2,MockStreamsEventRouter.events.size)

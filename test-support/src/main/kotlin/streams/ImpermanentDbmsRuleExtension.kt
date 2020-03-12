@@ -22,8 +22,3 @@ fun DbmsRule.start(timeout: Long = 5000): DbmsRule {
     }
     return this
 }
-
-fun DbmsRule.shutdownSilently(): DbmsRule {
-    try { this.shutdown() } catch (ignored: Exception) {} // the PageCacheLifecycle throws an exception, investigate why
-    return this
-}
