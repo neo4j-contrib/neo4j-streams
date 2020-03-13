@@ -32,6 +32,8 @@ def executeTest(nodes):
 	"""Returns elapsed per node """
 	test_ref = str(uuid.uuid1())
 
+	print("Running test iteration %s" % test_ref)
+
 	with producer.session() as session:
 		result = session.run("""
 			UNWIND range(1,{msg}) as ran
@@ -95,7 +97,7 @@ if args.start is not None:
 	series = [executeTest(nodes) for i in range(int(repeats))]
 	producer.close()
 	consumer.close()
-	
+
 	fig1, ax1 = plt.subplots()
 	ax1.set_title("Baselines (repeats for %d times)"%int(repeats))
 	ax1.set_ylabel('ms per node')
