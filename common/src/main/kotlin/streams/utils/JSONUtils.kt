@@ -85,8 +85,8 @@ object JSONUtils {
 
     init {
         val module = SimpleModule("Neo4jKafkaSerializer")
-        StreamsUtils.ignoreExceptions({ module.addSerializer(Point::class.java, PointSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
-        StreamsUtils.ignoreExceptions({ module.addSerializer(PointValue::class.java, PointValueSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
+        StreamsUtils.ignoreExceptions({ module.addSerializer(Point::class.java, PointSerializer()) }, NoClassDefFoundError::class.java, UnsupportedClassVersionError::class.java) // in case is loaded from
+        StreamsUtils.ignoreExceptions({ module.addSerializer(PointValue::class.java, PointValueSerializer()) }, NoClassDefFoundError::class.java, UnsupportedClassVersionError::class.java) // in case is loaded from
         module.addSerializer(TemporalAccessor::class.java, TemporalAccessorSerializer())
         OBJECT_MAPPER.registerModule(module)
         OBJECT_MAPPER.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
