@@ -220,7 +220,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .importance(ConfigDef.Importance.HIGH)
                             .defaultValue("bolt://localhost:7687")
                             .group(ConfigGroup.CONNECTION)
-                            .validator(Validators.validURI("bolt", "bolt+routing"))
+                            .validator(Validators.validURI("bolt", "bolt+routing", "neo4j"))
                             .build())
                     .define(ConfigKeyBuilder
                             .of(CONNECTION_POOL_MAX_SIZE, ConfigDef.Type.INT)

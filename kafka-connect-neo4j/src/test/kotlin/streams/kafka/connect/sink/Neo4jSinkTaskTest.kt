@@ -7,9 +7,6 @@ import org.apache.kafka.connect.data.Timestamp
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
-import org.junit.After
-import org.junit.Before
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -24,7 +21,8 @@ import streams.service.sink.strategy.CUDNode
 import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations
 import streams.service.sink.strategy.CUDRelationship
-import java.util.*
+import java.util.Date
+import java.util.UUID
 import java.util.stream.Collectors
 import java.util.stream.StreamSupport
 import kotlin.test.assertEquals
