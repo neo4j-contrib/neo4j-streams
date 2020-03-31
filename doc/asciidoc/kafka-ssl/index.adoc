@@ -112,6 +112,27 @@ dbms.jvm.additional=-Djavax.net.debug=ssl:handshake
 
 This line `*dbms.jvm.additional=-Djavax.net.debug=ssl:handshake*` is optional but does help for debugging SSL issues.
 
+[NOTE]
+====
+When configuring a secure connection between Neo4j and Kafka, and using SASL protocol in particular, pay attention to
+use the following properties:
+
+[source, properties]
+----
+kafka.security.protocol=SASL_SSL
+sasl.mechanism=GSSAPI
+----
+
+and *not* the following, which has to be used on server side and not client side:
+
+[source, properties]
+----
+security.inter.broker.protocol=SASL_SSL
+sasl.mechanism.inter.broker.protocol=GSSAPI
+----
+
+====
+
 === Testing
 
 After starting Kafka and Neo4j, you can test by creating a Person node in Neo4j and then query the topic as follows:

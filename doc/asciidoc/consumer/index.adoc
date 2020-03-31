@@ -77,6 +77,20 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
+[NOTE]
+====
+When you decide to use Cypher template as Sink strategy to import data from Kafka into Neo4j, you have to be sure
+about the query correctness. If the query is not optimized, this could also results into possible performance issue or
+in situations where the plugin seems to be stuck, for example if the query loads a large amount of nodes and relationships
+into memory.
+We suggests the following:
+
+* execute a query **EXPLAIN** in order to better analyze the query and avoid this kind of situations
+
+* if Neo4j seems to be stuck then, from the Neo4j Browser, execute a `CALL dbms.listQueries()` to view all queries that
+are currently executing within the instance, and to be sure that there are no locked queries
+====
+
 include::../sink-strategies/index.adoc[]
 
 include::../cud-file-format/index.adoc[]

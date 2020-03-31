@@ -138,6 +138,35 @@ For full details on what you can do here, see the <<neo4j_streams_source,Source>
 Once the plugin is installed and configured, restarting the database will make it active.
 If you have configured Neo4j to consume from kafka, it will begin immediately processing messages.
 
+[NOTE]
+
+====
+When installing the latest version of the Neo4j Streams plugin into Neo4j 4.x, watching to logs you could find something
+similar to the following:
+
+[source,logs]
+----
+2020-03-25 20:13:50.606+0000 WARN  Unrecognized setting. No declared setting with name: kafka.max.partition.fetch.bytes
+2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.log.include.messages
+2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.auto.offset.reset
+2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.zookeeper.connect
+2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.bootstrap.servers
+2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.max.poll.records
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.log.enable
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.source.enabled
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.topic.cypher.boa.to.kafkaTest
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.tolerance
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: kafka.group.id
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.deadletterqueue.context.headers.enable
+2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.deadletterqueue.context.header.prefix
+2020-03-25 20:13:50.610+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.deadletterqueue.topic.name
+2020-03-25 20:13:50.610+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.enabled.to.kafkaTest
+----
+
+*These are not errors*. They comes from the new Neo4j 4 Configuration System, which warns that it doesn't recognize those
+properties. Despite these warnings the plugin will work properly.
+====
+
 [#kafka_connect_plugin_quickstart]
 === Kafka Connect Plugin
 
