@@ -53,13 +53,11 @@ Following the list of new properties that allows to support multi-tenancy:
 streams.source.topic.nodes.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
 streams.source.enabled.from.<DB_NAME>=<true/false, default=true>
-streams.procedures.enabled.<DB_NAME>=<true/false, default=true>
 ----
 
 This means that for each db instance you can specify if:
 * use the source connector
 * the routing patterns
-* use the procedures
 
 So if you have a instance name `foo` you can specify a configuration in this way:
 
@@ -67,7 +65,6 @@ So if you have a instance name `foo` you can specify a configuration in this way
 streams.source.topic.nodes.myTopic.from.foo=<PATTERN>
 streams.source.topic.relationships.myTopic.from.foo=<PATTERN>
 streams.source.enabled.from.foo=<true/false, default=true>
-streams.procedures.enabled.foo=<true/false, default=true>
 ----
 
 The old properties:
@@ -81,19 +78,19 @@ streams.procedures.enabled=<true/false, default=true>
 
 are still valid and they refer to Neo4j's default db instance.
 
-[abstract]
-.How manage the Neo4j's default db
---
- The default database is controlled by Neo4j's dbms.default_database configuration property so we're being clear about which default database applies for this user.
- Database names are case-sensitive, and must follow Neo4j database naming rules (Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
---
+[NOTE]
+====
+The default database is controlled by Neo4j's *dbms.default_database* configuration property so we're being clear about
+which default database applies for this user.
+Database names are case-insensitive and normalized to lowercase, and must follow Neo4j database naming rules.
+(Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
+====
 
-In particular the following two properties will be used ad default values
-for non-default db instances, in case of the specific configuration params are not provided:
+In particular the following property will be used as default value
+for non-default db instances, in case of the specific configuration params is not provided:
 
 ----
 streams.source.enabled=<true/false, default=true>
-streams.procedures.enabled=<true/false, default=true>
 ----
 
 This means that if you have Neo4j with 3 db instances:

@@ -37,13 +37,11 @@ streams.sink.topic.cdc.schema.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON
 streams.sink.topic.pattern.node.<TOPIC_NAME>.to.<DB_NAME>=<NODE_EXTRACTION_PATTERN>
 streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.<DB_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
 streams.sink.enabled.to.<DB_NAME>=<true/false, default=true>
-streams.procedures.enabled.<DB_NAME>=<true/false, default=true>
 ----
 
 This means that for each db instance you can specify if:
 * use the source connector
 * the routing patterns
-* use the procedures
 
 So if you have a instance name `foo` you can specify a configuration in this way:
 
@@ -54,7 +52,6 @@ streams.sink.topic.cdc.schema.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.pattern.node.<TOPIC_NAME>.to.foo=<NODE_EXTRACTION_PATTERN>
 streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.foo=<RELATIONSHIP_EXTRACTION_PATTERN>
 streams.sink.enabled.to.foo=<true/false, default=true>
-streams.procedures.enabled.foo=<true/false, default=true>
 ----
 
 The old properties:
@@ -68,21 +65,22 @@ streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PA
 streams.sink.enabled=<true/false, default=true>
 ----
 
-are still valid and they refer to Neo4j's default db instance, which is usually called `neo4j`, but can be controlled by separate Neo4j system configuration.
+are still valid and they refer to Neo4j's default db instance, which is usually called `neo4j`, but can be controlled by
+separate Neo4j system configuration.
 
-[abstract]
-.How manage the Neo4j's default db
---
- The default database is controlled by Neo4j's dbms.default_database configuration property so we're being clear about which default database applies for this user.
- Database names are case-sensitive, and must follow Neo4j database naming rules (Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
---
+[NOTE]
+====
+The default database is controlled by Neo4j's *dbms.default_database* configuration property so we're being clear about
+which default database applies for this user.
+Database names are case-insensitive and normalized to lowercase, and must follow Neo4j database naming rules.
+(Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
+====
 
-In particular the following two properties will be used ad default values
-for non-default db instances, in case of the specific configuration params are not provided:
+In particular the following property will be used as default values
+for non-default db instances, in case of the specific configuration params is not provided:
 
 ----
 streams.sink.enabled=<true/false, default=true>
-streams.procedures.enabled=<true/false, default=true>
 ----
 
 This means that if you have Neo4j with 3 db instances:
