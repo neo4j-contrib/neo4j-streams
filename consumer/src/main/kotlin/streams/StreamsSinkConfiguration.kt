@@ -8,7 +8,6 @@ import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 
 data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_ENABLED_VALUE,
                                     val proceduresEnabled: Boolean = StreamsConfig.PROCEDURES_ENABLED_VALUE,
-                                    val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
@@ -42,7 +41,6 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
 
             return default.copy(enabled = cfg.isSinkEnabled(dbName),
                     proceduresEnabled = cfg.hasProceduresEnabled(dbName),
-                    sinkPollingInterval = cfg.config.getOrDefault("streams.sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
                     errorConfig = errorHandler,
                     sourceIdStrategyConfig = sourceIdStrategyConfig)

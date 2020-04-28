@@ -222,7 +222,7 @@ NEO4J_streams_source_schema_polling_interval: 10000
 ----
 
 this means that every 10 seconds the Streams plugin polls the DB in order to retrieve schema changes and store them.
-So after you created the indexes you need almost to wait 10 seconds before the next step, otherwise the
+So after you created the indexes you need almost to wait 10 seconds before the next step.
 
 Now lets go to the `Source` and, in order to import the Stackoverflow dataset, execute the following query:
 

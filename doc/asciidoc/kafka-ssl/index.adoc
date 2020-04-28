@@ -83,7 +83,6 @@ Note that the passwords are stored in plaintext so limit access to this `neo4j.c
 kafka.zookeeper.connect=xxx.xxx.xxx.xxx:2181
 kafka.bootstrap.servers=xxx.xxx.xxx.xxx:9094
 streams.sink.enabled=false
-streams.sink.polling.interval=1000
 
 streams.source.topic.nodes.neoTest=Person{*}
 

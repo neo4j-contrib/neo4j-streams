@@ -30,7 +30,9 @@ If you decide to use the Neo4j Streams plugin, then the Neo4j source instance wi
 [source, ini]
 ----
 streams.sink.enabled=false
-streams.source.schema.polling.interval=10000
+streams.source.enabled=true
+streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
+streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
 ----
 
 and the Neo4j sink instance will be configured as follow:
