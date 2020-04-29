@@ -98,6 +98,21 @@ class StreamsSinkConfigurationTest {
         assertEquals(customId, streamsSinkConf.sourceIdStrategyConfig.idName)
     }
 
+    @Test
+    fun shouldReturnConfigurationFromMapWithNonLowerCaseDbName() {
+        val topic = "mytopic"
+        val topicKey = "streams.sink.topic.cypher.$topic.to.nonLowerCaseDb"
+        val topicValue = "MERGE (n:Label{ id: event.id })"
+        val config = mapOf(
+                topicKey to topicValue,
+                "streams.sink.enabled" to "false",
+                "streams.sink.enabled.to.nonLowerCaseDb" to "true")
+        streamsConfig.config.putAll(config)
+        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, "nonlowercasedb")
+        assertFalse { streamsSinkConf.enabled }
+        assertEquals(topicValue, streamsSinkConf.topics.cypherTopics[topic])
+    }
+
     @Test(expected = TopicValidationException::class)
     fun shouldFailWithCrossDefinedTopics() {
         val topic = "topic-neo"

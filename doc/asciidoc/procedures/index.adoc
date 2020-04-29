@@ -42,6 +42,43 @@ image::../../images/procedure_not_found.png[title="Neo4j Streams procedure not f
 
 ====
 
+==== Multi Database Support
+
+Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
+in order to support this feature you can set for each database instance a configuration suffix with the following pattern
+`<DB_NAME>` to the properties in your neo4j.conf file.
+
+So, to enable the Streams procedures the following property should be added:
+
+.neo4j.conf
+[subs="verbatim"]
+----
+streams.procedures.enabled.<DB_NAME>=<true/false, default=true>
+----
+
+So if you have a instance name `foo` you can specify a configuration in this way:
+
+.neo4j.conf
+----
+streams.procedures.enabled.foo=<true/false, default=true>
+----
+
+The old property:
+
+.neo4j.conf
+----
+streams.procedures.enabled=<true/false, default=true>
+----
+
+are still valid and it refers to Neo4j's default db instance.
+
+In particular the following property will be used as default value
+for non-default db instances, in case of the specific configuration params is not provided:
+
+----
+streams.procedures.enabled=<true/false, default=true>
+----
+
 === streams.publish
 
 This procedure allows custom message streaming from Neo4j to the configured environment by using the underlying configured Producer.

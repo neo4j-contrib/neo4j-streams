@@ -28,7 +28,7 @@ class KafkaEventSinkEnterpriseTSE {
     companion object {
 
         private var startedFromSuite = true
-        val DB_NAME_NAMES = listOf("foo", "bar")
+        val DB_NAME_NAMES = listOf("foo", "bar", "nonLowerCaseDb")
 
         @JvmStatic
         val neo4j = Neo4jContainerExtension()
@@ -48,7 +48,8 @@ class KafkaEventSinkEnterpriseTSE {
                 DB_NAME_NAMES.forEach { neo4j.withNeo4jConfig("streams.sink.enabled.to.$it", "true") } // we enable the sink plugin only for the instances
                 neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.foo", "MERGE (c:Customer_foo {id: event.id, foo: 'foo'})")
                 neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.bar", "MERGE (c:Customer_bar {id: event.id, bar: 'bar'})")
-                neo4j.withDatabases("foo", "bar", "baz")
+                neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.nonLowerCaseDb", "MERGE (c:Customer_nonLowerCaseDb {id: event.id, nonLowerCaseDb: 'nonLowerCaseDb'})")
+                neo4j.withDatabases("foo", "bar", "nonLowerCaseDb", "baz")
                 neo4j.start()
                 Assume.assumeTrue("Neo4j must be running", neo4j.isRunning)
             }, IllegalStateException::class.java)
@@ -110,6 +111,10 @@ class KafkaEventSinkEnterpriseTSE {
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("bar")
             1 == nodes.size && mapOf("id" to 1L, "bar" to "bar") == nodes[0]
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val nodes = getData("nonLowerCaseDb")
+            1 == nodes.size && mapOf("id" to 1L, "nonLowerCaseDb" to "nonLowerCaseDb") == nodes[0]
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
