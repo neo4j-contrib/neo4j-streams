@@ -2,7 +2,7 @@ version: '3'
 
 services:
   neo4j-source:
-    image: neo4j:3.5
+    image: neo4j:4.0.3
     hostname: neo4j-source
     container_name: neo4j-source
     depends_on:
@@ -24,7 +24,7 @@ services:
       NEO4J_streams_source_schema_polling_interval: 10000
 
   neo4j-sink:
-    image: neo4j:3.5
+    image: neo4j:4.0.3
     hostname: neo4j-sink
     container_name: neo4j-sink
     depends_on:

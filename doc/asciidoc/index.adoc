@@ -26,8 +26,8 @@ The guide covers the following areas:
 * <<neo4j_streams_sink>> -- How to configure Neo4j Streams as Sink
 * <<neo4j_streams_procedures>> -- How to use Neo4j Streams Procedures
 * <<_kafka_connect_plugin>> -- How to configure Kafka Connect plugin
-* <<streams_kafka_connect_docker>> -- Run Neo4j Streams and Kafka connect with Docker
 * <<neo4j_causal_cluster>> -- Using with Neo4j Causal Cluster
+* <<streams_kafka_connect_docker>> -- Run Neo4j Streams and Kafka connect with Docker
 * <<neo4j_kafka_ssl>> -- A guidance on how to configure SSL between Kafka and Neo4j
 * <<_confluent_cloud>> -- Configuring a connection to a Confluent Cloud
 * <<neo4j_confluent>> -- Useful examples
@@ -43,9 +43,9 @@ include::streams/index.adoc[]
 
 include::kafka-connect/index.adoc[]
 
-include::docker/index.adoc[]
-
 include::neo4j-cluster/index.adoc[]
+
+include::docker/index.adoc[]
 
 include::kafka-ssl/index.adoc[]
 

@@ -203,6 +203,55 @@ include::../sink-strategies/index.adoc[]
 [#kafka-connect-cud-file-format]
 include::../cud-file-format/index.adoc[]
 
+==== Multi Database Support
+
+Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
+in order to support this feature, in order to support this feature with Kafka Connect plugin, creating the Sink
+instance we have to add the `database` property, which tells the Connector the database to use as default. If you
+don't specify that property, the default database `neo4j` will be used.
+
+[NOTE]
+====
+Remember the naming rules for databases described https://neo4j.com/docs/operations-manual/4.0/manage-databases/configuration/#manage-databases-administration[here]
+====
+
+Following an example:
+
+[source, json]
+----
+{
+  "name": "Neo4jSinkConnector",
+  "config": {
+    "database": "<database_name>",
+    "topics": "topic",
+    "connector.class": "streams.kafka.connect.sink.Neo4jSinkConnector",
+    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false,
+    "errors.retry.timeout": "-1",
+    "errors.retry.delay.max.ms": "1000",
+    "errors.tolerance": "all",
+    "errors.log.enable": true,
+    "errors.log.include.messages": true,
+    "neo4j.server.uri": "bolt://neo4j:7687",
+    "neo4j.authentication.basic.username": "neo4j",
+    "neo4j.authentication.basic.password": "password",
+    "neo4j.encryption.enabled": false,
+    "_comment": "Sink CDC SourceId Strategy",
+    "neo4j.topic.cdc.sourceId": "topic",
+    "neo4j.topic.cdc.sourceId.labelName": "<the label attached to the node, default=SourceEvent>",
+    "neo4j.topic.cdc.sourceId.idName": "<the id name given to the CDC id field, default=sourceId>",
+    "_comment": "Sink CDC Schema Strategy",
+    "neo4j.topic.cdc.schema": "<list_of_topics_separated_by_semicolon>",
+    "_comment": "Sink Node/Relationship Pattern Strategy",
+    "neo4j.topic.pattern.node.<TOPIC_NAME>": "<node_extraction_pattern>",
+    "neo4j.topic.pattern.relationship.<TOPIC_NAME>": "<relationship_extraction_pattern>",
+    "_comment": "Sink CUD File forma Strategy",
+    "neo4j.topic.cud": "<list_of_topics_separated_by_semicolon>"
+  }
+}
+----
+
 === How deal with bad data
 
 In Kafka Connect plugin, in the creation phase of the Sink instance, in addition to the properties

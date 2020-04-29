@@ -2,7 +2,7 @@
 version: '2'
 services:
   neo4j:
-    image: neo4j:3.5
+    image: neo4j:4.0.3
     hostname: neo4j
     container_name: neo4j
     ports:
@@ -103,7 +103,7 @@ services:
 #      - bash 
 #      - -c 
 #      - |
-#        confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:1.0.3
+#        confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:1.0.6
         /etc/confluent/docker/run
 
   control-center:

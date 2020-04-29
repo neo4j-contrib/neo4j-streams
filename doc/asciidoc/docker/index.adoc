@@ -289,3 +289,66 @@ include::../../../kafka-connect-neo4j/docker/docker-compose.yml[]
 ----
 
 include::../../../kafka-connect-neo4j/docker/readme.adoc[]
+
+=== Neo4j Streams with Neo4j Cluster and Kafka Cluster
+
+Here we provide a docker-compose file to quickstart with an environment composed by a 3-nodes Neo4j Causal Cluster
+(with Streams plugin configured in Sink mode) and a 3-nodes Kafka Cluster.
+
+[source,yaml]
+----
+include::data/docker-compose-cluster.yml[]
+----
+
+What you need to do is just:
+
+* Download the latest Neo4j Streams plugin version from here: https://github.com/neo4j-contrib/neo4j-streams/releases/tag/4.0.1
+
+* Be sure to create the volume folders (into the same folder where the docker-compose file is) `/neo4j-cluster-40/core1/plugins`,
+`/neo4j-cluster-40/core2/plugins`, `/neo4j-cluster-40/core3/plugins`, `/neo4j-cluster-40/read1/plugins` and be sure to put the
+`neo4j-streams-4.0.1.jar` into those folders.
+
+* Run `docker-compose up -d`
+
+* Connect to Neo4j `core1` instance from the web browser: `localhost:7474`
+
+** Login using the credentials provided in the docker-compose file
+
+** Create a new database (the one where Neo4j Streams Sink is listening), running the following 2 commands from the Neo4j
+Browser
+
+*** `:use system`
+
+*** `CREATE DATABASE dbtest`
+
+* Once all the containers are up and running, open a terminal window and connect to Kafka `broker-1`, in order to send
+a JSON event using a `kafka-console-producer`. Follow the steps below:
+
+** `docker exec -it broker-1 /bin/bash`
+
+** `kafka-console-producer --broker-list broker-1:29092 --topic mytopic`
+
+** paste the following JSON event into kafka-console-producer:
++
+`{"id": 1, "name": "Mauro", "surname": "Roiter"}`.
+
+Here an output example of the last steps:
+
+[source, bash]
+----
+$ docker exec -it broker-1 /bin/bash
+root@broker-1:/# kafka-console-producer --broker-list broker-1:29092 --topic mytopic
+>{"id": 1, "name": "Mauro", "surname": "Roiter"}
+----
+
+Now if you come back to Neo4j browser, you will see the created node into the respective database `dbtest`.
+
+image::../../images/docker_streams_cluster_example.png[title="Streams Sink plugin into Neo4j+Kafka cluster environment", align="center"]
+
+You will se the same results in the other Neo4j instances too.
+
+[NOTE]
+====
+In this example we've used the Neo4j Enterprise docker image because the "CREATE DATABASE" feature is available only into
+Enterprise Edition
+====
