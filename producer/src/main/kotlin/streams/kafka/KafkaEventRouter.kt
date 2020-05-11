@@ -91,9 +91,17 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
-                JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
+        if (kafkaAdminService.isLogCompactionEnabled()) {
+            val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(),
+                    "${event.payload.id}",
+                    JSONUtils.writeValueAsBytes(event))
+            send(producerRecord)
+        }
+        else {
+            val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
+                    JSONUtils.writeValueAsBytes(event))
+            send(producerRecord)
+        }
     }
 
     override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {

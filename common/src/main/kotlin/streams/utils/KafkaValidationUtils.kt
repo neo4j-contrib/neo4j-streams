@@ -34,4 +34,16 @@ object KafkaValidationUtils {
                 ?.value()
                 ?.toBoolean() ?: false
     }
+
+    fun isLogCompactionEnabled(kafkaProps: Properties) = isLogCompactionEnabled(AdminClient.create(kafkaProps))
+
+    fun isLogCompactionEnabled(client: AdminClient): Boolean {
+        val firstNodeId = client.describeCluster().nodes().get().first().id()
+        val configs = client.describeConfigs(listOf(ConfigResource(ConfigResource.Type.BROKER, firstNodeId.toString()))).all().get()
+        return configs.values
+                .flatMap { it.entries() }
+                .find { it.name() == "log.cleanup.policy" }
+                ?.value()
+                ?.toString().equals("compact")
+    }
 }

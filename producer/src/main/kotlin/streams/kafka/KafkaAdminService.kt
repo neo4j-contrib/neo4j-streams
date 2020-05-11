@@ -49,4 +49,6 @@ class KafkaAdminService(private val props: KafkaConfiguration, private val allTo
     }
 
     fun getInvalidTopics() = KafkaValidationUtils.getInvalidTopics(client, allTopics)
+
+    fun isLogCompactionEnabled() = KafkaValidationUtils.isLogCompactionEnabled(client)
 }
