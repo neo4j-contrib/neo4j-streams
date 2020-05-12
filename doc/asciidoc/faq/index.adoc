@@ -1,4 +1,5 @@
 
+[[faq]]
 == Neo4j Streams FAQ
 
 === Source Code License
@@ -78,7 +79,7 @@ Right now there are only a few connectors such as that for S3 that can be run as
 Click https://docs.confluent.io/current/cloud/connectors/index.html[here] to learn more.
 
 However, it is supported in the sense that Neo4j Streams can be connected to a Confluent Cloud instance,
-and the basic configuration is explained in the <<_confluent_cloud, Confluent Cloud>> section.
+and the basic configuration is explained in the <<confluent_cloud, Confluent Cloud>> section.
 Other references to how to configure it to connect to the Confluent Cloud can be found at the following links:
 
 * https://www.confluent.io/blog/kafka-graph-visualizations (see the `Configuring Neo4j to interact with Kafka` section).
@@ -108,7 +109,7 @@ The specified query is considered unique, so all the entities involved belongs t
 
 === How to configure Kafka over SSL?
 
-You will find a guide <<neo4j_kafka_ssl, here>> on how to configure Neo4j Streams plugin to work with Kafka over SSL.
+You will find a guide <<kafka_ssl, here>> on how to configure Neo4j Streams plugin to work with Kafka over SSL.
 Under the covers, Neo4j Streams plugin uses the official Java libraries for Kafka, so you would configure this in the
 same way for the Java client.
 

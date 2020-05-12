@@ -1,4 +1,5 @@
 
+[[confluent_cloud]]
 == Confluent Cloud
 
 Configuring a connection to a Confluent Cloud instance should follow

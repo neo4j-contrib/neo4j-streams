@@ -1,5 +1,5 @@
 
-[#neo4j_kafka_ssl]
+[[kafka_ssl]]
 == Configure with Kafka over SSL
 
 This section provides guidance to configure SSL security between Kafka and Neo4j. This will provide data encryption

@@ -1,5 +1,5 @@
 
-[#neo4j_streams_sink]
+[[neo4j_streams_sink]]
 == Neo4j Streams - Sink: Kafka -> Neo4j
 :environment: streams.sink
 :id: streams_sink
@@ -95,7 +95,7 @@ include::../sink-strategies/index.adoc[]
 
 include::../cud-file-format/index.adoc[]
 
-[#neo4j_streams_dlq]
+[[neo4j_streams_dlq]]
 === How deal with bad data
 
 The Neo4j Streams Plugin provides several means to handle processing errors.

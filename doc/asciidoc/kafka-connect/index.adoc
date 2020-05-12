@@ -1,4 +1,5 @@
 
+[[kafka_connect_plugin]]
 == Kafka Connect Plugin
 :environment: neo4j
 :id: neo4j

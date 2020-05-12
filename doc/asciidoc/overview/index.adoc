@@ -1,4 +1,5 @@
 
+[[overview]]
 == Project Overview
 
 ifdef::env-docs[]
@@ -36,7 +37,7 @@ just one at a time has to be used.**
 As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
 to Kafka.
 
-[#kafka_connect_plugin_overview]
+[[kafka_connect_plugin_overview]]
 === Kafka Connect Plugin
 
 As a **Kafka Connect plugin**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
