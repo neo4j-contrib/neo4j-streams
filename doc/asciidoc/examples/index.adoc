@@ -1,5 +1,5 @@
 
-[#neo4j_confluent]
+[[examples]]
 == Examples with Confluent Platform and Kafka Connect Datagen
 
 === Confluent and Neo4j in binary format
@@ -142,7 +142,7 @@ The output should be something like:
 
 image::../../images/sink_ouput.png[title="SINK Output", align="center"]
 
-[#confluent_docker_example]
+[[confluent_docker_example]]
 === Confluent with Docker, Neo4j in binary format
 
 In this example Neo4j will be installed locally and Confluent Platform will be in a Docker environment

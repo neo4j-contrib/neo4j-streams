@@ -109,7 +109,7 @@ sections.
 
 ===== Use the Kafka Connect Datagen
 
-In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<neo4j_confluent, `Example with Kafka Connect Datagen`>> section.
+In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<examples, `Example with Kafka Connect Datagen`>> section.
 
 [NOTE]
 Before start using the data generator please create indexes in Neo4j (in order to speed-up the import process)

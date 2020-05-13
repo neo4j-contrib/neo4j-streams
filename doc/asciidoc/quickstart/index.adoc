@@ -1,4 +1,5 @@
 
+[[quickstart]]
 == Quick Start
 
 ifdef::env-docs[]
@@ -11,7 +12,7 @@ endif::env-docs[]
 === Neo4j Streams Plugin
 
 Any configuration option that starts with `streams.` controls how the plugin itself behaves. For a full
-list of options available, see the documentation subsections on the <<neo4j_streams_source,source>> and <<sink,sink>>.
+list of options available, see the documentation subsections on the <<neo4j_streams_source,source>> and <<neo4j_streams_sink,sink>>.
 
 ==== Install the Plugin
 
@@ -71,7 +72,7 @@ kafka.bootstrap.servers=localhost:9092
 ----
 
 If you are using Confluent Cloud (managed Kafka), you can connect to Kafka as described in
-the <<_confluent_cloud, Confluent Cloud>> section
+the <<confluent_cloud, Confluent Cloud>> section
 
 ==== Decide: Sink, Source, or Both
 
@@ -107,7 +108,7 @@ that cypher statement executes, the `event` variable that is referenced will be 
 so this sample cypher will create a `(:Label)` node in the graph with the given ID, copying all of the
 properties in the source message.
 
-For full details on what you can do here, see the <<sink,Sink>> section of the documentation.
+For full details on what you can do here, see the <<neo4j_streams_sink,Sink>> section of the documentation.
 
 ===== Source
 
@@ -167,7 +168,7 @@ similar to the following:
 properties. Despite these warnings the plugin will work properly.
 ====
 
-[#kafka_connect_plugin_quickstart]
+[[kafka_connect_plugin_quickstart]]
 === Kafka Connect Plugin
 
 ==== Install the Plugin

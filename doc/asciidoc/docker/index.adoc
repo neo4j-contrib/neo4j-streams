@@ -1,5 +1,5 @@
 
-[#streams_kafka_connect_docker]
+[[docker]]
 == Run with Docker
 
 ifdef::env-docs[]
@@ -9,7 +9,7 @@ This chapter describes Docker Compose templates that can be used to test Neo4j S
 --
 endif::env-docs[]
 
-[#neo4j_streams_docker]
+[[neo4j_streams_docker]]
 === Neo4j Streams plugin
 
 ==== Introduction

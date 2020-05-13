@@ -1,5 +1,5 @@
 
-[#neo4j_causal_cluster]
+[[causal_cluster]]
 == Using with Neo4j Causal Cluster
 
 ifdef::env-docs[]
@@ -20,7 +20,7 @@ or optionally be read replicas, which maintain a copy of the database and serve 
 horizontally.
 
 
-[#cluster_kafka_connect]
+[[cluster_kafka_connect]]
 === Kafka Connect
 
 When using Neo4j Streams in this method with a Neo4j cluster, the most important consideration is to use

@@ -1,4 +1,5 @@
 
+[[developing]]
 == Developing Neo4j Streams
 
 ifdef::env-docs[]
