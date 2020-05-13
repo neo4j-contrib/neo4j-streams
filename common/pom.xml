@@ -8,13 +8,13 @@
     <artifactId>neo4j-streams-common</artifactId>
     <name>Neo4j Streams - Common</name>
     <description>Neo4j Streams - Commons Package</description>
-    <version>4.0.0</version>
+    <version>4.0.2</version>
     <packaging>jar</packaging>
 
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>4.0.0</version>
+        <version>4.0.2</version>
     </parent>
 
     <dependencies>
