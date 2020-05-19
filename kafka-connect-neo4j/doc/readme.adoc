@@ -47,7 +47,11 @@ MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
 
-Where `{batch}` is a list of event objects.
+Where `{batch}` is a list of event objects, holding at least these three objects:
+
+* **`$$__timestamp__$$`:** Records' timestamp as `Long`. The `$$__timestamp__$$` prefix can be customized using the `neo4j.event.timestamp` property.
+* **`$$__headers__$$`:** Records' headers as an Object, so you can access fields from the headers using `$$event.__headers__.field$$`. The `$$__headers__$$` prefix can be customized using the `neo4j.event.headers` property.
+* **`$$__key__$$`:** Records' key as an Object, , so you can access fields from the headers using `$$event.__headers__.field$$`. The `$$__key__$$` prefix can be customized using the `neo4j.event.key` property.
 
 You can change the query or remove the property and add your own, but you must follow the following convention:
 

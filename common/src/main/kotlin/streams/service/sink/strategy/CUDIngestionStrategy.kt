@@ -190,7 +190,7 @@ class CUDIngestionStrategy: IngestionStrategy {
         return (create + merge + update) // we'll group the data because of in case of `_id` key is present the generated queries are the same for update/merge
                 .map { it.query to it.events }
                 .groupBy({ it.first }, { it.second })
-                .map { QueryEvents(it.key, it.value.flatten()) }
+                .map { QueryEvents(it.key, it.value.flatten())  }
     }
 
     override fun deleteNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {

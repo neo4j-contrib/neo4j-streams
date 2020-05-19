@@ -63,7 +63,11 @@ If you decide to use Kafka Connect plugin for the sink instance, then it has to 
     "neo4j.authentication.basic.username": "neo4j",
     "neo4j.authentication.basic.password": "password",
     "neo4j.encryption.enabled": false,
-    "neo4j.topic.cdc.schema": "<list_of_topics_separated_by_semicolon>"
+    "neo4j.topic.cdc.schema": "<list_of_topics_separated_by_semicolon>",
+    "neo4j.event.timestamp": "__timestamp__",
+    "neo4j.event.headers": "__headers__",
+    "neo4j.event.key": "__key__"
+
   }
 }
 ----

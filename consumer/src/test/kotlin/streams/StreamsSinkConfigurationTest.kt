@@ -17,6 +17,7 @@ class StreamsSinkConfigurationTest {
 
     @Test
     fun shouldReturnConfigurationFromMap() {
+        val prefixes = StreamsSinkConfigurationConstants
         val pollingInterval = "10"
         val topic = "topic-neo"
         val cdctopic = "cdctopic"
@@ -38,6 +39,9 @@ class StreamsSinkConfigurationTest {
         assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
         assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
+        assertEquals(prefixes.EVENT_PREFIX_TIMESTAMP_DEFAULT, streamsConfig.eventPrefixTimestamp)
+        assertEquals(prefixes.EVENT_PREFIX_HEADERS_DEFAULT, streamsConfig.eventPrefixHeaders)
+        assertEquals(prefixes.EVENT_PREFIX_KEY_DEFAULT, streamsConfig.eventPrefixKey)
     }
 
     @Test(expected = RuntimeException::class)
@@ -67,6 +71,41 @@ class StreamsSinkConfigurationTest {
                 .withSetting("streams.sink.topic.cdc.schema", topic)
                 .build()
         StreamsSinkConfiguration.from(config)
+    }
+
+    @Test
+    fun shouldReturnConfigurationFromMapWithExtendedFields() {
+        val prefixes = StreamsSinkConfigurationConstants
+        val customTimestamp = "__fecha__"
+        val customHeader = "__cabecera__"
+        val customKey = "__clave__"
+        val pollingInterval = "10"
+        val topic = "topic-neo"
+        val cdctopic = "cdctopic"
+        val topicKey = "streams.sink.topic.cypher.$topic"
+        val topicValue = "MERGE (n:Label{ id: event.id }) "
+        val customLabel = "CustomLabel"
+        val customId = "customId"
+        val config = Config.builder()
+                .withSetting("streams.sink.polling.interval", pollingInterval)
+                .withSetting(topicKey, topicValue)
+                .withSetting("streams.sink.enabled", "false")
+                .withSetting("streams.sink.topic.cdc.sourceId", cdctopic)
+                .withSetting("streams.sink.topic.cdc.sourceId.labelName", customLabel)
+                .withSetting("streams.sink.topic.cdc.sourceId.idName", customId)
+                .withSetting(prefixes.STREAMS_CONFIG_PREFIX + prefixes.EVENT_PREFIX_TIMESTAMP, customTimestamp)
+                .withSetting(prefixes.STREAMS_CONFIG_PREFIX + prefixes.EVENT_PREFIX_HEADERS, customHeader)
+                .withSetting(prefixes.STREAMS_CONFIG_PREFIX + prefixes.EVENT_PREFIX_KEY, customKey)
+                .build()
+        val streamsConfig = StreamsSinkConfiguration.from(config)
+        testFromConf(streamsConfig, pollingInterval, topic, topicValue)
+        assertFalse { streamsConfig.enabled }
+        assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
+        assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
+        assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
+        assertEquals(customTimestamp, streamsConfig.eventPrefixTimestamp)
+        assertEquals(customHeader, streamsConfig.eventPrefixHeaders)
+        assertEquals(customKey, streamsConfig.eventPrefixKey)
     }
 
     companion object {

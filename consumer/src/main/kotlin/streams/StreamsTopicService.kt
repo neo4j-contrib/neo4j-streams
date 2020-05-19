@@ -120,4 +120,8 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                 .toMap()
     }
 
+    fun getEventPrefixHeaders() = db.beginTx().use {
+
+    }
+
 }

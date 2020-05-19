@@ -49,7 +49,10 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                                     streamsSinkConfiguration.sourceIdStrategyConfig)
                             val streamsQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db,
                                     logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
-                                    strategyMap)
+                                    strategyMap,
+                                    streamsSinkConfiguration.eventPrefixTimestamp,
+                                    streamsSinkConfiguration.eventPrefixHeaders,
+                                    streamsSinkConfiguration.eventPrefixKey)
 
                             // Create the Sink
                             val log = logService.getUserLog(StreamsEventSinkFactory::class.java)

@@ -10,6 +10,12 @@ object StreamsSinkConfigurationConstants {
     const val STREAMS_CONFIG_PREFIX: String = "streams."
     const val ENABLED = "sink.enabled"
     const val PROCEDURES_ENABLED = "procedures.enabled"
+    const val EVENT_PREFIX_TIMESTAMP = "event.timestamp"
+    const val EVENT_PREFIX_TIMESTAMP_DEFAULT = "__timestamp__"
+    const val EVENT_PREFIX_HEADERS = "event.headers"
+    const val EVENT_PREFIX_HEADERS_DEFAULT = "__headers__"
+    const val EVENT_PREFIX_KEY = "event.key"
+    const val EVENT_PREFIX_KEY_DEFAULT = "__key__"
 }
 
 data class StreamsSinkConfiguration(val enabled: Boolean = false,
@@ -17,7 +23,10 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
-                                    val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
+                                    val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig(),
+                                    val eventPrefixTimestamp: String = StreamsSinkConfigurationConstants.EVENT_PREFIX_TIMESTAMP_DEFAULT,
+                                    val eventPrefixHeaders: String = StreamsSinkConfigurationConstants.EVENT_PREFIX_HEADERS_DEFAULT,
+                                    val eventPrefixKey: String = StreamsSinkConfigurationConstants.EVENT_PREFIX_KEY_DEFAULT) {
 
     companion object {
         fun from(cfg: Config): StreamsSinkConfiguration {
@@ -44,13 +53,18 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
 
             val errorHandler = config.filterKeys { it.startsWith("sink.error") }.mapKeys { it.key.substring("sink.".length) }
 
+
             return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
                     proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
                             .toString().toBoolean(),
                     sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
                     errorConfig = errorHandler,
-                    sourceIdStrategyConfig = sourceIdStrategyConfig)
+                    sourceIdStrategyConfig = sourceIdStrategyConfig,
+                    eventPrefixTimestamp = config.getOrDefault(StreamsSinkConfigurationConstants.EVENT_PREFIX_TIMESTAMP, default.eventPrefixTimestamp),
+                    eventPrefixHeaders = config.getOrDefault(StreamsSinkConfigurationConstants.EVENT_PREFIX_HEADERS, default.eventPrefixHeaders),
+                    eventPrefixKey = config.getOrDefault(StreamsSinkConfigurationConstants.EVENT_PREFIX_KEY, default.eventPrefixKey)
+            )
         }
 
     }

@@ -34,6 +34,7 @@ object ConfigGroup {
     const val BATCH = "Batch Management"
     const val RETRY = "Retry Strategy"
     const val DEPRECATED = "Deprecated Properties (please check the documentation)"
+    const val NAMING = "Field naming"
 }
 
 class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), originals) {
@@ -68,6 +69,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
 
     val kafkaBrokerProperties: Map<String, Any?>
+
+    val eventHeadersPrefix: String
+    val eventTimestampPrefix: String
+    val eventKeyPrefix: String
 
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -109,6 +114,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                 .filterKeys { it.toString().startsWith(kafkaPrefix) }
                 .mapKeys { it.key.toString().substring(kafkaPrefix.length) }
         validateAllTopics(originals)
+
+        eventHeadersPrefix = getString(EVENT_HEADERS_PREFIX)
+        eventTimestampPrefix = getString(EVENT_TIMESTAMP_PREFIX)
+        eventKeyPrefix = getString(EVENT_KEY_PREFIX)
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
@@ -169,6 +178,13 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val BATCH_SIZE_DEFAULT = 1000
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
+
+        const val EVENT_HEADERS_PREFIX = "neo4j.event.headers"
+        private const val EVENT_HEADERS_PREFIX_DEFAULT = "__headers__"
+        const val EVENT_KEY_PREFIX = "neo4j.event.key"
+        private const val EVENT_KEY_PREFIX_DEFAULT = "__key__"
+        const val EVENT_TIMESTAMP_PREFIX = "neo4j.event.timestamp"
+        private const val EVENT_TIMESTAMP_PREFIX_DEFAULT = "__timestamp__"
 
         val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
@@ -341,6 +357,18 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                     .define(ConfigKeyBuilder.of(TOPIC_CUD, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(TOPIC_CUD)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(EVENT_HEADERS_PREFIX, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(EVENT_HEADERS_PREFIX)).importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(EVENT_HEADERS_PREFIX_DEFAULT).group(ConfigGroup.NAMING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(EVENT_TIMESTAMP_PREFIX, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(EVENT_TIMESTAMP_PREFIX)).importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(EVENT_TIMESTAMP_PREFIX_DEFAULT).group(ConfigGroup.NAMING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(EVENT_KEY_PREFIX, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(EVENT_KEY_PREFIX)).importance(ConfigDef.Importance.MEDIUM)
+                            .defaultValue(EVENT_KEY_PREFIX_DEFAULT).group(ConfigGroup.NAMING)
                             .build())
         }
     }

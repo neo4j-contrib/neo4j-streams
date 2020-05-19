@@ -65,16 +65,44 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-Where `{batch}` is a json list, so continuing with the example above a possible full representation could be:
+Where `{batch}` is a json list with at least three fields related to timestamp, headers (every value on a header will be treated as a String) and key, so continuing with the example above a possible full representation could be:
 
 [source,cypher]
 ----
-:params events => [{id:"alice@example.com",properties:{name:"Alice",age:32}},
-    {id:"bob@example.com",properties:{name:"Bob",age:42}}]
+:params events => [
+  {
+    "__timestamp__": 1590071463,
+    "__headers__": {
+      "timeCommit": 1590071463,
+      "source": "Raspberry Pi"
+    },
+    "__key__": {
+      "dbTransaction": "55x88at7f"
+    },
+    "id": "alice@example.com",
+    "properties": {
+      "name": "Alice",
+      "age": 32
+    }
+  },
+  {
+    "__timestamp__": -1,
+    "__headers__": {},
+    "__key__": {},
+    "id": "bob@example.com",
+    "properties": {
+      "name": "Bob",
+      "age": 42
+    }
+  }
+]
 
 UNWIND {events} AS event
 MERGE (n:Label {id: event.id})
-    ON CREATE SET n += event.properties
+    ON CREATE SET n += event.properties,
+                    n.ts = event.__timestamp__
+                    n.source = event.__headers__.source,
+                    n.trxId = event.__key__.dbTransaction
 ----
 
 include::../sink-strategies/index.adoc[]

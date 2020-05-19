@@ -1,15 +1,16 @@
 package streams.kafka.connect.sink
 
+import org.apache.kafka.common.record.TimestampType
 import org.apache.kafka.connect.data.Schema
 import org.apache.kafka.connect.data.SchemaBuilder
 import org.apache.kafka.connect.data.Struct
 import org.apache.kafka.connect.data.Timestamp
+import org.apache.kafka.connect.header.ConnectHeaders
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
 import org.junit.After
 import org.junit.Before
-import org.junit.Ignore
 import org.junit.Test
 import org.mockito.Mockito.mock
 import org.neo4j.graphdb.Label
@@ -25,7 +26,6 @@ import streams.service.sink.strategy.CUDOperations
 import streams.service.sink.strategy.CUDRelationship
 import java.util.*
 import java.util.stream.Collectors
-import java.util.stream.StreamSupport
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -82,7 +82,6 @@ class Neo4jSinkTaskTest {
             .build()
 
 
-
     @Test
     fun `test array of struct`() {
         val firstTopic = "neotopic"
@@ -137,7 +136,7 @@ class Neo4jSinkTaskTest {
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
 
-        val struct= Struct(PERSON_SCHEMA)
+        val struct = Struct(PERSON_SCHEMA)
                 .put("firstName", "Alex")
                 .put("lastName", "Smith")
                 .put("bool", true)
@@ -183,12 +182,12 @@ class Neo4jSinkTaskTest {
                 txEventId = 0,
                 txEventsCount = 3,
                 operation = OperationType.created
-            ),
-            payload = NodePayload(id = "0",
-                before = null,
-                after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
-            ),
-            schema = Schema()
+        ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"), labels = listOf("User"))
+                ),
+                schema = Schema()
         )
         val cdcDataEnd = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -196,12 +195,12 @@ class Neo4jSinkTaskTest {
                 txEventId = 1,
                 txEventsCount = 3,
                 operation = OperationType.created
-            ),
-            payload = NodePayload(id = "1",
-                before = null,
-                after = NodeChange(properties = mapOf("name" to "Michael", "comp@ny" to "Neo4j"), labels = listOf("User Ext"))
-            ),
-            schema = Schema()
+        ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Michael", "comp@ny" to "Neo4j"), labels = listOf("User Ext"))
+                ),
+                schema = Schema()
         )
         val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -209,16 +208,16 @@ class Neo4jSinkTaskTest {
                 txEventId = 2,
                 txEventsCount = 3,
                 operation = OperationType.created
-            ),
-            payload = RelationshipPayload(
-                id = "2",
-                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
-                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
-                after = RelationshipChange(properties = mapOf("since" to 2014)),
-                before = null,
-                label = "KNOWS WHO"
-            ),
-            schema = Schema()
+        ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "KNOWS WHO"
+                ),
+                schema = Schema()
         )
 
         val task = Neo4jSinkTask()
@@ -266,14 +265,14 @@ class Neo4jSinkTaskTest {
                 txEventId = 0,
                 txEventsCount = 3,
                 operation = OperationType.updated
-            ),
-            payload = NodePayload(id = "0",
-                before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
-                    labels = listOf("User", "OldLabel")),
-                after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA, Venice", "age" to 34),
-                    labels = listOf("User"))
-            ),
-            schema = Schema()
+        ),
+                payload = NodePayload(id = "0",
+                        before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
+                                labels = listOf("User", "OldLabel")),
+                        after = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA, Venice", "age" to 34),
+                                labels = listOf("User"))
+                ),
+                schema = Schema()
         )
         val cdcDataRelationship = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -281,16 +280,16 @@ class Neo4jSinkTaskTest {
                 txEventId = 2,
                 txEventsCount = 3,
                 operation = OperationType.updated
-            ),
-            payload = RelationshipPayload(
-                id = "2",
-                start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
-                end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
-                after = RelationshipChange(properties = mapOf("since" to 2014, "foo" to "bar")),
-                before = RelationshipChange(properties = mapOf("since" to 2014)),
-                label = "KNOWS WHO"
-            ),
-            schema = Schema()
+        ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "0", labels = listOf("User"), ids = emptyMap()),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("User Ext"), ids = emptyMap()),
+                        after = RelationshipChange(properties = mapOf("since" to 2014, "foo" to "bar")),
+                        before = RelationshipChange(properties = mapOf("since" to 2014)),
+                        label = "KNOWS WHO"
+                ),
+                schema = Schema()
         )
 
         val task = Neo4jSinkTask()
@@ -421,13 +420,13 @@ class Neo4jSinkTaskTest {
                 txEventId = 0,
                 txEventsCount = 3,
                 operation = OperationType.deleted
-            ),
-            payload = NodePayload(id = "0",
-                before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
-                    labels = listOf("User", "OldLabel")),
-                after = null
-            ),
-            schema = Schema()
+        ),
+                payload = NodePayload(id = "0",
+                        before = NodeChange(properties = mapOf("name" to "Andrea", "comp@ny" to "LARUS-BA"),
+                                labels = listOf("User", "OldLabel")),
+                        after = null
+                ),
+                schema = Schema()
         )
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
@@ -457,7 +456,7 @@ class Neo4jSinkTaskTest {
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
 
-        val struct= Struct(PLACE_SCHEMA)
+        val struct = Struct(PLACE_SCHEMA)
                 .put("name", "San Mateo (CA)")
                 .put("latitude", 37.5629917.toFloat())
                 .put("longitude", -122.3255254.toFloat())
@@ -721,4 +720,94 @@ class Neo4jSinkTaskTest {
         }
     }
 
+
+    @Test
+    fun `should insert data retrieved from Headers, Key and Timestamp`() {
+        val testTopic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$testTopic"] = "CREATE (n:Person {name: event.firstName, ts: event.__timestamp__, trx: event.__headers__.transactionId, keyLastName: event.__key__.lastName})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 1.toString()
+        props[SinkTask.TOPICS_CONFIG] = testTopic
+
+        val timestamp = Random().nextLong()
+        val headerKey = "transactionId"
+        val headerValue = UUID.randomUUID().toString()
+        val headers = ConnectHeaders().addString(headerKey, headerValue)
+        val name = "David"
+        val lastName = "de los Santos Boix"
+
+        val struct = Struct(PERSON_SCHEMA)
+                .put("firstName", name)
+                .put("lastName", lastName)
+                .put("bool", true)
+                .put("short", 1234.toShort())
+                .put("byte", (-32).toByte())
+                .put("long", 12425436L)
+                .put("float", 2356.3.toFloat())
+                .put("double", -2436546.56457)
+                .put("age", 21)
+                .put("modified", Date(1474661402123L))
+
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(testTopic, 1, null, struct, PERSON_SCHEMA, struct, 42, timestamp, TimestampType.CREATE_TIME, headers))
+        task.put(input)
+        db.graph().beginTx().use {
+            val personCount = db.graph().execute("MATCH (p:Person {ts: ${timestamp}, trx: '${headerValue}', keyLastName: '${lastName}', name: '${name}'}) RETURN count(p) AS COUNT")
+            val dbRecords: Long = personCount.columnAs<Long>("COUNT").next()
+            assertEquals(input.size, dbRecords.toInt())
+        }
+    }
+
+    @Test
+    fun `should insert data retrieved from Headers, Key and Timestamp with custom prefix`() {
+        val customKey = "__clave__"
+        val customHeaders = "__cabeceras__"
+        val customTimestamp = "__fecha__"
+
+        val testTopic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$testTopic"] = "CREATE (n:Person {name: event.firstName, ts: event.${customTimestamp}, trx: event.${customHeaders}.transactionId, keyLastName: event.${customKey}.lastName})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 1.toString()
+        props[SinkTask.TOPICS_CONFIG] = testTopic
+        props[Neo4jSinkConnectorConfig.EVENT_KEY_PREFIX] = customKey
+        props[Neo4jSinkConnectorConfig.EVENT_HEADERS_PREFIX] = customHeaders
+        props[Neo4jSinkConnectorConfig.EVENT_TIMESTAMP_PREFIX] = customTimestamp
+
+        val timestamp = Random().nextLong()
+        val headerKey = "transactionId"
+        val headerValue = UUID.randomUUID().toString()
+        val headers = ConnectHeaders().addString(headerKey, headerValue)
+        val name = "David"
+        val lastName = "de los Santos Boix"
+
+        val struct = Struct(PERSON_SCHEMA)
+                .put("firstName", name)
+                .put("lastName", lastName)
+                .put("bool", true)
+                .put("short", 1234.toShort())
+                .put("byte", (-32).toByte())
+                .put("long", 12425436L)
+                .put("float", 2356.3.toFloat())
+                .put("double", -2436546.56457)
+                .put("age", 21)
+                .put("modified", Date(1474661402123L))
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(testTopic, 1, null, struct, PERSON_SCHEMA, struct, 42, timestamp, TimestampType.CREATE_TIME, headers))
+        task.put(input)
+        db.graph().beginTx().use {
+            val personCount = db.graph().execute("MATCH (p:Person {ts: ${timestamp}, trx: '${headerValue}', keyLastName: '${lastName}', name: '${name}'}) RETURN count(p) AS COUNT")
+            val dbRecords: Long = personCount.columnAs<Long>("COUNT").next()
+            assertEquals(input.size, dbRecords.toInt())
+        }
+    }
 }

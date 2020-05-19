@@ -8,6 +8,7 @@ import org.apache.avro.generic.IndexedRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
+import org.apache.kafka.common.header.Headers
 import org.neo4j.graphdb.Node
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
@@ -74,8 +75,12 @@ private fun convertData(data: Any?, stringWhenFailure: Boolean = false): Any? {
         else -> if (stringWhenFailure) data.toString() else throw RuntimeException("Unsupported type ${data::class.java.name}")
     }
 }
+
+private fun convertHeaders(headers: Headers): Map<String, String> = run { headers.map { Pair(it.key(), String(it.value())) }.toMap() }
+
 fun ConsumerRecord<*, *>.toStreamsSinkEntity(): StreamsSinkEntity {
     val key = convertData(this.key(), true)
     val value = convertData(this.value())
-    return StreamsSinkEntity(key, value)
+    val headers = convertHeaders(this.headers())
+    return StreamsSinkEntity(key, value, headers, this.timestamp())
 }

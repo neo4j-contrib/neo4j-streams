@@ -27,7 +27,7 @@ class StreamsEventSinkQueryExecutionTest {
         val streamsTopicService = StreamsTopicService(db as GraphDatabaseAPI)
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
         streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI,
-                NullLog.getInstance(), emptyMap())
+                NullLog.getInstance(), emptyMap(), "__timestamp__", "__headers__", "__key__")
     }
 
     @After

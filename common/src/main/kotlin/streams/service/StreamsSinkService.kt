@@ -16,13 +16,13 @@ enum class TopicType(val group: TopicTypeGroup, val key: String) {
     CUD(group = TopicTypeGroup.CUD, key = "$STREAMS_TOPIC_KEY.cud")
 }
 
-data class StreamsSinkEntity(val key: Any?, val value: Any?)
+data class StreamsSinkEntity(val key: Any?, val value: Any?, val headers: Map<String, Any?> = mapOf(), val timestamp: Long = -1)
 
 abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) {
 
     abstract fun getTopicType(topic: String): TopicType?
     abstract fun getCypherTemplate(topic: String): String?
-    abstract fun write(query: String, events: Collection<Any>)
+    abstract fun write(query: String, records: Collection<Any>)
 
     private fun writeWithStrategy(data: Collection<StreamsSinkEntity>, strategy: IngestionStrategy) {
         strategy.mergeNodeEvents(data).forEach { write(it.query, it.events) }
@@ -34,7 +34,7 @@ abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) 
 
     private fun writeWithCypherTemplate(topic: String, params: Collection<StreamsSinkEntity>) {
         val query = getCypherTemplate(topic) ?: return
-        write(query, params.mapNotNull { it.value })
+        write(query, params)
     }
 
     fun writeForTopic(topic: String, params: Collection<StreamsSinkEntity>) {

@@ -102,14 +102,14 @@ In particular this line:
 
 [source,ini,subs="verbatim,attributes"]
 ----
-"{environment}.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
+"{environment}.topic.cypher.my-topic": "MERGE (p:Person{name: event.name, surname: event.surname, ts: event.timestamp, tc: event.__headers__.timeCommit, dbId: event.__key__.id}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)"
 ----
 
 defines that all the data that comes from the topic `my-topic` will be unpacked by the Sink into Neo4j with the following Cypher query:
 
 [source,cypher]
 ----
-MERGE (p:Person{name: event.name, surname: event.surname})
+MERGE (p:Person{name: event.name, surname: event.surname, ts: event.timestamp, tc: event.__headers__.timeCommit, dbId: event.__key__.id})
 MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
@@ -124,7 +124,11 @@ MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
 
-Where `{batch}` is a list of event objects.
+Where `{batch}` is a list of event objects, holding at least these three objects:
+
+* **`$$__timestamp__$$`:** Records' timestamp as `Long`. The `$$__timestamp__$$` prefix can be customized using the `neo4j.event.timestamp` property.
+* **`$$__headers__$$`:** Records' headers as an Object, so you can access fields from the headers using `$$event.__headers__.field$$`. The `$$__headers__$$` prefix can be customized using the `neo4j.event.headers` property.
+* **`$$__key__$$`:** Records' key as an Object, , so you can access fields from the headers using `$$event.__headers__.field$$`. The `$$__key__$$` prefix can be customized using the `neo4j.event.key` property.
 
 You can change the query or remove the property and add your own, but you must follow the following convention:
 

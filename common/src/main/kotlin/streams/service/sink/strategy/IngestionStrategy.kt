@@ -1,9 +1,8 @@
 package streams.service.sink.strategy
 
-import streams.events.*
+import streams.events.Constraint
+import streams.events.RelationshipPayload
 import streams.service.StreamsSinkEntity
-import streams.utils.Neo4jUtils
-import streams.utils.StreamsUtils
 
 
 data class QueryEvents(val query: String, val events: List<Map<String, Any?>>)
