@@ -90,7 +90,8 @@ task versions {
             apocVersion = neo4jToApoc[matchingNeo4jVersion]==null ? firstApocVersion : neo4jToApoc[matchingNeo4jVersion]
         }
         if (apocVersion != null) {
-            def version = [ neo4j : neo4jRelease, apoc : apocVersion,
+            def version = [ neo4j : neo4jRelease,
+                            version : apocVersion,
                             url : "http://github.com/neo4j-contrib/neo4j-streams/releases/" + apocVersion,
                             jar: "https://github.com/neo4j-contrib/neo4j-streams/releases/download/${apocVersion}/neo4j-streams-${apocVersion}.jar" ]
             versions.add(version)
