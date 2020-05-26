@@ -98,7 +98,7 @@ task versions {
         }
     }
 
-    def versionsFile = new File("target/versions.json")
+    def versionsFile = new File("build/versions.json")
 
     versionsFile.write(JsonOutput.prettyPrint(JsonOutput.toJson(versions)))
 }
