@@ -70,7 +70,7 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
 
     fun getTopicType(topic: String) = Neo4jUtils.executeInWriteableInstance(db) {
         db.beginTx().use {
-            TopicType.values().find {
+            val ret = TopicType.values().find {
                 if (!properties.hasProperty(it.key)) {
                     false
                 } else {
@@ -82,11 +82,13 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                     }
                 }
             }
+            it.success()
+            ret
         }
     }
 
     fun getTopics() = db.beginTx().use {
-        TopicType.values()
+        val ret = TopicType.values()
                 .filter { properties.hasProperty(it.key) }
                 .flatMap {
                     val data = JSONUtils.readValue<Any>(properties.getProperty(it.key))
@@ -96,6 +98,8 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
                         else -> emptySet()
                     }
                 }.toSet() as Set<String>
+        it.success()
+        ret
     }
 
     fun setAll(topics: Topics) {
@@ -114,10 +118,12 @@ class StreamsTopicService(private val db: GraphDatabaseAPI) {
     }
 
     fun getAll() = db.beginTx().use {
-        TopicType.values()
+        val ret = TopicType.values()
                 .filter { properties.hasProperty(it.key) }
                 .map { it to JSONUtils.readValue<Any>(properties.getProperty(it.key)) }
                 .toMap()
+        it.success()
+        ret
     }
 
 }

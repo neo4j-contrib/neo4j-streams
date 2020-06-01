@@ -26,8 +26,15 @@ object Neo4jUtils {
                 return false
             }
 
-            val role = db.execute("CALL dbms.cluster.role()").columnAs<String>("role").next()
-            return role.equals(LEADER, ignoreCase = true)
+            val hasProc = db.execute("""CALL dbms.procedures() YIELD name
+                    |WHERE name = 'dbms.cluster.role'
+                    |RETURN name""".trimMargin()).hasNext()
+            return if (hasProc) {
+                val role = db.execute("CALL dbms.cluster.role() YIELD role RETURN role").columnAs<String>("role").next()
+                return role.equals(LEADER, ignoreCase = true)
+            } else {
+                true
+            }
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return true

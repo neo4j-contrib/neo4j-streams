@@ -72,6 +72,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                             StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
                             StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink.getEventConsumerFactory())
                             StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink.getEventSinkConfigMapper())
+                            StreamsSinkProcedures.registerStreamsEventSink(eventSink)
                         } catch (e: Exception) {
                             streamsLog.error("Error initializing the streaming sink:", e)
                         }

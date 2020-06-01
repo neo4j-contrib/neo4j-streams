@@ -1,5 +1,6 @@
 package streams.kafka
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -66,6 +67,12 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun start() { // TODO move to the abstract class
+        if (this::job.isInitialized && this.job.isActive) {
+            if (log.isDebugEnabled) {
+                log.debug("Kafka Sink is already started.")
+            }
+            return
+        }
         val streamsConfig = StreamsSinkConfiguration.from(config)
         val topics = streamsTopicService.getTopics()
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
@@ -98,7 +105,12 @@ class KafkaEventSink(private val config: Config,
         try {
             job.cancelAndJoin()
             log.info("Kafka Sink daemon Job stopped")
-        } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
+        } catch (e: Exception) {
+            when (e) {
+                is UninitializedPropertyAccessException, is CancellationException -> Unit
+                else -> throw e
+            }
+        }
     }
 
     private fun createJob(): Job {
@@ -123,10 +135,10 @@ class KafkaEventSink(private val config: Config,
                     }
                     delay(timeMillis)
                 }
-                eventConsumer.stop()
             } catch (e: Throwable) {
                 val message = e.message ?: "Generic error, please check the stack trace: "
                 log.error(message, e)
+            } finally {
                 eventConsumer.stop()
             }
         }
