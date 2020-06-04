@@ -20,6 +20,7 @@ import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
+import streams.events.StreamsPluginStatus
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -67,7 +68,7 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun start() { // TODO move to the abstract class
-        if (this::job.isInitialized && this.job.isActive) {
+        if (StreamsPluginStatus.RUNNING == status()) {
             if (log.isDebugEnabled) {
                 log.debug("Kafka Sink is already started.")
             }
@@ -127,7 +128,7 @@ class KafkaEventSink(private val config: Config,
                         }
                         TimeUnit.SECONDS.toMillis(1)
                     } else {
-                        val timeMillis = TimeUnit.MINUTES.toMillis(5)
+                        val timeMillis = TimeUnit.MINUTES.toMillis(3)
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }
@@ -150,6 +151,11 @@ class KafkaEventSink(private val config: Config,
                 log.warn(getInvalidTopicsError(eventConsumer.invalidTopics()))
             }
         }, UninitializedPropertyAccessException::class.java)
+    }
+
+    override fun status(): StreamsPluginStatus = when (this::job.isInitialized && this.job.isActive) {
+        true -> StreamsPluginStatus.RUNNING
+        else -> StreamsPluginStatus.STOPPED
     }
 
 }

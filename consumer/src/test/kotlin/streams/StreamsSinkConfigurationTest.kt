@@ -17,7 +17,6 @@ class StreamsSinkConfigurationTest {
 
     @Test
     fun shouldReturnConfigurationFromMap() {
-        val pollingInterval = "10"
         val topic = "topic-neo"
         val cdctopic = "cdctopic"
         val topicKey = "streams.sink.topic.cypher.$topic"
@@ -25,7 +24,6 @@ class StreamsSinkConfigurationTest {
         val customLabel = "CustomLabel"
         val customId = "customId"
         val config = Config.builder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.sourceId", cdctopic)
@@ -33,7 +31,7 @@ class StreamsSinkConfigurationTest {
                 .withSetting("streams.sink.topic.cdc.sourceId.idName", customId)
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
-        testFromConf(streamsConfig, pollingInterval, topic, topicValue)
+        testFromConf(streamsConfig, topic, topicValue)
         assertFalse { streamsConfig.enabled }
         assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
@@ -47,7 +45,6 @@ class StreamsSinkConfigurationTest {
         val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val config = Config.builder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.topic.pattern.node.nodePatternTopic", "User{!userId,name,surname,address.city}")
                 .withSetting("streams.sink.enabled", "false")
@@ -58,10 +55,8 @@ class StreamsSinkConfigurationTest {
 
     @Test(expected = RuntimeException::class)
     fun shouldFailWithCrossDefinedCDCTopics() {
-        val pollingInterval = "10"
         val topic = "topic-neo"
         val config = Config.builder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.sourceId", topic)
                 .withSetting("streams.sink.topic.cdc.schema", topic)
@@ -72,10 +67,8 @@ class StreamsSinkConfigurationTest {
     companion object {
         fun testDefaultConf(default: StreamsSinkConfiguration) {
             assertEquals(emptyMap(), default.topics.cypherTopics)
-            assertEquals(10000, default.sinkPollingInterval)
         }
-        fun testFromConf(streamsConfig: StreamsSinkConfiguration, pollingInterval: String, topic: String, topicValue: String) {
-            assertEquals(pollingInterval.toLong(), streamsConfig.sinkPollingInterval)
+        fun testFromConf(streamsConfig: StreamsSinkConfiguration, topic: String, topicValue: String) {
             assertEquals(1, streamsConfig.topics.cypherTopics.size)
             assertEquals(topicValue, streamsConfig.topics.cypherTopics[topic])
         }

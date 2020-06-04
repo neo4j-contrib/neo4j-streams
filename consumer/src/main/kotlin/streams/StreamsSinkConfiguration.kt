@@ -1,9 +1,12 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
+import java.util.Properties
 
 
 object StreamsSinkConfigurationConstants {
@@ -14,7 +17,6 @@ object StreamsSinkConfigurationConstants {
 
 data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val proceduresEnabled: Boolean = true,
-                                    val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
@@ -47,7 +49,6 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
             return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
                     proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
                             .toString().toBoolean(),
-                    sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
                     errorConfig = errorHandler,
                     sourceIdStrategyConfig = sourceIdStrategyConfig)

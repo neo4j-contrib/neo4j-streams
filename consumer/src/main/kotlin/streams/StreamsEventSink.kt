@@ -3,6 +3,7 @@ package streams
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
+import streams.events.StreamsPluginStatus
 
 abstract class StreamsEventSink(private val config: Config,
                                 private val queryExecution: StreamsEventSinkQueryExecution,
@@ -22,6 +23,8 @@ abstract class StreamsEventSink(private val config: Config,
     open fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper = StreamsEventSinkConfigMapper(streamsConfigMap, mappingKeys)
 
     open fun printInvalidTopics() {}
+
+    abstract fun status(): StreamsPluginStatus
 
 }
 

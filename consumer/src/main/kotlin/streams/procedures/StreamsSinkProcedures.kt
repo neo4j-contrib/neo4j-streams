@@ -1,7 +1,8 @@
 package streams.procedures
 
+import org.apache.commons.lang3.exception.ExceptionUtils
 import org.neo4j.graphdb.GraphDatabaseService
-import org.neo4j.kernel.configuration.Config
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.procedure.Context
 import org.neo4j.procedure.Description
@@ -13,11 +14,15 @@ import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSink
 import streams.StreamsEventSinkConfigMapper
 import streams.StreamsSinkConfiguration
-import java.net.URI
-import java.nio.file.Path
+import streams.events.StreamsPluginStatus
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
+import streams.utils.Neo4jUtils
+import java.util.stream.Collectors
 import java.util.stream.Stream
 
 class StreamResult(@JvmField val event: Map<String, *>)
+class StreamsSinkDTO(@JvmField val name: String, @JvmField val value: Any?)
 
 class StreamsSinkProcedures {
 
@@ -47,21 +52,77 @@ class StreamsSinkProcedures {
     }
 
     @Procedure("streams.sink.start")
-    fun sinkStart(): Unit {
+    fun sinkStart(): Stream<StreamsSinkDTO> {
         checkEnabled()
-        streamsEventSink?.start()
+        checkLeader()
+        try {
+            streamsEventSink?.start()
+            return sinkStatus()
+        } catch (e: Exception) {
+            log?.error("Cannot start the Sink because of the following exception", e)
+            return Stream.concat(sinkStatus(),
+                    Stream.of(StreamsSinkDTO("exception", ExceptionUtils.getStackTrace(e))))
+        }
     }
 
     @Procedure("streams.sink.stop")
-    fun sinkStop(): Unit {
+    fun sinkStop(): Stream<StreamsSinkDTO> {
         checkEnabled()
-        streamsEventSink?.stop()
+        checkLeader()
+        try {
+            streamsEventSink?.stop()
+            return sinkStatus()
+        } catch (e: Exception) {
+            log?.error("Cannot stopped the Sink because of the following exception", e)
+            return Stream.concat(sinkStatus(),
+                    Stream.of(StreamsSinkDTO("exception", ExceptionUtils.getStackTrace(e))))
+        }
     }
 
     @Procedure("streams.sink.restart")
-    fun sinkRestart(): Unit {
-        sinkStop()
-        sinkStart()
+    fun sinkRestart(): Stream<StreamsSinkDTO> {
+        val stopped = sinkStop().collect(Collectors.toList())
+        val hasError = stopped.stream().anyMatch { it.name == "exception" }
+        if (hasError) {
+            return stopped.stream()
+        }
+        return sinkStart()
+    }
+
+    @Procedure("streams.sink.config")
+    fun sinkConfig(): Stream<StreamsSinkDTO> {
+        checkEnabled()
+        checkLeader()
+        val configMap = JSONUtils.asMap(streamsSinkConfiguration)
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" }
+                .mapKeys { it.key.toPointCase() }
+                .mapKeys {
+                    when (it.key) {
+                        "error.config" -> "streams.sink.errors"
+                        "procedures.enabled" -> "streams.${it.key}"
+                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
+                    }
+                }
+        val topicMap = streamsSinkConfiguration.topics.asMap()
+                .mapKeys { it.key.key }
+        val invalidTopics = mapOf("invalid_topics" to streamsSinkConfiguration.topics.invalid)
+        return (configMap + topicMap + invalidTopics)
+                .entries.stream()
+                .map { StreamsSinkDTO(it.key, it.value) }
+    }
+
+    @Procedure("streams.sink.status")
+    fun sinkStatus(): Stream<StreamsSinkDTO> {
+        checkEnabled()
+        checkLeader()
+        val value = (streamsEventSink?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
+        return Stream.of(StreamsSinkDTO("status", value))
+    }
+
+    private fun checkLeader() {
+        if (!Neo4jUtils.isWriteableInstance(db as GraphDatabaseAPI)) {
+            throw RuntimeException("You can use it only in the LEADER or in a single instance configuration.")
+        }
     }
 
     private fun readData(topic: String, procedureConfig: Map<String, Any>, consumerConfig: Map<String, String>): List<Any> {
