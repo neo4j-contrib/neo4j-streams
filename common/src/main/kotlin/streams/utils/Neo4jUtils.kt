@@ -14,7 +14,7 @@ import kotlin.streams.toList
 
 object Neo4jUtils {
     @JvmStatic val LEADER = "LEADER"
-    fun isWriteableInstance(db: GraphDatabaseAPI): Boolean {
+    fun isWriteableInstance(db: GraphDatabaseAPI, isCluster: Boolean = false): Boolean {
         try {
             val isSlave = StreamsUtils.ignoreExceptions(
                     {
@@ -26,10 +26,7 @@ object Neo4jUtils {
                 return false
             }
 
-            val hasProc = db.execute("""CALL dbms.procedures() YIELD name
-                    |WHERE name = 'dbms.cluster.role'
-                    |RETURN name""".trimMargin()).hasNext()
-            return if (hasProc) {
+            return if (isCluster) {
                 val role = db.execute("CALL dbms.cluster.role() YIELD role RETURN role").columnAs<String>("role").next()
                 return role.equals(LEADER, ignoreCase = true)
             } else {

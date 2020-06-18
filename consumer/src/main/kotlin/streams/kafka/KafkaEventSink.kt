@@ -38,6 +38,8 @@ class KafkaEventSink(private val config: Config,
     private lateinit var eventConsumer: StreamsEventConsumer
     private lateinit var job: Job
 
+    private val isNeo4jCluster = Neo4jUtils.isCluster(db)
+
     override val streamsConfigMap = config.raw.filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
     }.toMap()
@@ -76,7 +78,7 @@ class KafkaEventSink(private val config: Config,
         }
         val streamsConfig = StreamsSinkConfiguration.from(config)
         val topics = streamsTopicService.getTopics()
-        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
+        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
         if (!streamsConfig.enabled) {
             if (topics.isNotEmpty() && isWriteableInstance) {
                 log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
@@ -119,7 +121,7 @@ class KafkaEventSink(private val config: Config,
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 while (isActive) {
-                    val timeMillis = if (Neo4jUtils.isWriteableInstance(db)) {
+                    val timeMillis = if (Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)) {
                         eventConsumer.read { topic, data ->
                             if (log.isDebugEnabled) {
                                 log.debug("Reading data from topic $topic")
