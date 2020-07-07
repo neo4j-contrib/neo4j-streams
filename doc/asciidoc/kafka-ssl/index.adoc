@@ -152,3 +152,46 @@ ssl.truststore.location=/home/kafka/security/kafka.client.truststore.jks
 ssl.truststore.password=neo4jpassword
 ssl.endpoint.identification.algorithm=
 ----
+
+=== Authentication with SASL
+
+You can configure JAAS by providing a JAAS configuration file. To do this, connect to your Kafka server and modify the
+`config/server.properties` file. This configuration worked in general, but other configurations without the EXTERNAL
+and INTERNAL settings should works as well.
+
+This configuration, for example, is for Kafka on AWS but should work for other configurations.
+
+[source, properties]
+----
+listeners=EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:9093,CLIENT://0.0.0.0:9094
+listener.security.protocol.map=EXTERNAL:SASL_PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SASL_PLAINTEXT
+
+advertised.listeners=EXTERNAL://18.188.84.xxx:9092,INTERNAL://172.31.43.xxx:9093,CLIENT://18.188.84.xxx:9094
+
+zookeeper.connect=18.188.84.xxx:2181
+
+sasl.mechanism.inter.broker.protocol=PLAIN
+sasl.enabled.mechanisms=PLAIN
+inter.broker.listener.name=INTERNAL
+----
+
+On the Neo4j side the following is required. Please consider that in this case, we are connecting to the public
+AWS IP address.
+
+. Copy the contents of `~/kafka/conf/kafka_jaas.conf` on your Kafka server and save it to a file on your Neo4j server
+(i.e ~/conf/kafka_client_jaas.conf)
+
+. In *neo4j.conf*, add the following:
+
++
+[source, properties]
+----
+dbms.jvm.additional=-Djava.security.auth.login.config=/Users/davidfauth/neo4j-enterprise-4.0.4_kafka/conf/kafka_client_jaas.conf
+kafka.security.protocol=SASL_PLAINTEXT
+kafka.sasl.mechanism=PLAIN
+----
+
+For more information, please consult the official Confluent documentation at the following links:
+
+* https://docs.confluent.io/2.0.0/kafka/sasl.html#authentication-using-sasl
+* https://docs.confluent.io/2.0.0/kafka/sasl.html#configuring-kafka-clients
