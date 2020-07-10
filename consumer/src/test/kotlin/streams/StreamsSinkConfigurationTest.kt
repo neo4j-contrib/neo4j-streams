@@ -23,12 +23,16 @@ class StreamsSinkConfigurationTest {
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val customLabel = "CustomLabel"
         val customId = "customId"
+        val apocTimeout = "10000"
+        val apocInterval = "2000"
         val config = Config.builder()
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
                 .withSetting("streams.sink.topic.cdc.sourceId", cdctopic)
                 .withSetting("streams.sink.topic.cdc.sourceId.labelName", customLabel)
                 .withSetting("streams.sink.topic.cdc.sourceId.idName", customId)
+                .withSetting("streams.check.apoc.timeout", apocTimeout)
+                .withSetting("streams.check.apoc.interval", apocInterval)
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, topic, topicValue)
@@ -36,6 +40,8 @@ class StreamsSinkConfigurationTest {
         assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
         assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
+        assertEquals(apocTimeout.toLong(), streamsConfig.checkApocTimeout)
+        assertEquals(apocInterval.toLong(), streamsConfig.checkApocInterval)
     }
 
     @Test(expected = RuntimeException::class)

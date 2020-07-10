@@ -94,7 +94,7 @@ class StreamsSinkProcedures {
         checkEnabled()
         checkLeader()
         val configMap = JSONUtils.asMap(streamsSinkConfiguration)
-                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" }
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
                 .mapKeys { it.key.toPointCase() }
                 .mapKeys {
                     when (it.key) {

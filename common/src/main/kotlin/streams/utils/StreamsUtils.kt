@@ -1,5 +1,8 @@
 package streams.utils
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
+
 object StreamsUtils {
 
     const val UNWIND: String = "UNWIND {events} AS event"
@@ -20,6 +23,16 @@ object StreamsUtils {
                 else -> throw e
             }
         }
+    }
+
+    fun blockUntilTrueOrTimeout(timeout: Long, delay: Long = 1000, action: () -> Boolean): Boolean = runBlocking {
+        val start = System.currentTimeMillis()
+        var success = action()
+        while (System.currentTimeMillis() - start < timeout && !success) {
+            delay(delay)
+            success = action()
+        }
+        success
     }
 
 }

@@ -1,5 +1,8 @@
 package streams
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import org.neo4j.kernel.availability.AvailabilityGuard
 import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.kernel.configuration.Config
@@ -81,6 +84,28 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
         }
 
         private fun initSinkModule(streamsTopicService: StreamsTopicService, streamsSinkConfiguration: StreamsSinkConfiguration) {
+            if (streamsSinkConfiguration.checkApocTimeout > -1) {
+                GlobalScope.launch(Dispatchers.IO) {
+                    val success = StreamsUtils.blockUntilTrueOrTimeout(streamsSinkConfiguration.checkApocTimeout, streamsSinkConfiguration.checkApocInterval) {
+                        val hasApoc = Neo4jUtils.hasApoc(db)
+                        if (streamsLog.isDebugEnabled) {
+                            streamsLog.debug("APOC not loaded yet, next check in ${streamsSinkConfiguration.checkApocInterval} ms")
+                        }
+                        hasApoc
+                    }
+                    if (success) {
+                        initSink(streamsTopicService, streamsSinkConfiguration)
+                    } else {
+                        streamsLog.info("Streams Sink plugin not loaded as APOC are not installed")
+                    }
+                }
+            } else {
+                initSink(streamsTopicService, streamsSinkConfiguration)
+            }
+
+        }
+
+        private fun initSink(streamsTopicService: StreamsTopicService, streamsSinkConfiguration: StreamsSinkConfiguration) {
             streamsTopicService.clearAll()
             streamsTopicService.setAll(streamsSinkConfiguration.topics)
             eventSink.start()

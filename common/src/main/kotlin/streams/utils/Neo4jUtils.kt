@@ -57,6 +57,19 @@ object Neo4jUtils {
         }
     }
 
+    fun hasApoc(db: GraphDatabaseAPI): Boolean {
+        try {
+            db.execute("RETURN apoc.version() AS version").columnAs<String>("version").next()
+            return true
+        } catch (e: QueryExecutionException) {
+            if (e.statusCode.equals("Neo.ClientError.Statement.SyntaxError", ignoreCase = true)
+                    && e.message!!.contains("Unknown function", ignoreCase = true)) {
+                return false
+            }
+            throw e
+        }
+    }
+
     fun clusterHasLeader(db: GraphDatabaseAPI): Boolean {
         try {
             return db.execute("""
