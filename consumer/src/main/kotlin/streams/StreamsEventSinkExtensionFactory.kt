@@ -88,7 +88,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
                 GlobalScope.launch(Dispatchers.IO) {
                     val success = StreamsUtils.blockUntilTrueOrTimeout(streamsSinkConfiguration.checkApocTimeout, streamsSinkConfiguration.checkApocInterval) {
                         val hasApoc = Neo4jUtils.hasApoc(db)
-                        if (streamsLog.isDebugEnabled) {
+                        if (!hasApoc && streamsLog.isDebugEnabled) {
                             streamsLog.debug("APOC not loaded yet, next check in ${streamsSinkConfiguration.checkApocInterval} ms")
                         }
                         hasApoc
