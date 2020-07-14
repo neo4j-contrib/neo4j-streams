@@ -7,8 +7,11 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
+import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
+import streams.events.StreamsPluginStatus
+import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -86,6 +89,50 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
                 WHERE properties(p) = {props}
                 RETURN count(p) AS count
             """.trimIndent()
+            val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
+            result.hasNext() && result.next() == 1L && !result.hasNext()
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should stop and start the sink via procedures`() = runBlocking {
+        // given
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db.dependencyResolver.resolveDependency(Procedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
+
+        val stopped = db.execute("CALL streams.sink.stop()")
+        org.junit.Assert.assertEquals(mapOf("name" to "status", "value" to StreamsPluginStatus.STOPPED.toString()), stopped.next())
+        org.junit.Assert.assertFalse(stopped.hasNext())
+
+        val producerRecord = ProducerRecord(topics[0], UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        val props = data
+                .flatMap {
+                    if (it.key == "properties") {
+                        val map = it.value as Map<String, Any>
+                        map.entries.map { it.key to it.value }
+                    } else {
+                        listOf(it.key to it.value)
+                    }
+                }
+                .toMap()
+
+        delay(30000)
+
+        val query = """MATCH (n:Label) WHERE properties(n) = {props}
+                |RETURN count(*) AS count""".trimMargin()
+        val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
+        org.junit.Assert.assertEquals(0L, result.next())
+
+        // when
+        val started = db.execute("CALL streams.sink.start()")
+        org.junit.Assert.assertEquals(mapOf("name" to "status", "value" to StreamsPluginStatus.RUNNING.toString()), started.next())
+        org.junit.Assert.assertFalse(started.hasNext())
+
+        // then
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val result = db.execute(query, mapOf("props" to props)).columnAs<Long>("count")
             result.hasNext() && result.next() == 1L && !result.hasNext()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)

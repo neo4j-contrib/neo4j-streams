@@ -18,6 +18,9 @@ kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserial
 {environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
 {environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
 {environment}.enabled=<true/false, default=false>
+
+streams.check.apoc.timeout=<ms to await for APOC being loaded, default -1 skip the wait>
+streams.check.apoc.interval=<ms interval awaiting for APOC being loaded, default 1000>
 ----
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

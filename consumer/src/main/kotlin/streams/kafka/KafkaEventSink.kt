@@ -1,5 +1,6 @@
 package streams.kafka
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.Job
@@ -19,6 +20,7 @@ import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
+import streams.events.StreamsPluginStatus
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -35,6 +37,8 @@ class KafkaEventSink(private val config: Config,
 
     private lateinit var eventConsumer: StreamsEventConsumer
     private lateinit var job: Job
+
+    private val isNeo4jCluster = Neo4jUtils.isCluster(db)
 
     override val streamsConfigMap = config.raw.filterKeys {
         it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
@@ -66,9 +70,15 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun start() { // TODO move to the abstract class
+        if (StreamsPluginStatus.RUNNING == status()) {
+            if (log.isDebugEnabled) {
+                log.debug("Kafka Sink is already started.")
+            }
+            return
+        }
         val streamsConfig = StreamsSinkConfiguration.from(config)
         val topics = streamsTopicService.getTopics()
-        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
+        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
         if (!streamsConfig.enabled) {
             if (topics.isNotEmpty() && isWriteableInstance) {
                 log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
@@ -98,7 +108,12 @@ class KafkaEventSink(private val config: Config,
         try {
             job.cancelAndJoin()
             log.info("Kafka Sink daemon Job stopped")
-        } catch (e : UninitializedPropertyAccessException) { /* ignoring this one only */ }
+        } catch (e: Exception) {
+            when (e) {
+                is UninitializedPropertyAccessException, is CancellationException -> Unit
+                else -> throw e
+            }
+        }
     }
 
     private fun createJob(): Job {
@@ -106,7 +121,7 @@ class KafkaEventSink(private val config: Config,
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 while (isActive) {
-                    val timeMillis = if (Neo4jUtils.isWriteableInstance(db)) {
+                    val timeMillis = if (Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)) {
                         eventConsumer.read { topic, data ->
                             if (log.isDebugEnabled) {
                                 log.debug("Reading data from topic $topic")
@@ -115,7 +130,7 @@ class KafkaEventSink(private val config: Config,
                         }
                         TimeUnit.SECONDS.toMillis(1)
                     } else {
-                        val timeMillis = TimeUnit.MINUTES.toMillis(5)
+                        val timeMillis = TimeUnit.MINUTES.toMillis(3)
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }
@@ -123,10 +138,10 @@ class KafkaEventSink(private val config: Config,
                     }
                     delay(timeMillis)
                 }
-                eventConsumer.stop()
             } catch (e: Throwable) {
                 val message = e.message ?: "Generic error, please check the stack trace: "
                 log.error(message, e)
+            } finally {
                 eventConsumer.stop()
             }
         }
@@ -138,6 +153,11 @@ class KafkaEventSink(private val config: Config,
                 log.warn(getInvalidTopicsError(eventConsumer.invalidTopics()))
             }
         }, UninitializedPropertyAccessException::class.java)
+    }
+
+    override fun status(): StreamsPluginStatus = when (this::job.isInitialized && this.job.isActive) {
+        true -> StreamsPluginStatus.RUNNING
+        else -> StreamsPluginStatus.STOPPED
     }
 
 }

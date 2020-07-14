@@ -30,7 +30,6 @@ class KafkaSinkConfigurationTest {
 
     @Test
     fun `should return configuration from map`() {
-        val pollingInterval = "10"
         val topic = "topic-neo"
         val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "
@@ -40,7 +39,6 @@ class KafkaSinkConfigurationTest {
         val autoOffsetReset = "latest"
         val autoCommit = "false"
         val config = Config.builder()
-                .withSetting("streams.sink.polling.interval", pollingInterval)
                 .withSetting(topicKey, topicValue)
                 .withSetting("kafka.zookeeper.connect", zookeeper)
                 .withSetting("kafka.bootstrap.servers", bootstrap)
@@ -58,7 +56,7 @@ class KafkaSinkConfigurationTest {
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
         val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config.raw)
-        StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, pollingInterval, topic, topicValue)
+        StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, topic, topicValue)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
         assertEquals(bootstrap, kafkaSinkConfiguration.bootstrapServers)
@@ -71,7 +69,6 @@ class KafkaSinkConfigurationTest {
         assertEquals(expectedMap, resultMap)
 
         val streamsConfig = StreamsSinkConfiguration.from(config)
-        assertEquals(pollingInterval.toLong(), streamsConfig.sinkPollingInterval)
         assertTrue { streamsConfig.topics.cypherTopics.containsKey(topic) }
         assertEquals(topicValue, streamsConfig.topics.cypherTopics[topic])
     }
@@ -82,7 +79,6 @@ class KafkaSinkConfigurationTest {
         val zookeeper = "zookeeper:2181"
         val bootstrap = "bootstrap:9092"
         try {
-            val pollingInterval = "10"
             val topic = "topic-neo"
             val topicKey = "streams.sink.topic.cypher.$topic"
             val topicValue = "MERGE (n:Label{ id: event.id }) "
@@ -90,7 +86,6 @@ class KafkaSinkConfigurationTest {
             val autoOffsetReset = "latest"
             val autoCommit = "false"
             val config = Config.builder()
-                    .withSetting("streams.sink.polling.interval", pollingInterval)
                     .withSetting(topicKey, topicValue)
                     .withSetting("kafka.zookeeper.connect", zookeeper)
                     .withSetting("kafka.bootstrap.servers", bootstrap)
@@ -114,7 +109,6 @@ class KafkaSinkConfigurationTest {
         val zookeeper = "zookeeper:2181"
         val bootstrap = ""
         try {
-            val pollingInterval = "10"
             val topic = "topic-neo"
             val topicKey = "streams.sink.topic.cypher.$topic"
             val topicValue = "MERGE (n:Label{ id: event.id }) "
@@ -122,7 +116,6 @@ class KafkaSinkConfigurationTest {
             val autoOffsetReset = "latest"
             val autoCommit = "false"
             val config = Config.builder()
-                    .withSetting("streams.sink.polling.interval", pollingInterval)
                     .withSetting(topicKey, topicValue)
                     .withSetting("kafka.zookeeper.connect", zookeeper)
                     .withSetting("kafka.bootstrap.servers", bootstrap)

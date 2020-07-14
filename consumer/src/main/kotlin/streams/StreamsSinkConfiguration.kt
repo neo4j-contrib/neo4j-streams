@@ -1,22 +1,28 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
+import java.util.Properties
 
 
 object StreamsSinkConfigurationConstants {
-    const val STREAMS_CONFIG_PREFIX: String = "streams."
+    const val CHECK_APOC_TIMEOUT = "check.apoc.timeout"
+    const val CHECK_APOC_INTERVAL = "check.apoc.interval"
+    const val STREAMS_CONFIG_PREFIX = "streams."
     const val ENABLED = "sink.enabled"
     const val PROCEDURES_ENABLED = "procedures.enabled"
 }
 
 data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val proceduresEnabled: Boolean = true,
-                                    val sinkPollingInterval: Long = 10000,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
+                                    val checkApocTimeout: Long = -1,
+                                    val checkApocInterval: Long = 1000,
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     companion object {
@@ -47,9 +53,12 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
             return default.copy(enabled = config.getOrDefault(StreamsSinkConfigurationConstants.ENABLED, default.enabled).toString().toBoolean(),
                     proceduresEnabled = config.getOrDefault(StreamsSinkConfigurationConstants.PROCEDURES_ENABLED, default.proceduresEnabled)
                             .toString().toBoolean(),
-                    sinkPollingInterval = config.getOrDefault("sink.polling.interval", default.sinkPollingInterval).toString().toLong(),
                     topics = topics,
                     errorConfig = errorHandler,
+                    checkApocTimeout = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_APOC_TIMEOUT, default.checkApocTimeout)
+                            .toString().toLong(),
+                    checkApocInterval = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_APOC_INTERVAL, default.checkApocInterval)
+                            .toString().toLong(),
                     sourceIdStrategyConfig = sourceIdStrategyConfig)
         }
 
