@@ -1,0 +1,42 @@
+
+[[developing]]
+== Developing Neo4j Streams
+
+ifdef::env-docs[]
+[abstract]
+--
+This chapter describes setting up Neo4j Streams for local development.
+--
+endif::env-docs[]
+
+[[dev_build_locally]]
+=== Build locally
+
+----
+mvn clean install
+----
+
+1. Copy `<project_dir>/target/neo4j-streams-<VERSION>.jar` into `$NEO4J_HOME/plugins`
+2. Restart Neo4j
+
+[[dev_gen_docs]]
+=== Generating this Documentation
+
+1. `cd doc && ./gradlew clean packageHTML`
+2. `cd build/html && python3 -m http.server`
+3. Browse to http://localhost:8000/
+
+[[dev_gen_docs_antora]]
+=== Generating this Documentation with Antora
+
+Open a terminal window and be sure to be in the root of the project, then execute the following steps:
+
+1. `cd doc`
+2. `npm run build:docs`
+3. `npm start`
+4. Browse to http://localhost:8000/
+
+[NOTE]
+====
+You have to previously run `mvn clean install` in order to install Antora and all the necessary dependencies
+====

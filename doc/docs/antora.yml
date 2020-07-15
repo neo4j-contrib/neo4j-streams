@@ -1,0 +1,13 @@
+name: neo4j-streams-docs
+version: 4.0.2
+title: Neo4j Streams Docs
+start_page: ROOT:index.adoc
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    theme: docs
+    version: 4.0.2
+    copyright: Neo4j Inc.
+    common-license-page-uri: https://neo4j.com/docs/license/

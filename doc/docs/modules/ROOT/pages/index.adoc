@@ -1,0 +1,29 @@
+
+= Neo4j Streaming Data Integrations User Guide v{version}
+:img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
+:env-docs: true
+
+ifdef::backend-html5[(C) {copyright}]
+
+License: link:{common-license-page-uri}[Creative Commons 4.0]
+
+[abstract]
+--
+This is the user guide for Neo4j Streams version {version}, authored by the Neo4j Labs Team.
+--
+
+The guide covers the following areas:
+
+* xref:overview.adoc#overview[Project overview]
+* xref:quickstart.adoc#quickstart[Get Started Fast with the most Common Scenarios]
+* xref:producer.adoc#neo4j_streams_source[How to configure Neo4j Streams as Source]
+* xref:consumer.adoc#neo4j_streams_sink[How to configure Neo4j Streams as Sink]
+* xref:procedures.adoc#neo4j_streams_procedures[How to use Neo4j Streams Procedures]
+* xref:kafka-connect.adoc#kafka_connect_plugin[How to configure Kafka Connect plugin]
+* xref:neo4j-cluster.adoc#causal_cluster[Using with Neo4j Causal Cluster]
+* xref:docker.adoc#docker[Run Neo4j Streams and Kafka connect with Docker]
+* xref:kafka-ssl.adoc#kafka_ssl[A guidance on how to configure SSL between Kafka and Neo4j]
+* xref:cloud.adoc#confluent_cloud[Configuring a connection to a Confluent Cloud]
+* xref:examples.adoc#examples[Useful examples]
+* xref:developing.adoc#developing[Developing Neo4j Streams]
+* xref:faq.adoc#faq[Neo4j Streams FAQ]

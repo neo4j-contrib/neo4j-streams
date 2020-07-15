@@ -1,5 +1,5 @@
 
-= Neo4j Streaming Data Integrations User Guide v{docs-version}
+= Neo4j Streaming Data Integrations User Guide v{version}
 :toc:
 :toclevels: 5
 :sectids:

@@ -1,0 +1,122 @@
+
+[[neo4j_streams_config_summary]]
+=== Configuration summary
+
+You can set the following Kafka configuration values in your `neo4j.conf`, here are the defaults.
+
+.neo4j.conf
+[subs="verbatim,attributes"]
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+kafka.auto.offset.reset=earliest
+kafka.group.id=neo4j
+kafka.enable.auto.commit=true
+kafka.key.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
+kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
+
+{environment}.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
+{environment}.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.cud=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
+{environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
+{environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
+{environment}.enabled=<true/false, default=true>
+----
+
+See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+==== Multi Database Support
+
+Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
+in order to support this feature you can set for each database instance a configuration suffix with the following pattern
+`to.<DB_NAME>` to the properties in your neo4j.conf file.
+
+Following the list of new properties that allows to support multi-tenancy:
+
+----
+streams.sink.topic.cypher.<TOPIC_NAME>.to.<DB_NAME>=<CYPHER_QUERY>
+streams.sink.topic.cdc.sourceId.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.cdc.schema.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.pattern.node.<TOPIC_NAME>.to.<DB_NAME>=<NODE_EXTRACTION_PATTERN>
+streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.<DB_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
+streams.sink.enabled.to.<DB_NAME>=<true/false, default=true>
+----
+
+This means that for each db instance you can specify if:
+* use the source connector
+* the routing patterns
+
+So if you have a instance name `foo` you can specify a configuration in this way:
+
+----
+streams.sink.topic.cypher.<TOPIC_NAME>.to.foo=<CYPHER_QUERY>
+streams.sink.topic.cdc.sourceId.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.cdc.schema.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.pattern.node.<TOPIC_NAME>.to.foo=<NODE_EXTRACTION_PATTERN>
+streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.foo=<RELATIONSHIP_EXTRACTION_PATTERN>
+streams.sink.enabled.to.foo=<true/false, default=true>
+----
+
+The old properties:
+
+----
+streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
+streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
+streams.sink.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
+streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
+streams.sink.enabled=<true/false, default=true>
+----
+
+are still valid and they refer to Neo4j's default db instance, which is usually called `neo4j`, but can be controlled by
+separate Neo4j system configuration.
+
+[NOTE]
+====
+The default database is controlled by Neo4j's *dbms.default_database* configuration property so we're being clear about
+which default database applies for this user.
+Database names are case-insensitive and normalized to lowercase, and must follow Neo4j database naming rules.
+(Reference: https://neo4j.com/docs/operations-manual/current/manage-databases/configuration/#manage-databases-administration)
+====
+
+In particular the following property will be used as default values
+for non-default db instances, in case of the specific configuration params is not provided:
+
+----
+streams.sink.enabled=<true/false, default=true>
+----
+
+This means that if you have Neo4j with 3 db instances:
+
+* neo4j (default)
+* customers
+* products
+
+and you want to enable the Sink plugin on all instance
+you can simply omit any configuration about enabling it, you just need to provide the routing configuration for each instance:
+
+----
+streams.sink.topic.cypher.customersTopic.to.customers=MERGE (c:Customer{customerId: event.customerId}) SET c += event.properties
+streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: event.productId}) SET c += event.properties
+streams.sink.topic.cypher.productsTopic.to.neo4j=MERGE (c:MyLabel{myId: event.myId}) SET c += event.properties
+----
+
+Otherwise if you want to enable the Sink plugin only on `customers` and `products` instances
+you can do it in this way:
+
+----
+streams.sink.enabled=false
+streams.sink.enabled.to.customers=true
+streams.sink.enabled.to.products=true
+streams.sink.topic.cypher.customersTopic.to.customers=MERGE (c:Customer{customerId: event.customerId}) SET c += event.properties
+streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: event.productId}) SET c += event.properties
+----
+
+So in general if you have:
+
+----
+streams.sink.enabled=true
+streams.sink.enabled.to.foo=false
+----
+Then sink is enabled on all databases EXCEPT foo (local overrides global)

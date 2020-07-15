@@ -18,6 +18,8 @@
 
     <properties>
         <docsversion>${parsedVersion.majorVersion}.${parsedVersion.minorVersion}</docsversion>
+        <node.version>v12.16.0</node.version>
+        <npm.version>6.13.7</npm.version>
     </properties>
 
     <build>
@@ -75,6 +77,28 @@
                         <id>parse-version</id>
                         <goals>
                             <goal>parse-version</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>com.github.eirslett</groupId>
+                <artifactId>frontend-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>install node and npm</id>
+                        <goals>
+                            <goal>install-node-and-npm</goal>
+                        </goals>
+                        <configuration>
+                            <nodeVersion>${node.version}</nodeVersion>
+                            <npmVersion>${npm.version}</npmVersion>
+                        </configuration>
+                    </execution>
+                    <execution>
+                        <id>npm install</id>
+                        <goals>
+                            <goal>npm</goal>
                         </goals>
                     </execution>
                 </executions>
