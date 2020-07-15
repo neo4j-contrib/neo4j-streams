@@ -13,7 +13,7 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>3.5.6</version>
+        <version>3.5.8</version>
     </parent>
 
     <!-- Include here all the required dependencies of the final package -->
