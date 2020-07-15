@@ -28,6 +28,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         const val SINK_ENABLED = "streams.sink.enabled"
         const val SINK_ENABLED_VALUE = false
         const val DEFAULT_PATH = "."
+        const val CHECK_APOC_TIMEOUT = "check.apoc.timeout"
+        const val CHECK_APOC_INTERVAL = "check.apoc.interval"
         private var afterInitListeners = mutableListOf<((MutableMap<String, String>) -> Unit)>()
 
         fun registerListener(after: (MutableMap<String, String>) -> Unit) {

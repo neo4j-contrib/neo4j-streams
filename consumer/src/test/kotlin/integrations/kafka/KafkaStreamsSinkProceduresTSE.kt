@@ -13,6 +13,7 @@ import org.apache.kafka.common.TopicPartition
 import org.junit.Test
 import org.neo4j.kernel.api.procedure.GlobalProcedures
 import streams.KafkaTestUtils
+import streams.events.StreamsPluginStatus
 import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
@@ -20,6 +21,7 @@ import streams.serialization.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID
+import java.util.stream.Collectors
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNotNull
@@ -249,6 +251,67 @@ class KafkaStreamsSinkProceduresTSE : KafkaEventSinkBaseTSE() {
             val event = resultMap["event"] as Map<String, Any?>
             val resultData = event["data"] as Map<String, Any?>
             assertEquals(struct.toMap(), resultData)
+        }
+    }
+
+    @Test
+    fun `should report the streams sink config`() {
+        // given
+        db.start()
+        registerProcedure()
+        val expected = mapOf("invalid_topics" to emptyList<String>(),
+                "streams.sink.topic.pattern.relationship" to emptyMap<String, Any>(),
+                "streams.sink.topic.cud" to emptyList<String>(),
+                "streams.sink.topic.cdc.sourceId" to emptyList<String>(),
+                "streams.sink.topic.cypher" to emptyMap<String, Any>(),
+                "streams.sink.topic.cdc.schema" to emptyList<String>(),
+                "streams.sink.topic.pattern.node" to emptyMap<String, Any>(),
+                "streams.sink.errors" to emptyMap<String, Any>(),
+                "streams.sink.source.id.strategy.config" to mapOf("labelName" to "SourceEvent", "idName" to "sourceId"))
+
+        // when
+        db.execute("CALL streams.sink.config()") { result ->
+            // then
+            val actual = result.stream()
+                    .collect(Collectors.toList())
+                    .map { it.getValue("name").toString() to it.getValue("value") }
+                    .toMap()
+            assertEquals(expected, actual)
+        }
+    }
+
+    @Test
+    fun `should report the streams sink status RUNNING`() {
+        // given
+        db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate).start()
+        registerProcedure()
+        val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.RUNNING.toString()))
+
+        // when
+        db.execute("CALL streams.sink.status()") { result ->
+            // then
+            val actual = result.stream()
+                    .collect(Collectors.toList())
+            assertEquals(expectedRunning, actual)
+        }
+    }
+
+    @Test
+    fun `should report the streams sink status STOPPED`() {
+        // given
+        db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate).start()
+        registerProcedure()
+        val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.STOPPED.toString()))
+        db.execute("CALL streams.sink.stop()") {
+            println(it.resultAsString())
+        }
+
+        // when
+        db.execute("CALL streams.sink.status()") { result ->
+            // then
+            val actual = result.stream()
+                    .collect(Collectors.toList())
+            assertEquals(expectedRunning, actual)
         }
     }
 

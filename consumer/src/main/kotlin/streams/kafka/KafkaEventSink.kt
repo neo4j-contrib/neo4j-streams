@@ -20,6 +20,7 @@ import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
 import streams.StreamsTopicService
 import streams.config.StreamsConfig
+import streams.events.StreamsPluginStatus
 import streams.service.errors.ErrorService
 import streams.service.errors.KafkaErrorService
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -77,6 +78,12 @@ class KafkaEventSink(private val config: StreamsConfig,
     }
 
     override fun start() { // TODO move to the abstract class
+        if (StreamsPluginStatus.RUNNING == status()) {
+            if (log.isDebugEnabled) {
+                log.debug("Kafka Sink is already started.")
+            }
+            return
+        }
         val streamsConfig = StreamsSinkConfiguration.from(config, db.databaseName())
         val topics = streamsTopicService.getTopics()
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
@@ -137,7 +144,7 @@ class KafkaEventSink(private val config: StreamsConfig,
                         }
                         TimeUnit.SECONDS.toMillis(1)
                     } else {
-                        val timeMillis = TimeUnit.MINUTES.toMillis(5)
+                        val timeMillis = TimeUnit.MINUTES.toMillis(3)
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }
@@ -165,6 +172,11 @@ class KafkaEventSink(private val config: StreamsConfig,
                 log.warn(getInvalidTopicsError(eventConsumer.invalidTopics()))
             }
         }, UninitializedPropertyAccessException::class.java)
+    }
+    
+    override fun status(): StreamsPluginStatus = when (this::job.isInitialized && this.job.isActive) {
+        true -> StreamsPluginStatus.RUNNING
+        else -> StreamsPluginStatus.STOPPED
     }
 
 }

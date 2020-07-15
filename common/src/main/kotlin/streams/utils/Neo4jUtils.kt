@@ -37,6 +37,21 @@ object Neo4jUtils {
         }
     }
 
+    fun hasApoc(db: GraphDatabaseAPI): Boolean {
+        try {
+            return db.execute("RETURN apoc.version() AS version") {
+                it.columnAs<String>("version").next()
+                true
+            }
+        } catch (e: QueryExecutionException) {
+            if (e.statusCode.equals("Neo.ClientError.Statement.SyntaxError", ignoreCase = true)
+                    && e.message!!.contains("Unknown function", ignoreCase = true)) {
+                return false
+            }
+            throw e
+        }
+    }
+
     fun getLogService(db: GraphDatabaseAPI): LogService {
         return db.dependencyResolver
                 .resolveDependency(LogService::class.java)
