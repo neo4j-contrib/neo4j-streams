@@ -1,0 +1,10 @@
+name: docs
+version: 4.0.2
+title: Neo4j Streams Docs
+start_page: ROOT:index.adoc
+nav:
+  - modules/ROOT/nav.adoc
+
+asciidoc:
+  attributes:
+    theme: docs

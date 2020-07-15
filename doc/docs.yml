@@ -1,0 +1,16 @@
+site:
+  title: Neo4j Streams Integrations User Guide
+  url: /docs
+content:
+  sources:
+    - url: ../
+      branches: antora_docs
+      start_path: doc/docs
+ui:
+  bundle:
+    url: https://github.com/neo4j-documentation/docs-refresh/raw/master/ui/build/ui-bundle.zip
+    snapshot: true
+asciidoc:
+  attributes:
+    page-theme: docs
+    page-cdn: /_/
