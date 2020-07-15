@@ -229,7 +229,8 @@ We provide a set of procedures in order to manage the Sink lifecycle.
 | returns the status
 |===
 
-*N.b.* Please consider that in order to use this procedures you must enable the streams procedures and they are runnable only on the leader.
+[NOTE]
+Please consider that in order to use this procedures you must enable the streams procedures and they are runnable only on the leader.
 
 .Streams Config
 [cols="2*",options="header"]
@@ -263,4 +264,4 @@ We provide a set of procedures in order to manage the Sink lifecycle.
 
 |streams.sink.source.id.strategy.config
 |returns the config for the SourceId CDC strategy
-|==
+|===
