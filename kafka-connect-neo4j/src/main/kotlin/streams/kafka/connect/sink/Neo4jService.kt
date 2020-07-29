@@ -42,20 +42,24 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
 
     init {
         val configBuilder = Config.builder()
-        if (this.config.encryptionEnabled) {
-            configBuilder.withEncryption()
-            val trustStrategy: Config.TrustStrategy = when (this.config.encryptionTrustStrategy) {
-                Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES -> Config.TrustStrategy.trustAllCertificates()
-                Config.TrustStrategy.Strategy.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES -> Config.TrustStrategy.trustSystemCertificates()
-                Config.TrustStrategy.Strategy.TRUST_CUSTOM_CA_SIGNED_CERTIFICATES -> Config.TrustStrategy.trustCustomCertificateSignedBy(this.config.encryptionCACertificateFile)
-                else -> {
-                    throw ConfigException(Neo4jSinkConnectorConfig.ENCRYPTION_TRUST_STRATEGY, this.config.encryptionTrustStrategy.toString(), "Encryption Trust Strategy is not supported.")
+
+        if (!this.config.hasSecuredURI()) {
+            if (this.config.encryptionEnabled) {
+                configBuilder.withEncryption()
+                val trustStrategy: Config.TrustStrategy = when (this.config.encryptionTrustStrategy) {
+                    Config.TrustStrategy.Strategy.TRUST_ALL_CERTIFICATES -> Config.TrustStrategy.trustAllCertificates()
+                    Config.TrustStrategy.Strategy.TRUST_SYSTEM_CA_SIGNED_CERTIFICATES -> Config.TrustStrategy.trustSystemCertificates()
+                    Config.TrustStrategy.Strategy.TRUST_CUSTOM_CA_SIGNED_CERTIFICATES -> Config.TrustStrategy.trustCustomCertificateSignedBy(this.config.encryptionCACertificateFile)
+                    else -> {
+                        throw ConfigException(Neo4jSinkConnectorConfig.ENCRYPTION_TRUST_STRATEGY, this.config.encryptionTrustStrategy.toString(), "Encryption Trust Strategy is not supported.")
+                    }
                 }
+                configBuilder.withTrustStrategy(trustStrategy)
+            } else {
+                configBuilder.withoutEncryption()
             }
-            configBuilder.withTrustStrategy(trustStrategy)
-        } else {
-            configBuilder.withoutEncryption()
         }
+
         val authToken = when (this.config.authenticationType) {
             AuthenticationType.NONE -> AuthTokens.none()
             AuthenticationType.BASIC -> {

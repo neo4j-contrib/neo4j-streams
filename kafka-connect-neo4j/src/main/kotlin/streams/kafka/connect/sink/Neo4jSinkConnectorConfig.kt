@@ -10,6 +10,7 @@ import org.apache.kafka.common.config.AbstractConfig
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
+import org.neo4j.cypher.internal.logical.plans.`Optional$`
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.Config
 import streams.kafka.connect.utils.PropertiesUtil
@@ -19,6 +20,7 @@ import streams.service.Topics
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import java.io.File
 import java.net.URI
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 enum class AuthenticationType {
@@ -129,6 +131,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         }
     }
 
+    fun hasSecuredURI() = serverUri.any { it.scheme.endsWith("+s", true) || it.scheme.endsWith("+ssc", true) }
+
     companion object {
         const val SERVER_URI = "neo4j.server.uri"
         const val DATABASE = "neo4j.database"
@@ -220,7 +224,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .importance(ConfigDef.Importance.HIGH)
                             .defaultValue("bolt://localhost:7687")
                             .group(ConfigGroup.CONNECTION)
-                            .validator(Validators.validURI("bolt", "bolt+routing", "neo4j"))
+                            .validator(Validators.validURI("bolt", "bolt+routing", "bolt+s", "bolt+ssc","neo4j", "neo4j+s", "neo4j+ssc"))
                             .build())
                     .define(ConfigKeyBuilder
                             .of(CONNECTION_POOL_MAX_SIZE, ConfigDef.Type.INT)
