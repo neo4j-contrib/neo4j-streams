@@ -22,6 +22,7 @@ import org.neo4j.driver.net.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
+import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.StreamsSinkEntity
 import streams.service.StreamsSinkService
 import streams.service.TopicType
@@ -42,6 +43,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
 
     init {
         val configBuilder = Config.builder()
+        configBuilder.withUserAgent("neo4j-kafka-connect-sink/${PropertiesUtil.getVersion()}")
 
         if (!this.config.hasSecuredURI()) {
             if (this.config.encryptionEnabled) {
