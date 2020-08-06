@@ -1,4 +1,4 @@
-name: streams
+name: kafka
 version: 4.0.2
 title: Neo4j Streams Docs
 start_page: ROOT:index.adoc
