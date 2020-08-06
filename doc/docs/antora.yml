@@ -1,4 +1,4 @@
-name: neo4j-streams-docs
+name: streams
 version: 4.0.2
 title: Neo4j Streams Docs
 start_page: ROOT:index.adoc
