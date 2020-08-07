@@ -3,7 +3,7 @@ site:
   url: /neo4j-streams-docs
 content:
   sources:
-    - url: https://github.com/neo4j-contrib/neo4j-streams
+    - url: ../
       branches: '4.0'
       start_path: doc/docs
 ui:
