@@ -100,6 +100,7 @@ class StreamsSinkProcedures {
                     when (it.key) {
                         "error.config" -> "streams.sink.errors"
                         "procedures.enabled" -> "streams.${it.key}"
+                        "cluster.only" -> "streams.${it.key}"
                         else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
                     }
                 }

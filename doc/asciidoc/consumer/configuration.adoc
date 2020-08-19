@@ -21,6 +21,13 @@ kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserial
 
 streams.check.apoc.timeout=<ms to await for APOC being loaded, default -1 skip the wait>
 streams.check.apoc.interval=<ms interval awaiting for APOC being loaded, default 1000>
+streams.cluster.only=<boolean value that prevent for starting in single instances usefull when you're performing backup/restore ops, default false>
+streams.check.writeable.instance.interval=<In a cluster environment is the inveral used by the plugin to check if there was a leader re-election, in order to resume the stream process in from the last committed record in the topic. In a single instance is the interval used to check if the database became available, default 180000>
 ----
+
+[NOTE]
+
+if `streams.cluster.only` is set to true, streams will refuse to start in single instance mode,
+or when run in the context of the backup operation. This is an important safety guard to ensure that operations do not occur in unexpected situations for production deploys
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

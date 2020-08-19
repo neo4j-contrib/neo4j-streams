@@ -73,7 +73,9 @@ open class KafkaEventSinkBase {
 
     @After
     fun tearDown() {
-        db.shutdown()
+        if (::db.isInitialized) {
+            db.shutdown()
+        }
         kafkaProducer.close()
         kafkaAvroProducer.close()
     }

@@ -8,7 +8,7 @@ import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.internal.LogService
 import org.neo4j.logging.Log
-import org.neo4j.logging.NullLog
+import streams.StreamsEventSinkAvailabilityListener
 import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
 
@@ -26,11 +26,14 @@ object Neo4jUtils {
                 return false
             }
 
-            return if (isCluster) {
-                val role = db.execute("CALL dbms.cluster.role() YIELD role RETURN role").columnAs<String>("role").next()
-                return role.equals(LEADER, ignoreCase = true)
+            val available = StreamsEventSinkAvailabilityListener.isAvailable(db)
+            return if (isCluster && available) {
+                val role = db.execute("CALL dbms.cluster.role() YIELD role RETURN role").use {
+                    it.columnAs<String>("role").next()
+                }
+                role.equals(LEADER, ignoreCase = true)
             } else {
-                true
+                available
             }
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
@@ -45,10 +48,16 @@ object Neo4jUtils {
                 .resolveDependency(LogService::class.java)
     }
 
-    fun isCluster(db: GraphDatabaseAPI): Boolean {
+    fun isCluster(db: GraphDatabaseAPI, log: Log? = null): Boolean {
         try {
-            db.execute("CALL dbms.cluster.role()").columnAs<String>("role").next()
-            return true
+            return db.execute("CALL dbms.cluster.overview()").use {
+                if (it.hasNext()) {
+                    if (log?.isDebugEnabled == true) {
+                        log?.debug(it.resultAsString())
+                    }
+                }
+                true
+            }
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return false
@@ -58,15 +67,13 @@ object Neo4jUtils {
     }
 
     fun hasApoc(db: GraphDatabaseAPI): Boolean {
-        try {
-            db.execute("RETURN apoc.version() AS version").columnAs<String>("version").next()
-            return true
-        } catch (e: QueryExecutionException) {
-            if (e.statusCode.equals("Neo.ClientError.Statement.SyntaxError", ignoreCase = true)
-                    && e.message!!.contains("Unknown function", ignoreCase = true)) {
-                return false
+        return try {
+            db.execute("RETURN apoc.version() AS version").use {
+                it.columnAs<String>("version").next()
             }
-            throw e
+            true
+        } catch (e: QueryExecutionException) {
+            false
         }
     }
 
@@ -75,11 +82,12 @@ object Neo4jUtils {
             return db.execute("""
                 CALL dbms.cluster.overview() YIELD role
                 RETURN role
-            """.trimIndent())
-                    .columnAs<String>("role")
+            """.trimIndent()).use {
+                it.columnAs<String>("role")
                     .stream()
                     .toList()
                     .contains(LEADER)
+            }
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return false
@@ -89,10 +97,10 @@ object Neo4jUtils {
     }
 
     fun <T> executeInWriteableInstance(db: GraphDatabaseAPI, action: () -> T?): T? {
-        if (isWriteableInstance(db)) {
-            return action()
+        return if (isWriteableInstance(db)) {
+            action()
         } else {
-            return null
+            null
         }
     }
 

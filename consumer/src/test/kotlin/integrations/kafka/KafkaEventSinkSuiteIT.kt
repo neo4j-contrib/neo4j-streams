@@ -17,7 +17,8 @@ import streams.utils.StreamsUtils
         KafkaEventSinkSimple::class,
         KafkaStreamsSinkProcedures::class,
         KafkaEventSinkCUDFormat::class,
-        KafkaEventSinkAvro::class
+        KafkaEventSinkAvro::class,
+        KafkaDatabaseRecovery::class
 )
 class KafkaEventSinkSuiteIT {
     companion object {

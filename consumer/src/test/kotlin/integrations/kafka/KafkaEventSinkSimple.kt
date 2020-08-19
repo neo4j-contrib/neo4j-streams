@@ -15,6 +15,8 @@ import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.stream.Collectors
+import kotlin.test.assertEquals
 
 class KafkaEventSinkSimple: KafkaEventSinkBase() {
 
@@ -63,6 +65,26 @@ class KafkaEventSinkSimple: KafkaEventSinkBase() {
             val result = db.execute(query).columnAs<Node>("n")
             result.hasNext()
         }, Matchers.equalTo(false), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun shouldNotStartInASingleInstance() {
+        db = graphDatabaseBuilder
+                .setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+                .setConfig("streams.cluster.only", "true")
+                .newGraphDatabase() as GraphDatabaseAPI
+        db.dependencyResolver.resolveDependency(Procedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
+
+        val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.STOPPED.toString()))
+
+        // when
+        val result = db.execute("CALL streams.sink.status()")
+
+        // then
+        val actual = result.stream()
+                .collect(Collectors.toList())
+        assertEquals(expectedRunning, actual)
     }
 
     @Test
