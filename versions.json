@@ -54,6 +54,12 @@
         "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.0.2/neo4j-streams-4.0.2.jar"
     },
     {
+        "neo4j": "3.5.21",
+        "version": "3.5.8",
+        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.5.8",
+        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/3.5.8/neo4j-streams-3.5.8.jar"
+    },
+    {
         "neo4j": "3.5.20",
         "version": "3.5.8",
         "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.5.8",
