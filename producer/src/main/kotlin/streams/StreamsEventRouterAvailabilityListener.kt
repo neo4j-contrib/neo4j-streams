@@ -28,8 +28,6 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
         streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
         StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
         StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
-        streamHandler.start()
-        streamHandler.printInvalidTopics()
         streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
         txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
         streamsLog.info("Streams Source module initialised")
@@ -38,6 +36,8 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
     private fun registerTransactionEventHandler() = runBlocking {
         mutex.withLock {
             if (streamsEventRouterConfiguration.enabled && !registered) {
+                streamHandler.start()
+                streamHandler.printInvalidTopics()
                 db.registerTransactionEventHandler(txHandler)
                 streamsConstraintsService.start()
                 registered = true

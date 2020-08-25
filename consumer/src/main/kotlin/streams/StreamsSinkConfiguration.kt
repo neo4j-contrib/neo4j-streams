@@ -1,6 +1,9 @@
 package streams
 
 import org.neo4j.kernel.configuration.Config
+import streams.extensions.toPointCase
+import streams.procedures.StreamsSinkProcedures
+import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
@@ -26,6 +29,24 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val clusterOnly: Boolean = false,
                                     val checkWriteableInstanceInterval: Long = TimeUnit.MINUTES.toMillis(3),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
+
+    fun asMap(): Map<String, Any?> {
+        val configMap = JSONUtils.asMap(this)
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
+                .mapKeys { it.key.toPointCase() }
+                .mapKeys {
+                    when (it.key) {
+                        "error.config" -> "streams.sink.errors"
+                        "procedures.enabled" -> "streams.${it.key}"
+                        "cluster.only" -> "streams.${it.key}"
+                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
+                    }
+                }
+        val topicMap = this.topics.asMap()
+                .mapKeys { it.key.key }
+        val invalidTopics = mapOf("invalid_topics" to this.topics.invalid)
+        return (configMap + topicMap + invalidTopics)
+    }
 
     companion object {
         fun from(cfg: Config): StreamsSinkConfiguration {

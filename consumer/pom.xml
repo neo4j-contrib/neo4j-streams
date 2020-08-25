@@ -66,12 +66,24 @@
                     <groupId>com.neo4j</groupId>
                     <artifactId>neo4j-causal-clustering</artifactId>
                     <scope>test</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>jackson-databind</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>com.neo4j</groupId>
                     <artifactId>neo4j-causal-clustering</artifactId>
                     <type>test-jar</type>
                     <scope>test</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>com.fasterxml.jackson.core</groupId>
+                            <artifactId>jackson-databind</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
             </dependencies>
             <activation>

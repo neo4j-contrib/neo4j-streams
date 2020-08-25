@@ -45,9 +45,9 @@ class KafkaEventSinkSuiteIT {
         fun setUpContainer() {
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
+                kafka.start()
                 schemaRegistry = SchemaRegistryContainer(confluentPlatformVersion)
                         .withKafka(kafka)
-                kafka.start()
                 schemaRegistry.start()
                 isRunning = true
             }, IllegalStateException::class.java)
@@ -62,7 +62,8 @@ class KafkaEventSinkSuiteIT {
             StreamsUtils.ignoreExceptions({
                 kafka.stop()
                 schemaRegistry.stop()
-            }, kotlin.UninitializedPropertyAccessException::class.java)
+                isRunning = false
+            }, UninitializedPropertyAccessException::class.java)
         }
     }
 }

@@ -6,7 +6,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.availability.AvailabilityListener
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.procedures.StreamsSinkProcedures
@@ -14,7 +13,6 @@ import streams.service.TopicUtils
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 
 class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensionFactory.Dependencies): AvailabilityListener {
     private val db = dependencies.graphdatabaseAPI()
@@ -66,15 +64,15 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
             } else {
                 runInASingleInstance()
             }
-
-            // Register required services for the Procedures
-            StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
-            StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink!!.getEventConsumerFactory())
-            StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink!!.getEventSinkConfigMapper())
-            StreamsSinkProcedures.registerStreamsEventSink(eventSink!!)
         } catch (e: Exception) {
             log.error("Error initializing the streaming sink:", e)
         }
+
+        // Register required services for the Procedures
+        StreamsSinkProcedures.registerStreamsSinkConfiguration(streamsSinkConfiguration)
+        StreamsSinkProcedures.registerStreamsEventConsumerFactory(eventSink!!.getEventConsumerFactory())
+        StreamsSinkProcedures.registerStreamsEventSinkConfigMapper(eventSink!!.getEventSinkConfigMapper())
+        StreamsSinkProcedures.registerStreamsEventSink(eventSink!!)
     }
 
     private fun runInASingleInstance() {
