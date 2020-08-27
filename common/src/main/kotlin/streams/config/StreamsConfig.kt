@@ -56,8 +56,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     private fun loadConfiguration() {
         val properties = neo4jConfAsProperties()
 
-        val filteredValues = filterProperties(properties,
-                { key -> !SUPPORTED_PREFIXES.find { key.toString().startsWith(it) }.isNullOrBlank() })
+        val filteredValues = filterProperties(properties)
+                { key -> !SUPPORTED_PREFIXES.find { key.toString().startsWith(it) }.isNullOrBlank() }
 
         if (log.isDebugEnabled) {
             log.debug("Neo4j Streams Global configuration from neo4j.conf file: $filteredValues")

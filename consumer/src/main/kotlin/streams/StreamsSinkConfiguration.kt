@@ -1,6 +1,8 @@
 package streams
 
 import streams.config.StreamsConfig
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.TopicValidationException
 import streams.service.Topics
@@ -13,6 +15,23 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                                     val checkApocTimeout: Long = -1,
                                     val checkApocInterval: Long = 1000,
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
+
+    fun asMap(): Map<String, Any?> {
+        val configMap = JSONUtils.asMap(this)
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
+                .mapKeys { it.key.toPointCase() }
+                .mapKeys {
+                    when (it.key) {
+                        "error.config" -> "streams.sink.errors"
+                        "procedures.enabled" -> "streams.${it.key}"
+                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
+                    }
+                }
+        val topicMap = this.topics.asMap()
+                .mapKeys { it.key.key }
+        val invalidTopics = mapOf("invalid_topics" to this.topics.invalid)
+        return (configMap + topicMap + invalidTopics)
+    }
 
     companion object {
         fun from(cfg: StreamsConfig, dbName: String, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {

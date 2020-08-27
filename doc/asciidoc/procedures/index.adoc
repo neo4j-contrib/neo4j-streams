@@ -302,3 +302,84 @@ Please consider that in order to use this procedures you must enable the streams
 |streams.sink.source.id.strategy.config
 |returns the config for the SourceId CDC strategy
 |===
+
+==== Example
+
+```
+Executing: CALL streams.sink.config()
++----------------------------------------------------------------------------------------------------------------------------------------------+
+| name                                      | value                                                                                            |
++----------------------------------------------------------------------------------------------------------------------------------------------+
+| "streams.sink.errors"                     | {}                                                                                               |
+| "streams.sink.source.id.strategy.config"  | {idName -> "sourceId", labelName -> "SourceEvent"}                                               |
+| "streams.sink.topic.cypher"               | {shouldWriteCypherQuery -> "MERGE (n:Label {id: event.id}) ON CREATE SET n += event.properties"} |
+| "streams.sink.topic.cud"                  | []                                                                                               |
+| "streams.sink.topic.cdc.schema"           | []                                                                                               |
+| "streams.sink.topic.cdc.sourceId"         | []                                                                                               |
+| "streams.sink.topic.pattern.node"         | {}                                                                                               |
+| "streams.sink.topic.pattern.relationship" | {}                                                                                               |
+| "invalid_topics"                          | []                                                                                               |
++----------------------------------------------------------------------------------------------------------------------------------------------+
+9 rows
+```
+
+```
+Executing: CALL streams.sink.stop()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "STOPPED" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.status()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "STOPPED" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.start()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.status()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.restart()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Given a cluster env, executing in a NON LEADER: CALL streams.sink.status()
++--------------------------------------------------------------------------------------------------+
+| name    | value                                                                                  |
++--------------------------------------------------------------------------------------------------+
+| "error" | "You can use this procedure only in the LEADER or in a single instance configuration." |
++--------------------------------------------------------------------------------------------------+
+1 row
+
+```
