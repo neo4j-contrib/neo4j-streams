@@ -17,6 +17,7 @@ import streams.setConfig
 import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.streams.toList
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
@@ -153,5 +154,44 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
                 result.hasNext() && result.next() == 1L && !result.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun shouldNotStartInASingleInstance() {
+        db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+                .setConfig("streams.cluster.only", "true")
+                .start()
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
+
+        val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.STOPPED.toString()))
+
+        // when
+        val actual = db.execute("CALL streams.sink.status()") {
+            it.stream().toList()
+        }
+
+        // then
+        assertEquals(expectedRunning, actual)
+    }
+
+    @Test
+    fun `neo4j should start normally in case kafka is not reachable`() {
+        db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate)
+                .setConfig("kafka.bootstrap.servers", "foo")
+                .setConfig("kafka.default.api.timeout.ms", "5000")
+                .start()
+        db.dependencyResolver.resolveDependency(GlobalProcedures::class.java)
+                .registerProcedure(StreamsSinkProcedures::class.java, true)
+
+        val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.STOPPED.toString()))
+
+        // when
+        val actual = db.execute("CALL streams.sink.status()") {
+            it.stream().toList()
+        }
+
+        // then
+        assertEquals(expectedRunning, actual)
     }
 }

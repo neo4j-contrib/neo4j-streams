@@ -15,7 +15,7 @@ import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import org.testcontainers.containers.wait.strategy.WaitAllStrategy
 import org.testcontainers.utility.MountableFile
-import streams.utils.Neo4jUtils
+import streams.utils.StreamsUtils
 import java.io.File
 import java.time.Duration
 import java.util.concurrent.TimeUnit
@@ -31,7 +31,7 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
     override fun waitUntilReady() {
         val boltUrl = "bolt://${waitStrategyTarget.containerIpAddress}:${waitStrategyTarget.getMappedPort(7687)}"
         val driver = GraphDatabase.driver(boltUrl, auth)
-        val systemSession = driver.session(SessionConfig.forDatabase(Neo4jUtils.SYSTEM_DATABASE_NAME))
+        val systemSession = driver.session(SessionConfig.forDatabase(StreamsUtils.SYSTEM_DATABASE_NAME))
         systemSession.beginTransaction().use { tx ->
             databases.forEach { tx.run("CREATE DATABASE $it IF NOT EXISTS") }
             tx.commit()

@@ -10,9 +10,7 @@ import org.neo4j.procedure.Mode
 import org.neo4j.procedure.Name
 import org.neo4j.procedure.Procedure
 import streams.StreamsEventConsumer
-import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSink
-import streams.StreamsEventSinkConfigMapper
 import streams.StreamsSinkConfiguration
 import streams.config.StreamsConfig
 import streams.events.StreamsPluginStatus
@@ -43,7 +41,7 @@ class StreamsSinkProcedures {
         }
 
         val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-        val configuration = streamsEventSinkConfigMapper.convert(config = properties)
+        val configuration = streamsEventSink?.getEventSinkConfigMapper().convert(config = properties)
 
         val data = readData(topic, config ?: emptyMap(), configuration)
 
@@ -94,7 +92,9 @@ class StreamsSinkProcedures {
     fun sinkConfig(): Stream<KeyValueResult> {
         checkEnabled()
         return checkLeader {
-            streamsSinkConfiguration.asMap()
+            StreamsSinkConfiguration
+                    .from(StreamsConfig.getInstance()!!, db!!.databaseName())
+                    .asMap()
                     .entries.stream()
                     .map { KeyValueResult(it.key, it.value) }
         }
@@ -144,35 +144,21 @@ class StreamsSinkProcedures {
         val copy = StreamsConfig.getInstance().copy()
         copy.config.clear()
         copy.config.putAll(consumerConfig)
-        return streamsEventConsumerFactory
+        return streamsEventSink?.getEventConsumerFactory()
                 .createStreamsEventConsumer(copy, log!!)
                 .withTopics(setOf(topic))
     }
 
     private fun checkEnabled() {
-        if (!streamsSinkConfiguration.proceduresEnabled) {
+        if (!StreamsConfig.getInstance().hasProceduresEnabled(db?.databaseName() ?: ""))  {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
 
 
     companion object {
-        private lateinit var streamsSinkConfiguration: StreamsSinkConfiguration
-        private lateinit var streamsEventConsumerFactory: StreamsEventConsumerFactory
-        private lateinit var streamsEventSinkConfigMapper: StreamsEventSinkConfigMapper
-        private var streamsEventSink: StreamsEventSink? = null
+        private lateinit var streamsEventSink: StreamsEventSink
 
-        fun registerStreamsEventSinkConfigMapper(streamsEventSinkConfigMapper: StreamsEventSinkConfigMapper) {
-            this.streamsEventSinkConfigMapper = streamsEventSinkConfigMapper
-        }
-
-        fun registerStreamsSinkConfiguration(streamsSinkConfiguration: StreamsSinkConfiguration) {
-            this.streamsSinkConfiguration = streamsSinkConfiguration
-        }
-
-        fun registerStreamsEventConsumerFactory(streamsEventConsumerFactory: StreamsEventConsumerFactory) {
-            this.streamsEventConsumerFactory = streamsEventConsumerFactory
-        }
 
         fun registerStreamsEventSink(streamsEventSink: StreamsEventSink) {
             this.streamsEventSink = streamsEventSink

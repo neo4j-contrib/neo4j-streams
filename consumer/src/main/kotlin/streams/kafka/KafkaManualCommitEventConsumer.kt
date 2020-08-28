@@ -7,8 +7,7 @@ import streams.service.StreamsSinkEntity
 import streams.service.errors.ErrorService
 
 class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
-                                     private val log: Log,
-                                     private val dlqService: ErrorService): KafkaAutoCommitEventConsumer(config, log, dlqService) {
+                                     private val log: Log): KafkaAutoCommitEventConsumer(config, log) {
 
     private fun commitData(commit: Boolean, topicMap: Map<TopicPartition, OffsetAndMetadata>) {
         if (commit) {

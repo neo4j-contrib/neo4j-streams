@@ -10,8 +10,11 @@ import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.extensions.execute
 import streams.kafka.KafkaSinkConfiguration
 import streams.service.StreamsSinkEntity
+import streams.service.StreamsStrategyStorage
 import streams.service.TopicType
 import streams.service.Topics
+import streams.service.sink.strategy.CypherTemplateStrategy
+import streams.service.sink.strategy.IngestionStrategy
 import kotlin.test.assertEquals
 
 class StreamsEventSinkQueryExecutionTest {
@@ -25,8 +28,17 @@ class StreamsEventSinkQueryExecutionTest {
                 "    ON CREATE SET n += event.properties"))))
         val streamsTopicService = StreamsTopicService()
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
-        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI,
-                NullLog.getInstance(), emptyMap())
+        streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(db as GraphDatabaseAPI, NullLog.getInstance(),
+                object : StreamsStrategyStorage() {
+            override fun getTopicType(topic: String): TopicType? {
+                TODO("not implemented")
+            }
+
+            override fun getStrategy(topic: String): IngestionStrategy {
+                return CypherTemplateStrategy(streamsTopicService.getCypherTemplate(topic)!!)
+            }
+
+        })
     }
 
     @After

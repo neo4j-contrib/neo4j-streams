@@ -18,10 +18,14 @@ enum class TopicType(val group: TopicTypeGroup, val key: String) {
 
 data class StreamsSinkEntity(val key: Any?, val value: Any?)
 
-abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) {
-
+abstract class StreamsStrategyStorage {
     abstract fun getTopicType(topic: String): TopicType?
-    abstract fun getCypherTemplate(topic: String): String?
+
+    abstract fun getStrategy(topic: String): IngestionStrategy
+}
+
+abstract class StreamsSinkService(private val streamsStrategyStorage: StreamsStrategyStorage) {
+
     abstract fun write(query: String, events: Collection<Any>)
 
     private fun writeWithStrategy(data: Collection<StreamsSinkEntity>, strategy: IngestionStrategy) {
@@ -32,20 +36,7 @@ abstract class StreamsSinkService(private val strategyMap: Map<TopicType, Any>) 
         strategy.deleteRelationshipEvents(data).forEach { write(it.query, it.events) }
     }
 
-    private fun writeWithCypherTemplate(topic: String, params: Collection<StreamsSinkEntity>) {
-        val query = getCypherTemplate(topic) ?: return
-        write(query, params.mapNotNull { it.value })
-    }
-
     fun writeForTopic(topic: String, params: Collection<StreamsSinkEntity>) {
-        val topicType = getTopicType(topic) ?: return
-        when (topicType.group) {
-            TopicTypeGroup.CYPHER -> writeWithCypherTemplate(topic, params)
-            TopicTypeGroup.CDC, TopicTypeGroup.CUD -> writeWithStrategy(params, strategyMap.getValue(topicType) as IngestionStrategy)
-            TopicTypeGroup.PATTERN -> {
-                val strategyMap = strategyMap[topicType] as Map<String, IngestionStrategy>
-                writeWithStrategy(params, strategyMap.getValue(topic))
-            }
-        }
+        writeWithStrategy(params, streamsStrategyStorage.getStrategy(topic))
     }
 }

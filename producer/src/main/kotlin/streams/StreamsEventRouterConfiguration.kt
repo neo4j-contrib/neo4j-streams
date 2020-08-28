@@ -61,9 +61,9 @@ data class StreamsEventRouterConfiguration(val enabled: Boolean = StreamsConfig.
                     dbName = dbName)
 
             if (isDefaultDb) {
-                nodeRouting += filterMap(config = streamsConfig.config,
+                nodeRouting += filterMap<NodeRoutingConfiguration>(config = streamsConfig.config,
                         routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX)
-                relRouting += filterMap(config = streamsConfig.config,
+                relRouting += filterMap<RelationshipRoutingConfiguration>(config = streamsConfig.config,
                         routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX)
             }
 

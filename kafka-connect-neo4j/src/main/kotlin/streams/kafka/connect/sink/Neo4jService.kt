@@ -34,7 +34,7 @@ import java.util.concurrent.TimeoutException
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
-        StreamsSinkService(config.strategyMap) {
+        StreamsSinkService(Neo4jStrategyStorage(config)) {
 
     private val converter = Neo4jValueConverter()
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
@@ -87,21 +87,8 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         driver.close()
     }
 
-    override fun getTopicType(topic: String): TopicType? {
-        val topicConfigMap = config.topics.asMap()
-        return TopicType.values()
-                .filter { topicType ->
-                    val topicConfig = topicConfigMap.getOrDefault(topicType, emptyList<Any>())
-                    when (topicConfig) {
-                        is Collection<*> -> topicConfig.contains(topic)
-                        is Map<*, *> -> topicConfig.containsKey(topic)
-                        else -> false
-                    }
-                }
-                .firstOrNull()
-    }
 
-    override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
+//    override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
 
     override fun write(query: String, events: Collection<Any>) {
         val sessionConfigBuilder = SessionConfig.builder()

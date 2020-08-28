@@ -2,7 +2,7 @@ package streams.extensions
 
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Result
-import streams.utils.Neo4jUtils
+import streams.utils.StreamsUtils
 
 fun GraphDatabaseService.execute(cypher: String) = this.execute(cypher, emptyMap())
 fun GraphDatabaseService.execute(cypher: String, params: Map<String, Any>) = this.executeTransactionally(cypher, params)
@@ -12,4 +12,4 @@ fun <T> GraphDatabaseService.execute(cypher: String,
                                      params: Map<String, Any>,
                                      lambda: ((Result) -> T)) = this.executeTransactionally(cypher, params, lambda)
 
-fun GraphDatabaseService.isSystemDb() = this.databaseName() == Neo4jUtils.SYSTEM_DATABASE_NAME
+fun GraphDatabaseService.isSystemDb() = this.databaseName() == StreamsUtils.SYSTEM_DATABASE_NAME

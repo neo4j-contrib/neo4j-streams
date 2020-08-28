@@ -45,7 +45,7 @@ class KafkaEventRouter: StreamsEventRouter {
         val definedTopics = StreamsEventRouterConfiguration
                 .from(config, dbName)
                 .allTopics()
-        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
+        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics, log)
         kafkaAdminService.start()
         producer = Neo4jKafkaProducer(props)
         producer.initTransactions()

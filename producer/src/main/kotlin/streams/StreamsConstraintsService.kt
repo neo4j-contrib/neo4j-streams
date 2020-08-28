@@ -28,7 +28,8 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
                 if (!db.isAvailable(5000)) return@launch
                 StreamsUtils.ignoreExceptions({
                     db.beginTx().use {
-                        it.schema().constraints
+                        val constraints = it.schema().constraints
+                        constraints
                                 .filter { it.isNodeConstraint() }
                                 .groupBy { it.label.name() }
                                 .forEach { label, constraints ->
@@ -36,7 +37,7 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
                                             .map { Constraint(label, it.propertyKeys.toSet(), it.streamsConstraintType()) }
                                             .toSet()
                                 }
-                        it.schema().constraints
+                        constraints
                                 .filter { it.isRelationshipConstraint() }
                                 .groupBy { it.relationshipType.name() }
                                 .forEach { relationshipType, constraints ->
