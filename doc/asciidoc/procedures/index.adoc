@@ -241,3 +241,145 @@ Supported deserializers are: `org.apache.kafka.common.serialization.ByteArrayDes
 
 |===
 
+=== Streams Sink Lifecycle procedure
+
+We provide a set of procedures in order to manage the Sink lifecycle.
+
+[cols="2*",options="header"]
+|===
+|Proc. Name
+|Description
+
+|`CALL streams.sink.stop() YIELD name, value`
+| stops the Sink, and return the status, with the error if one occurred during the process
+
+|`CALL streams.sink.start() YIELD name, value`
+| starts the Sink, and return the status, with the error if one occurred during the process
+
+|`CALL streams.sink.restart() YIELD name, value`
+| restart the Sink, and return the status, with the error if one occurred during the process
+
+|`CALL streams.sink.config() YIELD name, value`
+| returns the Sink config, please check the table "Streams Config"
+
+|`CALL streams.sink.status() YIELD name, value`
+| returns the status
+|===
+
+[NOTE]
+Please consider that in order to use this procedures you must enable the streams procedures and they are runnable only on the leader.
+
+.Streams Config
+[cols="2*",options="header"]
+|===
+|Config Name
+|Description
+
+|invalid_topics
+|return a list of invalid topics
+
+|streams.sink.topic.pattern.relationship
+|return a Map<K,V> where the K is the topic name and V is the provided pattern
+
+|streams.sink.topic.cud
+|return a list of topics defined for the CUD format
+
+|streams.sink.topic.cdc.sourceId
+|return a list of topics defined for the CDC SourceId strategy
+
+|streams.sink.topic.cypher
+|return a Map<K,V> where the K is the topic name and V is the provided Cypher Query
+
+|streams.sink.topic.cdc.schema
+|return a list of topics defined for the CDC Schema strategy
+
+|streams.sink.topic.pattern.node
+|return a Map<K,V> where the K is the topic name and V is the provided pattern
+
+|streams.sink.errors
+|return a Map<K,V> where the K sub property name, and V is the value
+
+|streams.sink.source.id.strategy.config
+|returns the config for the SourceId CDC strategy
+|===
+
+==== Example
+
+```
+Executing: CALL streams.sink.config()
++----------------------------------------------------------------------------------------------------------------------------------------------+
+| name                                      | value                                                                                            |
++----------------------------------------------------------------------------------------------------------------------------------------------+
+| "streams.sink.errors"                     | {}                                                                                               |
+| "streams.sink.source.id.strategy.config"  | {idName -> "sourceId", labelName -> "SourceEvent"}                                               |
+| "streams.sink.topic.cypher"               | {shouldWriteCypherQuery -> "MERGE (n:Label {id: event.id}) ON CREATE SET n += event.properties"} |
+| "streams.sink.topic.cud"                  | []                                                                                               |
+| "streams.sink.topic.cdc.schema"           | []                                                                                               |
+| "streams.sink.topic.cdc.sourceId"         | []                                                                                               |
+| "streams.sink.topic.pattern.node"         | {}                                                                                               |
+| "streams.sink.topic.pattern.relationship" | {}                                                                                               |
+| "invalid_topics"                          | []                                                                                               |
++----------------------------------------------------------------------------------------------------------------------------------------------+
+9 rows
+```
+
+```
+Executing: CALL streams.sink.stop()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "STOPPED" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.status()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "STOPPED" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.start()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.status()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Executing: CALL streams.sink.restart()
++----------------------+
+| name     | value     |
++----------------------+
+| "status" | "RUNNING" |
++----------------------+
+1 row
+```
+
+```
+Given a cluster env, executing in a NON LEADER: CALL streams.sink.status()
++--------------------------------------------------------------------------------------------------+
+| name    | value                                                                                  |
++--------------------------------------------------------------------------------------------------+
+| "error" | "You can use this procedure only in the LEADER or in a single instance configuration." |
++--------------------------------------------------------------------------------------------------+
+1 row
+
+```

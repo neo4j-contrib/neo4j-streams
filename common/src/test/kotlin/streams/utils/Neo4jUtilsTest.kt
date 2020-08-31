@@ -25,4 +25,9 @@ class Neo4jUtilsTest {
         assertFalse { isEnterprise }
     }
 
+    @Test
+    fun `should not have APOC`() {
+        assertFalse { Neo4jUtils.hasApoc(db) }
+    }
+
 }

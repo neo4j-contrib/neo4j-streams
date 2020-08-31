@@ -84,10 +84,14 @@ class StreamsSinkConfigurationTest {
         val topicValue = "MERGE (n:Label{ id: event.id }) "
         val customLabel = "CustomLabel"
         val customId = "customId"
+        val apocTimeout = "10000"
+        val apocInterval = "2000"
         val config = mapOf(topicKey to topicValue,
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to cdctopic,
                 "streams.sink.topic.cdc.sourceId.labelName" to customLabel,
+                "streams.check.apoc.timeout" to apocTimeout,
+                "streams.check.apoc.interval" to apocInterval,
                 "streams.sink.topic.cdc.sourceId.idName" to customId)
         streamsConfig.config.putAll(config)
         val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
@@ -96,6 +100,8 @@ class StreamsSinkConfigurationTest {
         assertEquals(setOf(cdctopic), streamsSinkConf.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsSinkConf.sourceIdStrategyConfig.labelName)
         assertEquals(customId, streamsSinkConf.sourceIdStrategyConfig.idName)
+        assertEquals(apocTimeout.toLong(), streamsSinkConf.checkApocTimeout)
+        assertEquals(apocInterval.toLong(), streamsSinkConf.checkApocInterval)
     }
 
     @Test

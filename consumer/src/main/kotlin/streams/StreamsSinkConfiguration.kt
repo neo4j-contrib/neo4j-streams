@@ -1,6 +1,8 @@
 package streams
 
 import streams.config.StreamsConfig
+import streams.extensions.toPointCase
+import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.TopicValidationException
 import streams.service.Topics
@@ -10,7 +12,26 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                                     val proceduresEnabled: Boolean = StreamsConfig.PROCEDURES_ENABLED_VALUE,
                                     val topics: Topics = Topics(),
                                     val errorConfig: Map<String,Any?> = emptyMap(),
+                                    val checkApocTimeout: Long = -1,
+                                    val checkApocInterval: Long = 1000,
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
+
+    fun asMap(): Map<String, Any?> {
+        val configMap = JSONUtils.asMap(this)
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
+                .mapKeys { it.key.toPointCase() }
+                .mapKeys {
+                    when (it.key) {
+                        "error.config" -> "streams.sink.errors"
+                        "procedures.enabled" -> "streams.${it.key}"
+                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
+                    }
+                }
+        val topicMap = this.topics.asMap()
+                .mapKeys { it.key.key }
+        val invalidTopics = mapOf("invalid_topics" to this.topics.invalid)
+        return (configMap + topicMap + invalidTopics)
+    }
 
     companion object {
         fun from(cfg: StreamsConfig, dbName: String, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
@@ -39,10 +60,19 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                     .filterKeys { it.startsWith("streams.sink.error") }
                     .mapKeys { it.key.substring("streams.sink.".length) }
 
+
             return default.copy(enabled = cfg.isSinkEnabled(dbName),
                     proceduresEnabled = cfg.hasProceduresEnabled(dbName),
                     topics = topics,
                     errorConfig = errorHandler,
+                    checkApocTimeout = cfg.config.getOrDefault("streams.${StreamsConfig.CHECK_APOC_TIMEOUT}",
+                            default.checkApocTimeout)
+                            .toString()
+                            .toLong(),
+                    checkApocInterval = cfg.config.getOrDefault("streams.${StreamsConfig.CHECK_APOC_INTERVAL}",
+                            default.checkApocInterval)
+                            .toString()
+                            .toLong(),
                     sourceIdStrategyConfig = sourceIdStrategyConfig)
         }
 
