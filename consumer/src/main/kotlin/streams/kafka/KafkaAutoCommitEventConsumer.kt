@@ -118,7 +118,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
             }
             .groupBy({ it.first }, { it.second })
             .let {
-                it.get("error")?.let {
+                it["error"]?.let {
                     errorService.report(it as List<ErrorData>)
                 }
                 it.getOrDefault("ok", emptyList()) as List<StreamsSinkEntity>

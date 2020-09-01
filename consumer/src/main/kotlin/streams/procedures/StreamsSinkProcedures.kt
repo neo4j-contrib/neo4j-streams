@@ -1,5 +1,10 @@
 package streams.procedures
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -9,14 +14,17 @@ import org.neo4j.procedure.Description
 import org.neo4j.procedure.Mode
 import org.neo4j.procedure.Name
 import org.neo4j.procedure.Procedure
+import org.neo4j.procedure.TerminationGuard
 import streams.StreamsEventConsumer
 import streams.StreamsEventSink
 import streams.StreamsSinkConfiguration
 import streams.config.StreamsConfig
 import streams.events.StreamsPluginStatus
 import streams.utils.Neo4jUtils
+import java.util.concurrent.ArrayBlockingQueue
 import java.util.stream.Collectors
 import java.util.stream.Stream
+import java.util.stream.StreamSupport
 
 class StreamResult(@JvmField val event: Map<String, *>)
 class KeyValueResult(@JvmField val name: String, @JvmField val value: Any?)
@@ -29,23 +37,24 @@ class StreamsSinkProcedures {
     @JvmField @Context
     var db: GraphDatabaseService? = null
 
+    @JvmField @Context
+    var terminationGuard: TerminationGuard? = null
+
     @Procedure(mode = Mode.READ, name = "streams.consume")
     @Description("streams.consume(topic, {timeout: <long value>, from: <string>, groupId: <string>, commit: <boolean>, partitions:[{partition: <number>, offset: <number>}]}) " +
             "YIELD event - Allows to consume custom topics")
     fun consume(@Name("topic") topic: String?,
-                @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamResult> {
+                @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamResult> = runBlocking {
         checkEnabled()
         if (topic.isNullOrEmpty()) {
             log?.info("Topic empty, no message sent")
-            return Stream.empty()
+            Stream.empty<StreamResult>()
+        } else {
+            val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
+            val configuration = mutex.withLock { streamsEventSink?.getEventSinkConfigMapper().convert(config = properties) }
+
+            readData(topic, config ?: emptyMap(), configuration)
         }
-
-        val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-        val configuration = streamsEventSink?.getEventSinkConfigMapper().convert(config = properties)
-
-        val data = readData(topic, config ?: emptyMap(), configuration)
-
-        return data.map { StreamResult(mapOf("data" to it)) }.stream()
     }
 
     @Procedure("streams.sink.start")
@@ -53,8 +62,12 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                streamsEventSink?.start()
-                sinkStatus()
+                runBlocking {
+                    mutex.withLock {
+                        streamsEventSink?.start()
+                        sinkStatus()
+                    }
+                }
             } catch (e: Exception) {
                 log?.error("Cannot start the Sink because of the following exception", e)
                 Stream.concat(sinkStatus(),
@@ -68,8 +81,12 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                streamsEventSink?.stop()
-                sinkStatus()
+                runBlocking {
+                    mutex.withLock {
+                        streamsEventSink?.stop()
+                        sinkStatus()
+                    }
+                }
             } catch (e: Exception) {
                 log?.error("Cannot stopped the Sink because of the following exception", e)
                 Stream.concat(sinkStatus(),
@@ -115,38 +132,46 @@ class StreamsSinkProcedures {
         Stream.of(KeyValueResult("error", "You can use this procedure only in the LEADER or in a single instance configuration."))
     }
 
-    private fun readData(topic: String, procedureConfig: Map<String, Any>, consumerConfig: Map<String, String>): List<Any> {
+    private fun readData(topic: String, procedureConfig: Map<String, Any>, consumerConfig: Map<String, String>): Stream<StreamResult?> {
         val cfg = procedureConfig.mapValues { if (it.key != "partitions") it.value else mapOf(topic to it.value) }
         val timeout = cfg.getOrDefault("timeout", 1000).toString().toLong()
-        val consumer = createConsumer(consumerConfig, topic)
-        consumer.start()
-        val data = mutableListOf<Any>()
-        try {
-            val start = System.currentTimeMillis()
-            while ((System.currentTimeMillis() - start) < timeout) {
-                consumer.read(cfg) { _, topicData ->
-                    data.addAll(topicData.mapNotNull { it.value })
+        val data = ArrayBlockingQueue<StreamResult>(1000)
+        val tombstone = StreamResult(emptyMap<String, Any>())
+        GlobalScope.launch {
+            val consumer = createConsumer(consumerConfig, topic)
+            consumer.start()
+            try {
+                val start = System.currentTimeMillis()
+                while ((System.currentTimeMillis() - start) < timeout) {
+                    consumer.read(cfg) { _, topicData ->
+                        data.addAll(topicData.mapNotNull { it.value }.map { StreamResult(mapOf("data" to it)) })
+                    }
                 }
-            }
-        } catch (e: Exception) {
-            if (log?.isDebugEnabled!!) {
-                log?.error("Error while consuming data", e)
+                data.add(tombstone)
+            } catch (e: Exception) {
+                if (log?.isDebugEnabled!!) {
+                    log?.error("Error while consuming data", e)
+                }
+            } finally {
+                consumer.stop()
             }
         }
         if (log?.isDebugEnabled!!) {
             log?.debug("Data retrieved from topic $topic after $timeout milliseconds: $data")
         }
-        consumer.stop()
-        return data
+
+        return StreamSupport.stream(QueueBasedSpliterator(data, tombstone, terminationGuard!!, timeout), false)
     }
 
-    private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer {
+    private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer = runBlocking {
         val copy = StreamsConfig.getInstance().copy()
-        copy.config.clear()
-        copy.config.putAll(consumerConfig)
-        return streamsEventSink?.getEventConsumerFactory()
-                .createStreamsEventConsumer(copy, log!!)
-                .withTopics(setOf(topic))
+        mutex.withLock {
+            copy.config.clear()
+            copy.config.putAll(consumerConfig)
+            streamsEventSink?.getEventConsumerFactory()
+                    .createStreamsEventConsumer(copy, log!!)
+                    .withTopics(setOf(topic))
+        }
     }
 
     private fun checkEnabled() {
@@ -155,10 +180,10 @@ class StreamsSinkProcedures {
         }
     }
 
-
     companion object {
-        private lateinit var streamsEventSink: StreamsEventSink
 
+        private val mutex = Mutex()
+        private lateinit var streamsEventSink: StreamsEventSink
 
         fun registerStreamsEventSink(streamsEventSink: StreamsEventSink) {
             this.streamsEventSink = streamsEventSink

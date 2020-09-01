@@ -72,10 +72,9 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
     private fun runInASingleInstance(streamsSinkConfiguration: StreamsSinkConfiguration) {
         Neo4jUtils.executeInWriteableInstance(db) {
             if (streamsSinkConfiguration.clusterOnly) {
-                log.info("""
-                                |Cannot init the Streams Sink module as is forced to work only in a cluster env, 
-                                |please check the value of `${StreamsConfig.CLUSTER_ONLY}`
-                            """.trimMargin())
+                log.info("""Cannot init the Streams Sink module as is forced to work only in a cluster env, 
+                        |please check the value of `${StreamsConfig.CLUSTER_ONLY}`
+                        """.trimMargin())
             } else {
                 initSinkModule(streamsSinkConfiguration)
             }

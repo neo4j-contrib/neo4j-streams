@@ -81,8 +81,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun loadStreamsConfiguration() {
         val properties = neo4jConfAsProperties()
 
-        val filteredValues = filterProperties(properties,
-                { key -> key.toString().startsWith("streams.") })
+        val filteredValues = filterProperties(properties)
+            { key -> key.toString().startsWith("streams.") }
 
         if (log.isDebugEnabled) {
             log.debug("Neo4j Streams configuration reloaded from neo4j.conf file: $filteredValues")

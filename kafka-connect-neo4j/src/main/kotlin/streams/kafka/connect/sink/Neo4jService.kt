@@ -87,9 +87,6 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         driver.close()
     }
 
-
-//    override fun getCypherTemplate(topic: String): String? = "${StreamsUtils.UNWIND} ${config.topics.cypherTopics[topic]}"
-
     override fun write(query: String, events: Collection<Any>) {
         val sessionConfigBuilder = SessionConfig.builder()
         if (config.database.isNotBlank()) {

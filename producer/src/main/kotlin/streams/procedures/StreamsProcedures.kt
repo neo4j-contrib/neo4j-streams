@@ -32,12 +32,10 @@ class StreamsProcedures {
                 .withPayload(payload)
                 .withNodeRoutingConfiguration(eventRouterConfiguration
                         .nodeRouting
-                        .filter { it.topic == topic }
-                        .firstOrNull())
+                        .firstOrNull { it.topic == topic })
                 .withRelationshipRoutingConfiguration(eventRouterConfiguration
                         .relRouting
-                        .filter { it.topic == topic }
-                        .firstOrNull())
+                        .firstOrNull { it.topic == topic })
                 .withTopic(topic)
                 .build()
         mutex.withLock { eventRouter.sendEvents(topic, listOf(streamsEvent)) }
