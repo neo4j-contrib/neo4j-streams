@@ -54,6 +54,16 @@
 
 * xref::cloud.adoc[Confluent Cloud]
 
+* xref::architecture.adoc[Architectural Guidance]
+** xref::architecture/kafkatopics.adoc[Kafka Topics Overview]
+** xref::architecture/pluginvsconnect.adoc[Kafka Connect vs. Plugin]
+** xref::architecture/sinkconsume.adoc[Sink: Consume Records]
+** xref::architecture/sourceproduce.adoc[Source: Produce Records]
+** xref::architecture/retries.adoc[Retries & Error Handling]
+** xref::architecture/throughput.adoc[Factors which Affect Throughput]
+** xref::architecture/transformations.adoc[Streams Transformations]
+** xref::architecture/optimize.adoc[Optimizing Kafka]
+
 * xref::examples.adoc[Examples with Confluent Platform and Kafka Connect Datagen]
 ** xref::examples.adoc#examples_binary_format[Confluent and Neo4j in binary format]
 ** xref::examples.adoc#confluent_docker_example[Confluent with Docker, Neo4j in binary format]
