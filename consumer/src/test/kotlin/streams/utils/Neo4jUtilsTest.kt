@@ -3,6 +3,7 @@ package streams.utils
 import org.junit.*
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
+import streams.StreamsEventSinkAvailabilityListener
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -27,6 +28,7 @@ class Neo4jUtilsTest {
 
     @Test
     fun shouldCheckIfIsWriteableInstance() {
+        StreamsEventSinkAvailabilityListener.setAvailable(db, true)
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         assertTrue { isWriteableInstance }
     }

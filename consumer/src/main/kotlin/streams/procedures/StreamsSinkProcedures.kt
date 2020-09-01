@@ -15,14 +15,12 @@ import streams.StreamsEventSink
 import streams.StreamsEventSinkConfigMapper
 import streams.StreamsSinkConfiguration
 import streams.events.StreamsPluginStatus
-import streams.extensions.toPointCase
-import streams.serialization.JSONUtils
 import streams.utils.Neo4jUtils
 import java.util.stream.Collectors
 import java.util.stream.Stream
 
 class StreamResult(@JvmField val event: Map<String, *>)
-class StreamsSinkDTO(@JvmField val name: String, @JvmField val value: Any?)
+class KeyValueResult(@JvmField val name: String, @JvmField val value: Any?)
 
 class StreamsSinkProcedures {
 
@@ -52,7 +50,7 @@ class StreamsSinkProcedures {
     }
 
     @Procedure("streams.sink.start")
-    fun sinkStart(): Stream<StreamsSinkDTO> {
+    fun sinkStart(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
         try {
@@ -61,12 +59,12 @@ class StreamsSinkProcedures {
         } catch (e: Exception) {
             log?.error("Cannot start the Sink because of the following exception", e)
             return Stream.concat(sinkStatus(),
-                    Stream.of(StreamsSinkDTO("exception", ExceptionUtils.getStackTrace(e))))
+                    Stream.of(KeyValueResult("exception", ExceptionUtils.getStackTrace(e))))
         }
     }
 
     @Procedure("streams.sink.stop")
-    fun sinkStop(): Stream<StreamsSinkDTO> {
+    fun sinkStop(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
         try {
@@ -75,12 +73,12 @@ class StreamsSinkProcedures {
         } catch (e: Exception) {
             log?.error("Cannot stopped the Sink because of the following exception", e)
             return Stream.concat(sinkStatus(),
-                    Stream.of(StreamsSinkDTO("exception", ExceptionUtils.getStackTrace(e))))
+                    Stream.of(KeyValueResult("exception", ExceptionUtils.getStackTrace(e))))
         }
     }
 
     @Procedure("streams.sink.restart")
-    fun sinkRestart(): Stream<StreamsSinkDTO> {
+    fun sinkRestart(): Stream<KeyValueResult> {
         val stopped = sinkStop().collect(Collectors.toList())
         val hasError = stopped.stream().anyMatch { it.name == "exception" }
         if (hasError) {
@@ -90,33 +88,21 @@ class StreamsSinkProcedures {
     }
 
     @Procedure("streams.sink.config")
-    fun sinkConfig(): Stream<StreamsSinkDTO> {
+    fun sinkConfig(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
-        val configMap = JSONUtils.asMap(streamsSinkConfiguration)
-                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
-                .mapKeys { it.key.toPointCase() }
-                .mapKeys {
-                    when (it.key) {
-                        "error.config" -> "streams.sink.errors"
-                        "procedures.enabled" -> "streams.${it.key}"
-                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
-                    }
-                }
-        val topicMap = streamsSinkConfiguration.topics.asMap()
-                .mapKeys { it.key.key }
-        val invalidTopics = mapOf("invalid_topics" to streamsSinkConfiguration.topics.invalid)
-        return (configMap + topicMap + invalidTopics)
-                .entries.stream()
-                .map { StreamsSinkDTO(it.key, it.value) }
+        return streamsSinkConfiguration.asMap()
+                .entries
+                .stream()
+                .map { KeyValueResult(it.key, it.value) }
     }
 
     @Procedure("streams.sink.status")
-    fun sinkStatus(): Stream<StreamsSinkDTO> {
+    fun sinkStatus(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
         val value = (streamsEventSink?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
-        return Stream.of(StreamsSinkDTO("status", value))
+        return Stream.of(KeyValueResult("status", value))
     }
 
     private fun checkLeader() {

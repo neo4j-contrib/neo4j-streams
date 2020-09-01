@@ -29,55 +29,17 @@ class StreamsExtensionFactory : KernelExtensionFactory<StreamsExtensionFactory.D
     }
 }
 
-class StreamsEventRouterLifecycle(val db: GraphDatabaseAPI, val configuration: Config,
+class StreamsEventRouterLifecycle(db: GraphDatabaseAPI,
+                                  configuration: Config,
                                   private val availabilityGuard: AvailabilityGuard,
-                                  private val log: LogService): LifecycleAdapter() {
-    private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
-    private lateinit var txHandler: StreamsTransactionEventHandler
-    private lateinit var streamsConstraintsService: StreamsConstraintsService
-    private lateinit var streamHandler: StreamsEventRouter
-    private lateinit var streamsEventRouterConfiguration: StreamsEventRouterConfiguration
+                                  log: LogService): LifecycleAdapter() {
+    private val streamsEventRouterAvailabilityListener = StreamsEventRouterAvailabilityListener(db, configuration, log)
 
     override fun start() {
-        try {
-            streamsLog.info("Initialising the Streams Source module")
-            streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration)
-            streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration.raw)
-            StreamsProcedures.registerEventRouter(eventRouter = streamHandler)
-            StreamsProcedures.registerEventRouterConfiguration(eventRouterConfiguration = streamsEventRouterConfiguration)
-            streamHandler.start()
-            streamHandler.printInvalidTopics()
-            registerTransactionEventHandler()
-            streamsLog.info("Streams Source module initialised")
-        } catch (e: Exception) {
-            streamsLog.error("Error initializing the streaming producer:", e)
-        }
-    }
-
-    private fun registerTransactionEventHandler() {
-        if (streamsEventRouterConfiguration.enabled) {
-            streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
-            txHandler = StreamsTransactionEventHandler(streamHandler, streamsConstraintsService, streamsEventRouterConfiguration)
-            db.registerTransactionEventHandler(txHandler)
-            availabilityGuard.addListener(object: AvailabilityListener {
-                override fun unavailable() {}
-
-                override fun available() {
-                    streamsConstraintsService.start()
-                }
-            })
-        }
-    }
-
-    private fun unregisterTransactionEventHandler() {
-        if (streamsEventRouterConfiguration.enabled) {
-            StreamsUtils.ignoreExceptions({ streamsConstraintsService.close() }, UninitializedPropertyAccessException::class.java)
-            StreamsUtils.ignoreExceptions({ db.unregisterTransactionEventHandler(txHandler) }, UninitializedPropertyAccessException::class.java)
-        }
+        availabilityGuard.addListener(streamsEventRouterAvailabilityListener)
     }
 
     override fun stop() {
-        unregisterTransactionEventHandler()
-        StreamsUtils.ignoreExceptions({ streamHandler.stop() }, UninitializedPropertyAccessException::class.java)
+        streamsEventRouterAvailabilityListener.unavailable()
     }
 }

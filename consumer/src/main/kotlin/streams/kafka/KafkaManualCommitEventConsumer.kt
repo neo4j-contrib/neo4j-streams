@@ -6,9 +6,8 @@ import org.neo4j.logging.Log
 import streams.service.StreamsSinkEntity
 import streams.service.errors.ErrorService
 
-class KafkaManualCommitEventConsumer(private val config: KafkaSinkConfiguration,
-                                     private val log: Log,
-                                     private val dlqService: ErrorService): KafkaAutoCommitEventConsumer(config, log, dlqService) {
+class KafkaManualCommitEventConsumer(config: KafkaSinkConfiguration,
+                                     log: Log): KafkaAutoCommitEventConsumer(config, log) {
 
     private fun commitData(commit: Boolean, topicMap: Map<TopicPartition, OffsetAndMetadata>) {
         if (commit) {

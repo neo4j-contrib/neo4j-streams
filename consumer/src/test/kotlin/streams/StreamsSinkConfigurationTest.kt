@@ -25,6 +25,8 @@ class StreamsSinkConfigurationTest {
         val customId = "customId"
         val apocTimeout = "10000"
         val apocInterval = "2000"
+        val clusterOnly = "true"
+        val writeableInstanceInterval = "99"
         val config = Config.builder()
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
@@ -33,12 +35,16 @@ class StreamsSinkConfigurationTest {
                 .withSetting("streams.sink.topic.cdc.sourceId.idName", customId)
                 .withSetting("streams.check.apoc.timeout", apocTimeout)
                 .withSetting("streams.check.apoc.interval", apocInterval)
+                .withSetting("streams.cluster.only", clusterOnly)
+                .withSetting("streams.check.writeable.instance.interval", writeableInstanceInterval)
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
         testFromConf(streamsConfig, topic, topicValue)
         assertFalse { streamsConfig.enabled }
+        assertTrue { streamsConfig.clusterOnly }
         assertEquals(setOf(cdctopic), streamsConfig.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsConfig.sourceIdStrategyConfig.labelName)
+        assertEquals(writeableInstanceInterval.toLong(), streamsConfig.checkWriteableInstanceInterval)
         assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
         assertEquals(apocTimeout.toLong(), streamsConfig.checkApocTimeout)
         assertEquals(apocInterval.toLong(), streamsConfig.checkApocInterval)
@@ -46,7 +52,6 @@ class StreamsSinkConfigurationTest {
 
     @Test(expected = RuntimeException::class)
     fun shouldFailWithCrossDefinedTopics() {
-        val pollingInterval = "10"
         val topic = "topic-neo"
         val topicKey = "streams.sink.topic.cypher.$topic"
         val topicValue = "MERGE (n:Label{ id: event.id }) "

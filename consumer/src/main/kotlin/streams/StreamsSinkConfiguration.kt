@@ -2,11 +2,12 @@ package streams
 
 import org.neo4j.kernel.configuration.Config
 import streams.extensions.toPointCase
+import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
 import streams.service.TopicUtils
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 import streams.service.Topics
-import java.util.Properties
+import java.util.concurrent.TimeUnit
 
 
 object StreamsSinkConfigurationConstants {
@@ -15,6 +16,8 @@ object StreamsSinkConfigurationConstants {
     const val STREAMS_CONFIG_PREFIX = "streams."
     const val ENABLED = "sink.enabled"
     const val PROCEDURES_ENABLED = "procedures.enabled"
+    const val CLUSTER_ONLY = "cluster.only"
+    const val CHECK_WRITEABLE_INSTANCE_INTERVAL = "check.writeable.instance.interval"
 }
 
 data class StreamsSinkConfiguration(val enabled: Boolean = false,
@@ -23,7 +26,27 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val errorConfig: Map<String,Any?> = emptyMap(),
                                     val checkApocTimeout: Long = -1,
                                     val checkApocInterval: Long = 1000,
+                                    val clusterOnly: Boolean = false,
+                                    val checkWriteableInstanceInterval: Long = TimeUnit.MINUTES.toMillis(3),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
+
+    fun asMap(): Map<String, Any?> {
+        val configMap = JSONUtils.asMap(this)
+                .filterKeys { it != "topics" && it != "enabled" && it != "proceduresEnabled" && !it.startsWith("check") }
+                .mapKeys { it.key.toPointCase() }
+                .mapKeys {
+                    when (it.key) {
+                        "error.config" -> "streams.sink.errors"
+                        "procedures.enabled" -> "streams.${it.key}"
+                        "cluster.only" -> "streams.${it.key}"
+                        else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
+                    }
+                }
+        val topicMap = this.topics.asMap()
+                .mapKeys { it.key.key }
+        val invalidTopics = mapOf("invalid_topics" to this.topics.invalid)
+        return (configMap + topicMap + invalidTopics)
+    }
 
     companion object {
         fun from(cfg: Config): StreamsSinkConfiguration {
@@ -59,6 +82,10 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                             .toString().toLong(),
                     checkApocInterval = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_APOC_INTERVAL, default.checkApocInterval)
                             .toString().toLong(),
+                    checkWriteableInstanceInterval = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_WRITEABLE_INSTANCE_INTERVAL, default.checkWriteableInstanceInterval)
+                            .toString().toLong(),
+                    clusterOnly = config.getOrDefault(StreamsSinkConfigurationConstants.CLUSTER_ONLY, default.clusterOnly)
+                            .toString().toBoolean(),
                     sourceIdStrategyConfig = sourceIdStrategyConfig)
         }
 

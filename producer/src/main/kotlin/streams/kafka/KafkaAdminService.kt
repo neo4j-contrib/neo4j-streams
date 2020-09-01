@@ -9,12 +9,13 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.admin.AdminClient
+import org.neo4j.logging.Log
 import streams.utils.KafkaValidationUtils
 import streams.utils.StreamsUtils
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
-class KafkaAdminService(private val props: KafkaConfiguration, private val allTopics: List<String>) {
+class KafkaAdminService(private val props: KafkaConfiguration, private val allTopics: List<String>, private val log: Log) {
     private val client = AdminClient.create(props.asProperties())
     private val kafkaTopics: MutableSet<String> = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
     private val isAutoCreateTopicsEnabled = KafkaValidationUtils.isAutoCreateTopicsEnabled(client)
@@ -24,7 +25,13 @@ class KafkaAdminService(private val props: KafkaConfiguration, private val allTo
         if (!isAutoCreateTopicsEnabled) {
             job = GlobalScope.launch(Dispatchers.IO) {
                 while (isActive) {
-                    kafkaTopics += client.listTopics().names().get()
+                    try {
+                        kafkaTopics += client.listTopics().names().get()
+                    } catch (e: Exception) {
+                        log.error("""Cannot retrieve valid topics because the following exception, 
+                            |next attempt is in ${props.topicDiscoveryPollingInterval} ms:
+                        """.trimMargin(), e)
+                    }
                     delay(props.topicDiscoveryPollingInterval)
                 }
             }
