@@ -11,3 +11,4 @@ asciidoc:
     version: 4.0.2
     copyright: Neo4j Inc.
     common-license-page-uri: https://neo4j.com/docs/license/
+    page-product Neo4j Streams
