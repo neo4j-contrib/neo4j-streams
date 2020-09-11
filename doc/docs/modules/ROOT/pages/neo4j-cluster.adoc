@@ -1,6 +1,5 @@
+= Using with Neo4j Causal Cluster
 
-[[causal_cluster]]
-== Using with Neo4j Causal Cluster
 
 ifdef::env-docs[]
 [abstract]
@@ -10,7 +9,7 @@ This chapter describes considerations around using Neo4j Streams with Neo4j Ente
 endif::env-docs[]
 
 [[cluster_overview]]
-=== Overview
+== Overview
 
 link:https://neo4j.com/docs/operations-manual/current/clustering/[Neo4j Clustering] is a feature available in
 Enterprise Edition which allows high availability of the database through having multiple database members.
@@ -22,7 +21,7 @@ horizontally.
 
 
 [[cluster_kafka_connect]]
-=== Kafka Connect
+== Kafka Connect
 
 When using Neo4j Streams in this method with a Neo4j cluster, the most important consideration is to use
 a routing driver.  Generally, these are identified by a URI with `bolt+routing://` as the scheme instead of
@@ -30,6 +29,7 @@ just `bolt://` as the scheme.
 
 If your Neo4j cluster is located at `graph.mycompany.com:7687`, simply configure the Kafka Connect worker with
 
+[source]
 ----
 neo4j.server.uri=bolt+routing://graph.mycompany.com:7687
 ----
@@ -40,7 +40,7 @@ the correct cluster member, and managing changes to the cluster membership over 
 For further information on routing drivers, see the link:https://neo4j.com/docs/driver-manual/current/[Neo4j Driver Manual].
 
 [[cluster_neo4j_plugin]]
-=== Neo4j Plugin
+== Neo4j Plugin
 
 When using Neo4j Streams as a plugin together with a cluster, there are several things to keep in mind:
 
@@ -63,7 +63,7 @@ mind that due to the way clustering in Neo4j works, using `streams.consume` toge
 not work on a cluster follower or read replica, as only the leader can process writes.
 
 [[cluster_remote_clients]]
-=== Remote Clients
+== Remote Clients
 
 Sometimes there will be remote applications that talk to Neo4j via official drivers, that want to use
 streams functionality.  Best practices in these cases are:

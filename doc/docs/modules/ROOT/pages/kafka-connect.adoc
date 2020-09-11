@@ -1,6 +1,4 @@
-
-[[kafka_connect_plugin]]
-== Kafka Connect Plugin
+= Kafka Connect Plugin
 :environment: neo4j
 :id: neo4j
 
@@ -20,13 +18,13 @@ The Neo4j Streams project provides a Kafka Connect plugin that can be installed 
 - Ingest data from Kafka topics directly into Neo4j via templated Cypher queries;
 - Stream Neo4j transaction events (*coming soon*).
 
-[[kafka_connect_plugin_install]]
-=== Plugin installation
+[#kafka_connect_plugin_install]
+== Plugin installation
 
 You can choose your preferred way in order to install the plugin
 
 
-==== Download and install the plugin via Confluent Hub client
+=== Download and install the plugin via Confluent Hub client
 
 If you are using the provided compose file you can easily install the plugin by using the Confluent Hub.
 
@@ -53,7 +51,7 @@ image::ROOT:confluent-hub-client-installation.png[title="Installation via Conflu
 At the end of the process the plugin is automatically installed.
 
 
-==== Download the zip from the Confluent Hub
+=== Download the zip from the Confluent Hub
 
 Please go to the Confluent Hub page of the plugin:
 
@@ -64,7 +62,7 @@ And click to the **Download Connector** button.
 Once you downloaded the file please place it into your Kafka Connect `plugins` dir.
 
 
-==== Build it locally
+=== Build it locally
 
 Download the project from Github:
 
@@ -81,7 +79,7 @@ Build the project by running the following command:
 Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packages` you'll find a file named `neo4j-kafka-connect-neo4j-<VERSION>.zip`, please unpackage and place it into your Kafka Connect `plugins` dir.
 
 [#kafka-connect-sink-instance]
-=== Create the Sink Instance
+== Create the Sink Instance
 
 Create the Sink instance:
 
@@ -92,7 +90,7 @@ We'll define the Sink configuration in several ways:
 * by providing a pattern extraction to a JSON or AVRO file
 * by managing a CUD file format
 
-==== Cypher template
+=== Cypher template
 
 [source,json]
 ----
@@ -125,7 +123,7 @@ MERGE (f:Family{name: event.surname})
 MERGE (p)-[:BELONGS_TO]->(f)
 ----
 
-Where `{batch}` is a list of event objects.
+Where `\{batch\}` is a list of event objects.
 
 You can change the query or remove the property and add your own, but you must follow the following convention:
 
@@ -169,6 +167,7 @@ and click to the **Sink** tab. You must find a table just like this:
 ====
 Note that the Sink instance can be configured also to monitor multiple topics. Just evaluate the property `**topics**`
 with a list of topic separated by comma. For example:
+====
 
 [source,json]
 ----
@@ -196,7 +195,6 @@ with a list of topic separated by comma. For example:
 }
 ----
 
-====
 
 [#kafka-connect-sink-strategies]
 include::sink-strategies.adoc[]
@@ -204,7 +202,7 @@ include::sink-strategies.adoc[]
 [#kafka-connect-cud-file-format]
 include::cud-file-format.adoc[]
 
-==== Multi Database Support
+=== Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
 in order to support this feature, in order to support this feature with Kafka Connect plugin, creating the Sink
@@ -253,8 +251,8 @@ Following an example:
 }
 ----
 
-[[kafka_connect_error_handling]]
-=== How deal with bad data
+[#kafka_connect_error_handling]
+== How deal with bad data
 
 In Kafka Connect plugin, in the creation phase of the Sink instance, in addition to the properties
 described in the <<dlq-table, Dead Letter Queue configuration paramaters table>>, you need to define kafka broker connection properties:
@@ -278,8 +276,8 @@ So to do that at this moment as suggested by Confluent we need to ask again the 
 until this JIRA issue will not be addressed: https://issues.apache.org/jira/browse/KAFKA-8597.
 Said that, these properties has to be added only if you want to also redirect Neo4j errors into the DLQ.
 
-[[kafka_connect_monitor]]
-=== Monitor via Confluent Platform UI
+[#kafka_connect_monitor]
+== Monitor via Confluent Platform UI
 
 The Kafka Monitoring UI can be found at http://<localhost>:9021/management/connect
 
@@ -293,7 +291,7 @@ image::ROOT:confluent-imported-data.png[title="Confluent Platform Management", a
 
 include::config-override-policy.adoc[]
 
-=== Configuration Summary
+== Configuration Summary
 
 Following a summary of all the configuration parameters you can use for the Kafka Connect plugin:
 

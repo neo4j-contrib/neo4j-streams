@@ -1,6 +1,4 @@
-
-[[neo4j_streams_procedures]]
-== Neo4j Streams - Procedures
+= Neo4j Streams - Procedures
 :environment: streams
 
 ifdef::env-docs[]
@@ -14,13 +12,12 @@ endif::env-docs[]
 
 The Streams project comes out with a list of procedures.
 
-[[neo4j_streams_procedures_config]]
-=== Configuration
+== Configuration
 
 You can enable/disable the procedures by changing this variable inside the `neo4j.conf`
 
 .neo4j.conf
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.procedures.enabled=<true/false, default=true>
 ----
@@ -42,7 +39,7 @@ the following:
 image::ROOT:procedure_not_found.png[title="Neo4j Streams procedure not found", align="center"]
 ====
 
-==== Multi Database Support
+=== Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
 in order to support this feature you can set for each database instance a configuration suffix with the following pattern
@@ -51,7 +48,7 @@ in order to support this feature you can set for each database instance a config
 So, to enable the Streams procedures the following property should be added:
 
 .neo4j.conf
-[subs="verbatim"]
+[source,subs="verbatim"]
 ----
 streams.procedures.enabled.<DB_NAME>=<true/false, default=true>
 ----
@@ -59,6 +56,7 @@ streams.procedures.enabled.<DB_NAME>=<true/false, default=true>
 So if you have a instance name `foo` you can specify a configuration in this way:
 
 .neo4j.conf
+[source]
 ----
 streams.procedures.enabled.foo=<true/false, default=true>
 ----
@@ -66,6 +64,7 @@ streams.procedures.enabled.foo=<true/false, default=true>
 The old property:
 
 .neo4j.conf
+[source]
 ----
 streams.procedures.enabled=<true/false, default=true>
 ----
@@ -75,12 +74,12 @@ are still valid and it refers to Neo4j's default db instance.
 In particular the following property will be used as default value
 for non-default db instances, in case of the specific configuration params is not provided:
 
+[source]
 ----
 streams.procedures.enabled=<true/false, default=true>
 ----
 
-[[neo4j_streams_procedure_publish]]
-=== streams.publish
+== streams.publish
 
 This procedure allows custom message streaming from Neo4j to the configured environment by using the underlying configured Producer.
 
@@ -118,8 +117,7 @@ You can send any kind of data in the payload, nodes, relationships, paths, lists
 
 In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.
 
-[[neo4j_streams_procedure_consume]]
-=== streams.consume
+== streams.consume
 
 This procedure allows to consume messages from a given topic.
 
@@ -162,7 +160,7 @@ Input Parameters:
 
 |===
 
-==== Available configuration parameters
+=== Available configuration parameters
 
 [cols="3*",options="header"]
 |===
@@ -225,7 +223,7 @@ Supported deserializers are: `org.apache.kafka.common.serialization.ByteArrayDes
 
 |===
 
-==== Partitions
+=== Partitions
 
 [cols="3*",options="header"]
 |===

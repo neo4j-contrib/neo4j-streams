@@ -1,13 +1,13 @@
 
 [[faq]]
-== Neo4j Streams FAQ
+= Neo4j Streams FAQ
 
-=== Source Code License
+== Source Code License
 
 The source code to Neo4j Streams is available under the terms of the Apache License, version 2.0.  See the LICENSE file in
 the source code repository for full terms and conditions.
 
-=== How to integrate Neo4j and Kafka
+== How to integrate Neo4j and Kafka
 
 When integrating Neo4j and Kafka using Neo4j Streams plugin or Kafka Connect plugin
 is important configure just one of them and not both.
@@ -15,7 +15,7 @@ If you need to load data from Kafka to Neo4j (and not viceversa) you can just us
 If you need to have both sink and source functionalities then you have to use the Neo4j Streams plugin.
 This is the main difference between those plugins.
 
-=== About CUD file format
+== About CUD file format
 
 The CUD file format is JSON file that represents Graph Entities (Nodes/Relationships) and how to manage them in term
 of **C**reate/**U**pdate/**D**elete operations.
@@ -23,7 +23,7 @@ So every JSON event represents a single operation.
 For more details about how to use these, please checkout the xref:consumer.adoc#_cud_file_format[CUD File Format] section for the
 Neo4j Streams plugin, and the xref:kafka-connect.adoc#kafka-connect-cud-file-format[CUD File Format] section for Kafka Connect plugin.
 
-=== How to ingest events using CDC Schema strategy
+== How to ingest events using CDC Schema strategy
 
 Change Data Capture method allows to ingest events between different Neo4j instances.
 If you decide to use the Neo4j Streams plugin, then the Neo4j source instance will be configured as follow:
@@ -71,7 +71,7 @@ If you decide to use Kafka Connect plugin for the sink instance, then it has to 
 }
 ----
 
-=== Is Neo4j Streams supported by Confluent Cloud?
+== Is Neo4j Streams supported by Confluent Cloud?
 
 If the need is to run the connector as a managed service then the answer is no.
 Users who are interested in running Neo4j-Streams as a Cloud managed connector by Confluent should request this of Confluent.
@@ -86,7 +86,7 @@ Other references to how to configure it to connect to the Confluent Cloud can be
 
 * https://github.com/neo4j-contrib/neo4j-streams/issues/182
 
-=== Kafka output events description
+== Kafka output events description
 
 If you configure the Neo4j Streams plugin as Sink, using a Cypher query in order to ingest data from Kafka into Neo4j,
 watching the Kafka console consumer output you will see JSON events which describes nodes and relationships creation.
@@ -107,7 +107,7 @@ The specified query is considered unique, so all the entities involved belongs t
 
 * `txEventId` is a counter that identifies the internal order in which Neo4j handled the specific event
 
-=== How to configure Kafka over SSL?
+== How to configure Kafka over SSL?
 
 You will find a guide xref:ROOT:kafka-ssl.adoc[here] on how to configure Neo4j Streams plugin to work with Kafka over SSL.
 Under the covers, Neo4j Streams plugin uses the official Java libraries for Kafka, so you would configure this in the
@@ -126,7 +126,7 @@ Here are some helpful links:
 
 * https://docs.confluent.io/current/connect/security.html[Kafka Connect Security]
 
-=== Enabling DLQ functionality
+== Enabling DLQ functionality
 
 In order to enable the DLQ functionality you have to specify the following properties:
 
@@ -147,7 +147,7 @@ streams.sink.errors.deadletterqueue.topic.name=<topic_name>
 
 For further details try to look at the following section: xref:ROOT:consumer.adoc#neo4j_streams_dlq[How deal with bad data]
 
-=== Supported Kafka deserializers
+== Supported Kafka deserializers
 
 --
 The Neo4j Streams support two tpye of deserializers:
@@ -166,7 +166,7 @@ kafka.schema.registry.url=*.*.*.*:8081
 Where 8081 is the default port for the Confluent Schema Registry.
 --
 
-=== Kafka cluster and topic with multiple partition setup
+== Kafka cluster and topic with multiple partition setup
 
 If the environment is a Kafka cluster composed by:
 

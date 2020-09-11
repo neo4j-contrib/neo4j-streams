@@ -1,30 +1,30 @@
+= Source: Neo4j -> Kafka
 
-[[neo4j_streams_source]]
-== Neo4j Streams - Source: Neo4j -> Kafka
+// [[neo4j_streams_source]]
 
-ifdef::env-docs[]
-[abstract]
---
-This chapter describes the Neo4j Streams Source in the Neo4j Streams Library.
-Use this section to configure Neo4j to publish CDC style data to Kafka.
---
-endif::env-docs[]
+// ifdef::env-docs[]
+// [abstract]
+// --
+// This chapter describes the Neo4j Streams Source in the Neo4j Streams Library.
+// Use this section to configure Neo4j to publish CDC style data to Kafka.
+// --
+// endif::env-docs[]
 
 Is the transaction event handler events that sends data to a Kafka topic
 
-[source,adoc,subs="verbatim"]
+// [source,adoc,subs="verbatim"]
 include::producer-configuration.adoc[]
 
 [#source-patterns]
-=== Patterns
+== Patterns
 
 include::producer-patterns.adoc[]
 
-=== Transaction Event Handler
+== Transaction Event Handler
 
 The transaction event handler is the core of the Stream Producer and allows to stream database changes.
 
-==== Events
+=== Events
 
 The Producer streams three kind of events:
 
@@ -32,7 +32,7 @@ The Producer streams three kind of events:
 * *updated*: when a node/relation/property is updated
 * *deleted*: when a node/relation/property is deleted
 
-===== Created
+==== Created
 
 Following an example of the node creation event:
 
@@ -46,7 +46,7 @@ include::ROOT:partial$producer-data/node.created.json[]
 include::ROOT:partial$producer-data/relationship.created.json[]
 ----
 
-===== Updated
+==== Updated
 
 Following an example of the node update event:
 
@@ -60,7 +60,7 @@ include::ROOT:partial$producer-data/node.updated.json[]
 include::ROOT:partial$producer-data/relationship.updated.json[]
 ----
 
-===== Deleted
+==== Deleted
 
 Following an example of the node creation event:
 
@@ -74,7 +74,7 @@ include::ROOT:partial$producer-data/node.deleted.json[]
 include::ROOT:partial$producer-data/relationship.deleted.json[]
 ----
 
-==== Meta
+=== Meta
 
 The *meta* field contains the metadata related to the transaction event:
 
@@ -113,7 +113,7 @@ The *meta* field contains the metadata related to the transaction event:
 |Contains the information about the source
 |===
 
-===== Source
+==== Source
 
 [cols="3*",options="header"]
 |===
@@ -126,7 +126,7 @@ The *meta* field contains the metadata related to the transaction event:
 |The information about the source
 |===
 
-==== Payload
+=== Payload
 
 The *payload* field contains the information about the the data related to the event
 
@@ -153,11 +153,11 @@ The *payload* field contains the information about the the data related to the e
 |The data after the transaction event
 |===
 
-==== Payload: before and after
+=== Payload: before and after
 
 We must distinguish two cases:
 
-===== Nodes
+==== Nodes
 
 [cols="3*",options="header"]
 |===
@@ -174,7 +174,7 @@ We must distinguish two cases:
 |List of properties attached to the node, the `K` is the property name
 |===
 
-===== Relationships
+==== Relationships
 
 [cols="3*",options="header"]
 |===
@@ -199,7 +199,7 @@ We must distinguish two cases:
 |The ending node of the relationship
 |===
 
-===== Relationships: startNode and endNode
+==== Relationships: startNode and endNode
 
 [cols="3*",options="header"]
 |===
@@ -221,7 +221,7 @@ We must distinguish two cases:
 
 |===
 
-==== Schema
+=== Schema
 
 [cols="3*",options="header"]
 |===
@@ -238,7 +238,7 @@ We must distinguish two cases:
 |List of properties attached to the entity, where the `K` is the property name and the `V` is the class type
 |===
 
-==== Constraints
+=== Constraints
 
 Nodes and Relationships can have a list of constraints attached to them:
 
