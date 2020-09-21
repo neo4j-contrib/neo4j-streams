@@ -4,12 +4,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventSinkAvailabilityListener
+import streams.config.StreamsConfig
 import streams.extensions.execute
+import streams.extensions.getSystemDb
 import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
 
@@ -114,6 +117,21 @@ object Neo4jUtils {
                 delay(delay)
             }
             action()
+        }
+    }
+
+    fun executeWhenSystemDbIsAvailable(databaseManagementService: DatabaseManagementService,
+                                       configuration: StreamsConfig,
+                                       actionIfAvailable: () -> Unit,
+                                       actionIfNotAvailable: (() -> Unit)?) {
+        val systemDb = databaseManagementService.getSystemDb()
+        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+        GlobalScope.launch(Dispatchers.IO) {
+            if (systemDb.isAvailable(systemDbWaitTimeout)) {
+                actionIfAvailable()
+            } else if (actionIfNotAvailable != null) {
+                actionIfNotAvailable()
+            }
         }
     }
 

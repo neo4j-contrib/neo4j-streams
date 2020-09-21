@@ -31,6 +31,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         const val CHECK_APOC_INTERVAL = "streams.check.apoc.interval"
         const val CLUSTER_ONLY = "streams.cluster.only"
         const val CHECK_WRITEABLE_INSTANCE_INTERVAL = "streams.check.writeable.instance.interval"
+        const val SYSTEM_DB_WAIT_TIMEOUT = "streams.systemdb.wait.timeout"
+        const val SYSTEM_DB_WAIT_TIMEOUT_VALUE = 10000L
         private var afterInitListeners = mutableListOf<((MutableMap<String, String>) -> Unit)>()
 
         fun registerListener(after: (MutableMap<String, String>) -> Unit) {
@@ -136,5 +138,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun isSinkGloballyEnabled() = this.config.getOrDefault(SINK_ENABLED, SINK_ENABLED_VALUE).toString().toBoolean()
 
     fun isSinkEnabled(dbName: String) = this.config.getOrDefault("${SINK_ENABLED}.to.$dbName", isSinkGloballyEnabled()).toString().toBoolean()
+
+    fun getSystemDbWaitTimeout() = this.config.getOrDefault(SYSTEM_DB_WAIT_TIMEOUT, SYSTEM_DB_WAIT_TIMEOUT_VALUE)
+            .toString().toLong()
 
 }

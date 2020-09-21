@@ -10,8 +10,11 @@ import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.TopicPartition
+import org.hamcrest.Matchers
 import org.junit.Test
+import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.api.procedure.GlobalProcedures
+import org.neo4j.test.assertion.Assert
 import streams.KafkaTestUtils
 import streams.events.StreamsPluginStatus
 import streams.extensions.execute
@@ -21,6 +24,7 @@ import streams.serialization.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID
+import java.util.concurrent.TimeUnit
 import java.util.stream.Collectors
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -282,19 +286,20 @@ class KafkaStreamsSinkProceduresTSE : KafkaEventSinkBaseTSE() {
     }
 
     @Test
-    fun `should report the streams sink status RUNNING`() {
+    fun `should report the streams sink status RUNNING`() = runBlocking {
         // given
         db.setConfig("streams.sink.topic.cypher.shouldWriteCypherQuery", cypherQueryTemplate).start()
         registerProcedure()
         val expectedRunning = listOf(mapOf("name" to "status", "value" to StreamsPluginStatus.RUNNING.toString()))
 
-        // when
-        db.execute("CALL streams.sink.status()") { result ->
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            // when
+            val actual=  db.execute("CALL streams.sink.status()") { result ->
+                result.stream().collect(Collectors.toList())
+            }
             // then
-            val actual = result.stream()
-                    .collect(Collectors.toList())
-            assertEquals(expectedRunning, actual)
-        }
+            expectedRunning == actual
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
     @Test

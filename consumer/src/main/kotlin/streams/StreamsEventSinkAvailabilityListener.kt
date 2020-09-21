@@ -18,9 +18,10 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
     private val db = dependencies.graphdatabaseAPI()
     private val logService = dependencies.log()
     private val configuration = dependencies.streamsConfig()
-    private var streamsLog = logService.getUserLog(StreamsEventSinkExtensionFactory.StreamsEventLifecycle::class.java)
+    private val streamsLog = logService.getUserLog(StreamsEventSinkExtensionFactory.StreamsEventLifecycle::class.java)
     private val streamsTopicService = StreamsTopicService()
     private val log = logService.getUserLog(StreamsEventSinkFactory::class.java)
+    private val dbms = dependencies.dbms()
 
     private var eventSink: StreamsEventSink? = null
 
@@ -53,14 +54,27 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
                 }
             }
 
-            // start the Sink
-            if (Neo4jUtils.isCluster(db)) {
-                log.info("The Sink module is running in a cluster, checking for the ${StreamsUtils.LEADER}")
-                Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsSinkConfiguration) }
-            } else {
-                // check if is writeable instance
-                runInASingleInstance(streamsSinkConfiguration)
+            val whenAvailable = {
+                // start the Sink
+                if (Neo4jUtils.isCluster(db)) {
+                    log.info("The Sink module is running in a cluster, checking for the ${StreamsUtils.LEADER}")
+                    Neo4jUtils.waitForTheLeader(db, log) { initSinkModule(streamsSinkConfiguration) }
+                } else {
+                    // check if is writeable instance
+                    runInASingleInstance(streamsSinkConfiguration)
+                }
             }
+
+            val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+            val whenNotAvailable = {
+                streamsLog.info("""
+                                |Cannot start Streams Sink module because database ${StreamsUtils.SYSTEM_DATABASE_NAME} 
+                                |is not available after $systemDbWaitTimeout ms
+                            """.trimMargin())
+            }
+            // wait for the system db became available
+            Neo4jUtils.executeWhenSystemDbIsAvailable(dbms,
+                    configuration, whenAvailable, whenNotAvailable)
 
             // Register required services for the Procedures
             StreamsSinkProcedures.registerStreamsEventSink(eventSink!!)

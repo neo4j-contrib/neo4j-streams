@@ -17,7 +17,8 @@ import streams.utils.StreamsUtils
         KafkaEventSinkSimpleTSE::class,
         KafkaStreamsSinkProceduresTSE::class,
         KafkaEventSinkCUDFormatTSE::class,
-        KafkaEventSinkAvroTSE::class/*,
+        KafkaEventSinkAvroTSE::class,
+        KafkaNeo4jRecoveryTSE::class/*,
         KafkaEventSinkEnterpriseTSE::class*/
 )
 class KafkaEventSinkSuiteIT {

@@ -7,6 +7,10 @@ import org.junit.After
 import org.junit.AfterClass
 import org.junit.Before
 import org.junit.BeforeClass
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.BeforeEach
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.KafkaTestUtils
@@ -20,6 +24,7 @@ open class KafkaEventSinkBaseTSE {
         private var startedFromSuite = true
 
         @BeforeClass
+        @BeforeAll
         @JvmStatic
         fun setUpContainer() {
             if (!KafkaEventSinkSuiteIT.isRunning) {
@@ -29,6 +34,7 @@ open class KafkaEventSinkBaseTSE {
         }
 
         @AfterClass
+        @AfterAll
         @JvmStatic
         fun tearDownContainer() {
             if (!startedFromSuite) {
@@ -49,6 +55,7 @@ open class KafkaEventSinkBaseTSE {
     val data = mapOf("id" to 1, "properties" to dataProperties)
 
     @Before
+    @BeforeEach
     fun setUp() {
         db = ImpermanentDbmsRule()
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
@@ -68,6 +75,7 @@ open class KafkaEventSinkBaseTSE {
     }
 
     @After
+    @AfterEach
     fun tearDown() {
         if (::db.isInitialized) {
             db.shutdownSilently()
