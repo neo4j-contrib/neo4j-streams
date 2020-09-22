@@ -1,17 +1,24 @@
 package streams.procedures
 
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import org.apache.commons.lang3.StringUtils
+import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.logging.Log
-import org.neo4j.procedure.*
+import org.neo4j.procedure.Context
+import org.neo4j.procedure.Description
+import org.neo4j.procedure.Mode
+import org.neo4j.procedure.Name
+import org.neo4j.procedure.Procedure
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEventBuilder
-import java.lang.RuntimeException
+import java.util.concurrent.ConcurrentHashMap
 
+data class StreamsEventSinkStoreEntry(val eventRouter: StreamsEventRouter,
+                                      val eventRouterConfiguration: StreamsEventRouterConfiguration)
 class StreamsProcedures {
+
+    @JvmField @Context
+    var db: GraphDatabaseService? = null
 
     @JvmField @Context var log: Log? = null
 
@@ -30,35 +37,35 @@ class StreamsProcedures {
         }
         val streamsEvent = StreamsEventBuilder()
                 .withPayload(payload)
-                .withNodeRoutingConfiguration(eventRouterConfiguration
+                .withNodeRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                        .eventRouterConfiguration
                         .nodeRouting
                         .firstOrNull { it.topic == topic })
-                .withRelationshipRoutingConfiguration(eventRouterConfiguration
+                .withRelationshipRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                        .eventRouterConfiguration
                         .relRouting
                         .firstOrNull { it.topic == topic })
                 .withTopic(topic)
                 .build()
-        mutex.withLock { eventRouter.sendEvents(topic, listOf(streamsEvent)) }
+        getStreamsEventSinkStoreEntry().eventRouter.sendEvents(topic, listOf(streamsEvent))
     }
 
     private fun checkEnabled() {
-        if (!eventRouterConfiguration.proceduresEnabled) {
+        if (!getStreamsEventSinkStoreEntry().eventRouterConfiguration.proceduresEnabled) {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
 
+    private fun getStreamsEventSinkStoreEntry() = streamsEventRouterStore[db!!.databaseName()]!!
+
     companion object {
 
-        private val mutex = Mutex()
-        private lateinit var eventRouter: StreamsEventRouter
-        private lateinit var eventRouterConfiguration: StreamsEventRouterConfiguration
+        private val streamsEventRouterStore = ConcurrentHashMap<String, StreamsEventSinkStoreEntry>()
 
-        fun registerEventRouter(evtRouter: StreamsEventRouter) = runBlocking {
-            mutex.withLock { eventRouter = evtRouter }
-        }
-
-        fun registerEventRouterConfiguration(evtConf: StreamsEventRouterConfiguration) = runBlocking {
-            mutex.withLock { eventRouterConfiguration = evtConf }
+        fun register(databaseName: String,
+                     evtRouter: StreamsEventRouter,
+                     evtConf: StreamsEventRouterConfiguration) = runBlocking {
+            streamsEventRouterStore[databaseName] = StreamsEventSinkStoreEntry(evtRouter, evtConf)
         }
     }
 

@@ -14,7 +14,7 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.api.procedure.GlobalProcedures
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import streams.KafkaTestUtils
 import streams.events.StreamsPluginStatus
 import streams.extensions.execute

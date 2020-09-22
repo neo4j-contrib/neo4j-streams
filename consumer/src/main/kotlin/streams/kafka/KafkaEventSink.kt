@@ -36,7 +36,6 @@ class KafkaEventSink(private val config: StreamsConfig,
                      private val db: GraphDatabaseAPI): StreamsEventSink(config, queryExecution, streamsTopicService, log, db) {
 
     private val mutex = Mutex()
-    private val streamsConfig = StreamsSinkConfiguration.from(config, db.databaseName())
 
     private lateinit var eventConsumer: KafkaEventConsumer
     private lateinit var job: Job
@@ -69,6 +68,10 @@ class KafkaEventSink(private val config: StreamsConfig,
     }
 
     override fun start() = runBlocking { // TODO move to the abstract class
+        config.loadStreamsConfiguration()
+        val streamsConfig: StreamsSinkConfiguration = StreamsSinkConfiguration.from(config, db.databaseName())
+        streamsTopicService.clearAll()
+        streamsTopicService.setAll(streamsConfig.topics)
         val topics = streamsTopicService.getTopics()
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         if (streamsConfig.clusterOnly && !Neo4jUtils.isCluster(db)) {
@@ -87,6 +90,12 @@ class KafkaEventSink(private val config: StreamsConfig,
             log.info("The Kafka Sink is disabled")
             return@runBlocking
         }
+        if (topics.isEmpty()) {
+            if (isWriteableInstance) {
+                log.warn("The Kafka Sink will not start because no topics are provided")
+            }
+            return@runBlocking
+        }
         log.info("Starting the Kafka Sink")
         mutex.withLock {
             if (StreamsPluginStatus.RUNNING == status()) {
@@ -99,9 +108,9 @@ class KafkaEventSink(private val config: StreamsConfig,
                 eventConsumer = getEventConsumerFactory()
                         .createStreamsEventConsumer(config, log)
                         .withTopics(topics) as KafkaEventConsumer
-                job = createJob()
+                job = createJob(streamsConfig)
             } catch (e: Exception) {
-                log.error("Cannot create job because of the following exception:", e)
+                log.error("The Kafka Sink will not start, cannot create the sink job because of the following exception:", e)
                 return@runBlocking
             }
         }
@@ -137,7 +146,7 @@ class KafkaEventSink(private val config: StreamsConfig,
         Unit
     }
 
-    private fun createJob(): Job {
+    private fun createJob(streamsConfig: StreamsSinkConfiguration): Job {
         log.info("Creating Sink daemon Job")
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {

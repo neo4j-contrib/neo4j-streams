@@ -4,7 +4,7 @@ import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.service.sink.strategy.CUDNode

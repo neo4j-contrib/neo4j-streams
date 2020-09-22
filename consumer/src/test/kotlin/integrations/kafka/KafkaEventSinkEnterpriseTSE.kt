@@ -15,7 +15,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.driver.SessionConfig
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import streams.KafkaTestUtils
 import streams.Neo4jContainerExtension
 import streams.serialization.JSONUtils

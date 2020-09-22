@@ -29,32 +29,29 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
 
     override fun available() {
         try {
-            configuration.loadStreamsConfiguration()
-            streamsTopicService.clearAll()
-            val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration, db.databaseName())
-            streamsTopicService.setAll(streamsSinkConfiguration.topics)
-
-            streamsLog.info("Initialising the Streams Sink module")
-            // Create the Sink
-            runBlocking {
-                mutex.withLock {
-                    setAvailable(db, true)
-                    if (eventSink == null) {
-                        val neo4jStrategyStorage = Neo4jStreamsStrategyStorage(streamsTopicService, configuration, db.databaseName())
-                        val streamsQueryExecution = StreamsEventSinkQueryExecution(db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
-                                neo4jStrategyStorage)
-                        // Create the Sink if not exists
-                        eventSink = StreamsEventSinkFactory
-                                .getStreamsEventSink(configuration,
-                                        streamsQueryExecution,
-                                        streamsTopicService,
-                                        log,
-                                        db)
-                    }
-                }
-            }
 
             val whenAvailable = {
+                configuration.loadStreamsConfiguration()
+                val streamsSinkConfiguration = StreamsSinkConfiguration.from(configuration, db.databaseName())
+                streamsLog.info("Initialising the Streams Sink module")
+                // Create the Sink
+                runBlocking {
+                    mutex.withLock {
+                        setAvailable(db, true)
+                        if (eventSink == null) {
+                            val neo4jStrategyStorage = Neo4jStreamsStrategyStorage(streamsTopicService, configuration, db.databaseName())
+                            val streamsQueryExecution = StreamsEventSinkQueryExecution(db, logService.getUserLog(StreamsEventSinkQueryExecution::class.java),
+                                    neo4jStrategyStorage)
+                            // Create the Sink if not exists
+                            eventSink = StreamsEventSinkFactory
+                                    .getStreamsEventSink(configuration,
+                                            streamsQueryExecution,
+                                            streamsTopicService,
+                                            log,
+                                            db)
+                        }
+                    }
+                }
                 // start the Sink
                 if (Neo4jUtils.isCluster(db)) {
                     log.info("The Sink module is running in a cluster, checking for the ${StreamsUtils.LEADER}")
@@ -63,6 +60,9 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
                     // check if is writeable instance
                     runInASingleInstance(streamsSinkConfiguration)
                 }
+
+                // Register required services for the Procedures
+                StreamsSinkProcedures.registerStreamsEventSink(db.databaseName(), eventSink!!)
             }
 
             val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
@@ -73,13 +73,12 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
                             """.trimMargin())
             }
             // wait for the system db became available
-            Neo4jUtils.executeWhenSystemDbIsAvailable(dbms,
+            StreamsUtils.executeWhenSystemDbIsAvailable(dbms,
                     configuration, whenAvailable, whenNotAvailable)
 
-            // Register required services for the Procedures
-            StreamsSinkProcedures.registerStreamsEventSink(eventSink!!)
+
         } catch (e: Exception) {
-            streamsLog.error("Error initializing the streaming sink:", e)
+            streamsLog.error("Error initialising the streaming sink:", e)
         }
     }
 

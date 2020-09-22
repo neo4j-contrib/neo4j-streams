@@ -10,7 +10,7 @@ import org.junit.Assume
 import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
 import streams.KafkaTestUtils

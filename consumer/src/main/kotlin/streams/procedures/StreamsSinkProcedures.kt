@@ -1,10 +1,9 @@
 package streams.procedures
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -22,6 +21,7 @@ import streams.config.StreamsConfig
 import streams.events.StreamsPluginStatus
 import streams.utils.Neo4jUtils
 import java.util.concurrent.ArrayBlockingQueue
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
 import java.util.stream.Stream
 import java.util.stream.StreamSupport
@@ -51,7 +51,8 @@ class StreamsSinkProcedures {
             Stream.empty<StreamResult>()
         } else {
             val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-            val configuration = mutex.withLock { streamsEventSink?.getEventSinkConfigMapper().convert(config = properties) }
+            val configuration = getStreamsEventSink()
+                    .getEventSinkConfigMapper().convert(config = properties)
 
             readData(topic, config ?: emptyMap(), configuration)
         }
@@ -62,12 +63,8 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                runBlocking {
-                    mutex.withLock {
-                        streamsEventSink?.start()
-                        sinkStatus()
-                    }
-                }
+                getStreamsEventSink().start()
+                sinkStatus()
             } catch (e: Exception) {
                 log?.error("Cannot start the Sink because of the following exception", e)
                 Stream.concat(sinkStatus(),
@@ -81,12 +78,8 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                runBlocking {
-                    mutex.withLock {
-                        streamsEventSink?.stop()
-                        sinkStatus()
-                    }
-                }
+                getStreamsEventSink()?.stop()
+                sinkStatus()
             } catch (e: Exception) {
                 log?.error("Cannot stopped the Sink because of the following exception", e)
                 Stream.concat(sinkStatus(),
@@ -121,7 +114,7 @@ class StreamsSinkProcedures {
     fun sinkStatus(): Stream<KeyValueResult> {
         checkEnabled()
         return checkLeader {
-            val value = (streamsEventSink?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
+            val value = (getStreamsEventSink().status() ?: StreamsPluginStatus.UNKNOWN).toString()
             Stream.of(KeyValueResult("status", value))
         }
     }
@@ -137,7 +130,7 @@ class StreamsSinkProcedures {
         val timeout = cfg.getOrDefault("timeout", 1000).toString().toLong()
         val data = ArrayBlockingQueue<StreamResult>(1000)
         val tombstone = StreamResult(emptyMap<String, Any>())
-        GlobalScope.launch {
+        GlobalScope.launch(Dispatchers.IO) {
             val consumer = createConsumer(consumerConfig, topic)
             consumer.start()
             try {
@@ -165,14 +158,14 @@ class StreamsSinkProcedures {
 
     private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer = runBlocking {
         val copy = StreamsConfig.getInstance().copy()
-        mutex.withLock {
-            copy.config.clear()
-            copy.config.putAll(consumerConfig)
-            streamsEventSink?.getEventConsumerFactory()
-                    .createStreamsEventConsumer(copy, log!!)
-                    .withTopics(setOf(topic))
-        }
+        copy.config.clear()
+        copy.config.putAll(consumerConfig)
+        getStreamsEventSink().getEventConsumerFactory()
+                .createStreamsEventConsumer(copy, log!!)
+                .withTopics(setOf(topic))
     }
+
+    private fun getStreamsEventSink() = streamsEventSinkStore[db!!.databaseName()]!!
 
     private fun checkEnabled() {
         if (!StreamsConfig.getInstance().hasProceduresEnabled(db?.databaseName() ?: ""))  {
@@ -182,11 +175,10 @@ class StreamsSinkProcedures {
 
     companion object {
 
-        private val mutex = Mutex()
-        private lateinit var streamsEventSink: StreamsEventSink
+        private val streamsEventSinkStore = ConcurrentHashMap<String, StreamsEventSink>()
 
-        fun registerStreamsEventSink(streamsEventSink: StreamsEventSink) {
-            this.streamsEventSink = streamsEventSink
+        fun registerStreamsEventSink(databaseName: String, streamsEventSink: StreamsEventSink) {
+            streamsEventSinkStore[databaseName] = streamsEventSink
         }
     }
 }

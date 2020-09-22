@@ -120,19 +120,4 @@ object Neo4jUtils {
         }
     }
 
-    fun executeWhenSystemDbIsAvailable(databaseManagementService: DatabaseManagementService,
-                                       configuration: StreamsConfig,
-                                       actionIfAvailable: () -> Unit,
-                                       actionIfNotAvailable: (() -> Unit)?) {
-        val systemDb = databaseManagementService.getSystemDb()
-        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
-        GlobalScope.launch(Dispatchers.IO) {
-            if (systemDb.isAvailable(systemDbWaitTimeout)) {
-                actionIfAvailable()
-            } else if (actionIfNotAvailable != null) {
-                actionIfNotAvailable()
-            }
-        }
-    }
-
 }

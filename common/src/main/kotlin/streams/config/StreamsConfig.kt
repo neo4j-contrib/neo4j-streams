@@ -98,7 +98,9 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
 
         val properties = Properties()
         try {
-            log.info("The retrieved NEO4J_CONF dir is $neo4jConfFolder")
+            if (log.isDebugEnabled) {
+                log.debug("The retrieved NEO4J_CONF dir is $neo4jConfFolder")
+            }
             properties.load(FileInputStream("$neo4jConfFolder/neo4j.conf"))
         } catch (e: FileNotFoundException) {
             log.error("The neo4j.conf file is not under the directory defined into the directory $neo4jConfFolder, please set the NEO4J_CONF env correctly")

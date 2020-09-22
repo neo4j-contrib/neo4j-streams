@@ -1,4 +1,4 @@
-package org.neo4j.test.assertion
+package streams
 
 import org.hamcrest.Matcher
 import org.hamcrest.StringDescription

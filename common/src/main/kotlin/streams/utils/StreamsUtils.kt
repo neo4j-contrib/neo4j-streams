@@ -1,7 +1,13 @@
 package streams.utils
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.neo4j.dbms.api.DatabaseManagementService
+import streams.config.StreamsConfig
+import streams.extensions.getSystemDb
 
 object StreamsUtils {
 
@@ -37,6 +43,21 @@ object StreamsUtils {
             success = action()
         }
         success
+    }
+
+    fun executeWhenSystemDbIsAvailable(databaseManagementService: DatabaseManagementService,
+                                       configuration: StreamsConfig,
+                                       actionIfAvailable: () -> Unit,
+                                       actionIfNotAvailable: (() -> Unit)?) {
+        val systemDb = databaseManagementService.getSystemDb()
+        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+        GlobalScope.launch(Dispatchers.IO) {
+            if (systemDb.isAvailable(systemDbWaitTimeout)) {
+                actionIfAvailable()
+            } else if (actionIfNotAvailable != null) {
+                actionIfNotAvailable()
+            }
+        }
     }
 
 }

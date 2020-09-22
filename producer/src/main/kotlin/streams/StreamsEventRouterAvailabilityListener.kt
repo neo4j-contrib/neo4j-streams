@@ -17,32 +17,29 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
                                              private val configuration: StreamsConfig,
                                              private val log: LogService): AvailabilityListener {
     private val streamsLog = log.getUserLog(StreamsEventRouterAvailabilityListener::class.java)
-    private val streamsConstraintsService: StreamsConstraintsService
+    private var streamsConstraintsService: StreamsConstraintsService? = null
     private var txHandler: StreamsTransactionEventHandler? = null
     private var streamHandler: StreamsEventRouter? = null
 
     private val mutex = Mutex()
 
-    init {
-        streamsLog.info("Initialising the Streams Source module")
-        val streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration, db.databaseName())
-        streamsLog.info("Initialising the Streams Source module")
-        streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
-    }
 
     private fun registerTransactionEventHandler() = runBlocking {
         mutex.withLock {
             configuration.loadStreamsConfiguration()
+            streamsLog.info("Initialising the Streams Source module")
             val streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configuration, db.databaseName())
+            if (streamsConstraintsService == null) {
+                streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration.schemaPollingInterval)
+            }
             if (streamsEventRouterConfiguration.enabled) {
                 streamHandler = StreamsEventRouterFactory.getStreamsEventRouter(log, configuration, db.databaseName())
-                txHandler = StreamsTransactionEventHandler(streamHandler!!, streamsConstraintsService, streamsEventRouterConfiguration)
+                txHandler = StreamsTransactionEventHandler(streamHandler!!, streamsConstraintsService!!, streamsEventRouterConfiguration)
                 streamHandler!!.start()
                 streamHandler!!.printInvalidTopics()
-                streamsConstraintsService.start()
+                streamsConstraintsService!!.start()
                 databaseManagementService.registerTransactionEventListener(db.databaseName(), txHandler)
-                StreamsProcedures.registerEventRouter(streamHandler!!)
-                StreamsProcedures.registerEventRouterConfiguration(streamsEventRouterConfiguration)
+                StreamsProcedures.register(db.databaseName(), streamHandler!!, streamsEventRouterConfiguration)
                 if (streamsLog.isDebugEnabled) {
                     streamsLog.info("Streams Source transaction handler initialised with the following configuration: $streamsEventRouterConfiguration")
                 } else {
@@ -58,8 +55,8 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
                 val streamsEventRouterConfiguration = StreamsEventRouterConfiguration
                         .from(configuration, db.databaseName())
                 if (streamsEventRouterConfiguration.enabled) {
-                    streamHandler!!.stop()
-                    streamsConstraintsService.close()
+                    streamHandler?.stop()
+                    streamsConstraintsService?.close()
                     databaseManagementService.unregisterTransactionEventListener(db.databaseName(), txHandler)
                 }
             }, UninitializedPropertyAccessException::class.java, IllegalStateException::class.java)
@@ -67,7 +64,20 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
     }
 
     override fun available() {
-        registerTransactionEventHandler()
+        val whenAvailable = {
+            registerTransactionEventHandler()
+        }
+        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+        val whenNotAvailable = {
+            streamsLog.info("""
+                                |Cannot start Streams Source module because database ${StreamsUtils.SYSTEM_DATABASE_NAME} 
+                                |is not available after $systemDbWaitTimeout ms
+                            """.trimMargin())
+        }
+        // wait for the system db became available
+        StreamsUtils.executeWhenSystemDbIsAvailable(databaseManagementService,
+                configuration, whenAvailable, whenNotAvailable)
+
     }
 
     override fun unavailable() {

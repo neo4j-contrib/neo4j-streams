@@ -9,7 +9,7 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.Node
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import streams.setConfig
 import streams.start
 import java.util.UUID
