@@ -3,14 +3,16 @@ site:
   url: /neo4j-streams-docs
 content:
   sources:
-    - url: https://github.com/neo4j-contrib/neo4j-streams
-      branches: '4.0'
+    - url: ../
+      branches: HEAD
       start_path: doc/docs
 ui:
   bundle:
     url: https://github.com/neo4j-documentation/docs-refresh/raw/master/ui/build/ui-bundle.zip
     snapshot: true
+urls:
+  html_extension_style: indexify
 asciidoc:
   attributes:
-    page-theme: docs
-    page-cdn: /_/
+    page-theme: labs
+    page-disabletracking: true

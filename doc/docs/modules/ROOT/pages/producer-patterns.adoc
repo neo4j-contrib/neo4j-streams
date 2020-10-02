@@ -1,5 +1,5 @@
 
-==== Nodes
+=== Nodes
 
 To control which nodes are sent to Kafka, and which of their properties you can define node-patterns in the config.
 
@@ -33,7 +33,7 @@ Label{*};Label1{prop1, prop2};Label3{-prop1,-prop2}
 |===
 
 
-==== Relationships
+=== Relationships
 
 To control which relationships are sent to Kafka, and which of their properties you can define relationships-patterns in the config.
 

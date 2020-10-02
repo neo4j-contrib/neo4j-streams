@@ -1,9 +1,9 @@
-[[neo4j_streams_producer_config]]
-=== Configuration
+== Configuration
 
 You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf (with default values)
+[source]
 ----
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
@@ -33,8 +33,7 @@ streams.source.schema.polling.interval=<MILLIS, the polling interval for getting
 [NOTE]
 ====
 **To use the Kafka transactions please set `kafka.transactional.id` and `kafka.acks` properly**.
-Checkout this https://www.confluent.io/blog/transactions-apache-kafka/[blog post] for further details
-about transactions in Apache Kafka
+Checkout this https://www.confluent.io/blog/transactions-apache-kafka/[blog post] for further details about transactions in Apache Kafka
 ====
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
@@ -46,7 +45,7 @@ You can tune the custom property `kafka.topic.discovery.polling.interval` in ord
 periodically check for new topics into the Kafka cluster so the plugin will be able
 to send events to the defined topics.
 
-==== Multi Database Support
+=== Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
 in order to support this feature you can set for each database instance a configuration suffix with the following pattern
@@ -54,6 +53,7 @@ in order to support this feature you can set for each database instance a config
 
 Following the list of new properties that allows to support multi-tenancy:
 
+[source]
 ----
 streams.source.topic.nodes.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
@@ -66,6 +66,7 @@ This means that for each db instance you can specify if:
 
 So if you have a instance name `foo` you can specify a configuration in this way:
 
+[source]
 ----
 streams.source.topic.nodes.myTopic.from.foo=<PATTERN>
 streams.source.topic.relationships.myTopic.from.foo=<PATTERN>
@@ -74,6 +75,7 @@ streams.source.enabled.from.foo=<true/false, default=true>
 
 The old properties:
 
+[source]
 ----
 streams.source.enabled=<true/false, default=true>
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
@@ -94,6 +96,7 @@ Database names are case-insensitive and normalized to lowercase, and must follow
 In particular the following property will be used as default value
 for non-default db instances, in case of the specific configuration params is not provided:
 
+[source]
 ----
 streams.source.enabled=<true/false, default=true>
 ----
@@ -107,6 +110,7 @@ This means that if you have Neo4j with 3 db instances:
 and you want to enable the Source plugin on all instance
 you can simply omit any configuration about enabling it, you just need to provide the routing configuration for each instance:
 
+[source]
 ----
 streams.source.topic.nodes.loginTopic=Login{userId}
 streams.source.topic.nodes.customerTopic.from.customers=Customer{customerId,name,surname}
@@ -116,6 +120,7 @@ streams.source.topic.relationships.productTopic.from.products=Products{productId
 Otherwise if you want to enable the Source plugin only on `customers` and `products` instances
 you can do it in this way:
 
+[source]
 ----
 streams.source.enabled=false
 streams.source.enabled.from.customers=true

@@ -1,6 +1,4 @@
-
-[[docker]]
-== Run with Docker
+= Run with Docker
 
 ifdef::env-docs[]
 [abstract]
@@ -10,9 +8,9 @@ This chapter describes Docker Compose templates that can be used to test Neo4j S
 endif::env-docs[]
 
 [[neo4j_streams_docker]]
-=== Neo4j Streams plugin
+== Neo4j Streams plugin
 
-==== Introduction
+=== Introduction
 
 When Neo4j is run in a Docker, some special considerations apply; please see
 link:https://neo4j.com/docs/operations-manual/current/docker/configuration/[Neo4j Docker Configuration]
@@ -74,7 +72,7 @@ From the same directory where the compose file is, you can launch this command:
 docker-compose up -d
 ----
 
-==== Source module
+=== Source module
 
 Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper in order to test the application.
 
@@ -84,9 +82,9 @@ Following a compose file that allows you to spin-up Neo4j, Kafka and Zookeeper i
 include::ROOT:partial$docker-data/docker-compose.yml[]
 ----
 
-===== Launch it locally
+==== Launch it locally
 
-====== Prerequisites
+===== Prerequisites
 
 * Install the latest version of Neo4j Streams plugin into `./neo4j/plugins`
 
@@ -134,7 +132,7 @@ And if you go back to your consumer you'll see something like this:
 Please note that in this example no topic name was specified before the execution of the Kafka Consumer, which is listening on `neo4j` topic.
 This is because Neo4j Streams plugin, if not specified, will produce messages into a topic named `neo4j` by default.
 
-==== Sink module
+=== Sink module
 
 Following you'll find a simple docker compose file that allow you to spin-up two Neo4j instances
 one configured as `Source` and one as `Sink`, allowing you to share any data from the `Source` to the `Sink`:
@@ -186,7 +184,7 @@ one configured as `Source` and one as `Sink`, allowing you to share any data fro
         )"
 ----
 
-===== Launch it locally
+==== Launch it locally
 
 In the following example we will use the Neo4j Streams plugin in combination with the APOC procedures (link:https://github.com/neo4j-contrib/neo4j-apoc-procedures/releases/latest[download from here])
 in order to download some data from Stackoverflow, store them into the Neo4j `Source` instance and replicate these dataset into the `Sink` via the Neo4j Streams plugin.
@@ -196,12 +194,12 @@ in order to download some data from Stackoverflow, store them into the Neo4j `So
 include::ROOT:partial$docker-data/docker-compose-source-sink.yml[]
 ----
 
-====== Prerequisites
+===== Prerequisites
 
 * Install the APOC into `./neo4j/plugins`.
 * Install the Neo4j Streams plugin into `./neo4j/plugins` and `./neo4j/plugins-sink`
 
-====== Import the data
+===== Import the data
 
 Let's go to two instances in order to create the constraints on both sides:
 
@@ -279,7 +277,7 @@ You'll see something like this:
 ----
 
 [[docker_kafka_connect]]
-=== Kafka Connect plugin
+== Kafka Connect plugin
 
 Inside the directory `/kafka-connect-neo4j/docker` you'll find a compose file that allows you to start the whole testing environment:
 
@@ -292,7 +290,7 @@ include::ROOT:partial$docker-data/kafka-connect-docker-compose.yml[]
 include::ROOT:partial$docker-data/readme.adoc[]
 
 [[docker_streams_cluster]]
-=== Neo4j Streams with Neo4j Cluster and Kafka Cluster
+== Neo4j Streams with Neo4j Cluster and Kafka Cluster
 
 Here we provide a docker-compose file to quickstart with an environment composed by a 3-nodes Neo4j Causal Cluster
 (with Streams plugin configured in Sink mode) and a 3-nodes Kafka Cluster.

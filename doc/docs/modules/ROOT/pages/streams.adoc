@@ -1,6 +1,0 @@
-
-include::producer.adoc[]
-
-include::consumer.adoc[]
-
-include::procedures.adoc[]

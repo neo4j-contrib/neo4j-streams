@@ -1,7 +1,6 @@
+= Configure with Kafka over SSL
 
 [[kafka_ssl]]
-== Configure with Kafka over SSL
-
 This section provides guidance to configure SSL security between Kafka and Neo4j. This will provide data encryption
 between Kafka and Neo4j.
 
@@ -14,7 +13,7 @@ Please see also the following Confluent documentations for further details on ho
 * https://docs.confluent.io/current/kafka/authentication_ssl.html[Encryption and Authentication with SSL]
 
 [[kafka_ssl_self_signed]]
-=== Self Signed Certificates
+== Self Signed Certificates
 
 This section came from https://medium.com/talking-tech-all-around/how-to-enable-and-verify-client-authentication-in-kafka-21e936e670e8.
 
@@ -49,7 +48,7 @@ This article discusses addressing this error (Caused by: java.security.cert.Cert
 No subject alternative names present) that may appear when querying the topic. https://geekflare.com/san-ssl-certificate/
 
 [[kafka_ssl_config]]
-=== Kafka Configuration
+== Kafka Configuration
 
 Connect to your Kafka server and modify the `config/server.properties` file.
 This configuration worked in general but other configurations without the EXTERNAL and INTERNAL settings should works as well.
@@ -74,7 +73,7 @@ ssl.client.auth=required
 ----
 
 [[kafka_ssl_neo4j_config]]
-=== Neo4j Configuration
+== Neo4j Configuration
 
 The following is required for a Neo4j configuration. In this case, we are connecting to the public AWS IP address.
 The keystore and truststore locations point to the files that you created earlier in the steps.
@@ -136,7 +135,7 @@ sasl.mechanism.inter.broker.protocol=GSSAPI
 ====
 
 [[kafka_ssl_testing]]
-=== Testing
+== Testing
 
 After starting Kafka and Neo4j, you can test by creating a Person node in Neo4j and then query the topic as follows:
 
@@ -157,7 +156,7 @@ ssl.truststore.password=neo4jpassword
 ssl.endpoint.identification.algorithm=
 ----
 
-=== Authentication with SASL
+== Authentication with SASL
 
 You can configure JAAS by providing a JAAS configuration file. To do this, connect to your Kafka server and modify the
 `config/server.properties` file. This configuration worked in general, but other configurations without the EXTERNAL

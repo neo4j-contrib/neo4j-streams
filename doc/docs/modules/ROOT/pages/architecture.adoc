@@ -1,6 +1,6 @@
-[[architecture]]
-== Architectural Guidance
+= Architectural Guidance
 
+[[architecture]]
 The purpose of this section is to:
 
 * Describe how this integration works

@@ -1,4 +1,3 @@
-
 === Sink ingestion strategies
 
 ==== Change Data Capture Event
@@ -112,7 +111,7 @@ So you have to use a different topic for each type of node/relationship and defi
 
 You can configure the node pattern extraction in the following way:
 
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
 ----
@@ -129,14 +128,14 @@ You can transform it into a node by providing the following configuration:
 
 by specifying a simpler pattern:
 
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.topic.pattern.node.user=User{!userId}
 ----
 
 or by specifying a Cypher like node pattern:
 
-[subs="attributes"]
+[source,subs="attributes"]
 ----
 {environment}.topic.pattern.node.user=(:User{!userId})
 ----
@@ -170,7 +169,7 @@ so the persisted node will be: *(User{userId: 1, name: 'Andrea', surname: 'Santu
 
 You can configure the relationship pattern extraction in the following way:
 
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
 ----
@@ -186,14 +185,14 @@ You can transform it into a path, like `(n)-[r]->(m)`, by providing the followin
 
 By specifying a simpler pattern:
 
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.topic.pattern.relationship.user=User{!userId} BOUGHT{price, currency} Product{!productId}
 ----
 
 or by specifying a Cypher like node pattern:
 
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 {environment}.topic.pattern.relationship.user=(:User{!userId})-[:BOUGHT{price, currency}]->(:Product{!productId})
 ----
@@ -212,7 +211,7 @@ Similar to the CDC pattern you can provide:
 | this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the other json properties on them so the persisted data will be:
 *(User{userId: 1})-[:BOUGHT{price: 10, currency: '€', `shippingAddress.city`: 'Venice', `shippingAddress.cap`: 30100}]->(Product{productId: 100})*
 
-| (User{!userId})-[:BOUGHT{price}]->(Product{!productId})
+| (User{!userId})-[:BOUGHT\{price\}]->(Product{!productId})
 | this will merge fetch/create the two nodes by the provided identifier and the `BOUGHT` relationship between them. And then set all the specified json properties so the persisted pattern will be:
 *(User{userId: 1})-[:BOUGHT{price: 10}]->(Product{productId: 100})*
 

@@ -1,4 +1,4 @@
-
+:id: neo4j
 ==== CUD File Format
 
 The CUD file format is JSON file that represents Graph Entities (Nodes/Relationships) and how to manage them in term
@@ -39,10 +39,8 @@ We provide an example of a `MERGE` operation
 }
 ----
 
-+
 which would be transformed into the following Cypher query:
 
-+
 [source,cypher]
 ----
 UNWIND [..., {
@@ -60,10 +58,8 @@ MERGE (n:Foo:Bar {key: event.ids.key, otherkey: event.ids.otherkey})
 SET n += event.properties
 ----
 
-+
 Lets describe the fields:
 
-+
 [#{id}_table_cud_node_fields]
 .CUD file **Node format** fields description
 [cols="3",opts=header]
@@ -112,10 +108,8 @@ with the passed internal id does not exists it will not be created.
 
 * And one for *relationships*:
 
-+
 We provide an example of a `CREATE` operation
 
-+
 [source,json]
 ----
 {
@@ -137,10 +131,8 @@ We provide an example of a `CREATE` operation
 }
 ----
 
-+
 which would be transformed into the following Cypher query:
 
-+
 [source,cypher]
 ----
 UNWIND [..., {
@@ -166,10 +158,8 @@ CREATE (from)-[r:MY_REL]->(to)
 SET r = event.properties
 ----
 
-+
 Lets describe the fields:
 
-+
 [#{id}_table_cud_rels_fields]
 .CUD file **Relationship format** fields description
 [cols="3",opts=header]
@@ -210,7 +200,6 @@ Following another example of `DELETE` operation for both node and relationship.
 
 * For **Node**, the following JSON:
 
-+
 [source,json]
 ----
 {
@@ -222,9 +211,9 @@ Following another example of `DELETE` operation for both node and relationship.
   "detach": false
 }
 ----
-+
+
 will be transformed in the following Cypher query:
-+
+
 [source,cypher]
 ----
 UNWIND [..., {
@@ -238,9 +227,9 @@ UNWIND [..., {
 MATCH (n:Foo:Bar {key: event.ids.key, otherkey: event.ids.otherkey})
 DELETE n
 ----
-+
+
 Note that if you set `"detach": true` then the transformation will be:
-+
+
 [source,cypher]
 ----
 UNWIND [
@@ -252,7 +241,6 @@ DETACH DELETE n
 
 * For **Relationship**, the following JSON:
 
-+
 [source,json]
 ----
 {
@@ -270,9 +258,9 @@ DETACH DELETE n
   "type":"relationship"
 }
 ----
-+
+
 will be transformed in the following Cypher query:
-+
+
 [source,cypher]
 ----
 UNWIND [..., {

@@ -1,11 +1,9 @@
-
-[[neo4j_streams_config_summary]]
 === Configuration summary
 
 You can set the following Kafka configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf
-[subs="verbatim,attributes"]
+[source,subs="verbatim,attributes"]
 ----
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
@@ -34,6 +32,7 @@ in order to support this feature you can set for each database instance a config
 
 Following the list of new properties that allows to support multi-tenancy:
 
+[source]
 ----
 streams.sink.topic.cypher.<TOPIC_NAME>.to.<DB_NAME>=<CYPHER_QUERY>
 streams.sink.topic.cdc.sourceId.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
@@ -49,6 +48,7 @@ This means that for each db instance you can specify if:
 
 So if you have a instance name `foo` you can specify a configuration in this way:
 
+[source]
 ----
 streams.sink.topic.cypher.<TOPIC_NAME>.to.foo=<CYPHER_QUERY>
 streams.sink.topic.cdc.sourceId.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
@@ -60,6 +60,7 @@ streams.sink.enabled.to.foo=<true/false, default=true>
 
 The old properties:
 
+[source]
 ----
 streams.sink.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
@@ -83,6 +84,7 @@ Database names are case-insensitive and normalized to lowercase, and must follow
 In particular the following property will be used as default values
 for non-default db instances, in case of the specific configuration params is not provided:
 
+[source]
 ----
 streams.sink.enabled=<true/false, default=true>
 ----
@@ -96,6 +98,7 @@ This means that if you have Neo4j with 3 db instances:
 and you want to enable the Sink plugin on all instance
 you can simply omit any configuration about enabling it, you just need to provide the routing configuration for each instance:
 
+[source]
 ----
 streams.sink.topic.cypher.customersTopic.to.customers=MERGE (c:Customer{customerId: event.customerId}) SET c += event.properties
 streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: event.productId}) SET c += event.properties
@@ -105,6 +108,7 @@ streams.sink.topic.cypher.productsTopic.to.neo4j=MERGE (c:MyLabel{myId: event.my
 Otherwise if you want to enable the Sink plugin only on `customers` and `products` instances
 you can do it in this way:
 
+[source]
 ----
 streams.sink.enabled=false
 streams.sink.enabled.to.customers=true
@@ -115,8 +119,10 @@ streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: 
 
 So in general if you have:
 
+[source]
 ----
 streams.sink.enabled=true
 streams.sink.enabled.to.foo=false
 ----
+
 Then sink is enabled on all databases EXCEPT foo (local overrides global)

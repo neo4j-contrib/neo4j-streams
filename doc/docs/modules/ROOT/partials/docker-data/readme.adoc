@@ -1,5 +1,5 @@
 
-==== Configuration parameters
+=== Configuration parameters
 :environment: neo4j
 :id: neo4j
 
@@ -28,7 +28,7 @@ You can set the following configuration values via Confluent Connect UI, or via 
 |{environment}.batch.parallelize|Boolean|(default true) While concurrent batch processing improves throughput, it might cause out-of-order handling of events.  Set to `false` if you need application of messages with strict ordering, e.g. for change-data-capture (CDC) events.
 |===
 
-==== Configuring the stack
+=== Configuring the stack
 
 Start the compose file
 
@@ -39,7 +39,7 @@ docker-compose up -d
 
 You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
 
-===== Plugin installation
+==== Plugin installation
 
 You can choose your preferred way in order to install the plugin:
 
@@ -93,7 +93,7 @@ Please prefer the solution `(where this tool is installed)` and then go ahead wi
 At the end of the process the plugin is automatically installed.
 --
 
-==== Multi Database Support
+=== Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
 in order to support this feature you can define into the json (or via the Confluent UI)
@@ -101,13 +101,13 @@ a param named `neo4j.database` which is the targeted database name.
 
 *N.b.* If no value is specified the connector will use the Neo4j's default db.
 
-==== Create the Sink Instance
+=== Create the Sink Instance
 
 To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described
 into <<kafka-connect-sink-instance, Create the Sink Instance>> and <<kafka-connect-sink-strategies, Sink Ingestion Strategies>>
 sections.
 
-===== Use the Kafka Connect Datagen
+==== Use the Kafka Connect Datagen
 
 In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<examples, `Example with Kafka Connect Datagen`>> section.
 

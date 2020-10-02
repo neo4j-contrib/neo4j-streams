@@ -1,6 +1,6 @@
+= Project Overview
 
 [[overview]]
-== Project Overview
 
 ifdef::env-docs[]
 [abstract]
@@ -32,14 +32,14 @@ may prefer using the Kafka Connect method.
 **Be aware of not configuring both Neo4j plugin and Kafka Connect worker. They will generate errors if used simultaneously, so
 just one at a time has to be used.**
 
-[[neo4j_streams_plugin_overview]]
-=== Neo4j Streams Plugin
+// [[neo4j_streams_plugin_overview]]
+== Neo4j Streams Plugin
 
 As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
 to Kafka.
 
-[[kafka_connect_plugin_overview]]
-=== Kafka Connect Plugin
+// [[kafka_connect_plugin_overview]]
+== Kafka Connect Plugin
 
 As a **Kafka Connect plugin**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
 the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support

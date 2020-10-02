@@ -1,6 +1,6 @@
+= Quick Start
 
 [[quickstart]]
-== Quick Start
 
 ifdef::env-docs[]
 [abstract]
@@ -10,17 +10,17 @@ Get started fast for common scenarios, using Neo4j Streams plugin or Kafka Conne
 endif::env-docs[]
 
 [[neo4j_streams_plugin_quickstart]]
-=== Neo4j Streams Plugin
+== Neo4j Streams Plugin
 
 Any configuration option that starts with `streams.` controls how the plugin itself behaves. For a full
 list of options available, see the documentation subsections on the xref:producer.adoc#neo4j_streams_source[source] and xref:consumer.adoc#neo4j_streams_sink[sink].
 
-==== Install the Plugin
+=== Install the Plugin
 
 * Download the latest release jar from https://github.com/neo4j-contrib/neo4j-streams/releases/latest
 * Copy it into `$NEO4J_HOME/plugins` and configure the relevant connections
 
-==== Kafka settings
+=== Kafka settings
 
 Any configuration option that starts with `kafka.` will be passed to the underlying Kafka driver. Neo4j
 streams uses the official Confluent Kafka producer and consumer java clients.
@@ -61,7 +61,7 @@ how much memory the plugin may require to hold messages not yet delivered to Neo
 |N/A
 |===
 
-==== Configure Kafka Connection
+=== Configure Kafka Connection
 
 If you are running locally or against a standalone machine, configure `neo4j.conf` to point to that server:
 
@@ -75,7 +75,7 @@ kafka.bootstrap.servers=localhost:9092
 If you are using Confluent Cloud (managed Kafka), you can connect to Kafka as described in
 the xref:cloud.adoc#confluent_cloud[Confluent Cloud] section
 
-==== Decide: Sink, Source, or Both
+=== Decide: Sink, Source, or Both
 
 Configuring neo4j-streams comes in three different parts, depending on your need:
 
@@ -93,7 +93,7 @@ kafka.bootstrap.servers=localhost:9092
 
 Follow one or both subsections according to your use case and need:
 
-===== Sink
+==== Sink
 
 Take data from Kafka and store it in Neo4j (Neo4j as a data consumer) by adding configuration such as:
 
@@ -111,7 +111,7 @@ properties in the source message.
 
 For full details on what you can do here, see the xref:consumer.adoc#neo4j_streams_sink[Sink] section of the documentation.
 
-===== Source
+==== Source
 
 Produce data from Neo4j and send it to a Kafka topic (Neo4j as a data producer) by adding configuration such as:
 
@@ -135,7 +135,7 @@ these in the xref:producer.adoc#source-patterns[Patterns] section.
 
 For full details on what you can do here, see the xref:producer.adoc#neo4j_streams_source[Source] section of the documentation.
 
-===== Restart Neo4j
+==== Restart Neo4j
 
 Once the plugin is installed and configured, restarting the database will make it active.
 If you have configured Neo4j to consume from kafka, it will begin immediately processing messages.
@@ -170,13 +170,13 @@ properties. Despite these warnings the plugin will work properly.
 ====
 
 [[kafka_connect_plugin_quickstart]]
-=== Kafka Connect Plugin
+== Kafka Connect Plugin
 
-==== Install the Plugin
+=== Install the Plugin
 
 Download and install the plugin via Confluent Hub client. See the chapter xref:kafka-connect.adoc#kafka_connect_plugin[Kafka Connect Plugin] for more details.
 
-==== Run with Docker
+=== Run with Docker
 
 Inside the directory `/neo4j-kafka-connect-neo4j-<version>/doc/docker` you'll find a compose file that allows you to start the whole testing environment.
 
@@ -205,7 +205,7 @@ When the process is terminated you have all the modules up and running:
 Now you can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and
 `connect` as password (see the docker-compose file to change it).
 
-==== Configure SINK instance
+=== Configure SINK instance
 
 On the Kafka Connect side only one thing is missing, namely create the SINK instance. So let's do the following REST call:
 

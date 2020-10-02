@@ -1,16 +1,16 @@
+= Examples with Confluent Platform and Kafka Connect Datagen
 
-[[examples]]
-== Examples with Confluent Platform and Kafka Connect Datagen
+
 
 [[examples_binary_format]]
-=== Confluent and Neo4j in binary format
+== Confluent and Neo4j in binary format
 
 In this example Neo4j and Confluent will be downloaded in binary format and Neo4j Streams plugin
 will be set up in SINK mode.
 The data consumed by Neo4j will be genereated by the *Kafka Connect Datagen*. Please note the this connector
 should be used just for test purposes and is not suitable for production scenarios.
 
-==== Download and Install Confluent Platform
+=== Download and Install Confluent Platform
 
 * Download link:https://www.confluent.io/download/[Confluent Platform] and then choose the desired format `.tar.gz` or `.zip`.
 * Decompress the file in your desired folder
@@ -48,7 +48,7 @@ Starting control-center
 control-center is [UP]
 ----
 
-==== Download Neo4j
+=== Download Neo4j
 
 * Download the latest version of Neo4j at the following link https://neo4j.com/download-center/
 
@@ -93,7 +93,7 @@ where 8081 is the default port for the Confluent Schema Registry.
 [NOTE]
 If you started Neo4j before adding above properties, you need also to restart Neo4j server.
 
-==== Install Kafka Connect Datagen
+=== Install Kafka Connect Datagen
 
 Install the link:https://www.confluent.io/hub/confluentinc/kafka-connect-datagen[Kafka Connect Datagen] using the Confluent Hub client.
 
@@ -116,7 +116,7 @@ Completed
 ----
 
 [[view_results_example]]
-==== View results
+=== View results
 
 Now you can access to the Confluent Control Center at http://localhost:9021, you can create Kafka topics and generate some sample data.
 Follow link:https://docs.confluent.io/current/quickstart/ce-quickstart.html#step-2-create-ak-topics[step 2] and
@@ -144,15 +144,15 @@ The output should be something like:
 image::ROOT:sink_ouput.png[title="SINK Output", align="center"]
 
 [[confluent_docker_example]]
-=== Confluent with Docker, Neo4j in binary format
+== Confluent with Docker, Neo4j in binary format
 
 In this example Neo4j will be installed locally and Confluent Platform will be in a Docker environment
 
-==== Neo4j
+=== Neo4j
 
 Neo4j is installed and configure in the same way as above example
 
-==== Confluent with Docker
+=== Confluent with Docker
 
 In order to have a ready to use Confluent Platform with Docker, please use the following docker-compose file (**please note
 that in the configuration of the `connect` service you have to substitute the `<version>` of kafka-connect-plugin you're going to install**):

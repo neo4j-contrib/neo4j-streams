@@ -1,6 +1,4 @@
-
-[[neo4j_streams_sink]]
-== Neo4j Streams - Sink: Kafka -> Neo4j
+= Neo4j Streams - Sink: Kafka -> Neo4j
 :environment: streams.sink
 :id: streams_sink
 
@@ -10,12 +8,13 @@ ifdef::env-docs[]
 This chapter describes the Neo4j Streams Sink in the Neo4j Streams Library.
 Use this section to configure Neo4j to ingest the data from Kafka into Neo4j.
 --
-endif::env-docs[]
 
+endif::env-docs[]
+[[neo4j_streams_sink]]
 Is the Kafka Sink that ingest the data directly into Neo4j
 
 [[neo4j_streams_sink_howitworks]]
-=== How it works
+== How it works
 
 It works in several ways:
 
@@ -24,7 +23,7 @@ It works in several ways:
 * by providing a pattern extraction to a JSON or AVRO file
 * by managing a CUD file format
 
-==== Cypher Template
+=== Cypher Template
 
 It works with template Cypher queries stored into properties with the following format:
 
@@ -67,7 +66,7 @@ MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
 
-Where `{events}` is a json list, so continuing with the example above a possible full representation could be:
+Where `\{events}` is a json list, so continuing with the example above a possible full representation could be:
 
 [source,cypher]
 ----
@@ -98,7 +97,7 @@ include::sink-strategies.adoc[]
 include::cud-file-format.adoc[]
 
 [[neo4j_streams_dlq]]
-=== How deal with bad data
+== How deal with bad data
 
 The Neo4j Streams Plugin provides several means to handle processing errors.
 
@@ -194,7 +193,7 @@ Every published record in the `Dead Letter Queue` contains the original record `
 |===
 
 [[neo4j_streams_supported_deserializers]]
-=== Supported Kafka deserializers
+== Supported Kafka deserializers
 
 The Neo4j Streams plugin supports 2 deserializers:
 
