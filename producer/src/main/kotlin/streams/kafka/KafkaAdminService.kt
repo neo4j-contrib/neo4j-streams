@@ -28,12 +28,13 @@ class KafkaAdminService(private val props: KafkaConfiguration, private val allTo
                     try {
                         kafkaTopics += client.listTopics().names().get()
                     } catch (e: Exception) {
-                        log.error("""Cannot retrieve valid topics because the following exception, 
+                        log.warn("""Cannot retrieve valid topics because the following exception, 
                             |next attempt is in ${props.topicDiscoveryPollingInterval} ms:
                         """.trimMargin(), e)
                     }
                     delay(props.topicDiscoveryPollingInterval)
                 }
+                client.close()
             }
         }
     }

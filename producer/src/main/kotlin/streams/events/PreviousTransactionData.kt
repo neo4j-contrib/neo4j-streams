@@ -57,15 +57,11 @@ class PreviousTransactionDataBuilder {
     }
 
     fun build() : PreviousTransactionData{
-        var createdNodeIds = hashSetOf<String>()
-        nodeCreatedPayload.forEach {
-            createdNodeIds.add(it.id)
-        }
+        val createdNodeIds = nodeCreatedPayload.map { it.id }.toSet()
 
         val updatedPayloads = updatedNodes
                 .filter { ! createdNodeIds.contains(it.id.toString()) }
                 .map {
-                    //val labelsBefore = nodeLabels.getOrDefault(it.id, emptyList())
                     val labelsBefore = nodeLabels.getOrDefault(it.id, it.labelNames())
                     val propsBefore = nodeProperties.getOrDefault(it.id, emptyMap())
 
@@ -92,14 +88,7 @@ class PreviousTransactionDataBuilder {
 
         val nodeData = PreviousNodeTransactionData(nodeProperties, nodeLabels , updatedPayloads,nodeCreatedPayload, nodeDeletedPayload)
 
-        var notUpdatedRels = hashSetOf<String>()
-        relCreatedPayload.forEach {
-            notUpdatedRels.add(it.id)
-        }
-
-        relDeletedPayload.forEach {
-            notUpdatedRels.add(it.id)
-        }
+        val notUpdatedRels = (relCreatedPayload.map { it.id } + relDeletedPayload.map { it.id }).toSet()
 
         val nodeConstraintsCache = mutableMapOf<List<String>, List<Constraint>>()
 
@@ -284,7 +273,8 @@ class PreviousTransactionDataBuilder {
     }
 
     fun nodeDeletedPayload(id: Long): NodePayload? {
-        return this.nodeDeletedPayload.filter { it.id == id.toString() }.firstOrNull()
+        val idString = id.toString()
+        return this.nodeDeletedPayload.filter { it.id == idString }.firstOrNull()
     }
 
 
