@@ -33,15 +33,15 @@ class PreviousTransactionDataBuilder {
     private var nodeProperties : Map<Long,Map<String,Any>> = emptyMap()
     private var nodeLabels: Map<Long, List<String>> = emptyMap()
     private var updatedNodes : Set<Node> = emptySet()
-    private var nodeCreatedPayload: List<NodePayload> = emptyList()
-    private var nodeDeletedPayload: List<NodePayload> = emptyList()
+    private var nodeCreatedPayload: Map<String, NodePayload> = emptyMap()
+    private var nodeDeletedPayload: Map<String, NodePayload> = emptyMap()
     private var deletedLabels: Map<Long, List<String>> = emptyMap()
 
     //relationships
     private var relProperties : Map<Long,Map<String,Any>> = emptyMap()
     private var updatedRels : Set<Relationship> = emptySet()
-    private var relCreatedPayload: List<RelationshipPayload> = emptyList()
-    private var relDeletedPayload: List<RelationshipPayload> = emptyList()
+    private var relCreatedPayload: Map<String, RelationshipPayload> = emptyMap()
+    private var relDeletedPayload: Map<String, RelationshipPayload> = emptyMap()
 
     private lateinit var nodeConstraints: Map<String, Set<Constraint>>
     private lateinit var relConstraints: Map<String, Set<Constraint>>
@@ -57,7 +57,7 @@ class PreviousTransactionDataBuilder {
     }
 
     fun build() : PreviousTransactionData{
-        val createdNodeIds = nodeCreatedPayload.map { it.id }.toSet()
+        val createdNodeIds = nodeCreatedPayload.keys
 
         val updatedPayloads = updatedNodes
                 .filter { ! createdNodeIds.contains(it.id.toString()) }
@@ -86,9 +86,10 @@ class PreviousTransactionDataBuilder {
                     payload
                 }
 
-        val nodeData = PreviousNodeTransactionData(nodeProperties, nodeLabels , updatedPayloads,nodeCreatedPayload, nodeDeletedPayload)
+        val nodeData = PreviousNodeTransactionData(nodeProperties, nodeLabels,
+                updatedPayloads, nodeCreatedPayload.values.toList(), nodeDeletedPayload.values.toList())
 
-        val notUpdatedRels = (relCreatedPayload.map { it.id } + relDeletedPayload.map { it.id }).toSet()
+        val notUpdatedRels = (relCreatedPayload.keys + relDeletedPayload.keys).toSet()
 
         val nodeConstraintsCache = mutableMapOf<List<String>, List<Constraint>>()
 
@@ -136,7 +137,9 @@ class PreviousTransactionDataBuilder {
                     payload
                 }
 
-        val relData = PreviousRelTransactionData(createdPayload = this.relCreatedPayload, deletedPayload = this.relDeletedPayload, updatedPayloads = updatedRelPayloads)
+        val relData = PreviousRelTransactionData(createdPayload = this.relCreatedPayload.values.toList(),
+                deletedPayload = this.relDeletedPayload.values.toList(),
+                updatedPayloads = updatedRelPayloads)
 
         return PreviousTransactionData(nodeData = nodeData, relData = relData, nodeConstraints = nodeConstraints, relConstraints = relConstraints)
     }
@@ -208,22 +211,22 @@ class PreviousTransactionDataBuilder {
         return this
     }
 
-    fun withNodeCreatedPayloads(createdPayload: List<NodePayload>): PreviousTransactionDataBuilder {
+    fun withNodeCreatedPayloads(createdPayload: Map<String, NodePayload>): PreviousTransactionDataBuilder {
         this.nodeCreatedPayload = createdPayload
         return this
     }
 
-    fun withNodeDeletedPayloads(deletedPayload: List<NodePayload>): PreviousTransactionDataBuilder {
+    fun withNodeDeletedPayloads(deletedPayload: Map<String, NodePayload>): PreviousTransactionDataBuilder {
         this.nodeDeletedPayload = deletedPayload
         return this
     }
 
-    fun withRelCreatedPayloads(createdPayload: List<RelationshipPayload>): PreviousTransactionDataBuilder {
+    fun withRelCreatedPayloads(createdPayload: Map<String, RelationshipPayload>): PreviousTransactionDataBuilder {
         this.relCreatedPayload = createdPayload
         return this
     }
 
-    fun withRelDeletedPayloads(deletedPayload: List<RelationshipPayload>): PreviousTransactionDataBuilder {
+    fun withRelDeletedPayloads(deletedPayload: Map<String, RelationshipPayload>): PreviousTransactionDataBuilder {
         this.relDeletedPayload = deletedPayload
         return this
     }
@@ -273,8 +276,7 @@ class PreviousTransactionDataBuilder {
     }
 
     fun nodeDeletedPayload(id: Long): NodePayload? {
-        val idString = id.toString()
-        return this.nodeDeletedPayload.filter { it.id == idString }.firstOrNull()
+        return this.nodeDeletedPayload[id.toString()]
     }
 
 

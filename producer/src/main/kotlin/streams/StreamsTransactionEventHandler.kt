@@ -101,8 +101,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withAfter(afterNode)
                             .build()
 
-                    payload
+                    it.id.toString() to payload
                 }
+                .toMap()
 
         // returns a Map<Boolean, List<Node>> where the K is true if the node has been deleted
         val removedNodeProps = allOrFiltered(txd.removedNodeProperties(), nodeAll)
@@ -144,8 +145,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withBefore(beforeNode)
                             .build()
 
-                    payload
+                    it.id.toString() to payload
                 }
+                .toMap()
 
         //don't change the order of the with methods
         return builder.withLabels(txd.assignedLabels(),removedLabels)
@@ -203,8 +205,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withAfter(afterRel)
                             .build()
 
-                    payload
+                    it.id.toString() to payload
                 }
+                .toMap()
 
         val deletedRelPayload = allOrFiltered(txd.deletedRelationships(), relAll)
                 { relRoutingTypes.contains(it.type.name()) }
@@ -259,8 +262,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withBefore(beforeRel)
                             .build()
 
-                    payload
+                    it.id.toString() to payload
                 }
+                .toMap()
 
         val removedRelsProperties = removeRelProps.getOrDefault(false, emptyList())
 
@@ -310,9 +314,9 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                         EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, configuration.nodeRouting)
                         EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, configuration.relRouting)
                     }
-                    map.map { it.key to it.value }
+                    map.entries
                 }
-                .groupBy({ it.first }, { it.second })
+                .groupBy({ it.key }, { it.value })
 
         topicEventsMap.forEach {
             router.sendEvents(it.key, it.value)
