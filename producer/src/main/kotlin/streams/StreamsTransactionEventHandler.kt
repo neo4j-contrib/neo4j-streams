@@ -24,6 +24,8 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
     private val nodeAll = configuration.nodeRouting.any { it.labels.isEmpty() }
     private val relAll = configuration.relRouting.any { it.name.isNullOrBlank() }
 
+    private val hostName = InetAddress.getLocalHost().hostName
+
     /**
      * Wrap the payload into a StreamsTransactionEvent for the eventId
      */
@@ -35,7 +37,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .withUsername(txd.username())
                 .withTimestamp(txd.commitTime)
                 .withTransactionId(txd.transactionId)
-                .withHostname(InetAddress.getLocalHost().hostName)
+                .withHostname(hostName)
                 .build()
 
         val builder = StreamsTransactionEventBuilder()
