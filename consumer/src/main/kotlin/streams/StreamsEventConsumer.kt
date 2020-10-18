@@ -6,7 +6,7 @@ import streams.service.StreamsSinkEntity
 import streams.service.errors.ErrorService
 
 
-abstract class StreamsEventConsumer(private val log: Log, private val dlqService: ErrorService) {
+abstract class StreamsEventConsumer(private val log: Log) {
 
     abstract fun stop()
 

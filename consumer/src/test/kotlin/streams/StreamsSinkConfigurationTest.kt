@@ -14,6 +14,7 @@ import streams.service.TopicType
 import streams.service.TopicValidationException
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class StreamsSinkConfigurationTest {
 
@@ -86,22 +87,28 @@ class StreamsSinkConfigurationTest {
         val customId = "customId"
         val apocTimeout = "10000"
         val apocInterval = "2000"
+        val clusterOnly = "true"
+        val writeableInstanceInterval = "99"
         val config = mapOf(topicKey to topicValue,
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to cdctopic,
                 "streams.sink.topic.cdc.sourceId.labelName" to customLabel,
                 "streams.check.apoc.timeout" to apocTimeout,
                 "streams.check.apoc.interval" to apocInterval,
-                "streams.sink.topic.cdc.sourceId.idName" to customId)
+                "streams.sink.topic.cdc.sourceId.idName" to customId,
+                "streams.cluster.only" to clusterOnly,
+                "streams.check.writeable.instance.interval" to writeableInstanceInterval)
         streamsConfig.config.putAll(config)
         val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
         testFromConf(streamsSinkConf, topic, topicValue)
         assertFalse { streamsSinkConf.enabled }
+        assertTrue { streamsSinkConf.clusterOnly }
         assertEquals(setOf(cdctopic), streamsSinkConf.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsSinkConf.sourceIdStrategyConfig.labelName)
         assertEquals(customId, streamsSinkConf.sourceIdStrategyConfig.idName)
         assertEquals(apocTimeout.toLong(), streamsSinkConf.checkApocTimeout)
         assertEquals(apocInterval.toLong(), streamsSinkConf.checkApocInterval)
+        assertEquals(writeableInstanceInterval.toLong(), streamsSinkConf.checkWriteableInstanceInterval)
     }
 
     @Test

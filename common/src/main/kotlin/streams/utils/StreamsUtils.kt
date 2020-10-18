@@ -1,15 +1,25 @@
 package streams.utils
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import org.neo4j.dbms.api.DatabaseManagementService
+import streams.config.StreamsConfig
+import streams.extensions.getSystemDb
 
 object StreamsUtils {
 
-    const val UNWIND: String = "UNWIND \$events AS event"
+    @JvmStatic val UNWIND: String = "UNWIND \$events AS event"
 
-    const val STREAMS_CONFIG_PREFIX = "streams."
+    @JvmStatic val STREAMS_CONFIG_PREFIX = "streams."
 
-    const val STREAMS_SINK_TOPIC_PREFIX = "sink.topic.cypher."
+    @JvmStatic val STREAMS_SINK_TOPIC_PREFIX = "sink.topic.cypher."
+
+    @JvmStatic val LEADER = "LEADER"
+
+    @JvmStatic val SYSTEM_DATABASE_NAME = "system"
 
     fun <T> ignoreExceptions(action: () -> T, vararg toIgnore: Class<out Throwable>): T? {
         return try {
@@ -33,6 +43,21 @@ object StreamsUtils {
             success = action()
         }
         success
+    }
+
+    fun executeWhenSystemDbIsAvailable(databaseManagementService: DatabaseManagementService,
+                                       configuration: StreamsConfig,
+                                       actionIfAvailable: () -> Unit,
+                                       actionIfNotAvailable: (() -> Unit)?) {
+        val systemDb = databaseManagementService.getSystemDb()
+        val systemDbWaitTimeout = configuration.getSystemDbWaitTimeout()
+        GlobalScope.launch(Dispatchers.IO) {
+            if (systemDb.isAvailable(systemDbWaitTimeout)) {
+                actionIfAvailable()
+            } else if (actionIfNotAvailable != null) {
+                actionIfNotAvailable()
+            }
+        }
     }
 
 }

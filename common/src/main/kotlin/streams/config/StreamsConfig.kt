@@ -13,7 +13,6 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
 
     val config = ConcurrentHashMap<String, String>()
 
-
     private lateinit var neo4jConfFolder: String
 
     companion object {
@@ -28,8 +27,12 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         const val SINK_ENABLED = "streams.sink.enabled"
         const val SINK_ENABLED_VALUE = false
         const val DEFAULT_PATH = "."
-        const val CHECK_APOC_TIMEOUT = "check.apoc.timeout"
-        const val CHECK_APOC_INTERVAL = "check.apoc.interval"
+        const val CHECK_APOC_TIMEOUT = "streams.check.apoc.timeout"
+        const val CHECK_APOC_INTERVAL = "streams.check.apoc.interval"
+        const val CLUSTER_ONLY = "streams.cluster.only"
+        const val CHECK_WRITEABLE_INSTANCE_INTERVAL = "streams.check.writeable.instance.interval"
+        const val SYSTEM_DB_WAIT_TIMEOUT = "streams.systemdb.wait.timeout"
+        const val SYSTEM_DB_WAIT_TIMEOUT_VALUE = 10000L
         private var afterInitListeners = mutableListOf<((MutableMap<String, String>) -> Unit)>()
 
         fun registerListener(after: (MutableMap<String, String>) -> Unit) {
@@ -80,8 +83,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun loadStreamsConfiguration() {
         val properties = neo4jConfAsProperties()
 
-        val filteredValues = filterProperties(properties,
-                { key -> key.toString().startsWith("streams.") })
+        val filteredValues = filterProperties(properties)
+            { key -> key.toString().startsWith("streams.") }
 
         if (log.isDebugEnabled) {
             log.debug("Neo4j Streams configuration reloaded from neo4j.conf file: $filteredValues")
@@ -95,7 +98,9 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
 
         val properties = Properties()
         try {
-            log.info("The retrieved NEO4J_CONF dir is $neo4jConfFolder")
+            if (log.isDebugEnabled) {
+                log.debug("The retrieved NEO4J_CONF dir is $neo4jConfFolder")
+            }
             properties.load(FileInputStream("$neo4jConfFolder/neo4j.conf"))
         } catch (e: FileNotFoundException) {
             log.error("The neo4j.conf file is not under the directory defined into the directory $neo4jConfFolder, please set the NEO4J_CONF env correctly")
@@ -135,5 +140,8 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
     fun isSinkGloballyEnabled() = this.config.getOrDefault(SINK_ENABLED, SINK_ENABLED_VALUE).toString().toBoolean()
 
     fun isSinkEnabled(dbName: String) = this.config.getOrDefault("${SINK_ENABLED}.to.$dbName", isSinkGloballyEnabled()).toString().toBoolean()
+
+    fun getSystemDbWaitTimeout() = this.config.getOrDefault(SYSTEM_DB_WAIT_TIMEOUT, SYSTEM_DB_WAIT_TIMEOUT_VALUE)
+            .toString().toLong()
 
 }

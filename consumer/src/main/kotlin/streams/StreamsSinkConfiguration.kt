@@ -7,6 +7,7 @@ import streams.service.TopicUtils
 import streams.service.TopicValidationException
 import streams.service.Topics
 import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
+import java.util.concurrent.TimeUnit
 
 data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_ENABLED_VALUE,
                                     val proceduresEnabled: Boolean = StreamsConfig.PROCEDURES_ENABLED_VALUE,
@@ -14,6 +15,8 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                                     val errorConfig: Map<String,Any?> = emptyMap(),
                                     val checkApocTimeout: Long = -1,
                                     val checkApocInterval: Long = 1000,
+                                    val clusterOnly: Boolean = false,
+                                    val checkWriteableInstanceInterval: Long = TimeUnit.MINUTES.toMillis(3),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     fun asMap(): Map<String, Any?> {
@@ -24,6 +27,7 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                     when (it.key) {
                         "error.config" -> "streams.sink.errors"
                         "procedures.enabled" -> "streams.${it.key}"
+                        "cluster.only" -> "streams.${it.key}"
                         else -> if (it.key.startsWith("streams.sink")) it.key else "streams.sink.${it.key}"
                     }
                 }
@@ -37,26 +41,18 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
         fun from(cfg: StreamsConfig, dbName: String, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
             val default = StreamsSinkConfiguration()
 
-            var topics = Topics.from(map = cfg.config, dbName = dbName, invalidTopics = invalidTopics)
+            val configMap = cfg.config
+            var topics = Topics.from(map = configMap, dbName = dbName, invalidTopics = invalidTopics)
             val isDefaultDb = cfg.isDefaultDb(dbName)
             if (isDefaultDb) {
-                topics += Topics.from(map = cfg.config, invalidTopics = invalidTopics)
+                topics += Topics.from(map = configMap, invalidTopics = invalidTopics)
             }
 
             TopicUtils.validate<TopicValidationException>(topics)
 
-            val sourceIdStrategyConfigPrefix = "streams.sink.topic.cdc.sourceId"
-            val (sourceIdStrategyLabelNameKey, sourceIdStrategyIdNameKey) = if (isDefaultDb) {
-                "labelName" to "idName"
-            } else {
-                "labelName.to.$dbName" to "idName.to.$dbName"
-            }
-            val defaultSourceIdStrategyConfig = SourceIdIngestionStrategyConfig()
-            val sourceIdStrategyConfig = SourceIdIngestionStrategyConfig(
-                    cfg.config.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyLabelNameKey", defaultSourceIdStrategyConfig.labelName),
-                    cfg.config.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyIdNameKey", defaultSourceIdStrategyConfig.idName))
+            val sourceIdStrategyConfig = createSourceIdIngestionStrategyConfig(configMap, dbName, isDefaultDb)
 
-            val errorHandler = cfg.config
+            val errorHandler = configMap
                     .filterKeys { it.startsWith("streams.sink.error") }
                     .mapKeys { it.key.substring("streams.sink.".length) }
 
@@ -65,15 +61,34 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                     proceduresEnabled = cfg.hasProceduresEnabled(dbName),
                     topics = topics,
                     errorConfig = errorHandler,
-                    checkApocTimeout = cfg.config.getOrDefault("streams.${StreamsConfig.CHECK_APOC_TIMEOUT}",
+                    checkApocTimeout = configMap.getOrDefault(StreamsConfig.CHECK_APOC_TIMEOUT,
                             default.checkApocTimeout)
                             .toString()
                             .toLong(),
-                    checkApocInterval = cfg.config.getOrDefault("streams.${StreamsConfig.CHECK_APOC_INTERVAL}",
+                    checkApocInterval = configMap.getOrDefault(StreamsConfig.CHECK_APOC_INTERVAL,
                             default.checkApocInterval)
                             .toString()
                             .toLong(),
+                    checkWriteableInstanceInterval = configMap.getOrDefault(StreamsConfig.CHECK_WRITEABLE_INSTANCE_INTERVAL,
+                            default.checkWriteableInstanceInterval)
+                            .toString().toLong(),
+                    clusterOnly = configMap.getOrDefault(StreamsConfig.CLUSTER_ONLY,
+                            default.clusterOnly)
+                            .toString().toBoolean(),
                     sourceIdStrategyConfig = sourceIdStrategyConfig)
+        }
+
+        fun createSourceIdIngestionStrategyConfig(configMap: Map<String, String>, dbName: String, isDefaultDb: Boolean): SourceIdIngestionStrategyConfig {
+            val sourceIdStrategyConfigPrefix = "streams.sink.topic.cdc.sourceId"
+            val (sourceIdStrategyLabelNameKey, sourceIdStrategyIdNameKey) = if (isDefaultDb) {
+                "labelName" to "idName"
+            } else {
+                "labelName.to.$dbName" to "idName.to.$dbName"
+            }
+            val defaultSourceIdStrategyConfig = SourceIdIngestionStrategyConfig()
+            return SourceIdIngestionStrategyConfig(
+                    configMap.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyLabelNameKey", defaultSourceIdStrategyConfig.labelName),
+                    configMap.getOrDefault("$sourceIdStrategyConfigPrefix.$sourceIdStrategyIdNameKey", defaultSourceIdStrategyConfig.idName))
         }
 
     }

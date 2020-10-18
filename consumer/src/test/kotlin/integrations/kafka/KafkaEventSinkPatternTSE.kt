@@ -1,14 +1,16 @@
 package integrations.kafka
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.hamcrest.Matchers
+import org.junit.Ignore
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.test.assertion.Assert
+import streams.Assert
 import streams.extensions.execute
 import streams.serialization.JSONUtils
 import streams.setConfig
@@ -39,6 +41,66 @@ class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
+
+    @Test
+    @Ignore("fix it")
+    fun shouldInsertNodesAndRelationships() = runBlocking {
+        val user = UUID.randomUUID().toString()
+        val product = UUID.randomUUID().toString()
+        val rel = UUID.randomUUID().toString()
+        db.setConfig("streams.sink.topic.pattern.node.$user",
+                "(:User{!userId,name,surname,address.city})")
+        db.setConfig("streams.sink.topic.pattern.node.$product",
+                "(:Product{!productId})")
+        db.setConfig("streams.sink.topic.pattern.relationship.$rel",
+                "(:User{!userId})-[:BOUGHT]->(:Product{!productId})")
+        db.start()
+        db.execute("CREATE CONSTRAINT neo4j_streams_user_constraint ON (u:User) ASSERT (u.userId) IS UNIQUE")
+        db.execute("CREATE CONSTRAINT neo4j_streams_product_constraint ON (p:Product) ASSERT (p.productId) IS UNIQUE")
+        val userData = mapOf("userId" to 1, "name" to "Andrea Santurbano")
+        val productData = mapOf("productId" to 10, "name" to "My Product")
+        val relData = mapOf("productId" to 10, "userId" to 1, "quantity" to 100)
+        var producerRecord = ProducerRecord(user, UUID.randomUUID().toString(),
+                JSONUtils.writeValueAsBytes(userData))
+        kafkaProducer.send(producerRecord).get()
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+                MATCH (u:User{userId: 1, name: 'Andrea Santurbano'})
+                RETURN count(u) AS count
+            """.trimIndent()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        producerRecord = ProducerRecord(product, UUID.randomUUID().toString(),
+                JSONUtils.writeValueAsBytes(productData))
+        kafkaProducer.send(producerRecord).get()
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+                MATCH (p:Product{productId: 10, name: 'My Product'})
+                RETURN count(p) AS count
+            """.trimIndent()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        producerRecord = ProducerRecord(rel, UUID.randomUUID().toString(),
+                JSONUtils.writeValueAsBytes(relData))
+        kafkaProducer.send(producerRecord).get()
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = """
+                MATCH p = (s:User{userId: 1, name: 'Andrea Santurbano'})-[:BOUGHT{quantity: 100}]->(e:Product{productId: 10, name: 'My Product'})
+                RETURN count(p) AS count
+            """.trimIndent()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
 
     @Test
     fun shouldWorkWithRelPatternTopic() = runBlocking {

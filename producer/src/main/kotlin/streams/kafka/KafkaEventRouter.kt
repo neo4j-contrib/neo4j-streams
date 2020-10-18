@@ -39,13 +39,13 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
     override fun start() {
-        log.info("Initializing Kafka Connector")
+        log.info("Initialising Kafka Connector")
         kafkaConfig = KafkaConfiguration.from(config.config)
         val props = kafkaConfig.asProperties()
         val definedTopics = StreamsEventRouterConfiguration
                 .from(config, dbName)
                 .allTopics()
-        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics)
+        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics, log)
         kafkaAdminService.start()
         producer = Neo4jKafkaProducer(props)
         producer.initTransactions()
