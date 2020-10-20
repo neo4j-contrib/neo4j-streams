@@ -39,6 +39,31 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
     }
 
     @Test
+    fun testDeleteNode() {
+        db.start()
+        kafkaConsumer.subscribe(listOf("neo4j"))
+        db.execute("CREATE (:Person {name:'John Doe', age:42})")
+        assertEquals(1, kafkaConsumer.poll(5000).count())
+        db.execute("MATCH (p:Person {name:'John Doe', age:42}) DELETE p")
+        val count = db.execute("MATCH (p:Person {name:'John Doe', age:42}) RETURN count(p) AS count") {
+            it.columnAs<Long>("count").next()
+        }
+        assertEquals(0, count)
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(true, records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val before = it.payload.before as NodeChange
+                val labels = before.labels
+                val propertiesAfter = before.properties
+                labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
+                        && it.meta.operation == OperationType.deleted
+                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        })
+    }
+
+    @Test
     fun testCreateRelationshipWithRelRouting() {
         db.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}").start()
         kafkaConsumer.subscribe(listOf("knows"))

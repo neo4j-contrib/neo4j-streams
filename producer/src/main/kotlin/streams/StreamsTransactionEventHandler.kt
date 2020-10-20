@@ -2,8 +2,6 @@ package streams
 
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Transaction
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventListener
 import streams.events.Constraint
@@ -295,7 +293,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
     override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?, db: GraphDatabaseService?) {}
 
-    override fun afterCommit(txd: TransactionData, previousTxd: PreviousTransactionData, db: GraphDatabaseService?) = runBlocking {
+    override fun afterCommit(txd: TransactionData, previousTxd: PreviousTransactionData, db: GraphDatabaseService?) {
         val nodePrevious = previousTxd.nodeData
         val relPrevious = previousTxd.relData
 
@@ -303,37 +301,37 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 relPrevious.createdPayload.size + relPrevious.deletedPayload.size + relPrevious.updatedPayloads.size
 
         if (totalEventsCount == 0) {
-            return@runBlocking
+            return
         }
 
         val eventAcc = AtomicInteger(-1)
         val events = mutableListOf<StreamsTransactionEvent>()
-        val nodeCreated = async { mapToStreamsEvent(OperationType.created, nodePrevious.createdPayload, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        val nodeDeleted = async { mapToStreamsEvent(OperationType.deleted, nodePrevious.deletedPayload, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        val nodeUpdated = async { mapToStreamsEvent(OperationType.updated, nodePrevious.updatedPayloads, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        val relCreated = async { mapToStreamsEvent(OperationType.created, relPrevious.createdPayload, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        val relDeleted = async { mapToStreamsEvent(OperationType.deleted, relPrevious.deletedPayload, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        val relUpdated = async { mapToStreamsEvent(OperationType.updated, relPrevious.updatedPayloads, txd, totalEventsCount, eventAcc,
-                previousTxd.nodeConstraints, previousTxd.relConstraints) }
-        events.addAll(nodeCreated.await())
-        events.addAll(nodeDeleted.await())
-        events.addAll(nodeUpdated.await())
-        events.addAll(relCreated.await())
-        events.addAll(relDeleted.await())
-        events.addAll(relUpdated.await())
+        val nodeCreated = mapToStreamsEvent(OperationType.created, nodePrevious.createdPayload, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        val nodeDeleted = mapToStreamsEvent(OperationType.deleted, nodePrevious.deletedPayload, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        val nodeUpdated = mapToStreamsEvent(OperationType.updated, nodePrevious.updatedPayloads, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        val relCreated = mapToStreamsEvent(OperationType.created, relPrevious.createdPayload, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        val relDeleted = mapToStreamsEvent(OperationType.deleted, relPrevious.deletedPayload, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        val relUpdated = mapToStreamsEvent(OperationType.updated, relPrevious.updatedPayloads, txd, totalEventsCount, eventAcc,
+                previousTxd.nodeConstraints, previousTxd.relConstraints)
+        events.addAll(nodeCreated)
+        events.addAll(nodeDeleted)
+        events.addAll(nodeUpdated)
+        events.addAll(relCreated)
+        events.addAll(relDeleted)
+        events.addAll(relUpdated)
 
         val topicEventsMap = events.flatMap { event ->
-                    val map  = when (event.payload.type) {
-                        EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, configuration.nodeRouting)
-                        EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, configuration.relRouting)
-                    }
-                    map.entries
-                }
+            val map  = when (event.payload.type) {
+                EntityType.node -> NodeRoutingConfiguration.prepareEvent(event, configuration.nodeRouting)
+                EntityType.relationship -> RelationshipRoutingConfiguration.prepareEvent(event, configuration.relRouting)
+            }
+            map.entries
+        }
                 .groupBy({ it.key }, { it.value })
 
         topicEventsMap.forEach {

@@ -57,8 +57,7 @@ class StreamsEventSinkQueryExecutionTest {
                 StreamsSinkEntity(second, second)))
 
         // then
-        db.execute("MATCH (n:Label) RETURN count(n) AS count") { it.columnAs<Long>("count").next() }
-                .let { assertEquals(2, it) }
+        assertEquals(2, db.execute("MATCH (n:Label) RETURN count(n) AS count") { it.columnAs<Long>("count").next() })
     }
 
 }
