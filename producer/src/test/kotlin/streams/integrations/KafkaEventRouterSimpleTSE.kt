@@ -2,7 +2,10 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.Matchers
 import org.junit.Test
+import org.neo4j.function.ThrowingSupplier
+import streams.Assert
 import streams.events.EntityType
 import streams.events.NodeChange
 import streams.events.NodePayload
@@ -14,6 +17,7 @@ import streams.KafkaTestUtils
 import streams.serialization.JSONUtils
 import streams.setConfig
 import streams.start
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
 class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
@@ -130,5 +134,37 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
                         && it.schema.constraints.isEmpty()
             }
         })
+    }
+
+    @Test
+    fun testDeleteNode() = runBlocking {
+        val topic = "testdeletetopic"
+        db.setConfig("streams.source.topic.nodes.$topic.from.neo4j", "Person:Neo4j{*}")
+            .setConfig("streams.source.topic.relationships.$topic.from.neo4j", "KNOWS{*}")
+            .start()
+        kafkaConsumer.subscribe(listOf(topic))
+        db.execute("CREATE (:Person:ToRemove {name:'John Doe', age:42})-[:KNOWS]->(:Person {name:'Jane Doe', age:36})")
+        Assert.assertEventually(ThrowingSupplier {
+            kafkaConsumer.poll(5000).count() > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        db.execute("MATCH (p:Person {name:'John Doe', age:42}) REMOVE p:ToRemove")
+        Assert.assertEventually(ThrowingSupplier {
+            kafkaConsumer.poll(5000)
+                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                    .filter { it.meta.operation == OperationType.updated }
+                    .count() > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        db.execute("MATCH (p:Person) DETACH DELETE p")
+        val count = db.execute("MATCH (p:Person {name:'John Doe', age:42}) RETURN count(p) AS count") {
+            it.columnAs<Long>("count").next()
+        }
+        assertEquals(0, count)
+        Assert.assertEventually(ThrowingSupplier {
+            val count = kafkaConsumer.poll(5000)
+                .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                .filter { it.meta.operation == OperationType.deleted }
+                .count()
+            count > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 }
