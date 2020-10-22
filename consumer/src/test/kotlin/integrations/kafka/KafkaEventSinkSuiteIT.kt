@@ -1,11 +1,13 @@
 package integrations.kafka
 
 import org.junit.AfterClass
+import org.junit.Assume
 import org.junit.Assume.assumeTrue
 import org.junit.BeforeClass
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 import org.testcontainers.containers.KafkaContainer
+import streams.MavenUtils
 import streams.utils.StreamsUtils
 
 @RunWith(Suite::class)
@@ -18,8 +20,8 @@ import streams.utils.StreamsUtils
         KafkaStreamsSinkProceduresTSE::class,
         KafkaEventSinkCUDFormatTSE::class,
         KafkaEventSinkAvroTSE::class,
-        KafkaNeo4jRecoveryTSE::class/*,
-        KafkaEventSinkEnterpriseTSE::class*/
+        KafkaNeo4jRecoveryTSE::class,
+        KafkaEventSinkEnterpriseTSE::class
 )
 class KafkaEventSinkSuiteIT {
     companion object {

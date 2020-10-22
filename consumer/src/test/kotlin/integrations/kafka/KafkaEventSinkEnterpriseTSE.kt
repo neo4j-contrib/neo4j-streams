@@ -17,6 +17,7 @@ import org.neo4j.driver.SessionConfig
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.KafkaTestUtils
+import streams.MavenUtils
 import streams.Neo4jContainerExtension
 import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
@@ -28,15 +29,16 @@ class KafkaEventSinkEnterpriseTSE {
     companion object {
 
         private var startedFromSuite = true
-        val DB_NAME_NAMES = listOf("foo", "bar", "nonLowerCaseDb")
+        val DB_NAME_NAMES = arrayOf("foo", "bar")
+        val ALL_DBS = arrayOf("foo", "bar", "baz")
 
         @JvmStatic
-        val neo4j = Neo4jContainerExtension()
-//                .withLogging()
+        val neo4j = Neo4jContainerExtension()//.withLogging()
 
         @BeforeClass
         @JvmStatic
         fun setUpContainer() {
+            // Assume.assumeFalse(MavenUtils.isTravis())
             if (!KafkaEventSinkSuiteIT.isRunning) {
                 startedFromSuite = false
                 KafkaEventSinkSuiteIT.setUpContainer()
@@ -48,8 +50,7 @@ class KafkaEventSinkEnterpriseTSE {
                 DB_NAME_NAMES.forEach { neo4j.withNeo4jConfig("streams.sink.enabled.to.$it", "true") } // we enable the sink plugin only for the instances
                 neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.foo", "MERGE (c:Customer_foo {id: event.id, foo: 'foo'})")
                 neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.bar", "MERGE (c:Customer_bar {id: event.id, bar: 'bar'})")
-                neo4j.withNeo4jConfig("streams.sink.topic.cypher.enterpriseCypherTopic.to.nonLowerCaseDb", "MERGE (c:Customer_nonLowerCaseDb {id: event.id, nonLowerCaseDb: 'nonLowerCaseDb'})")
-                neo4j.withDatabases("foo", "bar", "nonLowerCaseDb", "baz")
+                neo4j.withDatabases(*ALL_DBS)
                 neo4j.start()
                 Assume.assumeTrue("Neo4j must be running", neo4j.isRunning)
             }, IllegalStateException::class.java)
@@ -77,6 +78,11 @@ class KafkaEventSinkEnterpriseTSE {
                 schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl(),
                 keySerializer = KafkaAvroSerializer::class.java.name,
                 valueSerializer = KafkaAvroSerializer::class.java.name)
+        ALL_DBS.forEach { dbName ->
+            neo4j.driver!!.session(SessionConfig.forDatabase(dbName))
+                    .run("MATCH (n) DETACH DELETE n")
+                    .consume()
+        }
     }
 
     @After
@@ -87,10 +93,8 @@ class KafkaEventSinkEnterpriseTSE {
 
     private fun getData(dbName: String): List<Map<String, Any>> {
         return neo4j.driver!!.session(SessionConfig.forDatabase(dbName))
-            .beginTransaction().use { tx ->
-                tx.run("MATCH (n) RETURN n").list()
-                        .map { it["n"].asNode().asMap() }
-            }
+            .run("MATCH (n) RETURN n").list()
+            .map { it["n"].asNode().asMap() }
     }
 
     @Test
@@ -111,10 +115,6 @@ class KafkaEventSinkEnterpriseTSE {
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = getData("bar")
             1 == nodes.size && mapOf("id" to 1L, "bar" to "bar") == nodes[0]
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val nodes = getData("nonLowerCaseDb")
-            1 == nodes.size && mapOf("id" to 1L, "nonLowerCaseDb" to "nonLowerCaseDb") == nodes[0]
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {

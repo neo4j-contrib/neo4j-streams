@@ -1,8 +1,12 @@
 package streams.integrations
 
+import kotlinx.coroutines.delay
+
+import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.junit.AfterClass
 import org.junit.Assume
+import org.junit.Before
 import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.driver.SessionConfig
@@ -21,15 +25,15 @@ class KafkaEventRouterEnterpriseTSE {
     companion object {
 
         private var startedFromSuite = true
-        val DB_NAME_NAMES = listOf("foo", "bar")
+        val DB_NAME_NAMES = listOf("foo", "bar", "deletedb")
 
         @JvmStatic
-        val neo4j = Neo4jContainerExtension()
-//                .withLogging()
+        val neo4j = Neo4jContainerExtension()//.withLogging()
 
         @BeforeClass
         @JvmStatic
         fun setUpContainer() {
+            // Assume.assumeFalse(MavenUtils.isTravis())
             if (!KafkaEventRouterSuiteIT.isRunning) {
                 startedFromSuite = false
                 KafkaEventRouterSuiteIT.setUpContainer()
@@ -41,7 +45,9 @@ class KafkaEventRouterEnterpriseTSE {
                 // for the bar instance we create custom routing params
                 neo4j.withNeo4jConfig("streams.source.topic.relationships.knows.from.bar", "KNOWS{since}")
                         .withNeo4jConfig("streams.source.topic.nodes.person.from.bar", "Person{name,surname}")
-                neo4j.withDatabases("foo", "bar", "baz")
+                        .withNeo4jConfig("streams.source.topic.nodes.deletedb.from.deletedb", "Person{name,surname}")
+                        .withNeo4jConfig("streams.source.topic.relationships.deletedb.from.deletedb", "KNOWS{since}")
+                neo4j.withDatabases("foo", "bar", "baz", "deletedb")
                 neo4j.start()
                 Assume.assumeTrue("Neo4j must be running", neo4j.isRunning)
             }, IllegalStateException::class.java)
@@ -55,6 +61,11 @@ class KafkaEventRouterEnterpriseTSE {
                 KafkaEventRouterSuiteIT.tearDownContainer()
             }
         }
+    }
+
+    @Before
+    fun before() {
+        DB_NAME_NAMES.forEach(this::cleanAll)
     }
 
     private fun createNodeAndConsumeKafkaRecords(dbName: String): ConsumerRecords<String, ByteArray> {
@@ -74,38 +85,46 @@ class KafkaEventRouterEnterpriseTSE {
     }
 
     @Test
-    fun `should stream the data for a specific instance`() {
-        // given - when
-        val records = createNodeAndConsumeKafkaRecords("foo")
+    fun `should publish delete message without break`() = runBlocking {
+        // given
+        val dbName = "deletedb"
+        createPath(dbName)
+        cleanAll(dbName)
+        delay(5000)
+
+        // when
+        val kafkaConsumerFoo = KafkaTestUtils
+                .createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
 
         // then
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                val after = it.payload.after as NodeChange
-                val labels = after.labels
-                val propertiesAfter = after.properties
-                labels == listOf("Person", "foo") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
-                        && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
-                        && it.schema.constraints.isEmpty()
-            }
-        })
-        // the other dbs should not be affected
-        assertEquals(0, createNodeAndConsumeKafkaRecords("neo4j").count())
-        assertEquals(0, createNodeAndConsumeKafkaRecords("baz").count())
+        kafkaConsumerFoo.use {
+            it.subscribe(setOf(dbName))
+            val records = it.poll(5000)
+            assertEquals(6, records.count()) // foo instance should publish all the events into the foo topic
+            val deletedRecords = records
+                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                    .filter { it.meta.operation == OperationType.deleted }
+            assertEquals(3, deletedRecords.count())
+        }
     }
 
     @Test
-    fun `should stream the data from a specific instance with custom routing params`() {
+    fun `should stream the data from a specific instance with custom routing params`() = runBlocking {
         // given
         createPath("foo")
         createPath("bar")
+        delay(5000)
 
         // when
-        val kafkaConsumerFoo = KafkaTestUtils.createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
-        val kafkaConsumerBarKnows = KafkaTestUtils.createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
-        val kafkaConsumerBarPerson = KafkaTestUtils.createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+        var kafkaConsumerFoo = KafkaTestUtils
+                .createConsumer<String, ByteArray>(
+                        bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+        val kafkaConsumerBarKnows = KafkaTestUtils
+                .createConsumer<String, ByteArray>(
+                        bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+        val kafkaConsumerBarPerson = KafkaTestUtils
+                .createConsumer<String, ByteArray>(
+                        bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
 
         // then
         kafkaConsumerFoo.use {
@@ -142,16 +161,24 @@ class KafkaEventRouterEnterpriseTSE {
                 }
             })
         }
+
         // the other dbs should not be affected
         assertEquals(0, createNodeAndConsumeKafkaRecords("neo4j").count())
         assertEquals(0, createNodeAndConsumeKafkaRecords("baz").count())
     }
 
     private fun createPath(dbName: String) {
-        neo4j.driver!!.session(SessionConfig.forDatabase(dbName)).beginTransaction().use {
-            it.run("CREATE (:Person:$dbName {name:'Andrea', surname: 'Santurbano', andreaHiddenProp: true})-[:KNOWS{since: 2014, hiddenProp: true}]->(:Person:$dbName {name:'Michael', surname: 'Hunger', michaelHiddenProp: true})")
-            it.commit()
-        }
+        neo4j.driver!!.session(SessionConfig.forDatabase(dbName))
+                .run("""CREATE (start:Person:$dbName {name:'Andrea', surname: 'Santurbano', andreaHiddenProp: true})
+                |CREATE (end:Person:$dbName {name:'Michael', surname: 'Hunger', michaelHiddenProp: true})
+                |CREATE (start)-[:KNOWS{since: 2014, hiddenProp: true}]->(end)
+                |""".trimMargin())
+                .list()
+    }
+
+    private fun cleanAll(dbName: String) {
+        neo4j.driver!!.session(SessionConfig.forDatabase(dbName))
+                .run("MATCH (n) DETACH DELETE n").list()
     }
 
 }
