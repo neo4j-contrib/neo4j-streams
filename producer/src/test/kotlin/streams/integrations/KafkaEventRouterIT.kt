@@ -2,8 +2,10 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
+import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -14,6 +16,7 @@ import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
+import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
@@ -62,6 +65,7 @@ class KafkaEventRouterIT {
     private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
     private val MULTI_NODE_PATTERN_TEST_SUFFIX = "MultiTopicPatternConfig"
     private val WITH_CONSTRAINTS_SUFFIX = "WithConstraints"
+    private val WITH_TEST_DELETE_TOPIC = "WithTestDeleteTopic"
 
     @Rule
     @JvmField
@@ -90,6 +94,10 @@ class KafkaEventRouterIT {
                     .setConfig("streams.source.topic.nodes.productConstraints", "ProductConstr{*}")
                     .setConfig("streams.source.topic.relationships.boughtConstraints", "BOUGHT{*}")
                     .setConfig("streams.source.schema.polling.interval", "0")
+        }
+        if (testName.methodName.endsWith(WITH_TEST_DELETE_TOPIC)) {
+            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.testdeletetopic", "Person:Neo4j{*}")
+                    .setConfig("streams.source.topic.relationships.testdeletetopic", "KNOWS{*}")
         }
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
@@ -291,4 +299,33 @@ class KafkaEventRouterIT {
         consumer.close()
     }
 
+    @Test
+    fun testDeleteNodeWithTestDeleteTopic() {
+        val topic = "testdeletetopic"
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        val kafkaConsumer = createConsumer(config)
+        kafkaConsumer.subscribe(listOf(topic))
+        db.execute("CREATE (:Person:ToRemove {name:'John Doe', age:42})-[:KNOWS]->(:Person {name:'Jane Doe', age:36})")
+        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            kafkaConsumer.poll(5000).count() > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        db.execute("MATCH (p:Person {name:'John Doe', age:42}) REMOVE p:ToRemove")
+        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            kafkaConsumer.poll(5000)
+                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                    .filter { it.meta.operation == OperationType.updated }
+                    .count() > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        db.execute("MATCH (p:Person) DETACH DELETE p")
+        val count = db.execute("MATCH (p:Person {name:'John Doe', age:42}) RETURN count(p) AS count")
+                .columnAs<Long>("count").next()
+        assertEquals(0, count)
+        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            kafkaConsumer.poll(5000)
+                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                    .filter { it.meta.operation == OperationType.deleted }
+                    .count() > 0
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        kafkaConsumer.close()
+    }
 }
