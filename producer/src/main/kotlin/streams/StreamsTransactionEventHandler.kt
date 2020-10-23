@@ -126,13 +126,11 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .toMap()
 
         // returns a Map<Boolean, List<Node>> where the K is true if the node has been deleted
-        val removedNodeProps = allOrFiltered(txd.removedNodeProperties(), nodeAll)
-                { it.entity().labelNames().any { nodeRoutingLabels.contains(it) } }
+        val removedNodeProps = txd.removedNodeProperties()
                 .map { txd.deletedNodes().contains(it.entity()) to it }
                 .groupBy({ it.first }, { it.second })
                 .toMap()
-        val removedLbls = allOrFiltered(txd.removedLabels(), nodeAll)
-                { nodeRoutingLabels.contains(it.label().name()) }
+        val removedLbls = txd.removedLabels()
                 .map { txd.deletedNodes().contains(it.node()) to it }
                 .groupBy({ it.first }, { it.second })
                 .toMap()
@@ -147,12 +145,10 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .map { labelEntry -> labelEntry.node().id to labelEntry.label().name() } // [ (nodeId, [label]) ]
                 .groupBy({it.first},{it.second}) // { nodeId -> [label]  }
 
-
         val removedNodeProperties = removedNodeProps.getOrDefault(false, emptyList())
         val removedLabels = removedLbls.getOrDefault(false, emptyList())
 
-        val deletedPayload = allOrFiltered(txd.deletedNodes(), nodeAll)
-                { it.labels.any { nodeRoutingLabels.contains(it.name()) } }
+        val deletedPayload = txd.deletedNodes()
                 .map {
                     val beforeNode = NodeChangeBuilder()
                             .withLabels(deletedLabels.getOrDefault(it.id, emptyList()))
