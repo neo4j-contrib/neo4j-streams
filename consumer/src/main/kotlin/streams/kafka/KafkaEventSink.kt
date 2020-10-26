@@ -24,6 +24,7 @@ import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
 import streams.events.StreamsPluginStatus
+import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
@@ -62,12 +63,12 @@ class KafkaEventSink(private val config: Config,
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
-            override fun createStreamsEventConsumer(config: Map<String, String>, log: Log): StreamsEventConsumer {
+            override fun createStreamsEventConsumer(config: Map<String, String>, log: Log, topics: Set<Any>): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config)
                 return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log)
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, topics as Set<String>)
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log)
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, topics as Set<String>)
                 }
             }
         }
@@ -100,8 +101,7 @@ class KafkaEventSink(private val config: Config,
             }
             log.info("Starting the Kafka Sink")
             eventConsumer = getEventConsumerFactory()
-                    .createStreamsEventConsumer(config.raw, log)
-                    .withTopics(streamsTopicService.getTopics())
+                    .createStreamsEventConsumer(config.raw, log, streamsTopicService.getTopics())
             job = createJob()
         }
         if (isWriteableInstance) {
@@ -136,7 +136,6 @@ class KafkaEventSink(private val config: Config,
 
     private fun createJob(): Job {
         log.info("Creating Sink daemon Job")
-        val hashcode = this.hashCode()
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
                 eventConsumer.start()
@@ -148,7 +147,7 @@ class KafkaEventSink(private val config: Config,
                             }
                             queryExecution.writeForTopic(topic, data)
                         }
-                        TimeUnit.SECONDS.toMillis(1)
+                        streamsConfig.pollInterval
                     } else {
                         val timeMillis = streamsConfig.checkWriteableInstanceInterval
                         if (log.isDebugEnabled) {

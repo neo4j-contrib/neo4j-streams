@@ -86,6 +86,7 @@ import org.neo4j.test.rule.RandomRule
 import org.neo4j.test.rule.TestDirectory
 import org.neo4j.test.rule.fs.DefaultFileSystemRule
 import streams.StreamsEventSinkExtensionFactory
+import streams.extensions.labelNames
 import streams.serialization.JSONUtils
 import java.io.File
 import java.io.IOException
@@ -132,8 +133,8 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
 
         // copying only transaction log simulate non clean shutdown db that should be able to recover just from logs
         val restoreDbStoreDir = copyTransactionLogs()
+        val recoveredDatabase = startDatabase(restoreDbStoreDir, true)
         sendKafkaEvents()
-        val recoveredDatabase = startDatabase(restoreDbStoreDir)
         recoveredDatabase.beginTx().use { tx ->
             org.junit.Assert.assertEquals(numberOfNodes.toLong(), Iterables.count(recoveredDatabase.allNodes))
 
@@ -664,7 +665,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .newGraphDatabase() as GraphDatabaseAPI
     }
 
-    private fun startDatabase(storeDir: File): GraphDatabaseService {
+    private fun startDatabase(storeDir: File, clusterOnly: Boolean = false): GraphDatabaseService {
         return TestGraphDatabaseFactory()
                 .setInternalLogProvider(logProvider)
                 .addKernelExtension(StreamsEventSinkExtensionFactory())
@@ -673,6 +674,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
+                .setConfig("streams.cluster.only", clusterOnly.toString())
                 .newGraphDatabase()
     }
 

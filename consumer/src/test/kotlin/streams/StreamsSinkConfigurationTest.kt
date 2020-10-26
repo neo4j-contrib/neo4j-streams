@@ -27,6 +27,7 @@ class StreamsSinkConfigurationTest {
         val apocInterval = "2000"
         val clusterOnly = "true"
         val writeableInstanceInterval = "99"
+        val pollIntervall = "100"
         val config = Config.builder()
                 .withSetting(topicKey, topicValue)
                 .withSetting("streams.sink.enabled", "false")
@@ -36,6 +37,7 @@ class StreamsSinkConfigurationTest {
                 .withSetting("streams.check.apoc.timeout", apocTimeout)
                 .withSetting("streams.check.apoc.interval", apocInterval)
                 .withSetting("streams.cluster.only", clusterOnly)
+                .withSetting("streams.sink.poll.interval", pollIntervall)
                 .withSetting("streams.check.writeable.instance.interval", writeableInstanceInterval)
                 .build()
         val streamsConfig = StreamsSinkConfiguration.from(config)
@@ -48,6 +50,7 @@ class StreamsSinkConfigurationTest {
         assertEquals(customId, streamsConfig.sourceIdStrategyConfig.idName)
         assertEquals(apocTimeout.toLong(), streamsConfig.checkApocTimeout)
         assertEquals(apocInterval.toLong(), streamsConfig.checkApocInterval)
+        assertEquals(pollIntervall.toLong(), streamsConfig.pollInterval)
     }
 
     @Test(expected = RuntimeException::class)

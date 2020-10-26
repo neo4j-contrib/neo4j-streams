@@ -25,6 +25,8 @@ class KafkaSinkConfigurationTest {
         assertEquals("earliest", default.autoOffsetReset)
         assertEquals(ByteArrayDeserializer::class.java.name, default.keyDeserializer)
         assertEquals(ByteArrayDeserializer::class.java.name, default.valueDeserializer)
+        assertEquals(true, default.enableAutoCommit)
+        assertEquals(false, default.streamsAsyncCommit)
         assertEquals(emptyMap(), default.extraProperties)
     }
 
@@ -45,6 +47,7 @@ class KafkaSinkConfigurationTest {
                 .withSetting("kafka.auto.offset.reset", autoOffsetReset)
                 .withSetting("kafka.enable.auto.commit", autoCommit)
                 .withSetting("kafka.group.id", group)
+                .withSetting("kafka.streams.async.commit", "true")
                 .withSetting("kafka.key.deserializer", ByteArrayDeserializer::class.java.name)
                 .withSetting("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
                 .build()
@@ -52,6 +55,7 @@ class KafkaSinkConfigurationTest {
                 "auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to group,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
+                "streams.async.commit" to "true",
                 "key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
@@ -65,7 +69,7 @@ class KafkaSinkConfigurationTest {
         val resultMap = kafkaSinkConfiguration
                 .asProperties()
                 .map { it.key.toString() to it.value.toString() }
-                .associateBy({ it.first }, { it.second })
+                .toMap()
         assertEquals(expectedMap, resultMap)
 
         val streamsConfig = StreamsSinkConfiguration.from(config)

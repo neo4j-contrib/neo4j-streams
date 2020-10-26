@@ -18,6 +18,7 @@ object StreamsSinkConfigurationConstants {
     const val PROCEDURES_ENABLED = "procedures.enabled"
     const val CLUSTER_ONLY = "cluster.only"
     const val CHECK_WRITEABLE_INSTANCE_INTERVAL = "check.writeable.instance.interval"
+    const val POLL_INTERVAL = "sink.poll.interval"
 }
 
 data class StreamsSinkConfiguration(val enabled: Boolean = false,
@@ -28,6 +29,7 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                                     val checkApocInterval: Long = 1000,
                                     val clusterOnly: Boolean = false,
                                     val checkWriteableInstanceInterval: Long = TimeUnit.MINUTES.toMillis(3),
+                                    val pollInterval: Long = TimeUnit.SECONDS.toMillis(0),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     fun asMap(): Map<String, Any?> {
@@ -83,6 +85,8 @@ data class StreamsSinkConfiguration(val enabled: Boolean = false,
                     checkApocInterval = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_APOC_INTERVAL, default.checkApocInterval)
                             .toString().toLong(),
                     checkWriteableInstanceInterval = config.getOrDefault(StreamsSinkConfigurationConstants.CHECK_WRITEABLE_INSTANCE_INTERVAL, default.checkWriteableInstanceInterval)
+                            .toString().toLong(),
+                    pollInterval = config.getOrDefault(StreamsSinkConfigurationConstants.POLL_INTERVAL, default.pollInterval)
                             .toString().toLong(),
                     clusterOnly = config.getOrDefault(StreamsSinkConfigurationConstants.CLUSTER_ONLY, default.clusterOnly)
                             .toString().toBoolean(),

@@ -8,6 +8,8 @@ import streams.service.sink.strategy.*
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
 
+class NotInWriteableInstanceException(message: String): RuntimeException(message)
+
 class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTopicService,
                                      private val db: GraphDatabaseAPI,
                                      private val log: Log,
@@ -23,16 +25,19 @@ class StreamsEventSinkQueryExecution(private val streamsTopicService: StreamsTop
     }
 
     override fun write(query: String, params: Collection<Any>) {
+        if (params.isEmpty()) return
         if (Neo4jUtils.isWriteableInstance(db)) {
-            val result = db.execute(query, mapOf("events" to params))
-            if (log.isDebugEnabled) {
-                log.debug("Query statistics:\n${result.queryStatistics}")
-            }
-            result.close()
+            db.execute(query, mapOf("events" to params))
+                    .use {
+                        if (log.isDebugEnabled) {
+                            log.debug("Query statistics:\n${it.queryStatistics}")
+                        }
+                    }
         } else {
             if (log.isDebugEnabled) {
                 log.debug("Not writeable instance")
             }
+            NotInWriteableInstanceException("Not writeable instance")
         }
     }
 }

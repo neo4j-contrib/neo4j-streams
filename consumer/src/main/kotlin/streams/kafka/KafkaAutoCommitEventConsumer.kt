@@ -42,7 +42,8 @@ data class KafkaTopicConfig(val commit: Boolean, val topicPartitionsMap: Map<Top
 }
 
 open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
-                                        private val log: Log): StreamsEventConsumer(log) {
+                                        private val log: Log,
+                                        val topics: Set<String>): StreamsEventConsumer(log, topics) {
 
     private val errorService = KafkaErrorService(config.asProperties(), ErrorService.ErrorConfig.from(config.streamsSinkConfiguration.errorConfig), { s, e -> log.error(s,e as Throwable)})
 
@@ -58,13 +59,6 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         else -> throw RuntimeException("Invalid config")
     }
 
-    private val topics = Collections.newSetFromMap(ConcurrentHashMap<String, Boolean>())
-
-    override fun withTopics(topics: Set<String>): StreamsEventConsumer {
-        this.topics += topics
-        return this
-    }
-
     override fun start() {
         if (topics.isEmpty()) {
             log.info("No topics specified Kafka Consumer will not started")
@@ -78,44 +72,22 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         errorService.close()
     }
 
-    fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {
+    private fun readSimple(action: (String, List<StreamsSinkEntity>) -> Unit) {
         val records = consumer.poll(Duration.ZERO)
-        return when (records.isEmpty) {
-            true -> emptyMap()
-            else -> this.topics
-                    .filter { topic -> records.records(topic).iterator().hasNext() }
-                    .flatMap { topic -> records.records(topic).map { it.topicPartition() to it } }
-                    .groupBy({ it.first }, { it.second })
-                    .mapValues {
-                        executeAction(action, it.key.topic(), it.value)
-                        it.value.last().offsetAndMetadata()
-                    }
+        if (records.isEmpty) return
+        this.topics.forEach { topic ->
+            val topicRecords = records.records(topic)
+            executeAction(action, topic, topicRecords)
         }
     }
 
-    private fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String, topicRecords: Iterable<ConsumerRecord<out Any, out Any>>) {
+    fun executeAction(action: (String, List<StreamsSinkEntity>) -> Unit, topic: String, topicRecords: Iterable<ConsumerRecord<out Any, out Any>>) {
         try {
-            action(topic, convert(topicRecords))
+            action(topic, topicRecords.map { it.toStreamsSinkEntity() })
         } catch (e: Exception) {
-            errorService.report(topicRecords.map { ErrorData.from(it, e,this::class.java ) })
+            errorService.report(topicRecords.map { ErrorData.from(it, e, this::class.java) })
         }
     }
-
-    private fun convert(topicRecords: Iterable<ConsumerRecord<out Any, out Any>>) = topicRecords
-            .map {
-                try {
-                    "ok" to it.toStreamsSinkEntity()
-                } catch (e: Exception) {
-                    "error" to ErrorData.from(it, e, this::class.java)
-                }
-            }
-            .groupBy({ it.first }, { it.second })
-            .let {
-                it.get("error")?.let {
-                    errorService.report(it as List<ErrorData>)
-                }
-                it.getOrDefault("ok", emptyList()) as List<StreamsSinkEntity>
-            }
 
     fun readFromPartition(kafkaTopicConfig: KafkaTopicConfig,
                           action: (String, List<StreamsSinkEntity>) -> Unit): Map<TopicPartition, OffsetAndMetadata> {

@@ -1,4 +1,4 @@
-package streams.serialization
+package streams.utils
 
 import org.junit.Test
 import org.neo4j.driver.v1.Values
@@ -8,6 +8,7 @@ import org.neo4j.values.storable.DateValue.date
 import org.neo4j.values.storable.TimeValue.time
 import org.neo4j.values.storable.Values.pointValue
 import streams.events.*
+import streams.serialization.JSONUtils
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
 import kotlin.test.assertFails

@@ -138,8 +138,7 @@ class StreamsSinkProcedures {
 
     private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer {
         return streamsEventConsumerFactory
-                .createStreamsEventConsumer(consumerConfig, log!!)
-                .withTopics(setOf(topic))
+                .createStreamsEventConsumer(consumerConfig, log!!, setOf(topic))
     }
 
     private fun checkEnabled() {
