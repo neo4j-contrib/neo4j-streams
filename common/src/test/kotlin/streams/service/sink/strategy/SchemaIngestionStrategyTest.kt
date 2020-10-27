@@ -2,7 +2,6 @@ package streams.service.sink.strategy
 
 import org.junit.Test
 import streams.events.*
-import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
@@ -78,7 +77,7 @@ class SchemaIngestionStrategyTest {
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
             |${StreamsUtils.UNWIND}
-            |MERGE (n:User{name: event.properties.name, surname: event.properties.surname})
+            |MERGE (n:User{surname: event.properties.surname, name: event.properties.name})
             |SET n = event.properties
         """.trimMargin()
         assertEquals(expectedNodeQuery, nodeQuery.trimIndent())
@@ -158,7 +157,7 @@ class SchemaIngestionStrategyTest {
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
             |${StreamsUtils.UNWIND}
-            |MERGE (n:User{name: event.properties.name, surname: event.properties.surname})
+            |MERGE (n:User{surname: event.properties.surname, name: event.properties.name})
             |SET n = event.properties
             |SET n:NewLabel
             |REMOVE n:ToRemove
@@ -274,7 +273,7 @@ class SchemaIngestionStrategyTest {
         val nodeQuery = nodeDeleteEvents[0].query
         val expectedNodeQuery = """
             |${StreamsUtils.UNWIND}
-            |MATCH (n:User{name: event.properties.name, surname: event.properties.surname})
+            |MATCH (n:User{surname: event.properties.surname, name: event.properties.name})
             |DETACH DELETE n
         """.trimMargin()
         assertEquals(expectedNodeQuery, nodeQuery.trimIndent())

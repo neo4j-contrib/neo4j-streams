@@ -6,7 +6,7 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.sink.strategy.CUDNode
 import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations

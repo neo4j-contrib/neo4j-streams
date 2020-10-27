@@ -15,10 +15,12 @@ class StreamsEventSinkQueryExecution(private val db: GraphDatabaseAPI,
         StreamsSinkService(streamsStrategyStorage) {
 
     override fun write(query: String, params: Collection<Any>) {
+        if (params.isEmpty()) return
         if (Neo4jUtils.isWriteableInstance(db)) {
-            val queryStatistics = db.execute(query, mapOf("events" to params)) { it.queryStatistics }
-            if (log.isDebugEnabled) {
-                log.debug("Query statistics:\n$queryStatistics")
+            db.execute(query, mapOf("events" to params)) {
+                if (log.isDebugEnabled) {
+                    log.debug("Query statistics:\n${it.queryStatistics}")
+                }
             }
         } else {
             if (log.isDebugEnabled) {

@@ -7,7 +7,7 @@ import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import streams.StreamsSinkConfiguration
 import streams.config.StreamsConfig
 import streams.extensions.toPointCase
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopics
 import streams.utils.ValidationUtils.validateConnection
 import java.util.Properties
@@ -38,6 +38,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                                   val autoOffsetReset: String = "earliest",
                                   val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration(),
                                   val enableAutoCommit: Boolean = true,
+                                  val streamsAsyncCommit: Boolean = false,
                                   val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -74,6 +75,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                     autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
                     groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId) + (if (isDefaultDb) "" else "-$dbName"),
                     enableAutoCommit = config.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, default.enableAutoCommit).toString().toBoolean(),
+                    streamsAsyncCommit = config.getOrDefault("streams.async.commit", default.streamsAsyncCommit).toString().toBoolean(),
                     streamsSinkConfiguration = streamsSinkConfiguration,
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )

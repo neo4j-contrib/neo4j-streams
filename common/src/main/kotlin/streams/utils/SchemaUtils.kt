@@ -3,7 +3,6 @@ package streams.utils
 import streams.events.Constraint
 import streams.events.StreamsConstraintType
 import streams.events.StreamsTransactionEvent
-import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 
 object SchemaUtils {

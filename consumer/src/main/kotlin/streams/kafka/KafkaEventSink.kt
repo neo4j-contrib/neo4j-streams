@@ -56,12 +56,12 @@ class KafkaEventSink(private val config: StreamsConfig,
 
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
-            override fun createStreamsEventConsumer(config: StreamsConfig, log: Log): StreamsEventConsumer {
+            override fun createStreamsEventConsumer(config: StreamsConfig, log: Log, topics: Set<Any>): StreamsEventConsumer {
                 val kafkaConfig = KafkaSinkConfiguration.from(config, db.databaseName())
                 return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log)
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, topics as Set<String>)
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log)
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, topics as Set<String>)
                 }
             }
         }
@@ -106,8 +106,7 @@ class KafkaEventSink(private val config: StreamsConfig,
             }
             try {
                 eventConsumer = getEventConsumerFactory()
-                        .createStreamsEventConsumer(config, log)
-                        .withTopics(topics) as KafkaEventConsumer
+                        .createStreamsEventConsumer(config, log, topics) as KafkaEventConsumer
                 job = createJob(streamsConfig)
             } catch (e: Exception) {
                 log.error("The Kafka Sink will not start, cannot create the sink job because of the following exception:", e)
@@ -159,7 +158,7 @@ class KafkaEventSink(private val config: StreamsConfig,
                             }
                             queryExecution.writeForTopic(topic, data)
                         }
-                        TimeUnit.SECONDS.toMillis(1)
+                        streamsConfig.pollInterval
                     } else {
                         val timeMillis = streamsConfig.checkWriteableInstanceInterval
                         if (log.isDebugEnabled) {

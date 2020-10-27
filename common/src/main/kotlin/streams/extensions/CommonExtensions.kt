@@ -9,7 +9,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.OffsetAndMetadata
 import org.apache.kafka.common.TopicPartition
 import org.neo4j.graphdb.Node
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.StreamsSinkEntity
 import java.nio.ByteBuffer
 import java.util.*

@@ -14,7 +14,7 @@ import streams.events.RelationshipPayload
 import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.KafkaTestUtils
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.concurrent.TimeUnit

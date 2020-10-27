@@ -8,7 +8,7 @@ import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.KafkaTestUtils
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.errors.ErrorService
 import streams.setConfig
 import streams.start

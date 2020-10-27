@@ -6,7 +6,7 @@ import org.junit.Test
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import java.time.Instant
 import java.time.ZonedDateTime
 import java.util.*

@@ -1,7 +1,7 @@
 package streams.service.sink.strategy
 
 import streams.extensions.flatten
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.StreamsSinkEntity
 import streams.utils.IngestionUtils.containsProp
 import streams.utils.IngestionUtils.getLabelsAsString

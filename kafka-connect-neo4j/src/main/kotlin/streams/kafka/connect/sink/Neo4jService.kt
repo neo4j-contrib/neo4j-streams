@@ -1,14 +1,10 @@
 package streams.kafka.connect.sink
 
-import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.async
-import kotlinx.coroutines.channels.ticker
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
 import org.neo4j.driver.AuthTokens
@@ -21,25 +17,23 @@ import org.neo4j.driver.exceptions.TransientException
 import org.neo4j.driver.net.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import streams.kafka.connect.sink.converters.Neo4jValueConverter
+import streams.extensions.awaitAll
+import streams.extensions.errors
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.StreamsSinkEntity
 import streams.service.StreamsSinkService
-import streams.service.TopicType
-import streams.utils.StreamsUtils
 import streams.utils.retryForException
-import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.TimeoutException
+import kotlin.streams.toList
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         StreamsSinkService(Neo4jStrategyStorage(config)) {
 
-    private val converter = Neo4jValueConverter()
     private val log: Logger = LoggerFactory.getLogger(Neo4jService::class.java)
 
     private val driver: Driver
+    private val sessionConfig: SessionConfig
 
     init {
         val configBuilder = Config.builder()
@@ -81,6 +75,11 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         val neo4jConfig = configBuilder.build()
 
         this.driver = GraphDatabase.driver(this.config.serverUri.firstOrNull(), authToken, neo4jConfig)
+        val sessionConfigBuilder = SessionConfig.builder()
+        if (config.database.isNotBlank()) {
+            sessionConfigBuilder.withDatabase(config.database)
+        }
+        this.sessionConfig = sessionConfigBuilder.build()
     }
 
     fun close() {
@@ -88,79 +87,43 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     }
 
     override fun write(query: String, events: Collection<Any>) {
-        val sessionConfigBuilder = SessionConfig.builder()
-        if (config.database.isNotBlank()) {
-            sessionConfigBuilder.withDatabase(config.database)
-        }
-        val session = driver.session(sessionConfigBuilder.build())
-        val records = events.map { converter.convert(it) }
-        val data = mapOf<String, Any>("events" to records)
-        try {
-            runBlocking {
-                retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-                        retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                    session.writeTransaction {
-                        val summary = it.run(query, data).consume()
-                        if (log.isDebugEnabled) {
-                            log.debug("Successfully executed query: `$query`. Summary: $summary")
+        val data = mapOf<String, Any>("events" to events)
+        driver.session(sessionConfig).use { session ->
+            try {
+                runBlocking {
+                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+                            retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                        session.writeTransaction {
+                            val summary = it.run(query, data).consume()
+                            if (log.isDebugEnabled) {
+                                log.debug("Successfully executed query: `$query`. Summary: $summary")
+                            }
                         }
                     }
                 }
-            }
-        } catch (e: Exception) {
-            if (log.isDebugEnabled) {
-                log.debug("Exception `${e.message}` while executing query: `$query`, with data: `${records.subList(0,Math.min(5,records.size))}` total-records ${records.size}")
-            }
-            throw e
-        } finally {
-            session.close()
-        }
-    }
-
-    // taken from https://stackoverflow.com/questions/52192752/kotlin-how-to-run-n-coroutines-and-wait-for-first-m-results-or-timeout
-    @ObsoleteCoroutinesApi
-    @ExperimentalCoroutinesApi
-    suspend fun <T> List<Deferred<T>>.awaitAll(timeoutMs: Long): List<T> {
-        val jobs = CopyOnWriteArraySet<Deferred<T>>(this)
-        val result = ArrayList<T>(size)
-        val timeout = ticker(timeoutMs)
-
-        whileSelect {
-            jobs.forEach { deferred ->
-                deferred.onAwait {
-                    jobs.remove(deferred)
-                    result.add(it)
-                    result.size != size
+            } catch (e: Exception) {
+                if (log.isDebugEnabled) {
+                    val subList = events.stream()
+                            .limit(5.coerceAtMost(events.size).toLong())
+                            .toList()
+                    log.debug("Exception `${e.message}` while executing query: `$query`, with data: `$subList` total-records ${events.size}")
                 }
-            }
-
-            timeout.onReceive {
-                jobs.forEach { it.cancel() }
-                throw TimeoutException("Tasks $size cancelled after timeout of $timeoutMs ms.")
+                throw e
             }
         }
-
-        return result
     }
 
-    @ExperimentalCoroutinesApi
-    fun <T> Deferred<T>.errors() = when {
-        isCompleted -> getCompletionExceptionOrNull()
-        isCancelled -> getCompletionExceptionOrNull() // was getCancellationException()
-        isActive -> RuntimeException("Job $this still active")
-        else -> null }
-
-    suspend fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) {
+    fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) {
         val errors = if (config.parallelBatches) writeDataAsync(data) else writeDataSync(data);
-
         if (errors.isNotEmpty()) {
-            throw ConnectException(errors.map { it.message }.distinct().joinToString("\n", "Errors executing ${data.values.map { it.size }.sum()} jobs:\n"))
+            throw ConnectException(errors.map { it.message }.toSet()
+                    .joinToString("\n", "Errors executing ${data.values.map { it.size }.sum()} jobs:\n"))
         }
     }
 
     @ExperimentalCoroutinesApi
     @ObsoleteCoroutinesApi
-    suspend fun writeDataAsync(data: Map<String, List<List<StreamsSinkEntity>>>) = coroutineScope {
+    private fun writeDataAsync(data: Map<String, List<List<StreamsSinkEntity>>>) = runBlocking {
         val jobs = data
                 .flatMap { (topic, records) ->
                     records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
@@ -170,14 +133,15 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         jobs.mapNotNull { it.errors() }
     }
     
-    fun writeDataSync(data: Map<String, List<List<StreamsSinkEntity>>>) =
+    private fun writeDataSync(data: Map<String, List<List<StreamsSinkEntity>>>) =
             data.flatMap { (topic, records) ->
-                records.map {
+                records.mapNotNull {
                     try {
                         writeForTopic(topic, it)
+                        null
                     } catch (e: Exception) {
                         e
                     }
-                }.filterIsInstance<Throwable>()
+                }
             }
 }

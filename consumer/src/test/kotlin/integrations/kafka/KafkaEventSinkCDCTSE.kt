@@ -18,7 +18,7 @@ import streams.events.Schema
 import streams.events.StreamsConstraintType
 import streams.events.StreamsTransactionEvent
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID

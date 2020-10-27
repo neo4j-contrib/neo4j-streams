@@ -15,7 +15,7 @@ import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
 import org.neo4j.harness.junit.rule.Neo4jRule
 import streams.events.*
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.errors.ErrorService
 import streams.service.sink.strategy.CUDNode
 import streams.service.sink.strategy.CUDNodeRel

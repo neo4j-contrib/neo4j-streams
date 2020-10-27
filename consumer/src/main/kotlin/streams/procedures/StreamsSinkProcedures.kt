@@ -161,8 +161,7 @@ class StreamsSinkProcedures {
         copy.config.clear()
         copy.config.putAll(consumerConfig)
         getStreamsEventSink().getEventConsumerFactory()
-                .createStreamsEventConsumer(copy, log!!)
-                .withTopics(setOf(topic))
+                .createStreamsEventConsumer(copy, log!!, setOf(topic))
     }
 
     private fun getStreamsEventSink() = streamsEventSinkStore[db!!.databaseName()]!!

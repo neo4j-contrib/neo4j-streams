@@ -4,7 +4,7 @@ import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.record.RecordBatch
 import streams.extensions.toMap
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import java.util.*
 
 

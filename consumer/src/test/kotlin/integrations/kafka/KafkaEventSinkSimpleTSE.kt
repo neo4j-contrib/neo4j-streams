@@ -12,7 +12,7 @@ import streams.Assert
 import streams.events.StreamsPluginStatus
 import streams.extensions.execute
 import streams.procedures.StreamsSinkProcedures
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID

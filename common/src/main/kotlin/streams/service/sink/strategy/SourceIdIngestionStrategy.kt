@@ -2,7 +2,6 @@ package streams.service.sink.strategy
 
 import streams.events.*
 import streams.extensions.quote
-import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.SchemaUtils

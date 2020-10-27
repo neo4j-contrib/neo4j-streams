@@ -6,11 +6,9 @@ import streams.service.StreamsSinkEntity
 import streams.service.errors.ErrorService
 
 
-abstract class StreamsEventConsumer(private val log: Log) {
+abstract class StreamsEventConsumer(log: Log, topics: Set<Any>) {
 
     abstract fun stop()
-
-    abstract fun withTopics(topics: Set<String>): StreamsEventConsumer
 
     abstract fun start()
 
@@ -24,5 +22,5 @@ abstract class StreamsEventConsumer(private val log: Log) {
 
 
 abstract class StreamsEventConsumerFactory {
-    abstract fun createStreamsEventConsumer(config: StreamsConfig, log: Log): StreamsEventConsumer
+    abstract fun createStreamsEventConsumer(config: StreamsConfig, log: Log, topics: Set<Any>): StreamsEventConsumer
 }

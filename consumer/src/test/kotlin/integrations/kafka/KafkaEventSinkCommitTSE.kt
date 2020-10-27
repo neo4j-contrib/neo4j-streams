@@ -9,7 +9,7 @@ import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.KafkaTestUtils
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID
@@ -46,7 +46,39 @@ class KafkaEventSinkCommitTSE : KafkaEventSinkBaseTSE() {
                 }
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
 
+    @Test
+    fun shouldWriteLastOffsetWithAsyncCommit() {
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
+                .setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+                .setConfig("kafka.streams.commit.async", "true")
+        db.start()
+        val partition = 0
+        var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        val newData = data.toMutableMap()
+        newData["id"] = 2
+        producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
+        val resp = kafkaProducer.send(producerRecord).get()
+
+        Assert.assertEventually(ThrowingSupplier {
+            val kafkaConsumer = KafkaTestUtils.createConsumer<String, ByteArray>(
+                    bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
+                    schemaRegistryUrl = KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
+            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
+            kafkaConsumer.close()
+            if (offsetAndMetadata == null) {
+                false
+            } else {
+                val query = "MATCH (n:Label) RETURN count(*) AS count"
+                db.execute(query) {
+                    val result = it.columnAs<Long>("count")
+                    result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
+                }
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
     @Test
