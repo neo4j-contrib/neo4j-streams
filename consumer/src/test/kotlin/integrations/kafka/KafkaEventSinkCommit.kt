@@ -41,6 +41,35 @@ class KafkaEventSinkCommit : KafkaEventSinkBase() {
 
             result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata.offset()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun shouldWriteLastOffsetWithAsyncCommit() = runBlocking {
+        val topic = UUID.randomUUID().toString()
+        graphDatabaseBuilder.setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
+        graphDatabaseBuilder.setConfig("kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}", "false")
+        graphDatabaseBuilder.setConfig("kafka.streams.commit.async", "true")
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        val partition = 0
+        var producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        kafkaProducer.send(producerRecord).get()
+        val newData = data.toMutableMap()
+        newData["id"] = 2
+        producerRecord = ProducerRecord(topic, partition, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(newData))
+        val resp = kafkaProducer.send(producerRecord).get()
+
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            val query = "MATCH (n:Label) RETURN count(*) AS count"
+            val result = db.execute(query).columnAs<Long>("count")
+
+            val kafkaConsumer = createConsumer<String, ByteArray>(
+                    kafka = KafkaEventSinkSuiteIT.kafka,
+                    schemaRegistry = KafkaEventSinkSuiteIT.schemaRegistry)
+            val offsetAndMetadata = kafkaConsumer.committed(TopicPartition(topic, partition))
+            kafkaConsumer.close()
+
+            result.hasNext() && result.next() == 2L && !result.hasNext() && resp.offset() + 1 == offsetAndMetadata?.offset()
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
 
     }
 

@@ -11,6 +11,8 @@ kafka.enable.auto.commit=true
 kafka.key.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
 kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserializer
 
+kafka.streams.async.commit=<boolean, default false, please look at the documentation to check the meaning of this property>
+
 {environment}.topic.cypher.<TOPIC_NAME>=<CYPHER_QUERY>
 {environment}.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
 {environment}.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
@@ -23,6 +25,7 @@ streams.check.apoc.timeout=<ms to await for APOC being loaded, default -1 skip t
 streams.check.apoc.interval=<ms interval awaiting for APOC being loaded, default 1000>
 streams.cluster.only=<boolean value that prevent for starting in single instances usefull when you're performing backup/restore ops, default false>
 streams.check.writeable.instance.interval=<In a cluster environment is the inveral used by the plugin to check if there was a leader re-election, in order to resume the stream process in from the last committed record in the topic. In a single instance is the interval used to check if the database became available, default 180000>
+streams.sink.poll.interval=<The delay interval between poll cycles, default 0>
 ----
 
 [NOTE]
@@ -31,3 +34,38 @@ if `streams.cluster.only` is set to true, streams will refuse to start in single
 or when run in the context of the backup operation. This is an important safety guard to ensure that operations do not occur in unexpected situations for production deploys
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.
+
+==== Custom Kafka Configurations
+
+In this section we describe the meaning of specific Neo4j streams Kafka configurations
+
+===== `kafka.streams.async.commit`
+
+If `kafka.enable.auto.commit=false` this property allows you to manage how to commit the messages to the topic.
+
+Possible values:
+
+* `false` (default) under-the-hood we use the Kafka Consumer `commitSync` method
+* `true` under-the-hood we use the Kafka Consumer `commitAsync` method
+
+====== `commitSync` VS `commitAsync`
+
+`commitSync` is a synchronous commits and will block until either the commit
+succeeds or an unrecoverable error is encountered (in which case it is thrown
+to the caller).
+
+That means, the `commitSync` is a **blocking** method with an interal retry mechanism,
+that can affect the performance of the ingestion because a new batch of messages
+will be processed only when the commit ended.
+
+On the other hand `commitAsync` is an asynchronous call (so it will not block)
+and does not provide an internal retry mechanism.
+
+.Trade-offs: latency vs. data consistency
+
+If you have to ensure the data consistency, choose `commitSync` because it will make sure that, before doing any further actions,
+you will know whether the offset commit is successful or failed.
+But because it is sync and blocking, you will spend more time on waiting for the commit
+to be finished, which leads to high latency.
+If you are ok of certain data inconsistency and want to have low latency, choose `commitAsync`
+because it will not wait to be finished.

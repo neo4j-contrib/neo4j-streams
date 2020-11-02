@@ -38,6 +38,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                                   val autoOffsetReset: String = "earliest",
                                   val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration(),
                                   val enableAutoCommit: Boolean = true,
+                                  val streamsAsyncCommit: Boolean = false,
                                   val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -75,6 +76,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
                     autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
                     groupId = config.getOrDefault(ConsumerConfig.GROUP_ID_CONFIG, default.groupId),
                     enableAutoCommit = config.getOrDefault(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, default.enableAutoCommit).toString().toBoolean(),
+                    streamsAsyncCommit = config.getOrDefault("streams.async.commit", default.streamsAsyncCommit).toString().toBoolean(),
                     streamsSinkConfiguration = streamsSinkConfiguration,
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
