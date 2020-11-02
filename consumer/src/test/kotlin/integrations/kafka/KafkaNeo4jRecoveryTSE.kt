@@ -74,7 +74,7 @@ import org.neo4j.test.TestDatabaseManagementServiceBuilder
 import org.neo4j.test.extension.Inject
 import org.neo4j.test.extension.Neo4jLayoutExtension
 import org.neo4j.test.extension.pagecache.PageCacheExtension
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import java.io.File
 import java.io.IOException
 import java.lang.String.valueOf

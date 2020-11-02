@@ -7,7 +7,7 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import streams.extensions.getInt
 import streams.extensions.toPointCase
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.utils.ValidationUtils.validateConnection
 import java.util.Properties
 import java.util.concurrent.TimeUnit

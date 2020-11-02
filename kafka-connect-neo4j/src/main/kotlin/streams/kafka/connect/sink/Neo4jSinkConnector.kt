@@ -12,8 +12,6 @@ import streams.kafka.connect.utils.PropertiesUtil
 @DocumentationTip("If you need to control the size of transaction that is submitted to Neo4j you try adjusting the ``consumer.max.poll.records`` setting in the worker.properties for Kafka Connect.")
 @DocumentationNote("For each topic you can provide a Cypher Template by using the following syntax ``neo4j.topic.cypher.<topic_name>=<cypher_query>``")
 class Neo4jSinkConnector: SinkConnector() {
-    private val LOGGER = LoggerFactory.getLogger(PropertiesUtil::class.java)
-
     private lateinit var settings: Map<String, String>
     private lateinit var config: Neo4jSinkConnectorConfig
     override fun taskConfigs(maxTasks: Int): MutableList<MutableMap<String, String>> {

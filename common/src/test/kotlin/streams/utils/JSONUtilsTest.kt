@@ -17,6 +17,7 @@ import streams.events.NodePayload
 import streams.events.OperationType
 import streams.events.Schema
 import streams.events.StreamsTransactionEvent
+import streams.utils.JSONUtils
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
 import kotlin.test.assertFails

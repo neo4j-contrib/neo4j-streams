@@ -8,6 +8,7 @@ import java.io.FileInputStream
 import java.io.FileNotFoundException
 import java.util.Properties
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
 
 data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementService) : LifecycleAdapter() {
 
@@ -33,6 +34,7 @@ data class StreamsConfig(private val log: Log, private val dbms: DatabaseManagem
         const val CHECK_WRITEABLE_INSTANCE_INTERVAL = "streams.check.writeable.instance.interval"
         const val SYSTEM_DB_WAIT_TIMEOUT = "streams.systemdb.wait.timeout"
         const val SYSTEM_DB_WAIT_TIMEOUT_VALUE = 10000L
+        const val POLL_INTERVAL = "streams.sink.poll.interval"
         private var afterInitListeners = mutableListOf<((MutableMap<String, String>) -> Unit)>()
 
         fun registerListener(after: (MutableMap<String, String>) -> Unit) {

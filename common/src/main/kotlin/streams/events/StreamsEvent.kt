@@ -55,3 +55,15 @@ data class Schema(val properties: Map<String, String> = emptyMap(),
 
 open class StreamsEvent(open val payload: Any)
 data class StreamsTransactionEvent(val meta: Meta, override val payload: Payload, val schema: Schema): StreamsEvent(payload)
+
+data class StreamsTransactionNodeEvent(val meta: Meta,
+                                       val payload: NodePayload,
+                                       val schema: Schema) {
+    fun toStreamsTransactionEvent() = StreamsTransactionEvent(this.meta, this.payload, this.schema)
+}
+data class StreamsTransactionRelationshipEvent(val meta: Meta,
+                                               val payload: RelationshipPayload,
+                                               val schema: Schema) {
+    fun toStreamsTransactionEvent() = StreamsTransactionEvent(this.meta, this.payload, this.schema)
+}
+

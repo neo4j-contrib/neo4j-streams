@@ -2,7 +2,7 @@ package streams
 
 import streams.config.StreamsConfig
 import streams.extensions.toPointCase
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.TopicUtils
 import streams.service.TopicValidationException
 import streams.service.Topics
@@ -17,6 +17,7 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                                     val checkApocInterval: Long = 1000,
                                     val clusterOnly: Boolean = false,
                                     val checkWriteableInstanceInterval: Long = TimeUnit.MINUTES.toMillis(3),
+                                    val pollInterval: Long = TimeUnit.SECONDS.toMillis(0),
                                     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()) {
 
     fun asMap(): Map<String, Any?> {
@@ -71,6 +72,8 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                             .toLong(),
                     checkWriteableInstanceInterval = configMap.getOrDefault(StreamsConfig.CHECK_WRITEABLE_INSTANCE_INTERVAL,
                             default.checkWriteableInstanceInterval)
+                            .toString().toLong(),
+                    pollInterval = configMap.getOrDefault(StreamsConfig.POLL_INTERVAL, default.pollInterval)
                             .toString().toLong(),
                     clusterOnly = configMap.getOrDefault(StreamsConfig.CLUSTER_ONLY,
                             default.clusterOnly)

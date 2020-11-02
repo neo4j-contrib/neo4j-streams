@@ -2,7 +2,6 @@ package streams.service.sink.strategy
 
 import org.junit.Test
 import streams.events.*
-import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals

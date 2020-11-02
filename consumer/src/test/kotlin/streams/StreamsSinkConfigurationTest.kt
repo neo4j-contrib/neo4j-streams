@@ -89,6 +89,7 @@ class StreamsSinkConfigurationTest {
         val apocInterval = "2000"
         val clusterOnly = "true"
         val writeableInstanceInterval = "99"
+        val pollIntervall = "100"
         val config = mapOf(topicKey to topicValue,
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to cdctopic,
@@ -97,6 +98,7 @@ class StreamsSinkConfigurationTest {
                 "streams.check.apoc.interval" to apocInterval,
                 "streams.sink.topic.cdc.sourceId.idName" to customId,
                 "streams.cluster.only" to clusterOnly,
+                "streams.sink.poll.interval" to pollIntervall,
                 "streams.check.writeable.instance.interval" to writeableInstanceInterval)
         streamsConfig.config.putAll(config)
         val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
@@ -106,6 +108,7 @@ class StreamsSinkConfigurationTest {
         assertEquals(setOf(cdctopic), streamsSinkConf.topics.asMap()[TopicType.CDC_SOURCE_ID])
         assertEquals(customLabel, streamsSinkConf.sourceIdStrategyConfig.labelName)
         assertEquals(customId, streamsSinkConf.sourceIdStrategyConfig.idName)
+        assertEquals(pollIntervall.toLong(), streamsSinkConf.pollInterval)
         assertEquals(apocTimeout.toLong(), streamsSinkConf.checkApocTimeout)
         assertEquals(apocInterval.toLong(), streamsSinkConf.checkApocInterval)
         assertEquals(writeableInstanceInterval.toLong(), streamsSinkConf.checkWriteableInstanceInterval)

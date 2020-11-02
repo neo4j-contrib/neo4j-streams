@@ -13,7 +13,7 @@ import streams.StreamsEventRouterConfiguration
 import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
 import java.util.Properties

@@ -9,7 +9,7 @@ import streams.events.OperationType
 import streams.events.RelationshipPayload
 import streams.events.StreamsConstraintType
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import kotlin.test.assertEquals

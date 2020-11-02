@@ -12,7 +12,7 @@ import streams.events.EntityType
 import streams.events.NodeChange
 import streams.events.OperationType
 import streams.events.RelationshipPayload
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 

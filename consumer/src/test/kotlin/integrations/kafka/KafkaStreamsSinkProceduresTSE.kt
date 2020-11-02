@@ -20,7 +20,7 @@ import streams.events.StreamsPluginStatus
 import streams.extensions.execute
 import streams.extensions.toMap
 import streams.procedures.StreamsSinkProcedures
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
 import java.util.UUID
@@ -272,6 +272,7 @@ class KafkaStreamsSinkProceduresTSE : KafkaEventSinkBaseTSE() {
                 "streams.sink.topic.pattern.node" to emptyMap<String, Any>(),
                 "streams.sink.errors" to emptyMap<String, Any>(),
                 "streams.cluster.only" to false,
+                "streams.sink.poll.interval" to 0L,
                 "streams.sink.source.id.strategy.config" to mapOf("labelName" to "SourceEvent", "idName" to "sourceId"))
 
         // when

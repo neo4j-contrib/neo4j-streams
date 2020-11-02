@@ -51,7 +51,6 @@ class EventBuilderTest {
         // When
         val data = EventBuilder()
                 .withBatchSize(batchSize)
-                .withTopics(topics)
                 .withSinkRecords(input)
                 .build()
 

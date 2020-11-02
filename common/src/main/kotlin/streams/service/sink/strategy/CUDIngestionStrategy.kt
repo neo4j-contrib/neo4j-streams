@@ -2,7 +2,7 @@ package streams.service.sink.strategy
 
 import streams.events.EntityType
 import streams.extensions.quote
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.service.StreamsSinkEntity
 import streams.service.sink.strategy.CUDIngestionStrategy.Companion.FROM_KEY
 import streams.service.sink.strategy.CUDIngestionStrategy.Companion.TO_KEY

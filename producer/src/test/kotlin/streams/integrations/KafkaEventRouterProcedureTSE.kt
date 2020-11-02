@@ -3,7 +3,7 @@ package streams.integrations
 import org.junit.Test
 import streams.events.StreamsEvent
 import streams.extensions.execute
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.start
 import kotlin.test.assertEquals
 

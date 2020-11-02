@@ -18,7 +18,7 @@ import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.KafkaTestUtils
 import streams.Neo4jContainerExtension
-import streams.serialization.JSONUtils
+import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.UUID
 import java.util.concurrent.TimeUnit

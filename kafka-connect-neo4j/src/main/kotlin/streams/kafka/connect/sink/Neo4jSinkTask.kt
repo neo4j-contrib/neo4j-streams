@@ -32,21 +32,20 @@ class Neo4jSinkTask : SinkTask() {
                 log::error)
     }
 
-    override fun put(collection: Collection<SinkRecord>) = runBlocking(Dispatchers.IO) {
+    override fun put(collection: Collection<SinkRecord>) {
         if (collection.isEmpty()) {
-            return@runBlocking
+            return
         }
         try {
             val data = EventBuilder()
                     .withBatchSize(config.batchSize)
-                    .withTopics(config.topics.allTopics())
                     .withSinkRecords(collection)
                     .build()
 
             neo4jService.writeData(data)
         } catch(e:Exception) {
             errorService.report(collection.map {
-                ErrorData(it.topic(), it.timestamp(),it.key(), it.value(), it.kafkaPartition(), it.kafkaOffset(),  this::class.java,e)
+                ErrorData(it.topic(), it.timestamp(), it.key(), it.value(), it.kafkaPartition(), it.kafkaOffset(), this::class.java, e)
             })
         }
     }
