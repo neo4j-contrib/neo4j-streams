@@ -30,6 +30,12 @@
         "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.0.6/neo4j-streams-4.0.6.jar"
     },
     {
+        "neo4j": "4.0.9",
+        "version": "4.0.3",
+        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.0.3",
+        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.0.3/neo4j-streams-4.0.3.jar"
+    },
+    {
         "neo4j": "4.0.8",
         "version": "4.0.3",
         "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.0.3",
