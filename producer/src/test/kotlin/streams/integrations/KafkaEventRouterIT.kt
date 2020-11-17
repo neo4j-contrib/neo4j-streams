@@ -6,7 +6,7 @@ import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.kernel.impl.core.NodeProxy
+import org.neo4j.graphdb.Node
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -22,6 +22,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterIT {
@@ -213,25 +214,7 @@ class KafkaEventRouterIT {
     }
 
     @Test
-    fun testProcedureSyncFalse() {
-        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
-        val message = "Hello World"
-        db.execute("CALL streams.publish('neo4j', '$message', { synchronous: false })").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-
-        assertEquals(true, records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-        })
-        consumer.close()
-    }
-
-    @Test
-    fun testProcedureSyncTrueWithNode() {
+    fun testProcedureSyncWithNode() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
@@ -241,20 +224,20 @@ class KafkaEventRouterIT {
         val recordsCreation = consumer.poll(5000)
         assertEquals(1, recordsCreation.count())
 
-        val result =  db.execute("MATCH (n:Baz) \n" +
-                "CALL streams.publish('neo4j', n, { synchronous: true }) \n" +
+        val result = db.execute("MATCH (n:Baz) \n" +
+                "CALL streams.publish.sync('neo4j', n) \n" +
                 "YIELD topic, payload, offset, partition, keySize, valueSize, timestamp \n" +
                 "RETURN topic, payload, offset, partition, keySize, valueSize, timestamp")
         assertTrue { result.hasNext() }
         val resultMap = result.next()
 
-        assertTrue { resultMap["payload"] is NodeProxy }
-        assertTrue { resultMap["topic"] == "neo4j" }
-        assertTrue { resultMap.containsKey("offset") }
-        assertTrue { resultMap.containsKey("partition") }
-        assertTrue { resultMap.containsKey("keySize") }
-        assertTrue { resultMap.containsKey("valueSize") }
-        assertTrue { resultMap.containsKey("timestamp") }
+        assertTrue { resultMap["payload"] is Node }
+        assertEquals("neo4j", resultMap["topic"])
+        assertNotNull(resultMap["offset"])
+        assertNotNull(resultMap["partition"])
+        assertNotNull(resultMap["keySize"])
+        assertNotNull(resultMap["valueSize"])
+        assertNotNull(resultMap["timestamp"])
 
         assertFalse { result.hasNext() }
         result.close()
@@ -269,22 +252,21 @@ class KafkaEventRouterIT {
     }
 
     @Test
-    fun testProcedureSyncTrue() {
+    fun testProcedureSync() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
-        consumer.subscribe(listOf("sync"))
+        consumer.subscribe(listOf("syncTopic"))
         val message = "Hello World"
-        val result =  db.execute("CALL streams.publish('sync', '$message', { synchronous: true })")
+        val result =  db.execute("CALL streams.publish.sync('syncTopic', '$message')")
         assertTrue { result.hasNext() }
         val resultMap = result.next()
-        assertTrue { resultMap["payload"] == message}
-        assertTrue { resultMap["topic"] == "sync"}
-
-        assertTrue { resultMap.containsKey("offset") }
-        assertTrue { resultMap.containsKey("partition") }
-        assertTrue { resultMap.containsKey("keySize") }
-        assertTrue { resultMap.containsKey("valueSize") }
-        assertTrue { resultMap.containsKey("timestamp") }
+        assertEquals(message, resultMap["payload"])
+        assertEquals("syncTopic", resultMap["topic"])
+        assertNotNull(resultMap["offset"])
+        assertNotNull(resultMap["partition"])
+        assertNotNull(resultMap["keySize"])
+        assertNotNull(resultMap["valueSize"])
+        assertNotNull(resultMap["timestamp"])
 
         assertFalse { result.hasNext() }
         result.close()

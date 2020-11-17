@@ -15,21 +15,16 @@ class MockStreamsEventRouter(logService: LogService? = null, config: Config? = n
             0, 1, 2, 3, 4, 5
     )
 
-    private fun addRecordMetadata(topic: String , streamsTransactionEvents: List<out StreamsEvent>) : List<RecordMetadata?>{
+    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>) {
+        events.addAll(streamsTransactionEvents as List<StreamsTransactionEvent>)
+    }
+
+    override fun sendEventsSync(topic: String, streamsTransactionEvents: List<out StreamsEvent>): List<RecordMetadata?> {
         val result = mutableListOf<RecordMetadata>()
         streamsTransactionEvents.forEach {
             result.add(fakeRecordMetadata(topic))
         }
         return result
-    }
-
-    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>, sync: Boolean): List<RecordMetadata?> {
-        events.addAll(streamsTransactionEvents as List<StreamsTransactionEvent>)
-        return addRecordMetadata(topic, streamsTransactionEvents)
-    }
-
-    override suspend fun sendEventsSync(topic: String, streamsTransactionEvents: List<out StreamsEvent>): List<RecordMetadata?> {
-        return addRecordMetadata(topic, streamsTransactionEvents)
     }
 
     override fun start() {}

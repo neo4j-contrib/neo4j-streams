@@ -80,6 +80,15 @@ You can send any kind of data in the payload, nodes, relationships, paths, lists
 
 In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.
 
+
+=== streams.publish.sync
+
+Similar to `streams.publish` procedure, but in a synchronous way.
+
+Uses:
+
+`CALL streams.publish.sync('my-topic', 'my-payload', {<config>}) YIELD topic, payload, config, timestamp, offset, partition, keySize, valueSize RETURN *`
+
 === streams.consume
 
 This procedure allows to consume messages from a given topic.
