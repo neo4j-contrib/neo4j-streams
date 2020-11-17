@@ -1,6 +1,6 @@
 package streams.procedures
 
-data class PublishResult(
+data class StreamPublishResult(
         @JvmField public var topic: String,
         @JvmField public var payload: Any,
         @JvmField public var config: Map<String,Any>?,

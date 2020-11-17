@@ -16,7 +16,7 @@ class StreamsProcedures {
     @Procedure(mode = Mode.READ, name = "streams.publish")
     @Description("streams.publish(topic, config) - Allows custom streaming from Neo4j to the configured stream environment")
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
-                @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<PublishResult> {
+                @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamPublishResult> {
 
         checkEnabled()
         if (topic.isNullOrEmpty()) {
@@ -43,7 +43,7 @@ class StreamsProcedures {
             val result = runBlocking {
                 eventRouter.sendEventsSync(topic, listOf(streamsEvent))
             }
-            return result.map { PublishResult(
+            return result.map { StreamPublishResult(
                     topic, payload, config,
                     it?.timestamp(),
                     it?.offset(),
