@@ -15,8 +15,8 @@ import streams.utils.StreamsUtils
 @Suite.SuiteClasses(
         KafkaEventRouterProcedureTSE::class,
         KafkaEventRouterSimpleTSE::class,
-        KafkaEventRouterWithConstraintsTSE::class/*,
-        KafkaEventRouterEnterpriseTSE::class*/
+        KafkaEventRouterWithConstraintsTSE::class,
+        KafkaEventRouterEnterpriseTSE::class
 )
 class KafkaEventRouterSuiteIT {
 

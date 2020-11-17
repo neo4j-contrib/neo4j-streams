@@ -11,27 +11,26 @@ object MavenUtils {
 
         val rt = Runtime.getRuntime()
         val mvnw = if (System.getProperty("os.name").startsWith("Windows")) "./mvnw.cmd" else "./mvnw"
-        val commands = arrayOf(mvnw, "-pl", "!doc,!test-support,!kafka-connect-neo4j", "-DbuildSubDirectory=containerPlugins") +
+        val commands = arrayOf(mvnw, "-pl", "!doc,!kafka-connect-neo4j", "-DbuildSubDirectory=containerPlugins") +
                 args.let { if (it.isNullOrEmpty()) arrayOf("package", "-Dmaven.test.skip") else it }
         val proc = rt.exec(commands, null, File(path))
 
-        if (logger != null) {
-            val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
+        val stdInput = BufferedReader(InputStreamReader(proc.inputStream))
 
-            val stdError = BufferedReader(InputStreamReader(proc.errorStream))
+        val stdError = BufferedReader(InputStreamReader(proc.errorStream))
 
-            // Read the output from the command
-            var s: String? = null
-            while (stdInput.readLine().also { s = it } != null) {
-                logger.info(s)
-            }
+        // Read the output from the command
+        var s: String? = null
+        while (stdInput.readLine().also { s = it } != null) {
+            logger?.info(s)
+        }
 
-            // Read any errors from the attempted command
-            while (stdError.readLine().also { s = it } != null) {
-                logger.error(s)
-            }
-        } else {
-            while (proc.isAlive) {}
+        // Read any errors from the attempted command
+        while (stdError.readLine().also { s = it } != null) {
+            logger?.error(s)
         }
     }
+
+    fun isTravis() = System.getenv()
+            .getOrDefault("TRAVIS", "false") == "true"
 }
