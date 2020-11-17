@@ -16,7 +16,6 @@ class StreamsProcedures {
     @Description("streams.publish.sync(topic, payload, config) - Allows custom synchronous streaming from Neo4j to the configured stream environment")
     fun sync(@Name("topic") topic: String?, @Name("payload") payload: Any?,
              @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamPublishResult> {
-
         checkEnabled()
         if (topic.isNullOrEmpty()) {
             log?.info("Topic empty, no message sent")
@@ -42,7 +41,6 @@ class StreamsProcedures {
     @Description("streams.publish(topic, payload, config) - Allows custom streaming from Neo4j to the configured stream environment")
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?) {
-
         checkEnabled()
         if (topic.isNullOrEmpty()) {
             log?.info("Topic empty, no message sent")
