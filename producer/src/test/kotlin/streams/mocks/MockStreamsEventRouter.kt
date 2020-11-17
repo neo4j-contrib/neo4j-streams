@@ -1,5 +1,7 @@
 package streams.mocks
 
+import org.apache.kafka.clients.producer.RecordMetadata
+import org.apache.kafka.common.TopicPartition
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
@@ -8,8 +10,26 @@ import streams.events.StreamsTransactionEvent
 
 class MockStreamsEventRouter(logService: LogService? = null, config: Config? = null): StreamsEventRouter(logService, config) {
 
-    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>) {
+    private fun fakeRecordMetadata(topic: String) = RecordMetadata(
+            TopicPartition(topic, 0),
+            0, 1, 2, 3, 4, 5
+    )
+
+    private fun addRecordMetadata(topic: String , streamsTransactionEvents: List<out StreamsEvent>) : List<RecordMetadata?>{
+        val result = mutableListOf<RecordMetadata>()
+        streamsTransactionEvents.forEach {
+            result.add(fakeRecordMetadata(topic))
+        }
+        return result
+    }
+
+    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>, sync: Boolean): List<RecordMetadata?> {
         events.addAll(streamsTransactionEvents as List<StreamsTransactionEvent>)
+        return addRecordMetadata(topic, streamsTransactionEvents)
+    }
+
+    override suspend fun sendEventsSync(topic: String, streamsTransactionEvents: List<out StreamsEvent>): List<RecordMetadata?> {
+        return addRecordMetadata(topic, streamsTransactionEvents)
     }
 
     override fun start() {}

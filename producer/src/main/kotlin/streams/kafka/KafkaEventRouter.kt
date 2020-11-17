@@ -1,7 +1,10 @@
 package streams.kafka
 
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.AuthorizationException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
@@ -55,52 +58,63 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
+    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): RecordMetadata? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
-            return
+            return null
         }
-        producer.send(producerRecord) { meta, error ->
-            if (meta != null && log.isDebugEnabled) {
-                log.debug("Successfully sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}")
-            }
-            if (error != null) {
-                if (log.isDebugEnabled) {
-                    log.debug("Error while sending record to ${producerRecord.topic()}, because of the following exception:", error)
+        if (sync) {
+            return producer.send(producerRecord).get();
+        } else {
+            producer.send(producerRecord) { meta, error ->
+                if (meta != null && log.isDebugEnabled) {
+                    log.debug("Successfully sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}")
                 }
-                // TODO add logging system here
+                if (error != null) {
+                    if (log.isDebugEnabled) {
+                        log.debug("Error while sending record to ${producerRecord.topic()}, because of the following exception:", error)
+                    }
+                    // TODO add logging system here
+                }
             }
+            return null
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent) {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): RecordMetadata? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
         val uuid = UUID.randomUUID().toString()
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), uuid,
                 JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
+        return send(producerRecord, sync)
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent) {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent, sync: Boolean = false): RecordMetadata? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
                 JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
+        return send(producerRecord, sync)
     }
 
-    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {
+
+    override suspend fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<RecordMetadata?> {
+        val asyncEvent = GlobalScope.async {sendEvents(topic, transactionEvents, true) }
+        return asyncEvent.await()
+    }
+
+    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>, sync: Boolean): List<RecordMetadata?> {
         try {
             producer.beginTransaction()
-            transactionEvents.forEach {
+            return transactionEvents.map {
                 val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
                 if (it is StreamsTransactionEvent) {
-                    sendEvent(partition, topic, it)
+                    sendEvent(partition, topic, it, sync)
                 } else {
-                    sendEvent(partition, topic, it)
+                    sendEvent(partition, topic, it, sync)
                 }
             }
             producer.commitTransaction()
@@ -117,6 +131,7 @@ class KafkaEventRouter: StreamsEventRouter {
             log.error("Generic kafka error. Stack trace is:", e)
             producer.abortTransaction()
         }
+        return emptyList()
     }
 
 }
