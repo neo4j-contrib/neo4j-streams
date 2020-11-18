@@ -15,6 +15,7 @@ import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
+import streams.toMap
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
 import java.util.Properties
@@ -56,13 +57,13 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): RecordMetadata? {
+    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any> {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
-            return null
+            return emptyMap()
         }
         return if (sync) {
-            producer.send(producerRecord).get();
+            producer.send(producerRecord).get().toMap()
         } else {
             producer.send(producerRecord) { meta, error ->
                 if (meta != null && log.isDebugEnabled) {
@@ -75,11 +76,11 @@ class KafkaEventRouter: StreamsEventRouter {
                     // TODO add logging system here
                 }
             }
-            null
+            emptyMap()
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): RecordMetadata? {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): Map<String, Any> {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
@@ -99,7 +100,7 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<RecordMetadata?> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
         producer.beginTransaction()
 
         val results = transactionEvents.map {

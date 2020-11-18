@@ -29,11 +29,11 @@ class StreamsProcedures {
                 topic,
                 payload,
                 config,
-                it?.timestamp(),
-                it?.offset(),
-                it?.partition()?.toLong(),
-                it?.serializedKeySize()?.toLong(),
-                it?.serializedValueSize()?.toLong()
+                it["timestamp"] as Long,
+                it["offset"] as Long,
+                (it["partition"] as Int).toLong(),
+                (it["keySize"] as Int).toLong(),
+                (it["valueSize"] as Int).toLong()
         ) }.stream()
     }
 

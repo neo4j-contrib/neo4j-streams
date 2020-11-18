@@ -3,13 +3,12 @@ package streams
 import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.internal.LogService
 import streams.events.StreamsEvent
-import org.apache.kafka.clients.producer.RecordMetadata
 
 abstract class StreamsEventRouter(val logService: LogService?, val config: Config?) {
 
     abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>)
 
-    abstract fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<RecordMetadata?>
+    abstract fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>>
 
     abstract fun start()
 

@@ -1,12 +1,12 @@
 package streams.procedures
 
 data class StreamPublishResult(
-        @JvmField var topic: String,
-        @JvmField var payload: Any,
-        @JvmField var config: Map<String, Any>?,
-        @JvmField var timestamp: Long?,
-        @JvmField var offset: Long?,
-        @JvmField var partition: Long?,
-        @JvmField var keySize: Long?,
-        @JvmField var valueSize: Long?
+        @JvmField val topic: String,
+        @JvmField val payload: Any,
+        @JvmField val config: Map<String, Any>?,
+        @JvmField var timestamp: Long,
+        @JvmField val offset: Long,
+        @JvmField val partition: Long,
+        @JvmField val keySize: Long,
+        @JvmField val valueSize: Long
 )
