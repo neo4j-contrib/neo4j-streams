@@ -17,16 +17,15 @@ class StreamsProcedures {
     fun sync(@Name("topic") topic: String?, @Name("payload") payload: Any?,
              @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamPublishResult> {
         checkEnabled()
-        if (topic.isNullOrEmpty()) {
-            log?.info("Topic empty, no message sent")
-            return Stream.empty();
+        if (isTopicNullOrEmpty(topic)) {
+            return Stream.empty()
         }
-        checkPayloadNull(payload)
+        checkPayloadNotNull(payload)
 
-        val streamsEvent = buildStreamEvent(topic, payload!!)
+        val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
         return eventRouter.sendEventsSync(topic, listOf(streamsEvent))
-                .mapNotNull { StreamPublishResult(it) }
+                .map { StreamPublishResult(it) }
                 .stream()
     }
 
@@ -35,15 +34,23 @@ class StreamsProcedures {
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?) {
         checkEnabled()
-        if (topic.isNullOrEmpty()) {
-            log?.info("Topic empty, no message sent")
+        if (isTopicNullOrEmpty(topic)) {
             return
         }
-        checkPayloadNull(payload)
+        checkPayloadNotNull(payload)
 
-        val streamsEvent = buildStreamEvent(topic, payload!!)
+        val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
         eventRouter.sendEvents(topic, listOf(streamsEvent))
+    }
+
+    private fun isTopicNullOrEmpty(topic: String?): Boolean {
+        return if (topic.isNullOrEmpty()) {
+            log?.info("Topic empty, no message sent")
+            true
+        } else {
+            false
+        }
     }
 
     private fun checkEnabled() {
@@ -52,7 +59,7 @@ class StreamsProcedures {
         }
     }
 
-    private fun checkPayloadNull(payload: Any?) {
+    private fun checkPayloadNotNull(payload: Any?) {
         if (payload == null) {
             log?.error("Payload empty, no message sent")
             throw RuntimeException("Payload may not be null")

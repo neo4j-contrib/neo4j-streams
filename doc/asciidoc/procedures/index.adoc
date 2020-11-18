@@ -91,6 +91,27 @@ Uses:
 
 This procedure return a `RecordMetadata` value like this `{"timestamp": 1, "offset": 2, "partition", 3, "keySize", 4, "valueSize", 5}`
 
+[cols="2*",options="header"]
+|===
+|Variable Name
+|Description
+
+|`timestamp`
+|The timestamp of the record in the topic/partition.
+
+|`offset`
+|The offset of the record in the topic/partition.
+
+|`partition`
+|The partition the record was sent to
+
+|`keySize`
+|The size of the serialized, uncompressed key in bytes
+
+|`valueSize`
+|The size of the serialized, uncompressed value in bytes
+|===
+
 === streams.consume
 
 This procedure allows to consume messages from a given topic.

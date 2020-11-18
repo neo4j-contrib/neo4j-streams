@@ -100,10 +100,10 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>?> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
         producer.beginTransaction()
 
-        val results = transactionEvents.map {
+        val results = transactionEvents.mapNotNull {
             sendEvent(ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions), topic, it, true)
         }
         producer.commitTransaction()

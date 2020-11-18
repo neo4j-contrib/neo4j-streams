@@ -122,158 +122,160 @@ class KafkaEventRouterIT {
     fun testCreateNode() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers,
                 zookeeperConnect = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]!!)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
-        db.execute("CREATE (:Person {name:'John Doe', age:42})").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                val after = it.payload.after as NodeChange
-                val labels = after.labels
-                val propertiesAfter = after.properties
-                labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
-                        && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
-                        && it.schema.constraints.isEmpty()
-            }
-        })
-        consumer.close()
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("neo4j"))
+            db.execute("CREATE (:Person {name:'John Doe', age:42})").close()
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                    val after = it.payload.after as NodeChange
+                    val labels = after.labels
+                    val propertiesAfter = after.properties
+                    labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
+                            && it.meta.operation == OperationType.created
+                            && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                            && it.schema.constraints.isEmpty()
+                }
+            })
+        }
     }
 
     @Test
     fun testCreateRelationshipWithRelRouting() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("knows"))
-        db.execute("CREATE (:Person {name:'Andrea'})-[:KNOWS{since: 2014}]->(:Person {name:'Michael'})").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                var payload = it.payload as RelationshipPayload
-                val properties = payload.after!!.properties!!
-                payload.type == EntityType.relationship && payload.label == "KNOWS"
-                        && properties["since"] == 2014
-                        && it.schema.properties == mapOf("since" to "Long")
-                        && it.schema.constraints.isEmpty()
-            }
-        })
-        consumer.close()
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("knows"))
+            db.execute("CREATE (:Person {name:'Andrea'})-[:KNOWS{since: 2014}]->(:Person {name:'Michael'})").close()
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                    var payload = it.payload as RelationshipPayload
+                    val properties = payload.after!!.properties!!
+                    payload.type == EntityType.relationship && payload.label == "KNOWS"
+                            && properties["since"] == 2014
+                            && it.schema.properties == mapOf("since" to "Long")
+                            && it.schema.constraints.isEmpty()
+                }
+            })
+        }
     }
 
     @Test
     fun testCreateNodeWithNodeRouting() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("person"))
-        db.execute("CREATE (:Person {name:'Andrea'})").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                val payload = it.payload as NodePayload
-                val labels = payload.after!!.labels!!
-                val properties = payload.after!!.properties
-                labels == listOf("Person") && properties == mapOf("name" to "Andrea")
-                        && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String")
-                        && it.schema.constraints.isEmpty()
-            }
-        })
-        consumer.close()
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("person"))
+            db.execute("CREATE (:Person {name:'Andrea'})").close()
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                    val payload = it.payload as NodePayload
+                    val labels = payload.after!!.labels!!
+                    val properties = payload.after!!.properties
+                    labels == listOf("Person") && properties == mapOf("name" to "Andrea")
+                            && it.meta.operation == OperationType.created
+                            && it.schema.properties == mapOf("name" to "String")
+                            && it.schema.constraints.isEmpty()
+                }
+            })
+        }
     }
 
     @Test
     fun testProcedure() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
-        val message = "Hello World"
-        db.execute("CALL streams.publish('neo4j', '$message')").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-        })
-        consumer.close()
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("neo4j"))
+            val message = "Hello World"
+            db.execute("CALL streams.publish('neo4j', '$message')").close()
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                    message == it.payload
+                }
+            })
+        }
     }
 
     @Test
     fun testCantPublishNull() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("neo4j"))
 
-        assertFailsWith(RuntimeException::class) {
-            db.execute("CALL streams.publish('neo4j', null)")
+            assertFailsWith(RuntimeException::class) {
+                db.execute("CALL streams.publish('neo4j', null)")
+            }
         }
     }
 
     @Test
     fun testProcedureSyncWithNode() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
-        db.execute("MATCH (n:Baz) DETACH DELETE n").close()
-        db.execute("CREATE (n:Baz {age: 23, name: 'Foo', surname: 'Bar'})").close()
+        createConsumer(config).use { consumer ->
 
-        val recordsCreation = consumer.poll(5000)
-        assertEquals(1, recordsCreation.count())
+            consumer.subscribe(listOf("neo4j"))
+            db.execute("MATCH (n:Baz) DETACH DELETE n").close()
+            db.execute("CREATE (n:Baz {age: 23, name: 'Foo', surname: 'Bar'})").close()
 
-        val result = db.execute("MATCH (n:Baz) \n" +
-                "CALL streams.publish.sync('neo4j', n) \n" +
-                "YIELD value \n" +
-                "RETURN value")
-        assertTrue { result.hasNext() }
-        val resultMap = (result.next())["value"] as Map<String, Any>
+            val recordsCreation = consumer.poll(5000)
+            assertEquals(1, recordsCreation.count())
 
-        assertNotNull(resultMap["offset"])
-        assertNotNull(resultMap["partition"])
-        assertNotNull(resultMap["keySize"])
-        assertNotNull(resultMap["valueSize"])
-        assertNotNull(resultMap["timestamp"])
+            db.execute("MATCH (n:Baz) \n" +
+                    "CALL streams.publish.sync('neo4j', n) \n" +
+                    "YIELD value \n" +
+                    "RETURN value").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
 
-        assertFalse { result.hasNext() }
-        result.close()
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
 
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(3, ((records.map {
-            JSONUtils.readValue<StreamsEvent>(it.value())
-            .let { it.payload }
-        }[0] as Map<String, Any>)["properties"] as Map<String, Any>).size )
-        consumer.close()
+                assertFalse { result.hasNext() }
+            }
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(3, ((records.map {
+                JSONUtils.readValue<StreamsEvent>(it.value())
+                        .let { it.payload }
+            }[0] as Map<String, Any>)["properties"] as Map<String, Any>).size)
+        }
     }
 
     @Test
     fun testProcedureSync() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("syncTopic"))
-        val message = "Hello World"
-        val result =  db.execute("CALL streams.publish.sync('syncTopic', '$message')")
-        assertTrue { result.hasNext() }
-        val resultMap = (result.next())["value"] as Map<String, Any>
-        assertNotNull(resultMap["offset"])
-        assertNotNull(resultMap["partition"])
-        assertNotNull(resultMap["keySize"])
-        assertNotNull(resultMap["valueSize"])
-        assertNotNull(resultMap["timestamp"])
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("syncTopic"))
+            val message = "Hello World"
+            db.execute("CALL streams.publish.sync('syncTopic', '$message')").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
 
-        assertFalse { result.hasNext() }
-        result.close()
-
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
+                assertFalse { result.hasNext() }
             }
-        })
-        consumer.close()
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                    message == it.payload
+                }
+            })
+        }
     }
 
     private fun getRecordCount(config: KafkaConfiguration, topic: String): Int {
@@ -308,23 +310,23 @@ class KafkaEventRouterIT {
     @Test
     fun testCreateNodeWithConstraints() {
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("personConstraints"))
-        db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
-        val records = consumer.poll(5000)
-        assertEquals(1, records.count())
-        assertEquals(true, records.all {
-            JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                val payload = it.payload as NodePayload
-                val labels = payload.after!!.labels!!
-                val properties = payload.after!!.properties
-                labels == listOf("PersonConstr") && properties == mapOf("name" to "Andrea")
-                        && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String")
-                        && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
-            }
-        })
-        consumer.close()
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("personConstraints"))
+            db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                    val payload = it.payload as NodePayload
+                    val labels = payload.after!!.labels!!
+                    val properties = payload.after!!.properties
+                    labels == listOf("PersonConstr") && properties == mapOf("name" to "Andrea")
+                            && it.meta.operation == OperationType.created
+                            && it.schema.properties == mapOf("name" to "String")
+                            && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
+                }
+            })
+        }
     }
 
     @Test
@@ -337,74 +339,74 @@ class KafkaEventRouterIT {
             |MERGE (p)-[:BOUGHT]->(pp)
         """.trimMargin())
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val consumer = createConsumer(config)
-        consumer.subscribe(listOf("personConstraints", "productConstraints", "boughtConstraints"))
-        val records = consumer.poll(10000)
-        assertEquals(3, records.count())
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("personConstraints", "productConstraints", "boughtConstraints"))
+            val records = consumer.poll(10000)
+            assertEquals(3, records.count())
 
-        val map = records
-                .map {
-                    val evt = JSONUtils.asStreamsTransactionEvent(it.value())
-                    evt.payload.type to evt
+            val map = records
+                    .map {
+                        val evt = JSONUtils.asStreamsTransactionEvent(it.value())
+                        evt.payload.type to evt
+                    }
+                    .groupBy({ it.first }, { it.second })
+            assertEquals(true, map[EntityType.node].orEmpty().isNotEmpty() && map[EntityType.node].orEmpty().all {
+                val payload = it.payload as NodePayload
+                val (labels, properties) = payload.after!!.labels!! to payload.after!!.properties!!
+                when (labels) {
+                    listOf("ProductConstr") -> properties == mapOf("name" to "My Awesome Product", "price" to "100€")
+                            && it.meta.operation == OperationType.created
+                            && it.schema.properties == mapOf("name" to "String", "price" to "String")
+                            && it.schema.constraints == listOf(Constraint("ProductConstr", setOf("name"), StreamsConstraintType.UNIQUE))
+                    listOf("PersonConstr") -> properties == mapOf("name" to "Andrea")
+                            && it.meta.operation == OperationType.created
+                            && it.schema.properties == mapOf("name" to "String")
+                            && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
+                    else -> false
                 }
-                .groupBy({ it.first }, { it.second })
-        assertEquals(true, map[EntityType.node].orEmpty().isNotEmpty() && map[EntityType.node].orEmpty().all {
-            val payload = it.payload as NodePayload
-            val (labels, properties) = payload.after!!.labels!! to payload.after!!.properties!!
-            when (labels) {
-                listOf("ProductConstr") -> properties == mapOf("name" to "My Awesome Product", "price" to "100€")
+            })
+            assertEquals(true, map[EntityType.relationship].orEmpty().isNotEmpty() && map[EntityType.relationship].orEmpty().all {
+                val payload = it.payload as RelationshipPayload
+                val (start, end, properties) = Triple(payload.start, payload.end, payload.after!!.properties!!)
+                properties.isNullOrEmpty()
+                        && start.ids == mapOf("name" to "Andrea")
+                        && end.ids == mapOf("name" to "My Awesome Product")
                         && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String", "price" to "String")
-                        && it.schema.constraints == listOf(Constraint("ProductConstr", setOf("name"), StreamsConstraintType.UNIQUE))
-                listOf("PersonConstr") -> properties == mapOf("name" to "Andrea")
-                        && it.meta.operation == OperationType.created
-                        && it.schema.properties == mapOf("name" to "String")
-                        && it.schema.constraints == listOf(Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE))
-                else -> false
-            }
-        })
-        assertEquals(true, map[EntityType.relationship].orEmpty().isNotEmpty() && map[EntityType.relationship].orEmpty().all {
-            val payload = it.payload as RelationshipPayload
-            val (start, end, properties) = Triple(payload.start, payload.end, payload.after!!.properties!!)
-            properties.isNullOrEmpty()
-                    && start.ids == mapOf("name" to "Andrea")
-                    && end.ids == mapOf("name" to "My Awesome Product")
-                    && it.meta.operation == OperationType.created
-                    && it.schema.properties == emptyMap<String, String>()
-                    && it.schema.constraints.toSet() == setOf(
-                            Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE),
-                            Constraint("ProductConstr", setOf("name"), StreamsConstraintType.UNIQUE))
-        })
-        consumer.close()
+                        && it.schema.properties == emptyMap<String, String>()
+                        && it.schema.constraints.toSet() == setOf(
+                        Constraint("PersonConstr", setOf("name"), StreamsConstraintType.UNIQUE),
+                        Constraint("ProductConstr", setOf("name"), StreamsConstraintType.UNIQUE))
+            })
+        }
     }
 
     @Test
     fun testDeleteNodeWithTestDeleteTopic() {
         val topic = "testdeletetopic"
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
-        val kafkaConsumer = createConsumer(config)
-        kafkaConsumer.subscribe(listOf(topic))
-        db.execute("CREATE (:Person:ToRemove {name:'John Doe', age:42})-[:KNOWS]->(:Person {name:'Jane Doe', age:36})")
-        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            kafkaConsumer.poll(5000).count() > 0
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        db.execute("MATCH (p:Person {name:'John Doe', age:42}) REMOVE p:ToRemove")
-        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            kafkaConsumer.poll(5000)
-                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
-                    .filter { it.meta.operation == OperationType.updated }
-                    .count() > 0
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        db.execute("MATCH (p:Person) DETACH DELETE p")
-        val count = db.execute("MATCH (p:Person {name:'John Doe', age:42}) RETURN count(p) AS count")
-                .columnAs<Long>("count").next()
-        assertEquals(0, count)
-        org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            kafkaConsumer.poll(5000)
-                    .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
-                    .filter { it.meta.operation == OperationType.deleted }
-                    .count() > 0
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        kafkaConsumer.close()
+        createConsumer(config).use { kafkaConsumer ->
+            kafkaConsumer.subscribe(listOf(topic))
+            db.execute("CREATE (:Person:ToRemove {name:'John Doe', age:42})-[:KNOWS]->(:Person {name:'Jane Doe', age:36})")
+            org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+                kafkaConsumer.poll(5000).count() > 0
+            }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            db.execute("MATCH (p:Person {name:'John Doe', age:42}) REMOVE p:ToRemove")
+            org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+                kafkaConsumer.poll(5000)
+                        .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                        .filter { it.meta.operation == OperationType.updated }
+                        .count() > 0
+            }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            db.execute("MATCH (p:Person) DETACH DELETE p")
+            val count = db.execute("MATCH (p:Person {name:'John Doe', age:42}) RETURN count(p) AS count")
+                    .columnAs<Long>("count").next()
+            assertEquals(0, count)
+            org.neo4j.test.assertion.Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+                kafkaConsumer.poll(5000)
+                        .map { JSONUtils.asStreamsTransactionEvent(it.value()) }
+                        .filter { it.meta.operation == OperationType.deleted }
+                        .count() > 0
+            }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        }
     }
 }
