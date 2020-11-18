@@ -77,7 +77,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             assertNotNull(resultMap["keySize"])
             assertNotNull(resultMap["valueSize"])
             assertNotNull(resultMap["timestamp"])
-
             assertFalse { it.hasNext() }
         }
 
