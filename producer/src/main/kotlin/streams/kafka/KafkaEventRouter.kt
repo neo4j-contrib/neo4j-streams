@@ -57,10 +57,10 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any> {
+    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
-            return emptyMap()
+            return null
         }
         return if (sync) {
             producer.send(producerRecord).get().toMap()
@@ -76,11 +76,11 @@ class KafkaEventRouter: StreamsEventRouter {
                     // TODO add logging system here
                 }
             }
-            emptyMap()
+            null
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): Map<String, Any> {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): Map<String, Any>? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
@@ -100,7 +100,7 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>?> {
         producer.beginTransaction()
 
         val results = transactionEvents.map {

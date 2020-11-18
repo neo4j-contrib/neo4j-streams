@@ -6,7 +6,6 @@ import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.graphdb.Node
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -226,13 +225,11 @@ class KafkaEventRouterIT {
 
         val result = db.execute("MATCH (n:Baz) \n" +
                 "CALL streams.publish.sync('neo4j', n) \n" +
-                "YIELD topic, payload, offset, partition, keySize, valueSize, timestamp \n" +
-                "RETURN topic, payload, offset, partition, keySize, valueSize, timestamp")
+                "YIELD value \n" +
+                "RETURN value")
         assertTrue { result.hasNext() }
-        val resultMap = result.next()
+        val resultMap = (result.next())["value"] as Map<String, Any>
 
-        assertTrue { resultMap["payload"] is Node }
-        assertEquals("neo4j", resultMap["topic"])
         assertNotNull(resultMap["offset"])
         assertNotNull(resultMap["partition"])
         assertNotNull(resultMap["keySize"])
@@ -259,9 +256,7 @@ class KafkaEventRouterIT {
         val message = "Hello World"
         val result =  db.execute("CALL streams.publish.sync('syncTopic', '$message')")
         assertTrue { result.hasNext() }
-        val resultMap = result.next()
-        assertEquals(message, resultMap["payload"])
-        assertEquals("syncTopic", resultMap["topic"])
+        val resultMap = (result.next())["value"] as Map<String, Any>
         assertNotNull(resultMap["offset"])
         assertNotNull(resultMap["partition"])
         assertNotNull(resultMap["keySize"])

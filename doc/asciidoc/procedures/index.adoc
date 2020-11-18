@@ -87,7 +87,9 @@ Similar to `streams.publish` procedure, but in a synchronous way.
 
 Uses:
 
-`CALL streams.publish.sync('my-topic', 'my-payload', {<config>}) YIELD topic, payload, config, timestamp, offset, partition, keySize, valueSize RETURN *`
+`CALL streams.publish.sync('my-topic', 'my-payload', {<config>}) YIELD value RETURN value`
+
+This procedure return a `RecordMetadata` value like this `{"timestamp": 1, "offset": 2, "partition", 3, "keySize", 4, "valueSize", 5}`
 
 === streams.consume
 

@@ -25,16 +25,9 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic, payload!!)
 
-        return eventRouter.sendEventsSync(topic, listOf(streamsEvent)).map { StreamPublishResult(
-                topic,
-                payload,
-                config,
-                it["timestamp"] as Long,
-                it["offset"] as Long,
-                (it["partition"] as Int).toLong(),
-                (it["keySize"] as Int).toLong(),
-                (it["valueSize"] as Int).toLong()
-        ) }.stream()
+        return eventRouter.sendEventsSync(topic, listOf(streamsEvent))
+                .mapNotNull { StreamPublishResult(it) }
+                .stream()
     }
 
     @Procedure(mode = Mode.READ, name = "streams.publish")
