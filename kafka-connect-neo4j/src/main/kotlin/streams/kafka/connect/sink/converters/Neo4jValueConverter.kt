@@ -23,7 +23,7 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
         val dataManipulatedForNeo4j = if(data is Map<*, *>)
             data.mapValues {
                 val value = it.value
-                val errorMsg = "Cannot convert %s key into Neo4j Type, it exceeds the Neo4j %s value, it will be converted into a String"
+                val errorMsg = "Cannot convert ${it.key} key into Neo4j Type, it exceeds the Neo4j %s value, it will be converted into a String"
                 when (value) {
                     is BigDecimal -> {
                         val doubleValue = value.toDouble()
@@ -33,7 +33,7 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
                         if (fitsScale) {
                             doubleValue
                         } else {
-                            log.warn(errorMsg.format(it.key, "Double"))
+                            log.warn(errorMsg.format("Double"))
                             value.toPlainString()
                         }
                     }
@@ -41,7 +41,7 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
                         try {
                             value.longValueExact()
                         } catch (e: java.lang.ArithmeticException) {
-                            log.warn(errorMsg.format(it.key, "Long"))
+                            log.warn(errorMsg.format("Long"))
                             value.toString()
                         }
                     }
