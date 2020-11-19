@@ -7,7 +7,12 @@ import org.junit.Test
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
+import java.math.BigDecimal
+import java.math.BigInteger
+import java.time.ZoneId
+import java.util.*
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class Neo4jValueConverterTest {
 
@@ -47,6 +52,128 @@ class Neo4jValueConverterTest {
         // then
         val expected = getExpectedMap()
         assertEquals(expected, result)
+    }
+
+    @Test
+    fun `should convert BigInteger into String value if is less then Long MIN_VALUE`() {
+
+        val number = BigInteger.valueOf(Long.MIN_VALUE).pow(2)
+        val result = Neo4jValueConverter().convert(getItemElement(number))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertEquals(number.toString(), item?.asString())
+    }
+
+    @Test
+    fun `should convert BigInteger into String value if is greater then Long MAX_VALUE`() {
+
+        val number = BigInteger.valueOf(Long.MAX_VALUE).pow(2)
+        val result = Neo4jValueConverter().convert(getItemElement(number))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertEquals(number.toString(), item?.asString())
+    }
+
+    @Test
+    fun `should convert BigInteger into Long neo4j value if is equal to Long MAX_VALUE`() {
+
+        val number = Long.MAX_VALUE
+        val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.IntegerValue }
+        assertEquals(number, item?.asLong())
+    }
+
+    @Test
+    fun `should convert BigInteger into Long neo4j value if is less then Long MAX_VALUE and greater then Long MIN_VALUE`() {
+
+        val number: Long = 12345
+        val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.IntegerValue }
+        assertEquals(number, item?.asLong())
+    }
+
+    @Test
+    fun `should convert BigDecimal into String neo4j value if is a positive less then Double MIN_VALUE`() {
+
+        val number = BigDecimal.valueOf(Double.MIN_VALUE).pow(2)
+        val result = Neo4jValueConverter().convert(getItemElement(number))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertEquals(number.toPlainString(), item?.asString())
+    }
+
+    @Test
+    fun `should convert BigDecimal into String neo4j value if is a negative less then Double MAX_VALUE`() {
+
+        val number = - (BigDecimal.valueOf(Double.MAX_VALUE)).multiply(BigDecimal.valueOf(2))
+        val result = Neo4jValueConverter().convert(getItemElement(number))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertEquals(number.toPlainString(), item?.asString())
+    }
+
+    @Test
+    fun `should convert BigDecimal into String neo4j value if is greater then Double MAX_VALUE`() {
+
+        val number = BigDecimal.valueOf(Double.MAX_VALUE).pow(2)
+        val result = Neo4jValueConverter().convert(getItemElement(number))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertEquals(number.toPlainString(), item?.asString())
+    }
+
+    @Test
+    fun `should convert BigDecimal into Double neo4j value if is less then Double MAX_VALUE and greater then Double MIN_VALUE`() {
+
+        val number = 3456.78
+        val result =  Neo4jValueConverter().convert(getItemElement(BigDecimal.valueOf(number)))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.FloatValue }
+        assertEquals(number, item?.asDouble())
+    }
+
+    @Test
+    fun `should convert BigDecimal into Double neo4j value if is equal to Double MAX_VALUE`() {
+
+        val number = Double.MAX_VALUE
+        val result = Neo4jValueConverter().convert(getItemElement(BigDecimal.valueOf(number)))
+        val item = result["item"]
+
+        assertTrue{ item is org.neo4j.driver.internal.value.FloatValue }
+        assertEquals(number, item?.asDouble())
+    }
+
+
+    @Test
+    fun `should convert properly mixed items`() {
+
+        val double = Double.MAX_VALUE
+        val long = Long.MAX_VALUE
+        val bigDouble =  BigDecimal.valueOf(Double.MAX_VALUE).pow(2)
+        val string =  "FooBar"
+        val date = Date()
+        val result = Neo4jValueConverter().convert(mapOf(
+                "double" to double,
+                "long" to long,
+                "bigDouble" to bigDouble,
+                "string" to string,
+                "date" to date ))
+
+        assertEquals(double, result["double"]?.asDouble())
+        assertEquals(long, result["long"]?.asLong())
+        assertEquals(bigDouble.toPlainString(), result["bigDouble"]?.asString())
+        assertEquals(string, result["string"]?.asString())
+        assertEquals(date.toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime(), result["date"]?.asLocalDateTime())
     }
 
     companion object {
@@ -113,6 +240,8 @@ class Neo4jValueConverterTest {
                     mapOf("value" to "Second Paragraph"))
             return mapOf("ul" to ulListMap, "p" to pListMap)
         }
+
+        fun getItemElement(number: Any): Map<String, Any> = mapOf("item" to number )
     }
 
 }
