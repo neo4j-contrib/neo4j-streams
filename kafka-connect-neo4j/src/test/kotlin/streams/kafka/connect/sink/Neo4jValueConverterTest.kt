@@ -1,16 +1,16 @@
 package streams.kafka.connect.sink
 
-import org.apache.kafka.connect.data.Schema
-import org.apache.kafka.connect.data.SchemaBuilder
-import org.apache.kafka.connect.data.Struct
+import org.apache.kafka.connect.data.*
 import org.junit.Test
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
+import org.neo4j.driver.internal.value.*
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
 import java.math.BigDecimal
 import java.math.BigInteger
+import java.time.Instant
 import java.time.ZoneId
-import java.util.*
+import java.util.Date
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -55,13 +55,28 @@ class Neo4jValueConverterTest {
     }
 
     @Test
+    fun `should convert tree with mixes types into map of neo4j values`() {
+
+        val result = Neo4jValueConverter().convert(Struct(TEST_SCHEMA)) as Map<*, *>
+
+        assertTrue{ result["target"] is FloatValue }
+        assertTrue{ result["largeDecimal"] is StringValue }
+        assertTrue{ result["byteArray"] is BytesValue }
+        assertTrue{ result["int64"] is IntegerValue }
+        assertTrue{ result["int64Timestamp"] is LocalDateTimeValue }
+        assertTrue{ result["int32"] is IntegerValue }
+        assertTrue{ result["int32Date"] is DateValue }
+        assertTrue{ result["int32Time"] is LocalTimeValue }
+    }
+
+    @Test
     fun `should convert BigInteger into String value if is less then Long MIN_VALUE`() {
 
         val number = BigInteger.valueOf(Long.MIN_VALUE).pow(2)
         val result = Neo4jValueConverter().convert(getItemElement(number))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertTrue{ item is StringValue }
         assertEquals(number.toString(), item?.asString())
     }
 
@@ -72,7 +87,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(number))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertTrue{ item is StringValue }
         assertEquals(number.toString(), item?.asString())
     }
 
@@ -83,7 +98,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.IntegerValue }
+        assertTrue{ item is IntegerValue }
         assertEquals(number, item?.asLong())
     }
 
@@ -94,7 +109,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.IntegerValue }
+        assertTrue{ item is IntegerValue }
         assertEquals(number, item?.asLong())
     }
 
@@ -105,7 +120,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(number))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
     }
 
@@ -116,7 +131,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(number))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
     }
 
@@ -127,7 +142,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(number))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.StringValue }
+        assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
     }
 
@@ -138,7 +153,7 @@ class Neo4jValueConverterTest {
         val result =  Neo4jValueConverter().convert(getItemElement(BigDecimal.valueOf(number)))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.FloatValue }
+        assertTrue{ item is FloatValue }
         assertEquals(number, item?.asDouble())
     }
 
@@ -149,7 +164,7 @@ class Neo4jValueConverterTest {
         val result = Neo4jValueConverter().convert(getItemElement(BigDecimal.valueOf(number)))
         val item = result["item"]
 
-        assertTrue{ item is org.neo4j.driver.internal.value.FloatValue }
+        assertTrue{ item is FloatValue }
         assertEquals(number, item?.asDouble())
     }
 
@@ -167,7 +182,7 @@ class Neo4jValueConverterTest {
                 "long" to long,
                 "bigDouble" to bigDouble,
                 "string" to string,
-                "date" to date ))
+                "date" to date))
 
         assertEquals(double, result["double"]?.asDouble())
         assertEquals(long, result["long"]?.asLong())
@@ -193,6 +208,57 @@ class Neo4jValueConverterTest {
         private val BODY_SCHEMA = SchemaBuilder.struct().name("org.neo4j.example.html.BODY")
                 .field("ul", SchemaBuilder.array(UL_SCHEMA).optional())
                 .field("p", SchemaBuilder.array(P_SCHEMA).optional())
+                .build()
+
+        private val TEST_SCHEMA = SchemaBuilder.struct().name("test.schema")
+                .field("target",
+                        ConnectSchema(Schema.Type.BYTES,
+                                false,
+                                BigDecimal.valueOf(123.4),
+                                Decimal.LOGICAL_NAME,
+                                null, null))
+                .field("largeDecimal",
+                        ConnectSchema(Schema.Type.BYTES,
+                                false,
+                                BigDecimal.valueOf(Double.MAX_VALUE).pow(2),
+                                Decimal.LOGICAL_NAME,
+                                null, null))
+                .field("byteArray",
+                        ConnectSchema(Schema.Type.BYTES,
+                                false,
+                                "Foo".toByteArray(),
+                                "name.byteArray",
+                                null, null))
+                .field("int64",
+                        ConnectSchema(Schema.Type.INT64,
+                                false,
+                                Long.MAX_VALUE,
+                                "name.int64",
+                                null, null))
+                .field("int64Timestamp",
+                        ConnectSchema(Schema.Type.INT64,
+                                false,
+                                Date(),
+                                Timestamp.LOGICAL_NAME,
+                                null, null))
+                .field("int32",
+                        ConnectSchema(Schema.Type.INT32,
+                                false,
+                                123,
+                                "name.int32",
+                                null, null))
+                .field("int32Date",
+                        ConnectSchema(Schema.Type.INT32,
+                                false,
+                                Date(),
+                                org.apache.kafka.connect.data.Date.LOGICAL_NAME,
+                                null, null))
+                .field("int32Time",
+                        ConnectSchema(Schema.Type.INT32,
+                                false,
+                                Date.from(Instant.ofEpochMilli(123)),
+                                Time.LOGICAL_NAME,
+                                null, null))
                 .build()
 
         fun getTreeStruct(): Struct? {
@@ -241,7 +307,7 @@ class Neo4jValueConverterTest {
             return mapOf("ul" to ulListMap, "p" to pListMap)
         }
 
-        fun getItemElement(number: Any): Map<String, Any> = mapOf("item" to number )
+        fun getItemElement(number: Any): Map<String, Any> = mapOf("item" to number)
     }
 
 }

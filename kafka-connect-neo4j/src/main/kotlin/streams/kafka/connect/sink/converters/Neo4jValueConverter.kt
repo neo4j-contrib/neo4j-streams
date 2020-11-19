@@ -13,6 +13,20 @@ import java.util.concurrent.TimeUnit
 
 class Neo4jValueConverter: MapValueConverter<Value>() {
     private val log = LoggerFactory.getLogger(Neo4jValueConverter::class.java)
+    private val errorMsg = "Cannot convert %s field into Neo4j Type, it exceeds the Neo4j %s value, it will be converted into a String"
+
+    private fun parseBigDecimal(key: String?, value: BigDecimal?): Any {
+        val doubleValue = value!!.toDouble()
+        val fitsScale = doubleValue != Double.POSITIVE_INFINITY
+                && doubleValue != Double.NEGATIVE_INFINITY
+                && value.compareTo(BigDecimal.valueOf(doubleValue)) == 0
+        return if (fitsScale) {
+            doubleValue
+        } else {
+            log.warn(errorMsg.format(key, "Double"))
+            value.toPlainString()
+        }
+    }
 
     companion object {
         @JvmStatic private val UTC = ZoneId.of("UTC")
@@ -21,26 +35,13 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
     override fun convert(data: Any?): MutableMap<String, Value?> {
         val dataManipulatedForNeo4j = if(data is Map<*, *>)
             data.mapValues {
-                val value = it.value
-                val errorMsg = "Cannot convert ${it.key} key into Neo4j Type, it exceeds the Neo4j %s value, it will be converted into a String"
-                when (value) {
-                    is BigDecimal -> {
-                        val doubleValue = value.toDouble()
-                        val fitsScale = doubleValue != Double.POSITIVE_INFINITY
-                                && doubleValue != Double.NEGATIVE_INFINITY
-                                && value.compareTo(BigDecimal.valueOf(doubleValue)) == 0
-                        if (fitsScale) {
-                            doubleValue
-                        } else {
-                            log.warn(errorMsg.format("Double"))
-                            value.toPlainString()
-                        }
-                    }
+                when (val value = it.value) {
+                    is BigDecimal -> parseBigDecimal(it.key as String, value)
                     is BigInteger -> {
                         try {
                             value.longValueExact()
                         } catch (e: java.lang.ArithmeticException) {
-                            log.warn(errorMsg.format("Long"))
+                            log.warn(errorMsg.format(it.key, "Long"))
                             value.toString()
                         }
                     }
@@ -59,6 +60,10 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
 
     override fun newValue(): MutableMap<String, Value?> {
         return mutableMapOf()
+    }
+
+    override fun setDecimalField(result: MutableMap<String, Value?>?, fieldName: String?, value: BigDecimal?) {
+        setValue(result, fieldName, parseBigDecimal(fieldName, value))
     }
 
     override fun setTimestampField(result: MutableMap<String, Value?>?, fieldName: String?, value: Date?) {
