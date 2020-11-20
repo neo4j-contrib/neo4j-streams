@@ -90,7 +90,7 @@ class KafkaEventRouter: StreamsEventRouter {
         return send(producerRecord, sync)
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent, sync: Boolean = false) {
+    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent) {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
