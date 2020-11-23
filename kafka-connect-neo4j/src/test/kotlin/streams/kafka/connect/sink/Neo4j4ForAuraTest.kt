@@ -1,11 +1,15 @@
 package streams.kafka.connect.sink
 
 import org.junit.*
-import org.neo4j.driver.*
+import org.neo4j.driver.AuthTokens
+import org.neo4j.driver.Driver
+import org.neo4j.driver.GraphDatabase
+import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.exceptions.ClientException
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import org.junit.Assume.assumeTrue
 
 class Neo4j4ForAuraTest {
 
@@ -24,8 +28,8 @@ class Neo4j4ForAuraTest {
         @BeforeClass
         @JvmStatic
         fun setUp() {
-            assertTrue { user != null }
-            assertTrue { password != null }
+            assumeTrue(user != null)
+            assumeTrue(password != null)
             driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
         }
 
