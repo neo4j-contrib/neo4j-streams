@@ -11,7 +11,7 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 
-class Neo4jValueConverter : MapValueConverter<Value>() {
+class Neo4jValueConverter: MapValueConverter<Value>() {
 
     companion object {
         @JvmStatic

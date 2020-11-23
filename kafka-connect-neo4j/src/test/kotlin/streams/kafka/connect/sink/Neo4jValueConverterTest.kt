@@ -193,7 +193,6 @@ class Neo4jValueConverterTest {
         assertEquals(number, item?.asDouble())
     }
 
-
     @Test
     fun `should convert properly mixed items`() {
 
