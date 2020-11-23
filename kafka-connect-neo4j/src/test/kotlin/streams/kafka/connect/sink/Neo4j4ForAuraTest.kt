@@ -23,7 +23,7 @@ class Neo4j4ForAuraTest {
 
         @BeforeClass
         @JvmStatic
-        fun beforeClass() {
+        fun setUp() {
             assertTrue { user != null }
             assertTrue { password != null }
             driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
@@ -31,7 +31,7 @@ class Neo4j4ForAuraTest {
 
         @AfterClass
         @JvmStatic
-        fun afterClass() {
+        fun tearDown() {
             driver?.close()
         }
     }
