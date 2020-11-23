@@ -57,16 +57,41 @@ class Neo4jValueConverterTest {
     @Test
     fun `should convert tree with mixes types into map of neo4j values`() {
 
-        val result = Neo4jValueConverter().convert(Struct(TEST_SCHEMA)) as Map<*, *>
+        val utc = ZoneId.of("UTC")
+        val result = Neo4jValueConverter().convert(Struct(TEST_SCHEMA)) as Map<String, Value?>
 
-        assertTrue{ result["target"] is FloatValue }
-        assertTrue{ result["largeDecimal"] is StringValue }
-        assertTrue{ result["byteArray"] is BytesValue }
-        assertTrue{ result["int64"] is IntegerValue }
-        assertTrue{ result["int64Timestamp"] is LocalDateTimeValue }
-        assertTrue{ result["int32"] is IntegerValue }
-        assertTrue{ result["int32Date"] is DateValue }
-        assertTrue{ result["int32Time"] is LocalTimeValue }
+        val target = result["target"]
+        assertTrue{ target is FloatValue }
+        assertEquals(123.4, target?.asDouble())
+
+        val largeDecimal = result["largeDecimal"]
+        assertTrue{ largeDecimal is StringValue }
+        assertEquals(BigDecimal.valueOf(Double.MAX_VALUE).pow(2).toPlainString(), largeDecimal?.asString())
+
+        val byteArray = result["byteArray"]
+        assertTrue{ byteArray is BytesValue }
+        assertEquals("Foo".toByteArray().map { it }, byteArray?.asByteArray()?.map { it })
+
+        val int64 = result["int64"]
+        assertTrue{ int64 is IntegerValue }
+        assertEquals(Long.MAX_VALUE, int64?.asLong())
+
+        val int64Timestamp = result["int64Timestamp"]
+        assertTrue{ int64Timestamp is LocalDateTimeValue }
+        assertEquals(Date.from(Instant.ofEpochMilli(789)).toInstant().atZone(utc).toLocalDateTime(), int64Timestamp?.asLocalDateTime())
+
+        val int32 = result["int32"]
+        assertTrue{ int32 is IntegerValue }
+        assertEquals(123, int32?.asInt())
+
+        val int32Date = result["int32Date"]
+        assertTrue{ int32Date is DateValue }
+        assertEquals(Date.from(Instant.ofEpochMilli(456)).toInstant().atZone(utc).toLocalDate(), int32Date?.asLocalDate())
+
+        val int32Time = result["int32Time"]
+        assertTrue{ int32Time is LocalTimeValue }
+        assertEquals(Date.from(Instant.ofEpochMilli(123)).toInstant().atZone(utc).toLocalTime(), int32Time?.asLocalTime())
+
     }
 
     @Test
@@ -238,7 +263,7 @@ class Neo4jValueConverterTest {
                 .field("int64Timestamp",
                         ConnectSchema(Schema.Type.INT64,
                                 false,
-                                Date(),
+                                Date.from(Instant.ofEpochMilli(789)),
                                 Timestamp.LOGICAL_NAME,
                                 null, null))
                 .field("int32",
@@ -250,7 +275,7 @@ class Neo4jValueConverterTest {
                 .field("int32Date",
                         ConnectSchema(Schema.Type.INT32,
                                 false,
-                                Date(),
+                                Date.from(Instant.ofEpochMilli(456)),
                                 org.apache.kafka.connect.data.Date.LOGICAL_NAME,
                                 null, null))
                 .field("int32Time",

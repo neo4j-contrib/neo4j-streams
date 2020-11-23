@@ -12,8 +12,6 @@ import java.util.concurrent.TimeUnit
 
 
 class Neo4jValueConverter : MapValueConverter<Value>() {
-    private val log = LoggerFactory.getLogger(Neo4jValueConverter::class.java)
-    private val errorMsg = "Cannot convert %s field into Neo4j Type, it exceeds the Neo4j %s value, it will be converted into a String"
 
     companion object {
         @JvmStatic
@@ -28,7 +26,6 @@ class Neo4jValueConverter : MapValueConverter<Value>() {
                     try {
                         value.longValueExact()
                     } catch (e: java.lang.ArithmeticException) {
-                        log.warn(errorMsg.format(it.key, "Long"))
                         value.toString()
                     }
                 } else {
@@ -54,15 +51,14 @@ class Neo4jValueConverter : MapValueConverter<Value>() {
     }
 
     override fun setDecimalField(result: MutableMap<String, Value?>?, fieldName: String?, value: BigDecimal?) {
-        val doubleValue = value!!.toDouble()
+        val doubleValue = value?.toDouble()
         val fitsScale = doubleValue != Double.POSITIVE_INFINITY
                 && doubleValue != Double.NEGATIVE_INFINITY
-                && value.compareTo(BigDecimal.valueOf(doubleValue)) == 0
+                && value?.compareTo(doubleValue?.let { BigDecimal.valueOf(it) }) == 0
         if (fitsScale) {
             setValue(result, fieldName, doubleValue)
         } else {
-            log.warn(errorMsg.format(fieldName, "Double"))
-            setValue(result, fieldName, value.toPlainString())
+            setValue(result, fieldName, value?.toPlainString())
         }
     }
 
