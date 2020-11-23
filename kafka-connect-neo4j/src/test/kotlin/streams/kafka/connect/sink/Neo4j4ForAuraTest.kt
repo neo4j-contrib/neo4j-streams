@@ -15,7 +15,7 @@ class Neo4j4ForAuraTest {
         private val uri: String? = System.getenv("AURA_URI")
         private var driver: Driver? = null
 
-        private const val CURRENT_USER = "SHOW CURRENT USER"
+        private const val SHOW_CURRENT_USER = "SHOW CURRENT USER"
         private const val DBMS_LIST_CONFIG = "CALL dbms.listConfig"
         private const val NEO4J = "neo4j"
         private const val SYSTEM = "system"
@@ -40,7 +40,7 @@ class Neo4j4ForAuraTest {
     fun `neo4j user should not have the admin role`() {
 
         driver?.session(SessionConfig.forDatabase(SYSTEM)).use { session ->
-            session?.run(CURRENT_USER).let {
+            session?.run(SHOW_CURRENT_USER).let {
                 assertTrue { it!!.hasNext() }
                 val roles = it!!.next().get("roles").asList()
                 assertFalse { roles.contains("admin") }
@@ -54,10 +54,10 @@ class Neo4j4ForAuraTest {
     fun `should fail if I try to run SHOW CURRENT USER commands on neo4j database`() {
 
         assertFailsWith(ClientException::class,
-                "This is an administration command and it should be executed against the system database: $CURRENT_USER")
+                "This is an administration command and it should be executed against the system database: $SHOW_CURRENT_USER")
         {
             driver?.session(SessionConfig.forDatabase(NEO4J)).use {
-                it?.run(CURRENT_USER)
+                it?.run(SHOW_CURRENT_USER)
             }
         }
     }
