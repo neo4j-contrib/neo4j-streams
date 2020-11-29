@@ -1,6 +1,7 @@
 package integrations.kafka
 
 import integrations.kafka.KafkaTestUtils.createProducer
+import newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -81,7 +82,7 @@ class KafkaEventSinkNoTopicAutoCreationIT {
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.sink.topic.cypher.$notRegisteredTopic", "MERGE (p:NotRegisteredTopic{name: event.name})")
                 .setConfig("streams.sink.topic.cypher.$topic", "MERGE (p:Person{name: event.name})")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
         val kafkaProducer: KafkaProducer<String, ByteArray> = createProducer(kafka = kafka)
 
         // when

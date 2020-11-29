@@ -1,6 +1,7 @@
 package integrations.kafka
 
 import integrations.kafka.KafkaTestUtils.createConsumer
+import newDatabase
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.serialization.ByteArrayDeserializer
 import org.hamcrest.Matchers
@@ -23,7 +24,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
 
         var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
@@ -63,7 +64,7 @@ class KafkaEventSinkDLQ : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_TOPIC, dlqTopic)
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADERS, "true")
         graphDatabaseBuilder.setConfig("streams.sink."+ErrorService.ErrorConfig.DLQ_HEADER_PREFIX, "__streams.errors.")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
 

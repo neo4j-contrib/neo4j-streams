@@ -40,7 +40,7 @@ class StreamsTransactionEventHandlerTest {
         streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
         streamsConstraintsService.start()
         handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),
-                streamsConstraintsService, StreamsEventRouterConfiguration())
+                streamsConstraintsService)
         MockStreamsEventRouter.reset()
     }
 

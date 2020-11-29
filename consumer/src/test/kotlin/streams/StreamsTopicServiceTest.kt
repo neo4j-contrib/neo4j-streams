@@ -1,5 +1,6 @@
 package streams
 
+import newDatabase
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -23,7 +24,7 @@ class StreamsTopicServiceTest {
     fun setUp() {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
         streamsTopicService = StreamsTopicService(db)

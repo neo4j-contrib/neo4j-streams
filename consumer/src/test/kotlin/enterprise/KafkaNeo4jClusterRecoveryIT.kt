@@ -8,8 +8,10 @@ import kotlinx.coroutines.runBlocking
 import org.apache.commons.io.FileUtils
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.CoreMatchers.equalTo
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import org.neo4j.causalclustering.core.consensus.roles.Role
 import org.neo4j.causalclustering.discovery.Cluster
 import org.neo4j.causalclustering.discovery.CoreClusterMember
 import org.neo4j.consistency.ConsistencyCheckService
@@ -22,7 +24,11 @@ import org.neo4j.logging.NullLogProvider
 import org.neo4j.test.DbRepresentation
 import org.neo4j.test.assertion.Assert.assertEventually
 import org.neo4j.test.causalclustering.ClusterRule
+import streams.configuration.StreamsConfig
+import streams.events.StreamsPluginStatus
+import streams.procedures.StreamsSinkProcedures
 import streams.serialization.JSONUtils
+import streams.utils.StreamsUtils
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
@@ -53,14 +59,39 @@ class KafkaNeo4jClusterRecoveryIT: KafkaEventSinkBase() {
             .withSharedCoreParam(Settings.setting("dbms.tx_log.rotation.size", Settings.STRING, ""), "1M")
             .withSharedCoreParam(Settings.setting("streams.check.writeable.instance.interval", Settings.STRING, ""), "100")
             .withSharedCoreParam(Settings.setting("streams.cluster.only", Settings.STRING, ""), "true")
+            .withSharedCoreParam(Settings.setting("streams.sink.poll.interval", Settings.STRING, ""), "1000")
             .withSharedCoreParam(Settings.setting("unsupported.dbms.tx_log.fail_on_corrupted_log_files", Settings.STRING, ""), "false")
             .withNumberOfCoreMembers(3)
             .withNumberOfReadReplicas(0)
 
+    private lateinit var cluster: Cluster<*>
+
+    @Before
+    fun before() {
+        val declaredField = clusterRule.javaClass.getDeclaredField("coreParams")
+        declaredField.isAccessible = true
+        val configMap: Map<String, String> = declaredField.get(clusterRule) as Map<String, String>
+        cluster = clusterRule.startCluster()
+        cluster.awaitLeader()
+        if (configMap.isNotEmpty()) {
+            println(configMap)
+            StreamsConfig.getInstance(cluster.getMemberWithRole(Role.LEADER).database())
+                    .setProperties(configMap, false)
+        }
+        val success = StreamsUtils.blockUntilFalseOrTimeout(100000, 1000) {
+            StreamsSinkProcedures.hasStatus(StreamsPluginStatus.RUNNING)
+        }
+        if (success) {
+            println("Plugin successfully started")
+        } else {
+            println("Plugin not started")
+        }
+    }
+
     @Test
     fun shouldBeConsistentAfterShutdown() {
         // given
-        val cluster = clusterRule.startCluster()
+//        val cluster = clusterRule.startCluster()
         initClusterData(cluster)
         fireSomeLoadAtTheCluster(cluster)
         val storeDirs = cluster.getStoreDirs()
@@ -88,7 +119,7 @@ class KafkaNeo4jClusterRecoveryIT: KafkaEventSinkBase() {
     @Test
     fun singleServerWithinClusterShouldBeConsistentAfterRestart() {
         // given
-        val cluster = clusterRule.startCluster()
+//        val cluster = clusterRule.startCluster()
         val clusterSize = cluster.numberOfCoreMembersReportedByTopology()
         initClusterData(cluster)
         //fireSomeLoadAtTheCluster(cluster)
@@ -119,7 +150,7 @@ class KafkaNeo4jClusterRecoveryIT: KafkaEventSinkBase() {
         // then
         assertEventually("All cores have the same data",
                 ThrowingSupplier<Int, Exception> { cluster.getDbRepresentations().size },
-                equalTo(1), 10, TimeUnit.SECONDS)
+                equalTo(1), 30, TimeUnit.SECONDS)
         cluster.shutdown()
         storeDirs.forEach { storeDir: File -> assertConsistent(storeDir) }
     }
@@ -145,7 +176,6 @@ class KafkaNeo4jClusterRecoveryIT: KafkaEventSinkBase() {
             val metadata = kafkaProducer.send(producerRecord).get()
             println("Sent record $it to topic ${metadata.topic()}")
         }
-        delay(30000)
         assertEventually("The data should be consumed successfully",
                 ThrowingSupplier<Int, Exception> {
                     val atomicCount = AtomicInteger()
@@ -156,6 +186,6 @@ class KafkaNeo4jClusterRecoveryIT: KafkaEventSinkBase() {
                     }
                     atomicCount.get()
                 },
-                equalTo(records), 5, TimeUnit.SECONDS)
+                equalTo(records), 30, TimeUnit.SECONDS)
     }
 }

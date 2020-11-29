@@ -4,6 +4,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.junit.AfterClass
@@ -74,7 +75,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.personNotDefined", "Person{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
 
         // then
         val count = db.execute("MATCH (n) RETURN COUNT(n) AS count")
@@ -95,7 +96,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.$personTopic", "Person{*}")
                 .setConfig("streams.source.topic.nodes.$customerTopic", "Customer{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
         // we create a new node an check that the source plugin is working
         db.execute("CREATE (p:Person{id: 1})").close()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)

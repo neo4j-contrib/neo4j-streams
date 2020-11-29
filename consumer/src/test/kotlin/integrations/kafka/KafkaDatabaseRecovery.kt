@@ -2,6 +2,7 @@ package integrations.kafka
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import newDatabase
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Before
@@ -86,6 +87,7 @@ import org.neo4j.test.rule.RandomRule
 import org.neo4j.test.rule.TestDirectory
 import org.neo4j.test.rule.fs.DefaultFileSystemRule
 import streams.StreamsEventSinkExtensionFactory
+import streams.events.StreamsPluginStatus
 import streams.extensions.labelNames
 import streams.serialization.JSONUtils
 import java.io.File
@@ -196,7 +198,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
         val databaseDir = directory.databaseDir()
         var db = AdversarialPageCacheGraphDatabaseFactory.create(fileSystemRule.get(), adversary)
                 .newEmbeddedDatabaseBuilder(databaseDir)
-                .newGraphDatabase()
+                .newDatabase(StreamsPluginStatus.STOPPED)
         try {
             db.beginTx().use { tx ->
                 db.schema().constraintFor(label).assertPropertyIsUnique(property).create()
@@ -320,7 +322,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase()
+                .newDatabase()
         produceRandomGraphUpdates(db, 100)
         checkPoint(db)
         val checkPointFs = fs.snapshot()
@@ -375,7 +377,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase()
+                .newDatabase()
                 .shutdown()
 
         // then
@@ -662,7 +664,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
     }
 
     private fun startDatabase(storeDir: File, clusterOnly: Boolean = false): GraphDatabaseService {
@@ -675,7 +677,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.cluster.only", clusterOnly.toString())
-                .newGraphDatabase()
+                .newDatabase()
     }
 
     class UpdateCapturingIndexProvider internal constructor(private val actual: IndexProvider, private val initialUpdates: Map<Long?, Collection<IndexEntryUpdate<*>>>) : IndexProvider(actual) {

@@ -2,6 +2,7 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import newDatabase
 import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
@@ -10,6 +11,7 @@ import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.configuration.StreamsConfigProcedures
 import streams.events.*
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils.createConsumer
@@ -99,7 +101,7 @@ class KafkaEventRouterIT {
             graphDatabaseBuilder.setConfig("streams.source.topic.nodes.testdeletetopic", "Person:Neo4j{*}")
                     .setConfig("streams.source.topic.relationships.testdeletetopic", "KNOWS{*}")
         }
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {

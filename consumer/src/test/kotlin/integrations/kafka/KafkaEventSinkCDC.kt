@@ -1,6 +1,7 @@
 package integrations.kafka
 
 import kotlinx.coroutines.runBlocking
+import newDatabase
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
@@ -20,7 +21,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId", topic)
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.idName", "customIdN@me")
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.sourceId.labelName", "CustomLabelN@me")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -89,7 +90,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     fun shouldWriteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
@@ -162,7 +163,7 @@ class KafkaEventSinkCDC: KafkaEventSinkBase() {
     fun shouldDeleteDataFromSinkWithCDCSchemaTopic() = runBlocking {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cdc.schema", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         db.execute("CREATE (s:User{name:'Andrea', surname:'Santurbano', `comp@ny`:'LARUS-BA'})-[r:`KNOWS WHO`{since:2014}]->(e:User{name:'Michael', surname:'Hunger', `comp@ny`:'Neo4j'})").close()
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),

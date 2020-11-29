@@ -34,8 +34,7 @@ class StreamsEventSinkExtensionFactory : KernelExtensionFactory<StreamsEventSink
 
         override fun stop() {
             try {
-                streamsAvailabilityListener.unavailable()
-                StreamsEventSinkAvailabilityListener.remove(dependencies.graphdatabaseAPI())
+                streamsAvailabilityListener.shutdown()
             } catch (e : Throwable) {
                 val message = e.message ?: "Generic error, please check the stack trace:"
                 streamsLog.error(message, e)

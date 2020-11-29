@@ -1,5 +1,8 @@
 package streams.procedures
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -10,17 +13,13 @@ import org.neo4j.procedure.Mode
 import org.neo4j.procedure.Name
 import org.neo4j.procedure.Procedure
 import streams.StreamsEventConsumer
-import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSink
-import streams.StreamsEventSinkConfigMapper
-import streams.StreamsSinkConfiguration
+import streams.events.KeyValueResult
+import streams.events.StreamResult
 import streams.events.StreamsPluginStatus
 import streams.utils.Neo4jUtils
 import java.util.stream.Collectors
 import java.util.stream.Stream
-
-class StreamResult(@JvmField val event: Map<String, *>)
-class KeyValueResult(@JvmField val name: String, @JvmField val value: Any?)
 
 class StreamsSinkProcedures {
 
@@ -42,7 +41,9 @@ class StreamsSinkProcedures {
         }
 
         val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-        val configuration = streamsEventSinkConfigMapper.convert(config = properties)
+        val configuration = runBlocking { mutex.withLock {
+            streamsEventSink!!.getEventSinkConfigMapper().convert(config = properties)
+        } }
 
         val data = readData(topic, config ?: emptyMap(), configuration)
 
@@ -53,12 +54,14 @@ class StreamsSinkProcedures {
     fun sinkStart(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
-        try {
-            streamsEventSink?.start()
-            return sinkStatus()
+        return try {
+            runBlocking { mutex.withLock {
+                streamsEventSink!!.start()
+            } }
+            sinkStatus()
         } catch (e: Exception) {
             log?.error("Cannot start the Sink because of the following exception", e)
-            return Stream.concat(sinkStatus(),
+            Stream.concat(sinkStatus(),
                     Stream.of(KeyValueResult("exception", ExceptionUtils.getStackTrace(e))))
         }
     }
@@ -67,12 +70,14 @@ class StreamsSinkProcedures {
     fun sinkStop(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
-        try {
-            streamsEventSink?.stop()
-            return sinkStatus()
+        return try {
+            runBlocking { mutex.withLock {
+                streamsEventSink?.stop()
+            } }
+            sinkStatus()
         } catch (e: Exception) {
             log?.error("Cannot stopped the Sink because of the following exception", e)
-            return Stream.concat(sinkStatus(),
+            Stream.concat(sinkStatus(),
                     Stream.of(KeyValueResult("exception", ExceptionUtils.getStackTrace(e))))
         }
     }
@@ -87,22 +92,27 @@ class StreamsSinkProcedures {
         return sinkStart()
     }
 
-    @Procedure("streams.sink.config")
+    @Procedure(value = "streams.sink.config", deprecatedBy = "streams.configuration.get")
+    @Deprecated("This procedure will be removed in a future release, please use `streams.configuration.get` insteadinstead")
     fun sinkConfig(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
-        return streamsSinkConfiguration.asMap()
-                .entries
-                .stream()
-                .map { KeyValueResult(it.key, it.value) }
+        return runBlocking { mutex.withLock {
+            streamsEventSink?.streamsSinkConfiguration?.asMap().orEmpty()
+                    .entries
+                    .stream()
+                    .map { KeyValueResult(it.key, it.value) }
+        } }
     }
 
     @Procedure("streams.sink.status")
     fun sinkStatus(): Stream<KeyValueResult> {
         checkEnabled()
         checkLeader()
-        val value = (streamsEventSink?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
-        return Stream.of(KeyValueResult("status", value))
+        return runBlocking { mutex.withLock {
+            val value = (streamsEventSink?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
+            Stream.of(KeyValueResult("status", value))
+        } }
     }
 
     private fun checkLeader() {
@@ -136,38 +146,45 @@ class StreamsSinkProcedures {
         return data
     }
 
-    private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer {
-        return streamsEventConsumerFactory
-                .createStreamsEventConsumer(consumerConfig, log!!, setOf(topic))
+    private fun createConsumer(consumerConfig: Map<String, String>,
+                               topic: String): StreamsEventConsumer = runBlocking {
+        mutex.withLock {
+            streamsEventSink!!.getEventConsumerFactory()
+                    .createStreamsEventConsumer(consumerConfig, log!!, setOf(topic))
+        }
     }
 
-    private fun checkEnabled() {
-        if (!streamsSinkConfiguration.proceduresEnabled) {
-            throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
-        }
+    private fun checkEnabled() = runBlocking {
+       mutex.withLock {
+           if (streamsEventSink?.streamsSinkConfiguration?.proceduresEnabled != true) {
+               throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
+           }
+       }
     }
 
 
     companion object {
-        private lateinit var streamsSinkConfiguration: StreamsSinkConfiguration
-        private lateinit var streamsEventConsumerFactory: StreamsEventConsumerFactory
-        private lateinit var streamsEventSinkConfigMapper: StreamsEventSinkConfigMapper
         private var streamsEventSink: StreamsEventSink? = null
 
-        fun registerStreamsEventSinkConfigMapper(streamsEventSinkConfigMapper: StreamsEventSinkConfigMapper) {
-            this.streamsEventSinkConfigMapper = streamsEventSinkConfigMapper
+        private val mutex = Mutex()
+
+        fun registerStreamsEventSink(streamsEventSink: StreamsEventSink?) {
+            runBlocking {
+                mutex.withLock {
+                    StreamsSinkProcedures.streamsEventSink = streamsEventSink
+                }
+            }
         }
 
-        fun registerStreamsSinkConfiguration(streamsSinkConfiguration: StreamsSinkConfiguration) {
-            this.streamsSinkConfiguration = streamsSinkConfiguration
+        fun hasStatus(status: StreamsPluginStatus) = runBlocking {
+            mutex.withLock {
+                streamsEventSink != null && streamsEventSink?.status() == status
+            }
         }
 
-        fun registerStreamsEventConsumerFactory(streamsEventConsumerFactory: StreamsEventConsumerFactory) {
-            this.streamsEventConsumerFactory = streamsEventConsumerFactory
+        fun isRegistered() = runBlocking {
+            mutex.withLock { streamsEventSink != null }
         }
 
-        fun registerStreamsEventSink(streamsEventSink: StreamsEventSink) {
-            this.streamsEventSink = streamsEventSink
-        }
     }
 }

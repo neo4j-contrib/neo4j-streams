@@ -1,9 +1,11 @@
 package streams.utils
 
+import newDatabase
 import org.junit.*
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.StreamsEventSinkAvailabilityListener
+import streams.events.StreamsPluginStatus
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -16,7 +18,7 @@ class Neo4jUtilsTest {
         fun setUp() {
             db = TestGraphDatabaseFactory()
                     .newImpermanentDatabaseBuilder()
-                    .newGraphDatabase() as GraphDatabaseAPI
+                    .newDatabase(StreamsPluginStatus.STOPPED) as GraphDatabaseAPI
         }
 
         @AfterClass

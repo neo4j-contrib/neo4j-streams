@@ -2,6 +2,7 @@ package integrations.kafka
 
 import io.confluent.kafka.serializers.KafkaAvroDeserializer
 import kotlinx.coroutines.runBlocking
+import newDatabase
 import org.apache.avro.SchemaBuilder
 import org.apache.avro.generic.GenericRecordBuilder
 import org.apache.commons.lang3.exception.ExceptionUtils
@@ -27,7 +28,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.key.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()
@@ -75,7 +76,7 @@ class KafkaEventSinkAvro : KafkaEventSinkBase() {
         graphDatabaseBuilder.setConfig("kafka.value.deserializer", KafkaAvroDeserializer::class.java.name)
         graphDatabaseBuilder.setConfig("kafka.schema.registry.url", KafkaEventSinkSuiteIT.schemaRegistry.getSchemaRegistryUrl())
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic","(:Place{!name})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val PLACE_SCHEMA = SchemaBuilder.builder("com.namespace")
                 .record("Place").fields()

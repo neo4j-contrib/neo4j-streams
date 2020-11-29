@@ -107,7 +107,20 @@
         </dependencies>
     </dependencyManagement>
 
+    <repositories>
+        <repository>
+            <id>jitpack.io</id>
+            <name>Jitpack</name>
+            <url>https://jitpack.io</url>
+        </repository>
+    </repositories>
+
     <dependencies>
+        <dependency>
+            <groupId>com.github.conker84</groupId>
+            <artifactId>neo4j-configuration-lifecycle</artifactId>
+            <version>9e684c7d86</version>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j</groupId>

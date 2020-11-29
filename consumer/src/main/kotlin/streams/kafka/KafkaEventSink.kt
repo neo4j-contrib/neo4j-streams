@@ -12,26 +12,22 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.StreamsEventConsumer
 import streams.StreamsEventConsumerFactory
 import streams.StreamsEventSink
-import streams.StreamsEventSinkAvailabilityListener
 import streams.StreamsEventSinkQueryExecution
 import streams.StreamsSinkConfiguration
 import streams.StreamsSinkConfigurationConstants
 import streams.StreamsTopicService
 import streams.events.StreamsPluginStatus
-import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
-import java.util.concurrent.TimeUnit
 
 
-class KafkaEventSink(private val config: Config,
+class KafkaEventSink(val config: Map<String, String>,
                      private val queryExecution: StreamsEventSinkQueryExecution,
                      private val streamsTopicService: StreamsTopicService,
                      private val log: Log,
@@ -45,11 +41,7 @@ class KafkaEventSink(private val config: Config,
 
     private val isNeo4jCluster = Neo4jUtils.isCluster(db, log)
 
-    private val streamsConfig = StreamsSinkConfiguration.from(config)
-
-    override val streamsConfigMap = config.raw.filterKeys {
-        it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
-    }.toMap()
+    override val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration.Companion.from(config)
 
     override val mappingKeys = mapOf(
             "zookeeper" to "kafka.zookeeper.connect",
@@ -75,24 +67,25 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun start() = runBlocking { // TODO move to the abstract class
-        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
-        val topics = streamsTopicService.getTopics()
-        if (streamsConfig.clusterOnly && !isNeo4jCluster) {
-            if (log.isDebugEnabled) {
-                log.info("""
-                        |Cannot init the Kafka Sink module as is forced to work only in a cluster env, 
-                        |please check the value of `streams.${StreamsSinkConfigurationConstants.CLUSTER_ONLY}`
-                    """.trimMargin())
-            }
-            return@runBlocking
-        }
-        if (!streamsConfig.enabled) {
-            if (topics.isNotEmpty() && isWriteableInstance) {
-                log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
-            }
-            return@runBlocking
-        }
         mutex.withLock {
+            if (streamsSinkConfiguration.clusterOnly && !isNeo4jCluster) {
+                if (log.isDebugEnabled) {
+                    log.info("""
+                            |Cannot init the Kafka Sink module as is forced to work only in a cluster env, 
+                            |please check the value of `streams.${StreamsSinkConfigurationConstants.CLUSTER_ONLY}`
+                        """.trimMargin())
+                }
+                return@runBlocking
+            }
+            val topics = streamsTopicService.getTopics()
+            val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
+
+            if (!streamsSinkConfiguration.enabled) {
+                if (topics.isNotEmpty() && isWriteableInstance) {
+                    log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
+                }
+                return@runBlocking
+            }
             if (StreamsPluginStatus.RUNNING == status()) {
                 if (log.isDebugEnabled) {
                     log.debug("Kafka Sink is already started.")
@@ -101,19 +94,20 @@ class KafkaEventSink(private val config: Config,
             }
             log.info("Starting the Kafka Sink")
             eventConsumer = getEventConsumerFactory()
-                    .createStreamsEventConsumer(config.raw, log, streamsTopicService.getTopics())
+                    .createStreamsEventConsumer(config, log, streamsTopicService.getTopics())
             job = createJob()
-        }
-        if (isWriteableInstance) {
-            if (log.isDebugEnabled) {
-                streamsTopicService.getAll().forEach {
-                    log.debug("Subscribed topics for type ${it.key} are: ${it.value}")
+
+            if (isWriteableInstance) {
+                if (log.isDebugEnabled) {
+                    streamsTopicService.getAll().forEach {
+                        log.debug("Subscribed topics for type ${it.key} are: ${it.value}")
+                    }
+                } else {
+                    log.info("Subscribed topics: $topics")
                 }
-            } else {
-                log.info("Subscribed topics: $topics")
             }
+            log.info("Kafka Sink started")
         }
-        log.info("Kafka Sink started")
     }
 
     override fun stop() = runBlocking { // TODO move to the abstract class
@@ -147,9 +141,9 @@ class KafkaEventSink(private val config: Config,
                             }
                             queryExecution.writeForTopic(topic, data)
                         }
-                        streamsConfig.pollInterval
+                        streamsSinkConfiguration.pollInterval
                     } else {
-                        val timeMillis = streamsConfig.checkWriteableInstanceInterval
+                        val timeMillis = streamsSinkConfiguration.checkWriteableInstanceInterval
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }

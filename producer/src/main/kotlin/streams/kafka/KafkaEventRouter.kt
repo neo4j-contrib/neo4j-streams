@@ -1,17 +1,19 @@
 package streams.kafka
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.AuthorizationException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
 import org.apache.kafka.common.errors.ProducerFencedException
-import org.neo4j.kernel.configuration.Config
 import org.neo4j.logging.Log
-import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEvent
+import streams.events.StreamsPluginStatus
 import streams.events.StreamsTransactionEvent
 import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
@@ -21,15 +23,14 @@ import java.util.UUID
 import java.util.concurrent.ThreadLocalRandom
 
 
-class KafkaEventRouter: StreamsEventRouter {
-    private val log: Log
-    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
+class KafkaEventRouter(private val config: Map<String, String>, private val log: Log): StreamsEventRouter(config, log) {
+    override val eventRouterConfiguration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(config)
+
+    private val mutex = Mutex()
+
+    private var producer: Neo4jKafkaProducer<String, ByteArray>? = null
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
-
-    constructor(logService: LogService, config: Config): super(logService, config) {
-        log = logService.getUserLog(KafkaEventRouter::class.java)
-    }
 
     override fun printInvalidTopics() {
         val invalidTopics = kafkaAdminService.getInvalidTopics()
@@ -38,21 +39,38 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
-    override fun start() {
-        log.info("Initializing Kafka Connector")
-        kafkaConfig = KafkaConfiguration.from(config?.raw ?: emptyMap())
-        val props = kafkaConfig.asProperties()
-        val definedTopics = StreamsEventRouterConfiguration.from(config?.raw ?: emptyMap()).allTopics()
-        kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics, log)
-        kafkaAdminService.start()
-        producer = Neo4jKafkaProducer(props)
-        producer.initTransactions()
-        log.info("Kafka Connector started")
+    override fun status(): StreamsPluginStatus = when (producer != null) {
+        true -> StreamsPluginStatus.RUNNING
+        else -> StreamsPluginStatus.STOPPED
     }
 
-    override fun stop() {
-        StreamsUtils.ignoreExceptions({ producer.close() }, UninitializedPropertyAccessException::class.java)
-        StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
+    override fun start() = runBlocking {
+        mutex.withLock {
+            if (status() == StreamsPluginStatus.RUNNING) {
+                return@runBlocking
+            }
+            log.info("Initialising Kafka Connector")
+            kafkaConfig = KafkaConfiguration.from(config)
+            val props = kafkaConfig.asProperties()
+            val definedTopics = eventRouterConfiguration.allTopics()
+            kafkaAdminService = KafkaAdminService(kafkaConfig, definedTopics, log)
+            kafkaAdminService.start()
+            producer = Neo4jKafkaProducer(props)
+            producer!!.initTransactions()
+            log.info("Kafka Connector started")
+        }
+    }
+
+    override fun stop() = runBlocking {
+        mutex.withLock {
+            if (status() == StreamsPluginStatus.STOPPED) {
+                return@runBlocking
+            }
+            StreamsUtils.ignoreExceptions({ producer?.flush() }, UninitializedPropertyAccessException::class.java)
+            StreamsUtils.ignoreExceptions({ producer?.close() }, UninitializedPropertyAccessException::class.java)
+            StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
+            producer = null
+        }
     }
 
     private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
@@ -60,7 +78,7 @@ class KafkaEventRouter: StreamsEventRouter {
             // TODO add logging system here
             return
         }
-        producer.send(producerRecord) { meta, error ->
+        producer?.send(producerRecord) { meta, error ->
             if (meta != null && log.isDebugEnabled) {
                 log.debug("Successfully sent record in partition ${meta?.partition()} offset ${meta?.offset()} data ${meta?.topic()} key size ${meta?.serializedKeySize()}")
             }
@@ -94,7 +112,7 @@ class KafkaEventRouter: StreamsEventRouter {
 
     override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {
         try {
-            producer.beginTransaction()
+            producer?.beginTransaction()
             transactionEvents.forEach {
                 val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
                 if (it is StreamsTransactionEvent) {
@@ -103,19 +121,19 @@ class KafkaEventRouter: StreamsEventRouter {
                     sendEvent(partition, topic, it)
                 }
             }
-            producer.commitTransaction()
+            producer?.commitTransaction()
         } catch (e: ProducerFencedException) {
             log.error("Another producer with the same transactional.id has been started. Stack trace is:", e)
-            producer.close()
+            producer?.close()
         } catch (e: OutOfOrderSequenceException) {
-            log.error("The broker received an unexpected sequence number from the producer. Stack trace is:", e)
-            producer.close()
+            log.error("The broker received an unexpected sequence number from the producer?. Stack trace is:", e)
+            producer?.close()
         } catch (e: AuthorizationException) {
             log.error("Error in authorization. Stack trace is:", e)
-            producer.close()
+            producer?.close()
         } catch (e: KafkaException) {
             log.error("Generic kafka error. Stack trace is:", e)
-            producer.abortTransaction()
+            producer?.abortTransaction()
         }
     }
 

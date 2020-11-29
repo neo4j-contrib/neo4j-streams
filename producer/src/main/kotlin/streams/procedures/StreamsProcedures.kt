@@ -1,11 +1,15 @@
 package streams.procedures
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.apache.commons.lang3.StringUtils
 import org.neo4j.logging.Log
 import org.neo4j.procedure.*
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEventBuilder
+import streams.events.StreamsPluginStatus
 import java.lang.RuntimeException
 
 class StreamsProcedures {
@@ -25,37 +29,55 @@ class StreamsProcedures {
             log?.info("Payload empty, no message sent")
             return
         }
-        val streamsEvent = StreamsEventBuilder()
-                .withPayload(payload)
-                .withNodeRoutingConfiguration(StreamsProcedures.eventRouterConfiguration
-                        .nodeRouting
-                        .filter { it.topic == topic }
-                        .firstOrNull())
-                .withRelationshipRoutingConfiguration(StreamsProcedures.eventRouterConfiguration
-                        .relRouting
-                        .filter { it.topic == topic }
-                        .firstOrNull())
-                .withTopic(topic)
-                .build()
-        StreamsProcedures.eventRouter.sendEvents(topic, listOf(streamsEvent))
+        runBlocking {
+            mutex.withLock {
+                val config = eventRouter!!.eventRouterConfiguration
+                val streamsEvent = StreamsEventBuilder()
+                        .withPayload(payload)
+                        .withNodeRoutingConfiguration(config
+                                .nodeRouting
+                                .firstOrNull { it.topic == topic })
+                        .withRelationshipRoutingConfiguration(config
+                                .relRouting
+                                .firstOrNull { it.topic == topic })
+                        .withTopic(topic)
+                        .build()
+                eventRouter!!.sendEvents(topic, listOf(streamsEvent))
+            }
+        }
     }
 
     private fun checkEnabled() {
-        if (!StreamsProcedures.eventRouterConfiguration.proceduresEnabled) {
-            throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
+        runBlocking {
+            mutex.withLock {
+                if (eventRouter?.eventRouterConfiguration?.proceduresEnabled == false) {
+                    throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
+                }
+            }
         }
     }
 
     companion object {
-        private lateinit var eventRouter: StreamsEventRouter
-        private lateinit var eventRouterConfiguration: StreamsEventRouterConfiguration
+        var eventRouter: StreamsEventRouter? = null
 
-        fun registerEventRouter(eventRouter: StreamsEventRouter) {
-            this.eventRouter = eventRouter
+        private val mutex = Mutex()
+
+        fun registerEventRouter(eventRouter: StreamsEventRouter?) {
+            runBlocking {
+                mutex.withLock {
+                    StreamsProcedures.eventRouter = eventRouter
+                }
+            }
         }
 
-        fun registerEventRouterConfiguration(eventRouterConfiguration: StreamsEventRouterConfiguration) {
-            this.eventRouterConfiguration = eventRouterConfiguration
+        fun hasStatus(status: StreamsPluginStatus) = runBlocking {
+            mutex.withLock {
+                eventRouter != null && eventRouter?.status() == status
+            }
+        }
+
+        fun isRegistered() = runBlocking {
+            mutex.withLock { eventRouter != null }
         }
     }
 
