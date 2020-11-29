@@ -12,9 +12,10 @@ import java.util.concurrent.atomic.AtomicInteger
 
 
 class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
-                                     private val streamsConstraintsService: StreamsConstraintsService,
-                                     private val configuration: StreamsEventRouterConfiguration)
+                                     private val streamsConstraintsService: StreamsConstraintsService)
     : TransactionEventHandler<PreviousTransactionData> {
+
+    private val configuration = router.eventRouterConfiguration
 
     private val nodeRoutingLabels = configuration.nodeRouting
             .flatMap { it.labels }

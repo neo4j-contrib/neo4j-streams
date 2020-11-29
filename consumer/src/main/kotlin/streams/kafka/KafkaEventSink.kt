@@ -1,37 +1,20 @@
 package streams.kafka
 
-import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancelAndJoin
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import streams.StreamsEventConsumer
-import streams.StreamsEventConsumerFactory
-import streams.StreamsEventSink
-import streams.StreamsEventSinkAvailabilityListener
-import streams.StreamsEventSinkQueryExecution
-import streams.StreamsSinkConfiguration
-import streams.StreamsSinkConfigurationConstants
-import streams.StreamsTopicService
+import streams.*
+import streams.configuration.StreamsConfig
 import streams.events.StreamsPluginStatus
-import streams.serialization.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.Neo4jUtils
 import streams.utils.StreamsUtils
-import java.util.concurrent.TimeUnit
 
 
-class KafkaEventSink(private val config: Config,
+class KafkaEventSink(val config: Map<String, String>,
                      private val queryExecution: StreamsEventSinkQueryExecution,
                      private val streamsTopicService: StreamsTopicService,
                      private val log: Log,
@@ -41,15 +24,11 @@ class KafkaEventSink(private val config: Config,
 
     private lateinit var eventConsumer: StreamsEventConsumer
 
-    private lateinit var job: Job
+    private var job: Job? = null
 
     private val isNeo4jCluster = Neo4jUtils.isCluster(db, log)
 
-    private val streamsConfig = StreamsSinkConfiguration.from(config)
-
-    override val streamsConfigMap = config.raw.filterKeys {
-        it.startsWith("kafka.") || (it.startsWith("streams.") && !it.startsWith("streams.sink.topic.cypher."))
-    }.toMap()
+    override val streamsSinkConfiguration: StreamsSinkConfiguration = StreamsSinkConfiguration.from(config)
 
     override val mappingKeys = mapOf(
             "zookeeper" to "kafka.zookeeper.connect",
@@ -75,35 +54,35 @@ class KafkaEventSink(private val config: Config,
     }
 
     override fun start() = runBlocking { // TODO move to the abstract class
-        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
-        val topics = streamsTopicService.getTopics()
-        if (streamsConfig.clusterOnly && !isNeo4jCluster) {
+        if (streamsSinkConfiguration.clusterOnly && !isNeo4jCluster) {
             if (log.isDebugEnabled) {
                 log.info("""
-                        |Cannot init the Kafka Sink module as is forced to work only in a cluster env, 
-                        |please check the value of `streams.${StreamsSinkConfigurationConstants.CLUSTER_ONLY}`
-                    """.trimMargin())
+                            |Cannot init the Kafka Sink module as is forced to work only in a cluster env, 
+                            |please check the value of `streams.${StreamsSinkConfigurationConstants.CLUSTER_ONLY}`
+                        """.trimMargin())
             }
             return@runBlocking
         }
-        if (!streamsConfig.enabled) {
+        val topics = streamsTopicService.getTopics()
+        val isWriteableInstance = Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)
+
+        if (!streamsSinkConfiguration.enabled) {
             if (topics.isNotEmpty() && isWriteableInstance) {
                 log.warn("You configured the following topics: $topics, in order to make the Sink work please set the `${StreamsSinkConfigurationConstants.STREAMS_CONFIG_PREFIX}${StreamsSinkConfigurationConstants.ENABLED}` to `true`")
             }
             return@runBlocking
         }
-        mutex.withLock {
-            if (StreamsPluginStatus.RUNNING == status()) {
+        log.info("Starting the Kafka Sink")
+        mutex.withLock(job) {
+            if (StreamsPluginStatus.RUNNING == status(job)) {
                 if (log.isDebugEnabled) {
                     log.debug("Kafka Sink is already started.")
                 }
                 return@runBlocking
             }
-            log.info("Starting the Kafka Sink")
-            eventConsumer = getEventConsumerFactory()
-                    .createStreamsEventConsumer(config.raw, log, streamsTopicService.getTopics())
             job = createJob()
         }
+
         if (isWriteableInstance) {
             if (log.isDebugEnabled) {
                 streamsTopicService.getAll().forEach {
@@ -118,12 +97,12 @@ class KafkaEventSink(private val config: Config,
 
     override fun stop() = runBlocking { // TODO move to the abstract class
         log.info("Stopping Kafka Sink daemon Job")
-        mutex.withLock {
-            if (status() == StreamsPluginStatus.STOPPED) {
+        mutex.withLock(job) {
+            if (status(job) == StreamsPluginStatus.STOPPED) {
                 return@runBlocking
             }
             try {
-                job.cancelAndJoin()
+                job?.cancelAndJoin()
                 log.info("Kafka Sink daemon Job stopped")
             } catch (e: Exception) {
                 when (e) {
@@ -138,6 +117,8 @@ class KafkaEventSink(private val config: Config,
         log.info("Creating Sink daemon Job")
         return GlobalScope.launch(Dispatchers.IO) { // TODO improve exception management
             try {
+                eventConsumer = getEventConsumerFactory()
+                    .createStreamsEventConsumer(config, log, streamsTopicService.getTopics())
                 eventConsumer.start()
                 while (isActive) {
                     val timeMillis = if (Neo4jUtils.isWriteableInstance(db, isNeo4jCluster)) {
@@ -147,9 +128,9 @@ class KafkaEventSink(private val config: Config,
                             }
                             queryExecution.writeForTopic(topic, data)
                         }
-                        streamsConfig.pollInterval
+                        streamsSinkConfiguration.pollInterval
                     } else {
-                        val timeMillis = streamsConfig.checkWriteableInstanceInterval
+                        val timeMillis = streamsSinkConfiguration.checkWriteableInstanceInterval
                         if (log.isDebugEnabled) {
                             log.debug("Not in a writeable instance, new check in $timeMillis millis")
                         }
@@ -174,9 +155,15 @@ class KafkaEventSink(private val config: Config,
         }, UninitializedPropertyAccessException::class.java)
     }
 
-    override fun status(): StreamsPluginStatus = when (this::job.isInitialized && this.job.isActive) {
+    private fun status(job: Job?): StreamsPluginStatus = when (job?.isActive) {
         true -> StreamsPluginStatus.RUNNING
         else -> StreamsPluginStatus.STOPPED
+    }
+
+    override fun status(): StreamsPluginStatus = runBlocking {
+        mutex.withLock(job) {
+            status(job)
+        }
     }
 
 }

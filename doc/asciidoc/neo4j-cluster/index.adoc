@@ -43,7 +43,9 @@ For further information on routing drivers, see the link:https://neo4j.com/docs/
 When using Neo4j Streams as a plugin together with a cluster, there are several things to keep in mind:
 
 * The plugin must be present in the plugins directory of _all cluster members_, and not just one.
-* The configuration settings must be present in _all of the neo4j.conf files_, not just one.
+* The configuration settings must be present in:
+   - *all neo4j.conf files* for versions prior of `3.5.13`;
+   - *all streams.conf files* for versions since `3.5.13`.
 
 Through the course of the cluster lifecycle, the leader may change; for this reason the plugin must be everywhere,
 and not just on the leader.
@@ -56,14 +58,54 @@ published on the leader as well.  In practical terms, this means that as new dat
 the leader that will be publishing that data back out to Kafka, if you have the producer configured.
 
 The neo4j streams utility procedures, in particular `CALL streams.publish`, can work on any cluster member, or
-read replica.  `CALL streams.consume` may also be used on any cluster member, however it is important to keep in
+read replica. `CALL streams.consume` may also be used on any cluster member, however it is important to keep in
 mind that due to the way clustering in Neo4j works, using `streams.consume` together with write operations will
 not work on a cluster follower or read replica, as only the leader can process writes.
+
+==== Update the configuration via procedures (since version 3.5.13)
+
+N.b. this mode implies that `streams.procedures.enabled` is set to `true`
+
+In a causal cluster composed by 3 `CORE` members you can use Kafka in order to update
+the configuration to all the nodes by executing a single query from the `LEADER`.
+
+In order to do that we leverage the `apoc.periodic.repeat` procedure.
+
+You need to "install" the following query in all core nodes
+
+[source,cypher]
+----
+CALL apoc.periodic.repeat("streams.update.config", "
+  CALL dbms.cluster.role() YIELD role
+  WHERE role <> 'LEADER'
+  CALL streams.consume('neo4j-kafka-config', {`kafka.group.id`: '<one-id-per-core-instance>', timeout: 2000}) YIELD event
+  CALL streams.configuration.set(event.data.payload) YIELD name, value
+  RETURN name, value
+", 5)
+----
+
+*N.b.* is important to define one `kafka.group.id` per CORE instance in
+order to allow them to consume the same topic independently.
+
+Then every time that you need to update the configuration you can use
+the following template that must be executed from the `LEADER`:
+
+[source,cypher]
+----
+WITH {`streams.sink.topic.cypher.mytopic`: "CREATE (p:Person{name: event.name, surname: event.surname})"} AS event
+CALL streams.publish('neo4j-kafka-config', event)
+CALL streams.configuration.set(event) YIELD name, value
+RETURN name, value
+----
+
+(The `event` variable map is the map of the properties that you want to change)
+
+automatically the configuration gets updated inside every `CORE` node.
 
 === Remote Clients
 
 Sometimes there will be remote applications that talk to Neo4j via official drivers, that want to use
-streams functionality.  Best practices in these cases are:
+streams functionality. Best practices in these cases are:
 
 * Always use a `bolt+routing://` driver URI when communicating with the cluster in the client application.
 * Use link:https://neo4j.com/docs/driver-manual/current/sessions-transactions/#driver-transactions[Explicit Write Transactions] in

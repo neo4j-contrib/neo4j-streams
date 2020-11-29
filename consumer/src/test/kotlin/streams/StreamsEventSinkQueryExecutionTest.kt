@@ -1,12 +1,13 @@
 package streams
 
+import extension.newDatabase
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
-import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.NullLog
 import org.neo4j.test.TestGraphDatabaseFactory
+import streams.events.StreamsPluginStatus
 import streams.kafka.KafkaSinkConfiguration
 import streams.service.StreamsSinkEntity
 import streams.service.TopicType
@@ -21,10 +22,10 @@ class StreamsEventSinkQueryExecutionTest {
     fun setUp() {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase(StreamsPluginStatus.STOPPED) as GraphDatabaseAPI
         val kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
-        val streamsTopicService = StreamsTopicService(db)
+        val streamsTopicService = StreamsTopicService()
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
         streamsEventSinkQueryExecution = StreamsEventSinkQueryExecution(streamsTopicService, db as GraphDatabaseAPI,
                 NullLog.getInstance(), emptyMap())

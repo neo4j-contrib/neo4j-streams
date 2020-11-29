@@ -1,6 +1,7 @@
 package integrations.kafka
 
 import integrations.kafka.KafkaTestUtils.createProducer
+import extension.newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.producer.KafkaProducer
@@ -19,7 +20,6 @@ import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class KafkaEventSinkNoTopicAutoCreationIT {
@@ -81,7 +81,7 @@ class KafkaEventSinkNoTopicAutoCreationIT {
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.sink.topic.cypher.$notRegisteredTopic", "MERGE (p:NotRegisteredTopic{name: event.name})")
                 .setConfig("streams.sink.topic.cypher.$topic", "MERGE (p:Person{name: event.name})")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
         val kafkaProducer: KafkaProducer<String, ByteArray> = createProducer(kafka = kafka)
 
         // when
@@ -97,5 +97,6 @@ class KafkaEventSinkNoTopicAutoCreationIT {
             val topics = client.listTopics().names().get()
             count == 1L && !topics.contains(notRegisteredTopic)
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        db.shutdown()
     }
 }

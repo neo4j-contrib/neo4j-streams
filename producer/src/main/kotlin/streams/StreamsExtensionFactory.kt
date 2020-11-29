@@ -33,13 +33,13 @@ class StreamsEventRouterLifecycle(db: GraphDatabaseAPI,
                                   configuration: Config,
                                   private val availabilityGuard: AvailabilityGuard,
                                   log: LogService): LifecycleAdapter() {
-    private val streamsEventRouterAvailabilityListener = StreamsEventRouterAvailabilityListener(db, configuration, log)
+    private val streamsEventRouterAvailabilityListener = StreamsEventRouterAvailabilityListener(db, log)
 
     override fun start() {
         availabilityGuard.addListener(streamsEventRouterAvailabilityListener)
     }
 
     override fun stop() {
-        streamsEventRouterAvailabilityListener.unavailable()
+        streamsEventRouterAvailabilityListener.shutdown()
     }
 }

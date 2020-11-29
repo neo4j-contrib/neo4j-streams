@@ -1,16 +1,29 @@
 package streams.procedures
 
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import org.neo4j.procedure.*
+import org.neo4j.procedure.Context
+import org.neo4j.procedure.Description
+import org.neo4j.procedure.Mode
+import org.neo4j.procedure.Name
+import org.neo4j.procedure.Procedure
 import streams.StreamsEventRouter
-import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEventBuilder
-import java.lang.RuntimeException
+import streams.events.StreamsPluginStatus
+import streams.utils.StreamsUtils
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Stream
 
 class StreamsProcedures {
 
     @JvmField @Context var log: Log? = null
+
+    @JvmField @Context
+    var db: GraphDatabaseService? = null
 
     @Procedure(mode = Mode.READ, name = "streams.publish.sync")
     @Description("streams.publish.sync(topic, payload, config) - Allows custom synchronous streaming from Neo4j to the configured stream environment")
@@ -24,8 +37,9 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
-        return eventRouter.sendEventsSync(topic, listOf(streamsEvent), config ?: emptyMap())
-                .map { StreamPublishResult(it) }
+        return getEventRouter(db!!)?.sendEventsSync(topic, listOf(streamsEvent), config ?: emptyMap())
+                ?.map { StreamPublishResult(it) }
+                .orEmpty()
                 .stream()
     }
 
@@ -41,7 +55,7 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
-        eventRouter.sendEvents(topic, listOf(streamsEvent), config ?: emptyMap())
+        getEventRouter(db!!)?.sendEvents(topic, listOf(streamsEvent), config ?: emptyMap())
     }
 
     private fun isTopicNullOrEmpty(topic: String?): Boolean {
@@ -54,7 +68,7 @@ class StreamsProcedures {
     }
 
     private fun checkEnabled() {
-        if (!eventRouterConfiguration.proceduresEnabled) {
+        if (getEventRouter(db!!)?.eventRouterConfiguration?.proceduresEnabled == false) {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
@@ -68,28 +82,29 @@ class StreamsProcedures {
 
     private fun buildStreamEvent(topic: String, payload: Any) = StreamsEventBuilder()
             .withPayload(payload)
-            .withNodeRoutingConfiguration(eventRouterConfiguration
-                    .nodeRouting
-                    .filter { it.topic == topic }
-                    .firstOrNull())
-            .withRelationshipRoutingConfiguration(eventRouterConfiguration
-                    .relRouting
-                    .filter { it.topic == topic }
-                    .firstOrNull())
+            .withNodeRoutingConfiguration(getEventRouter(db!!)?.eventRouterConfiguration
+                    ?.nodeRouting
+                    ?.filter { it.topic == topic }
+                    ?.firstOrNull())
+            .withRelationshipRoutingConfiguration(getEventRouter(db!!)?.eventRouterConfiguration
+                    ?.relRouting
+                    ?.filter { it.topic == topic }
+                    ?.firstOrNull())
             .withTopic(topic)
             .build()
 
     companion object {
-        private lateinit var eventRouter: StreamsEventRouter
-        private lateinit var eventRouterConfiguration: StreamsEventRouterConfiguration
+        private val cache = ConcurrentHashMap<String, StreamsEventRouter>()
 
-        fun registerEventRouter(eventRouter: StreamsEventRouter) {
-            this.eventRouter = eventRouter
-        }
+        private fun getEventRouter(db: GraphDatabaseService) = cache[StreamsUtils.getName(db as GraphDatabaseAPI)]
 
-        fun registerEventRouterConfiguration(eventRouterConfiguration: StreamsEventRouterConfiguration) {
-            this.eventRouterConfiguration = eventRouterConfiguration
-        }
+        fun registerEventRouter(db: GraphDatabaseAPI, eventRouter: StreamsEventRouter) = cache.put(StreamsUtils.getName(db), eventRouter)
+
+        fun unregisterEventRouter(db: GraphDatabaseAPI) = cache.remove(StreamsUtils.getName(db))
+
+        fun hasStatus(db: GraphDatabaseAPI, status: StreamsPluginStatus) = getEventRouter(db)?.status() == status
+
+        fun isRegistered(db: GraphDatabaseAPI) = getEventRouter(db) != null
     }
 
 }

@@ -6,6 +6,7 @@ import org.junit.BeforeClass
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.containers.Network
 import streams.utils.StreamsUtils
 
 @RunWith(Suite::class)
@@ -45,14 +46,15 @@ class KafkaEventSinkSuiteIT {
         fun setUpContainer() {
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
+                    .withNetwork(Network.newNetwork())
                 kafka.start()
                 schemaRegistry = SchemaRegistryContainer(confluentPlatformVersion)
                         .withKafka(kafka)
                 schemaRegistry.start()
                 isRunning = true
             }, IllegalStateException::class.java)
-            assumeTrue("Kafka must be running", kafka.isRunning)
-            assumeTrue("Schema Registry must be running", schemaRegistry.isRunning)
+            assumeTrue("Kafka must be running", this::kafka.isInitialized && kafka.isRunning)
+            assumeTrue("Schema Registry must be running", this::schemaRegistry.isInitialized && schemaRegistry.isRunning)
             assumeTrue("isRunning must be true", isRunning)
         }
 
@@ -66,4 +68,18 @@ class KafkaEventSinkSuiteIT {
             }, UninitializedPropertyAccessException::class.java)
         }
     }
+
+//    @Rule
+//    @JvmField
+//    var testName = TestName()
+//
+//    @Before
+//    fun before() {
+//        println("Starting test ${testName.methodName}")
+//    }
+//
+//    @After
+//    fun after() {
+//        println("Ending test ${testName.methodName}")
+//    }
 }

@@ -4,6 +4,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
+import extension.newDatabase
 import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
@@ -56,7 +57,7 @@ class KafkaEventRouterIT {
                 exists = true
             }, IllegalStateException::class.java)
             Assume.assumeTrue("Kafka container has to exist", exists)
-            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+            Assume.assumeTrue("Kafka must be running", this::kafka.isInitialized && kafka.isRunning)
         }
 
         @AfterClass @JvmStatic
@@ -107,14 +108,13 @@ class KafkaEventRouterIT {
             graphDatabaseBuilder.setConfig("streams.source.topic.nodes.testdeletetopic", "Person:Neo4j{*}")
                     .setConfig("streams.source.topic.relationships.testdeletetopic", "KNOWS{*}")
         }
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
         if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
             db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
             db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
         }
-
     }
 
     @After
@@ -124,8 +124,7 @@ class KafkaEventRouterIT {
 
     @Test
     fun testCreateNode() {
-        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers,
-                zookeeperConnect = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]!!)
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("neo4j"))
         db.execute("CREATE (:Person {name:'John Doe', age:42})").close()

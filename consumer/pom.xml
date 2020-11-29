@@ -122,6 +122,7 @@
                                     <sourceDirs>
                                         <sourceDir>${project.basedir}/src/test/kotlin/integrations</sourceDir>
                                         <sourceDir>${project.basedir}/src/test/kotlin/streams</sourceDir>
+                                        <sourceDir>${project.basedir}/src/test/kotlin/extension</sourceDir>
                                     </sourceDirs>
                                 </configuration>
                             </execution>
