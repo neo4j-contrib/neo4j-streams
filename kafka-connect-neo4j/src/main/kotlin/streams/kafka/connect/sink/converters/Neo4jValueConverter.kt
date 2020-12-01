@@ -18,28 +18,6 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
         private val UTC = ZoneId.of("UTC")
     }
 
-    override fun convert(data: Any?): MutableMap<String, Value?> {
-        val dataManipulatedForNeo4j = if (data is Map<*, *>) {
-            data.mapValues {
-                val value = it.value
-                if (value is BigInteger) {
-                    try {
-                        value.longValueExact()
-                    } catch (e: java.lang.ArithmeticException) {
-                        value.toString()
-                    }
-                } else {
-                    value
-                }
-            }
-        } else {
-            data
-        }
-
-        return super.convert(dataManipulatedForNeo4j)
-    }
-
-
     override fun setValue(result: MutableMap<String, Value?>?, fieldName: String?, value: Any?) {
         if (result != null && fieldName != null) {
             result[fieldName] = Values.value(value) ?: Values.NULL

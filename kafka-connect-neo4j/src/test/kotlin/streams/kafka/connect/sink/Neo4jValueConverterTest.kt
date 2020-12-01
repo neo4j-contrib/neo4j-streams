@@ -7,7 +7,6 @@ import org.neo4j.driver.Values
 import org.neo4j.driver.internal.value.*
 import streams.kafka.connect.sink.converters.Neo4jValueConverter
 import java.math.BigDecimal
-import java.math.BigInteger
 import java.time.Instant
 import java.time.ZoneId
 import java.util.Date
@@ -92,50 +91,6 @@ class Neo4jValueConverterTest {
         assertTrue{ int32Time is LocalTimeValue }
         assertEquals(Date.from(Instant.ofEpochMilli(123)).toInstant().atZone(utc).toLocalTime(), int32Time?.asLocalTime())
 
-    }
-
-    @Test
-    fun `should convert BigInteger into String value if is less then Long MIN_VALUE`() {
-
-        val number = BigInteger.valueOf(Long.MIN_VALUE).pow(2)
-        val result = Neo4jValueConverter().convert(getItemElement(number))
-        val item = result["item"]
-
-        assertTrue{ item is StringValue }
-        assertEquals(number.toString(), item?.asString())
-    }
-
-    @Test
-    fun `should convert BigInteger into String value if is greater then Long MAX_VALUE`() {
-
-        val number = BigInteger.valueOf(Long.MAX_VALUE).pow(2)
-        val result = Neo4jValueConverter().convert(getItemElement(number))
-        val item = result["item"]
-
-        assertTrue{ item is StringValue }
-        assertEquals(number.toString(), item?.asString())
-    }
-
-    @Test
-    fun `should convert BigInteger into Long neo4j value if is equal to Long MAX_VALUE`() {
-
-        val number = Long.MAX_VALUE
-        val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
-        val item = result["item"]
-
-        assertTrue{ item is IntegerValue }
-        assertEquals(number, item?.asLong())
-    }
-
-    @Test
-    fun `should convert BigInteger into Long neo4j value if is less then Long MAX_VALUE and greater then Long MIN_VALUE`() {
-
-        val number: Long = 12345
-        val result = Neo4jValueConverter().convert(getItemElement(BigInteger.valueOf(number)))
-        val item = result["item"]
-
-        assertTrue{ item is IntegerValue }
-        assertEquals(number, item?.asLong())
     }
 
     @Test
