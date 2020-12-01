@@ -2,20 +2,17 @@ package streams.kafka.connect.sink.converters
 
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
-import org.slf4j.LoggerFactory
 import java.math.BigDecimal
-import java.math.BigInteger
 import java.time.LocalTime
 import java.time.ZoneId
-import java.util.*
+import java.util.Date
 import java.util.concurrent.TimeUnit
 
 
 class Neo4jValueConverter: MapValueConverter<Value>() {
 
     companion object {
-        @JvmStatic
-        private val UTC = ZoneId.of("UTC")
+        @JvmStatic private val UTC = ZoneId.of("UTC")
     }
 
     override fun setValue(result: MutableMap<String, Value?>?, fieldName: String?, value: Any?) {
