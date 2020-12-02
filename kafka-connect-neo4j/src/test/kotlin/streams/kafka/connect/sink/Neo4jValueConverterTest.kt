@@ -94,7 +94,7 @@ class Neo4jValueConverterTest {
     }
 
     @Test
-    fun `should convert BigDecimal into String neo4j value if is a positive less then Double MIN_VALUE`() {
+    fun `should convert BigDecimal into String neo4j value if is a positive less than Double MIN_VALUE`() {
 
         val number = BigDecimal.valueOf(Double.MIN_VALUE).pow(2)
         val result = Neo4jValueConverter().convert(getItemElement(number))
@@ -105,7 +105,7 @@ class Neo4jValueConverterTest {
     }
 
     @Test
-    fun `should convert BigDecimal into String neo4j value if is a negative less then Double MAX_VALUE`() {
+    fun `should convert BigDecimal into String neo4j value if is a negative less than Double MAX_VALUE`() {
 
         val number = - (BigDecimal.valueOf(Double.MAX_VALUE)).multiply(BigDecimal.valueOf(2))
         val result = Neo4jValueConverter().convert(getItemElement(number))
@@ -116,7 +116,7 @@ class Neo4jValueConverterTest {
     }
 
     @Test
-    fun `should convert BigDecimal into String neo4j value if is greater then Double MAX_VALUE`() {
+    fun `should convert BigDecimal into String neo4j value if is greater than Double MAX_VALUE`() {
 
         val number = BigDecimal.valueOf(Double.MAX_VALUE).pow(2)
         val result = Neo4jValueConverter().convert(getItemElement(number))
@@ -127,7 +127,7 @@ class Neo4jValueConverterTest {
     }
 
     @Test
-    fun `should convert BigDecimal into Double neo4j value if is less then Double MAX_VALUE and greater then Double MIN_VALUE`() {
+    fun `should convert BigDecimal into Double neo4j value if is less than Double MAX_VALUE and greater than Double MIN_VALUE`() {
 
         val number = 3456.78
         val result =  Neo4jValueConverter().convert(getItemElement(BigDecimal.valueOf(number)))
