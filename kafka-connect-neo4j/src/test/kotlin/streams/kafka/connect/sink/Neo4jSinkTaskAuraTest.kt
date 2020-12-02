@@ -33,8 +33,7 @@ class Neo4jSinkTaskAuraTest {
         private val user: String? = System.getenv("AURA_USER")
         private val password: String? = System.getenv("AURA_PASSWORD")
         private val uri: String? = System.getenv("AURA_URI")
-
-        private var driver: Driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
+        private val driver: Driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
 
         private const val NAME_TOPIC = "neotopic"
         private const val SHOW_CURRENT_USER = "SHOW CURRENT USER"
