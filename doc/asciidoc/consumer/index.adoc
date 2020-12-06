@@ -60,7 +60,7 @@ Under the hood the Sink inject the event object as a parameter in this way
 
 [source,cypher]
 ----
-UNWIND {events} AS event
+UNWIND $events AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
@@ -72,7 +72,7 @@ Where `{events}` is a json list, so continuing with the example above a possible
 :params events => [{id:"alice@example.com",properties:{name:"Alice",age:32}},
     {id:"bob@example.com",properties:{name:"Bob",age:42}}]
 
-UNWIND {events} AS event
+UNWIND $events AS event
 MERGE (n:Label {id: event.id})
     ON CREATE SET n += event.properties
 ----
