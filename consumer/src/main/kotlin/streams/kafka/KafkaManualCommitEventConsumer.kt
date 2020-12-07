@@ -63,7 +63,7 @@ class KafkaManualCommitEventConsumer(config: KafkaSinkConfiguration,
     }
 
     private fun commitData(commit: Boolean, topicMap: Map<TopicPartition, OffsetAndMetadata>) {
-        if (commit) {
+        if (commit && topicMap.isNotEmpty()) {
             if (asyncCommit) {
                 if (log.isDebugEnabled) {
                     log.debug("Committing data in async")
