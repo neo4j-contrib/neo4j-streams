@@ -20,7 +20,7 @@ import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -204,7 +204,7 @@ class KafkaEventRouterIT {
         }}
         consumer.close()
     }
-    
+
     @Test
     fun testProcedureWithKey() {
         val topic = UUID.randomUUID().toString()
