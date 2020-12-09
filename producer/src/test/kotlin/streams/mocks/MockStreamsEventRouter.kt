@@ -20,7 +20,7 @@ class MockStreamsEventRouter(logService: LogService = NullLogService.getInstance
             0, 1, 2, 3, 4, 5
     ).toMap()
 
-    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>) {
+    override fun sendEvents(topic: String, streamsTransactionEvents: List<out StreamsEvent>, config: Map<String, Any?>) {
         events.addAll(streamsTransactionEvents as List<StreamsTransactionEvent>)
     }
 

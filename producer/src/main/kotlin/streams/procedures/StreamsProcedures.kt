@@ -53,7 +53,7 @@ class StreamsProcedures {
         checkPayloadNotNull(payload)
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
-        getStreamsEventSinkStoreEntry().eventRouter.sendEvents(topic, listOf(streamsEvent))
+        getStreamsEventSinkStoreEntry().eventRouter.sendEvents(topic, listOf(streamsEvent), config ?: emptyMap())
     }
 
     private fun checkEnabled() {
