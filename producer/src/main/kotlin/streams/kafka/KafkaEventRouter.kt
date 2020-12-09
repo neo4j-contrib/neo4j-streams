@@ -96,8 +96,13 @@ class KafkaEventRouter: StreamsEventRouter {
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
+<<<<<<< HEAD
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
+=======
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
+>>>>>>> changed git add . with ?:
         return send(producerRecord, sync)
     }
 
