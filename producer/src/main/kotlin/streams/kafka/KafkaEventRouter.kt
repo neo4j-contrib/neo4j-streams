@@ -99,8 +99,8 @@ class KafkaEventRouter: StreamsEventRouter {
         }
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key!!),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String?, ByteArray>
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
         return send(producerRecord, sync)
     }
 
