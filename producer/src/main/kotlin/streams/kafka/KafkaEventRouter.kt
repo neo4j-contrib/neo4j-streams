@@ -85,7 +85,7 @@ class KafkaEventRouter: StreamsEventRouter {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key!!),
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
                 JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
         return send(producerRecord, sync)
     }
