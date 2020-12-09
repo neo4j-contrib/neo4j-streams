@@ -6,7 +6,7 @@ import streams.events.StreamsEvent
 
 abstract class StreamsEventRouter(val logService: LogService?, val config: Config?) {
 
-    abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>)
+    abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?> = emptyMap())
 
     abstract fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>>
 

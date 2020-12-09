@@ -6,6 +6,7 @@ import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
+import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -199,6 +200,87 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
+    }
+    
+    @Test
+    fun testProcedureWithKey() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf("neo4jKey"))
+            val message = "Hello World"
+            db.execute("CALL streams.publish('neo4jKey', '$message')").close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue {
+                records.all {
+                    JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                        message == it.payload
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureWithKeyAsMap() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf("neo4jKeyMap"))
+            val message = "Hello World"
+            val keyRecord = mutableMapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
+            db.execute("CALL streams.publish('neo4jKeyMap', '$message', {key: \$key } )", mapOf("key" to keyRecord)).close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue {
+                records.all {
+                    JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                        message == it.payload
+                    }
+                    && JSONUtils.readValue<Map<String, String>>(it.key()).let {
+                        keyRecord["one"] == it["one"]
+                                && keyRecord["two"] == it["two"]
+                                && keyRecord["three"] == it["three"]
+                    }
+                }
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureWithPartitionAsNotNumber() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf("neo4j"))
+            val message = "Hello World"
+            val keyRecord = "test"
+            val partitionRecord = "notNumber"
+            assertFailsWith(QueryExecutionException::class) {
+                db.execute("CALL streams.publish('neo4j', '$message', {key: '$keyRecord', partition: '$partitionRecord' })").close()
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureWithPartitionAndKey() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf("neo4jPartitionAndKey"))
+            val message = "Hello World"
+            val keyRecord = "test"
+            val partitionRecord = 0
+            db.execute("CALL streams.publish('neo4jPartitionAndKey', '$message', {key: '$keyRecord', partition: $partitionRecord })").close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue {
+                records.all {
+                    JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                        message == it.payload
+                    }
+                    && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+                    && JSONUtils.readValue<Int>(it.partition()).let { partitionRecord == it }
+                }
+            }
+        }
     }
 
     @Test
