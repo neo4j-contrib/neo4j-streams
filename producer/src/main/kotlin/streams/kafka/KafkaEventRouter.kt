@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Neo4jKafkaProducer<ByteArray, ByteArray>
+    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
 
