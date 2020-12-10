@@ -33,7 +33,7 @@ class Neo4jSinkTaskAuraTest {
         private val user: String? = System.getenv("AURA_USER")
         private val password: String? = System.getenv("AURA_PASSWORD")
         private val uri: String? = System.getenv("AURA_URI")
-        private val driver: Driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
+        private var driver: Driver? = null
 
         private const val NAME_TOPIC = "neotopic"
         private const val SHOW_CURRENT_USER = "SHOW CURRENT USER"
@@ -45,9 +45,11 @@ class Neo4jSinkTaskAuraTest {
         private const val COUNT_NODES_SINK_AURA = "MATCH (s:$LABEL_SINK_AURA) RETURN count(s) as count"
 
         @BeforeClass
+        @JvmStatic
         fun setUp() {
             assumeTrue(user != null)
             assumeTrue(password != null)
+            driver = GraphDatabase.driver(uri, AuthTokens.basic(user, password))
         }
 
         fun getMapSinkConnectorConfig() = mutableMapOf(
@@ -67,14 +69,13 @@ class Neo4jSinkTaskAuraTest {
 
     @After
     fun clearNodesAura() {
-        driver.session().run("MATCH (n:$LABEL_SINK_AURA) DETACH DELETE n")
+        driver?.session()?.run("MATCH (n:$LABEL_SINK_AURA) DETACH DELETE n")
     }
 
 
     @Test
     fun `test with struct in Aura 4`() {
-        driver.session().use { countEntitiesSinkAura(it, 0) }
-
+        driver?.session().use { countEntitiesSinkAura(it, 0) }
         val props = getMapSinkConnectorConfig()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$NAME_TOPIC"] = " CREATE (b:$LABEL_SINK_AURA)"
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
@@ -86,7 +87,7 @@ class Neo4jSinkTaskAuraTest {
         val input = listOf(SinkRecord(NAME_TOPIC, 1, null, null, SIMPLE_SCHEMA, Struct(SIMPLE_SCHEMA).put("name", "Baz"), 42))
         task.put(input)
 
-        driver.session().use { countEntitiesSinkAura(it, 1) }
+        driver?.session().use { countEntitiesSinkAura(it, 1) }
     }
 
     @Test
@@ -148,14 +149,14 @@ class Neo4jSinkTaskAuraTest {
                 SinkRecord(NAME_TOPIC, 1, null, null, null, cdcDataRelationship, 44))
         task.put(input)
 
-        driver.session().use {
+        driver?.session().use {
             countEntitiesSinkAura(it, 1, "MATCH (:$LABEL_SINK_AURA)-[r:HAS_REL]->(:$LABEL_SINK_AURA) RETURN COUNT(r) as count")
         }
     }
 
     @Test
     fun `should update data into Neo4j from CDC events in Aura 4`() {
-        driver.session().run("""
+        driver?.session()?.run("""
                 CREATE (s:User:OldLabel:$LABEL_SINK_AURA{name:'Pippo', sourceId:'0'})
                     -[r:`KNOWS WHO`{since:2014, sourceId:'2'}]->
                     (e:`User Ext`:$LABEL_SINK_AURA{name:'Pluto', sourceId:'1'})
@@ -206,7 +207,7 @@ class Neo4jSinkTaskAuraTest {
                 SinkRecord(NAME_TOPIC, 1, null, null, null, cdcDataRelationship, 43))
         task.put(input)
 
-        driver.session().use {
+        driver?.session().use {
             countEntitiesSinkAura(it, 1,
                     "MATCH (:User {age:99})-[r:`KNOWS WHO`{since:1999, sourceId:'2', foo:'bar'}]->(:`User Ext`) RETURN COUNT(r) as count")
         }
@@ -215,12 +216,12 @@ class Neo4jSinkTaskAuraTest {
     @Test
     fun `should delete data into Neo4j from CDC events in Aura 4`() {
 
-        driver.session().use {
+        driver?.session().use {
             it?.run("CREATE (s:User:OldLabel:$LABEL_SINK_AURA{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'0'})")
             it?.run("CREATE (s:User:OldLabel:$LABEL_SINK_AURA{name:'Andrea', `comp@ny`:'LARUS-BA', sourceId:'1'})")
         }
 
-        driver.session().use { countEntitiesSinkAura(it, 2) }
+        driver?.session().use { countEntitiesSinkAura(it, 2) }
 
         val props = getMapSinkConnectorConfig()
         props[SinkTask.TOPICS_CONFIG] = NAME_TOPIC
@@ -246,7 +247,7 @@ class Neo4jSinkTaskAuraTest {
         val input = listOf(SinkRecord(NAME_TOPIC, 1, null, null, null, cdcDataStart, 42))
         task.put(input)
 
-        driver.session().use { countEntitiesSinkAura(it, 1) }
+        driver?.session().use { countEntitiesSinkAura(it, 1) }
     }
 
     @Test
@@ -264,7 +265,7 @@ class Neo4jSinkTaskAuraTest {
         val input = listOf(SinkRecord(NAME_TOPIC, 1, null, null, null, data, 42))
         task.put(input)
 
-        driver.session().use {
+        driver?.session().use {
             countEntitiesSinkAura(it, 1,
                     "MATCH (n:$LABEL_SINK_AURA{name: 'Pippo', surname: 'Pluto', userId: 1, `address.city`: 'Cerignola'}) RETURN count(n) AS count")
         }
@@ -284,7 +285,7 @@ class Neo4jSinkTaskAuraTest {
         task.start(props)
         val input = listOf(SinkRecord(NAME_TOPIC, 1, null, null, null, data, 42))
         task.put(input)
-        driver.session().use {
+        driver?.session().use {
             countEntitiesSinkAura(it, 1, "MATCH (:$LABEL_SINK_AURA{sourceId: 1})-[r:HAS_REL]->(:$LABEL_SINK_AURA{targetId: 1}) RETURN COUNT(r) as count")
         }
     }
@@ -317,7 +318,7 @@ class Neo4jSinkTaskAuraTest {
         task.start(props)
         task.put(data)
 
-        driver.session().use {
+        driver?.session().use {
             countEntitiesSinkAura(it, 5, "MATCH (n:$LABEL_SINK_AURA:Bar:Label) RETURN count(n) AS count")
             countEntitiesSinkAura(it, 10, "MATCH (n:$LABEL_SINK_AURA:Bar) RETURN count(n) AS count")
         }
@@ -326,7 +327,7 @@ class Neo4jSinkTaskAuraTest {
     @Test
     fun `neo4j user should not have the admin role in Aura 4`() {
 
-        driver.session(SessionConfig.forDatabase(SYSTEM)).use { session ->
+        driver?.session(SessionConfig.forDatabase(SYSTEM)).use { session ->
             session?.run(SHOW_CURRENT_USER).let {
                 assertTrue { it!!.hasNext() }
                 val roles = it!!.next().get("roles").asList()
@@ -343,7 +344,7 @@ class Neo4jSinkTaskAuraTest {
         assertFailsWith(ClientException::class,
                 "This is an administration command and it should be executed against the system database: $SHOW_CURRENT_USER")
         {
-            driver.session(SessionConfig.forDatabase(NEO4J)).use {
+            driver?.session(SessionConfig.forDatabase(NEO4J)).use {
                 it?.run(SHOW_CURRENT_USER)
             }
         }
@@ -354,14 +355,14 @@ class Neo4jSinkTaskAuraTest {
 
         assertFailsWith(ClientException::class, ERROR_ADMIN_COMMAND)
         {
-            driver.session(SessionConfig.forDatabase(SYSTEM)).use {
+            driver?.session(SessionConfig.forDatabase(SYSTEM)).use {
                 it?.run(DBMS_LIST_CONFIG)
             }
         }
 
         assertFailsWith(ClientException::class, ERROR_ADMIN_COMMAND)
         {
-            driver.session(SessionConfig.forDatabase(NEO4J)).use {
+            driver?.session(SessionConfig.forDatabase(NEO4J)).use {
                 it?.run(DBMS_LIST_CONFIG)
             }
         }
