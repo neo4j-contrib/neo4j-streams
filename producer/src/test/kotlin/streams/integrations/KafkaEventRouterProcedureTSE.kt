@@ -37,6 +37,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
 
     @Test
     fun testProcedureWithKey() {
+        setUpProcedureTests()
         db.start()
         val topic = UUID.randomUUID().toString()
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)

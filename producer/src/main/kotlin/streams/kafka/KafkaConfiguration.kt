@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
+import org.apache.kafka.common.serialization.StringSerializer
 import streams.extensions.getInt
 import streams.extensions.toPointCase
 import streams.utils.JSONUtils
@@ -90,7 +91,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
 
     private fun addSerializers() : Properties {
         val props = Properties()
-        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  ByteArraySerializer::class.java
+        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  StringSerializer::class.java
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
         return props
     }

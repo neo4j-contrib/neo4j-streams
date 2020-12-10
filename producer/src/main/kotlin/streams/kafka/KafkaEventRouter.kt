@@ -96,6 +96,7 @@ class KafkaEventRouter: StreamsEventRouter {
 
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
+
         return send(producerRecord, sync)
     }
 
