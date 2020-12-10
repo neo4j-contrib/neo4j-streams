@@ -59,25 +59,13 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, Exception::class.java)
     }
 
-<<<<<<< HEAD
     private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray>, sync: Boolean = false): Map<String, Any>? {
-=======
-<<<<<<< HEAD
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any>? {
-=======
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>) {
->>>>>>> code clean
->>>>>>> code clean
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             if (log.isDebugEnabled) {
                 log.debug("Error while sending record to ${producerRecord.topic()}, because it doesn't exists")
             }
             // TODO add logging system here
-<<<<<<< HEAD
             return null
-=======
-            return
->>>>>>> code clean
         }
         return if (sync) {
             producer.send(producerRecord).get().toMap()
@@ -106,13 +94,8 @@ class KafkaEventRouter: StreamsEventRouter {
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
-<<<<<<< HEAD
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
-=======
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
->>>>>>> changed git add . with ?:
         return send(producerRecord, sync)
     }
 
