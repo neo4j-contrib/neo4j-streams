@@ -89,11 +89,17 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
-        val key = config.getOrDefault("key", UUID.randomUUID().toString())
+        val key = config.getOrDefault("key", UUID.randomUUID().toString()).toString()
 
+<<<<<<< HEAD
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
                 JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
         return send(producerRecord, sync)
+=======
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key,
+                JSONUtils.writeValueAsBytes(event))
+        send(producerRecord)
+>>>>>>> changes review
     }
 
     private fun sendEvent(topic: String, event: StreamsTransactionEvent, config: Map<String, Any?>) {
@@ -122,7 +128,6 @@ class KafkaEventRouter: StreamsEventRouter {
             transactionEvents.forEach {
                 if (it is StreamsTransactionEvent) {
                     sendEvent(topic, it, config)
-
                 } else {
                     sendEvent(topic, it, config)
                 }
@@ -143,7 +148,7 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
-    private fun getProducerRecordId(event: StreamsTransactionEvent) = JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
+    private fun getProducerRecordId(event: StreamsTransactionEvent) = "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"
 
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
