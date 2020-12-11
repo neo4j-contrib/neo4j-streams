@@ -92,11 +92,26 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
+<<<<<<< HEAD
         // in the procedures we allow to define a custom message key via the configuration property key
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
+=======
+        val key = config.getOrDefault("key", UUID.randomUUID().toString())
+
+<<<<<<< HEAD
+<<<<<<< HEAD
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
+        return send(producerRecord, sync)
+=======
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key,
+=======
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+>>>>>>> changed key serializer
+>>>>>>> changed key serializer
                 JSONUtils.writeValueAsBytes(event))
 
         return send(producerRecord, sync)
@@ -150,6 +165,12 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
+<<<<<<< HEAD
+=======
+    private fun getProducerRecordId(event: StreamsTransactionEvent) =
+            JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
+
+>>>>>>> changed key serializer
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
 }
