@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
+    private lateinit var producer: Neo4jKafkaProducer<ByteArray, ByteArray>
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
 
@@ -59,7 +59,7 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, Exception::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray, ByteArray>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             if (log.isDebugEnabled) {
                 log.debug("Error while sending record to ${producerRecord.topic()}, because it doesn't exists")
@@ -89,14 +89,18 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
-        val key = config.getOrDefault("key", UUID.randomUUID().toString()).toString()
+        val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
                 JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
         return send(producerRecord, sync)
 =======
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key,
+=======
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+>>>>>>> changed key serializer
                 JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
 >>>>>>> changes review
@@ -148,7 +152,8 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
-    private fun getProducerRecordId(event: StreamsTransactionEvent) = "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"
+    private fun getProducerRecordId(event: StreamsTransactionEvent) =
+            JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
 
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 

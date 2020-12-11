@@ -54,7 +54,29 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             JSONUtils.readValue<StreamsEvent>(it.value()).let {
                 message == it.payload
             }
-            && keyRecord == it.key()
+            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+        }}
+    }
+
+    @Test
+    fun testProcedureWithKeyAsMap() {
+        db.start()
+        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
+        kafkaConsumer.subscribe(listOf("neo4j"))
+        val message = "Hello World"
+        val keyRecord = mutableMapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
+        db.execute("CALL streams.publish('neo4j', '$message', {key: \$key } )", mapOf("key" to keyRecord))
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+        assertTrue { records.all {
+            JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                message == it.payload
+            }
+            && JSONUtils.readValue<Map<String, String>>(it.key()).let {
+                keyRecord["one"] == it["one"]
+                    && keyRecord["two"] == it["two"]
+                    && keyRecord["three"] == it["three"]
+            }
         }}
     }
 
@@ -88,7 +110,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             JSONUtils.readValue<StreamsEvent>(it.value()).let {
                 message == it.payload
             }
-            && keyRecord == it.key()
+            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
             && partitionRecord == it.partition()
         }}
     }
@@ -185,7 +207,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
                 JSONUtils.readValue<StreamsEvent>(it.value()).let {
                     message == it.payload
                 }
-                && keyRecord == it.key()
+                && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
                 && partitionRecord == it.partition()
             }}
         }
