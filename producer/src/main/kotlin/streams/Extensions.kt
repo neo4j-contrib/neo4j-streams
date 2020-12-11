@@ -1,5 +1,6 @@
 package streams
 
+import org.apache.kafka.clients.producer.RecordMetadata
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.schema.ConstraintDefinition
@@ -18,6 +19,14 @@ fun Relationship.toMap(): Map<String, Any?> {
             "end" to endNode.toMap(),
             "type" to EntityType.relationship)
 }
+
+fun RecordMetadata.toMap(): Map<String, Any> = mapOf(
+        "offset" to offset(),
+        "timestamp" to timestamp(),
+        "keySize" to serializedKeySize(),
+        "valueSize" to serializedValueSize(),
+        "partition" to partition()
+)
 
 fun ConstraintDefinition.streamsConstraintType(): StreamsConstraintType {
     return when (this.constraintType) {

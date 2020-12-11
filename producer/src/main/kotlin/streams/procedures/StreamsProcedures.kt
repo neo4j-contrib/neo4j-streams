@@ -12,6 +12,9 @@ import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.events.StreamsEventBuilder
 import java.util.concurrent.ConcurrentHashMap
+import java.util.stream.Stream
+
+data class StreamPublishResult(@JvmField val value: Map<String, Any>)
 
 data class StreamsEventSinkStoreEntry(val eventRouter: StreamsEventRouter,
                                       val eventRouterConfiguration: StreamsEventRouterConfiguration)
@@ -22,31 +25,34 @@ class StreamsProcedures {
 
     @JvmField @Context var log: Log? = null
 
+    @Procedure(mode = Mode.READ, name = "streams.publish.sync")
+    @Description("streams.publish.sync(topic, payload, config) - Allows custom synchronous streaming from Neo4j to the configured stream environment")
+    fun sync(@Name("topic") topic: String?, @Name("payload") payload: Any?,
+             @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?): Stream<StreamPublishResult> {
+        checkEnabled()
+        if (isTopicNullOrEmpty(topic)) {
+            return Stream.empty()
+        }
+        checkPayloadNotNull(payload)
+
+        val streamsEvent = buildStreamEvent(topic!!, payload!!)
+        return getStreamsEventSinkStoreEntry().eventRouter
+                .sendEventsSync(topic, listOf(streamsEvent))
+                .map { StreamPublishResult(it) }
+                .stream()
+    }
+
     @Procedure(mode = Mode.READ, name = "streams.publish")
-    @Description("streams.publish(topic, config) - Allows custom streaming from Neo4j to the configured stream environment")
+    @Description("streams.publish(topic, payload, config) - Allows custom streaming from Neo4j to the configured stream environment")
     fun publish(@Name("topic") topic: String?, @Name("payload") payload: Any?,
                 @Name(value = "config", defaultValue = "{}") config: Map<String, Any>?) = runBlocking {
         checkEnabled()
-        if (topic.isNullOrEmpty()) {
-            log?.info("Topic empty, no message sent")
+        if (isTopicNullOrEmpty(topic)) {
             return@runBlocking
         }
-        if (payload == null) {
-            log?.info("Payload empty, no message sent")
-            return@runBlocking
-        }
-        val streamsEvent = StreamsEventBuilder()
-                .withPayload(payload)
-                .withNodeRoutingConfiguration(getStreamsEventSinkStoreEntry()
-                        .eventRouterConfiguration
-                        .nodeRouting
-                        .firstOrNull { it.topic == topic })
-                .withRelationshipRoutingConfiguration(getStreamsEventSinkStoreEntry()
-                        .eventRouterConfiguration
-                        .relRouting
-                        .firstOrNull { it.topic == topic })
-                .withTopic(topic)
-                .build()
+        checkPayloadNotNull(payload)
+
+        val streamsEvent = buildStreamEvent(topic!!, payload!!)
         getStreamsEventSinkStoreEntry().eventRouter.sendEvents(topic, listOf(streamsEvent))
     }
 
@@ -55,6 +61,35 @@ class StreamsProcedures {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
+
+    private fun isTopicNullOrEmpty(topic: String?): Boolean {
+        return if (topic.isNullOrEmpty()) {
+            log?.info("Topic empty, no message sent")
+            true
+        } else {
+            false
+        }
+    }
+
+    private fun checkPayloadNotNull(payload: Any?) {
+        if (payload == null) {
+            log?.error("Payload empty, no message sent")
+            throw RuntimeException("Payload may not be null")
+        }
+    }
+
+    private fun buildStreamEvent(topic: String, payload: Any) = StreamsEventBuilder()
+            .withPayload(payload)
+            .withNodeRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                    .eventRouterConfiguration
+                    .nodeRouting
+                    .firstOrNull { it.topic == topic })
+            .withRelationshipRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                    .eventRouterConfiguration
+                    .relRouting
+                    .firstOrNull { it.topic == topic })
+            .withTopic(topic)
+            .build()
 
     private fun getStreamsEventSinkStoreEntry() = streamsEventRouterStore[db!!.databaseName()]!!
 

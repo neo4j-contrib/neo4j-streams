@@ -9,6 +9,8 @@ abstract class StreamsEventRouter(val logService: LogService, val config: Stream
 
     abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>)
 
+    abstract fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>>
+
     abstract fun start()
 
     abstract fun stop()
