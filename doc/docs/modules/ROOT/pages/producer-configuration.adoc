@@ -1,7 +1,5 @@
 == Configuration
 
-kk
-
 You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf (with default values)
