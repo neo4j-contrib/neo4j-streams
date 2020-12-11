@@ -2,6 +2,7 @@ package streams.kafka.connect.sink.converters
 
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
+import java.math.BigDecimal
 import java.time.LocalTime
 import java.time.ZoneId
 import java.util.Date
@@ -22,6 +23,18 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
 
     override fun newValue(): MutableMap<String, Value?> {
         return mutableMapOf()
+    }
+
+    override fun setDecimalField(result: MutableMap<String, Value?>?, fieldName: String?, value: BigDecimal?) {
+        val doubleValue = value?.toDouble()
+        val fitsScale = doubleValue != Double.POSITIVE_INFINITY
+                && doubleValue != Double.NEGATIVE_INFINITY
+                && value?.compareTo(doubleValue?.let { BigDecimal.valueOf(it) }) == 0
+        if (fitsScale) {
+            setValue(result, fieldName, doubleValue)
+        } else {
+            setValue(result, fieldName, value?.toPlainString())
+        }
     }
 
     override fun setTimestampField(result: MutableMap<String, Value?>?, fieldName: String?, value: Date?) {
