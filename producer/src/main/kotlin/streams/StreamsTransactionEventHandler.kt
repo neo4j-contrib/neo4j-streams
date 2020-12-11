@@ -42,7 +42,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
     private val nodeAll = configuration.nodeRouting.any { it.labels.isEmpty() }
     private val relAll = configuration.relRouting.any { it.name.isNullOrBlank() }
 
-    private val hostName = InetAddress.getLocalHost().hostName
+    private val hostName by lazy { InetAddress.getLocalHost().hostName }
 
     /**
      * Wrap the payload into a StreamsTransactionEvent for the eventId
