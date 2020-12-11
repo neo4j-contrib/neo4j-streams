@@ -41,6 +41,12 @@ You can tune the custom property `kafka.topic.discovery.polling.interval` in ord
 periodically check for new topics into the Kafka cluster so the plugin will be able
 to send events to the defined topics.
 
+[NOTE]
+====
+To allow insertion of keys in any format (e.g. through `streams.publish` procedure) **the key.serializer is set with the org.apache.kafka.common.serialization.ByteArraySerializer**.
+like value.serializer
+====
+
 ==== Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],

@@ -1,5 +1,7 @@
 == Configuration
 
+kk
+
 You can set the following configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf (with default values)
@@ -44,6 +46,12 @@ this because the `KafkaProducer.send()` method blocks the execution, as explaine
 You can tune the custom property `kafka.topic.discovery.polling.interval` in order to
 periodically check for new topics into the Kafka cluster so the plugin will be able
 to send events to the defined topics.
+
+[NOTE]
+====
+To allow insertion of keys in any format (e.g. through `streams.publish` procedure) **the key.serializer is set with the org.apache.kafka.common.serialization.ByteArraySerializer**.
+like value.serializer
+====
 
 === Multi Database Support
 
