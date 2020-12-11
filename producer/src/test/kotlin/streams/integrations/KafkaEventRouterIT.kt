@@ -18,6 +18,10 @@ import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterIT {
@@ -195,6 +199,83 @@ class KafkaEventRouterIT {
             }
         })
         consumer.close()
+    }
+
+    @Test
+    fun testCantPublishNull() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("neo4j"))
+
+            assertFailsWith(RuntimeException::class) {
+                db.execute("CALL streams.publish('neo4j', null)")
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureSyncWithNode() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+
+            consumer.subscribe(listOf("neo4j"))
+            db.execute("MATCH (n:Baz) DETACH DELETE n").close()
+            db.execute("CREATE (n:Baz {age: 23, name: 'Foo', surname: 'Bar'})").close()
+
+            val recordsCreation = consumer.poll(5000)
+            assertEquals(1, recordsCreation.count())
+
+            db.execute("MATCH (n:Baz) \n" +
+                    "CALL streams.publish.sync('neo4j', n) \n" +
+                    "YIELD value \n" +
+                    "RETURN value").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
+
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
+
+                assertFalse { result.hasNext() }
+            }
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(3, ((records.map {
+                JSONUtils.readValue<StreamsEvent>(it.value())
+                        .let { it.payload }
+            }[0] as Map<String, Any>)["properties"] as Map<String, Any>).size)
+        }
+    }
+
+    @Test
+    fun testProcedureSync() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf("syncTopic"))
+            val message = "Hello World"
+            db.execute("CALL streams.publish.sync('syncTopic', '$message')").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
+
+                assertFalse { result.hasNext() }
+            }
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(true, records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                    message == it.payload
+                }
+            })
+        }
     }
 
     private fun getRecordCount(config: KafkaConfiguration, topic: String): Int {
