@@ -210,7 +210,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             JSONUtils.readValue<StreamsEvent>(it.value()).let {
                 message == it.payload
             }
-            && keyRecord == it.key()
+            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
             && partitionRecord == it.partition()
         }}
     }
