@@ -23,7 +23,11 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
     private val nodeAll = configuration.nodeRouting.any { it.labels.isEmpty() }
     private val relAll = configuration.relRouting.any { it.name.isNullOrBlank() }
-
+  
+    // As getting host name in some network configuration can be expensive
+    // this can lead to slowness in the start-up process (i.e. slowing the leader 
+    // election in case of a Causal Cluster. We define it a `lazy` value
+    // computing it at te first invocation
     private val hostName by lazy { InetAddress.getLocalHost().hostName }
 
     /**
