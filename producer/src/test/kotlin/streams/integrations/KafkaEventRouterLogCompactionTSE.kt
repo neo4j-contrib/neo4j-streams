@@ -288,10 +288,10 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         assertEquals(1, recordsTwo.count())
         assertEquals("0", JSONUtils.readValue(recordsTwo.first().key()))
 
-
         db.execute("MATCH (p:Person {name:'Pippo'}) DETACH DELETE p")
         val recordsThree = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsThree.count())
+        assertEquals("0", JSONUtils.readValue(recordsThree.first().key()))
         assertNull(recordsThree.first().value())
     }
 
@@ -319,6 +319,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         db.execute("MATCH (p:Person {name:'Pluto'}) DETACH DELETE p")
         val recordsThree = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsThree.count())
+        assertEquals(mapOf("name" to "Pluto"), JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
         assertNull(recordsThree.first().value())
     }
 
@@ -360,6 +361,8 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
         val recordsFive = kafkaConsumer.poll(10000)
         assertEquals(1, recordsFive.count())
+        assertEquals(mapOf("start" to "0", "end" to "1", "id" to "0"),
+                JSONUtils.readValue(recordsFive.first().key()))
         assertNull(recordsFive.first().value())
     }
 
@@ -401,11 +404,15 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         assertEquals(mapOf("start" to mapOf("name" to "Pippo"),
                 "end" to mapOf("code" to "1367"),
                 "id" to "0"),
-                JSONUtils.readValue(recordsThree.first().key()))
+                JSONUtils.readValue(recordsFour.first().key()))
 
         db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
         val recordsFive = kafkaConsumer.poll(10000)
         assertEquals(1, recordsFive.count())
+        assertEquals(mapOf("start" to mapOf("name" to "Pippo"),
+                "end" to mapOf("code" to "1367"),
+                "id" to "0"),
+                JSONUtils.readValue(recordsFive.first().key()))
         assertNull(recordsFive.first().value())
     }
 
@@ -430,12 +437,15 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         assertEquals(1, recordsTwo.count())
         record = recordsTwo.first()
         meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
-        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(recordsTwo.first().key()))
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
 
         db.execute("MATCH (p:Person {name:'Pippo'}) DETACH DELETE p")
         val recordsThree = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsThree.count())
-        assertNotNull(recordsThree.first().value())
+        record = recordsThree.first()
+        meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
+        assertNotNull(record.value())
     }
 
     @Test
@@ -466,7 +476,10 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         db.execute("MATCH (p:Person {name:'Pluto'}) DETACH DELETE p")
         val recordsThree = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsThree.count())
-        assertNotNull(recordsThree.first().value())
+        record = recordsThree.first()
+        meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
+        assertNotNull(record.value())
     }
 
     @Test
@@ -498,23 +511,24 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         db.execute("MATCH (pe:Person {name:'Pippo'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:BUYS]->(pr)")
         val recordsThree = kafkaConsumer.poll(10000)
         assertEquals(1, recordsThree.count())
-        record = recordsTwo.first()
+        record = recordsThree.first()
         meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
-        assertEquals(stringStrategyDelete(meta),
-                JSONUtils.readValue(record.key()))
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
 
         db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) SET rel.price = '100'")
         val recordsFour = kafkaConsumer.poll(10000)
         assertEquals(1, recordsFour.count())
         record = recordsFour.first()
         meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
-        assertEquals(stringStrategyDelete(meta),
-                JSONUtils.readValue(record.key()))
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
 
         db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
         val recordsFive = kafkaConsumer.poll(10000)
         assertEquals(1, recordsFive.count())
-        assertNotNull(recordsFive.first().value())
+        record = recordsFive.first()
+        meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
+        assertNotNull(record.value())
     }
 
     @Test
@@ -562,6 +576,9 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
         val recordsFive = kafkaConsumer.poll(10000)
         assertEquals(1, recordsFive.count())
-        assertNotNull(recordsFive.first().value())
+        record = recordsFive.first()
+        meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
+        assertEquals(stringStrategyDelete(meta), JSONUtils.readValue(record.key()))
+        assertNotNull(record.value())
     }
 }
