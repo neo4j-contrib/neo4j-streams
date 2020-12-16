@@ -14,6 +14,7 @@ kafka.replication=1
 kafka.linger.ms=1
 kafka.transactional.id=
 kafka.topic.discovery.polling.interval=300000
+kafka.log.cleanup.policy=delete
 
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>

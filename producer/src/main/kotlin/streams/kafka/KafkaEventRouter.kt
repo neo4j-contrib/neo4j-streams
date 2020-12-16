@@ -11,6 +11,8 @@ import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
+import streams.asSourceRecordKey
+import streams.asSourceRecordValue
 import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
@@ -105,8 +107,9 @@ class KafkaEventRouter: StreamsEventRouter {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
-                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
-                JSONUtils.writeValueAsBytes(event))
+                JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.logCleanupPolicy)),
+                event.asSourceRecordValue(kafkaConfig.logCleanupPolicy)?.let { JSONUtils.writeValueAsBytes(it) }
+        )
         send(producerRecord)
     }
 

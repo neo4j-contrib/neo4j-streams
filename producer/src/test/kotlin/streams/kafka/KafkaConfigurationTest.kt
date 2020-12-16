@@ -23,7 +23,8 @@ class KafkaConfigurationTest {
                 "kafka.transactional.id" to "foo",
                 "kafka.linger.ms" to 10,
                 "kafka.fetch.min.bytes" to 1234,
-                "kafka.topic.discovery.polling.interval" to 0L)
+                "kafka.topic.discovery.polling.interval" to 0L,
+                "kafka.log.cleanup.policy" to "delete")
 
         val kafkaConfig = KafkaConfiguration.create(map.mapValues { it.value.toString() })
 
@@ -48,5 +49,6 @@ class KafkaConfigurationTest {
         assertEquals(map["kafka.linger.ms"], properties["linger.ms"])
         assertEquals(map["kafka.fetch.min.bytes"].toString(), properties["fetch.min.bytes"])
         assertEquals(map["kafka.topic.discovery.polling.interval"], properties["topic.discovery.polling.interval"])
+        assertEquals(map["kafka.log.cleanup.policy"], properties["log.cleanup.policy"])
     }
 }

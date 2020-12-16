@@ -3,6 +3,7 @@ package streams.kafka
 import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
+import org.apache.kafka.common.config.TopicConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringSerializer
 import streams.extensions.getInt
@@ -28,6 +29,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val transactionalId: String = StringUtils.EMPTY,
                               val lingerMs: Int = 1,
                               val topicDiscoveryPollingInterval: Long = TimeUnit.MINUTES.toMillis(5),
+                              val logCleanupPolicy: String = TopicConfig.CLEANUP_POLICY_DELETE,
                               val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -55,6 +57,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     lingerMs = config.getInt("linger.ms", default.lingerMs),
                     topicDiscoveryPollingInterval = config.getOrDefault("topic.discovery.polling.interval",
                             default.topicDiscoveryPollingInterval).toString().toLong(),
+                    logCleanupPolicy = config.getOrDefault("log.cleanup.policy", default.logCleanupPolicy),
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
         }
