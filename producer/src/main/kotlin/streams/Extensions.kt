@@ -52,12 +52,16 @@ fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
         } else {
             if (payload is NodePayload) {
                 val payload = payload as NodePayload
-                getNodeConstraintsByLabels(payload.after?.labels ?: payload.before?.labels, schema.constraints, payload.id, payload.after?.properties ?: payload.before?.properties)
+                getNodeConstraintsByLabels(payload.after?.labels ?: payload.before?.labels,
+                        schema.constraints,
+                        payload.id,
+                        payload.after?.properties ?: payload.before?.properties)
+
             } else  {
                 val payload = payload as RelationshipPayload
                 mapOf(
-                        "start" to getNodeConstraintsByLabels(payload.start.labels, schema.constraints, payload.start.id,  payload.start.ids),
-                        "end" to getNodeConstraintsByLabels(payload.end.labels, schema.constraints, payload.end.id, payload.end.ids),
+                        "start" to payload.start.ids.ifEmpty { payload.start.id },
+                        "end" to payload.end.ids.ifEmpty { payload.end.id },
                         "id" to payload.id
                 )
             }
