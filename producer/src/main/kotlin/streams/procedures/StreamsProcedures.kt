@@ -37,7 +37,7 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
         return getStreamsEventSinkStoreEntry().eventRouter
-                .sendEventsSync(topic, listOf(streamsEvent))
+                .sendEventsSync(topic, listOf(streamsEvent), config ?: emptyMap())
                 .map { StreamPublishResult(it) }
                 .stream()
     }

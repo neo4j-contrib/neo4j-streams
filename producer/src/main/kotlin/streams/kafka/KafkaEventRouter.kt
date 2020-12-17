@@ -85,48 +85,39 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): Map<String, Any>? {
+    private fun sendEvent(topic: String, event: StreamsEvent, config: Map<String, Any?>, sync: Boolean = false): Map<String, Any>? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
 
-<<<<<<< HEAD
-<<<<<<< HEAD
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
-        return send(producerRecord, sync)
-=======
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key,
-=======
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
->>>>>>> changed key serializer
                 JSONUtils.writeValueAsBytes(event))
-        send(producerRecord)
->>>>>>> changes review
+        return send(producerRecord, sync)
     }
 
     private fun sendEvent(topic: String, event: StreamsTransactionEvent, config: Map<String, Any?>) {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), getProducerRecordId(event),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
+                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
+                JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         producer.beginTransaction()
 
         val results = transactionEvents.mapNotNull {
-            sendEvent(ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions), topic, it, true)
+            sendEvent(topic, it, config, true)
         }
         producer.commitTransaction()
 
         return results
     }
 
-    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {
+    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>) {
         try {
             producer.beginTransaction()
             transactionEvents.forEach {
@@ -151,9 +142,6 @@ class KafkaEventRouter: StreamsEventRouter {
             producer.abortTransaction()
         }
     }
-
-    private fun getProducerRecordId(event: StreamsTransactionEvent) =
-            JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
 
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 

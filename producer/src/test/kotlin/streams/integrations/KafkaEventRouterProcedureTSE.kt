@@ -14,20 +14,15 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
 
     @Test
     fun testProcedure() {
-<<<<<<< HEAD
-        setUpProcedureTests()
-=======
         db.start()
         val topic = UUID.randomUUID().toString()
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
         kafkaConsumer.subscribe(listOf(topic))
->>>>>>> changes review
         val message = "Hello World"
         db.execute("CALL streams.publish('$topic', '$message')")
         val records = kafkaConsumer.poll(5000)
@@ -116,7 +111,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
     }
 
     @Test
-<<<<<<< HEAD
     fun testCantPublishNull() {
         setUpProcedureTests()
         assertFailsWith(RuntimeException::class) {
@@ -178,12 +172,44 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         })
     }
 
-    private fun setUpProcedureTests() {
+    @Test
+    fun testProcedureSyncWithConfig() {
         db.start()
-        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-        kafkaConsumer.subscribe(listOf("neo4j"))
+        AdminClient.create(mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {
+            val topic = UUID.randomUUID().toString()
+
+            it.createTopics(listOf(NewTopic(topic, 5, 1)))
+            KafkaEventRouterSuiteIT.registerPublishProcedure(db)
+            kafkaConsumer.subscribe(listOf(topic))
+
+            val message = "Hello World"
+            val keyRecord = "test"
+            val partitionRecord = 1
+            db.execute("CALL streams.publish.sync('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })") {
+                assertTrue { it.hasNext() }
+                val resultMap = (it.next())["value"] as Map<String, Any>
+                assertNotNull(resultMap["offset"])
+                assertEquals(partitionRecord, resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
+                assertFalse { it.hasNext() }
+            }
+
+            val records = kafkaConsumer.poll(5000)
+            assertEquals(1, records.count())
+            assertEquals(1, records.count { it.partition() == 1 })
+            assertTrue{ records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).let {
+                    message == it.payload
+                }
+                && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+                && partitionRecord == it.partition()
+            }}
+        }
     }
-=======
+
+    @Test
     fun testProcedureWithTopicWithMultiplePartitionAndKey() {
         db.start()
         AdminClient.create(mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {
@@ -200,8 +226,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
 
             val records = kafkaConsumer.poll(5000)
             assertEquals(1, records.count())
-            assertEquals(0, records.count { it.partition() == 0 })
-            assertEquals(0, records.count { it.partition() == 1 })
             assertEquals(1, records.count { it.partition() == 2 })
             assertTrue{ records.all {
                 JSONUtils.readValue<StreamsEvent>(it.value()).let {
@@ -233,5 +257,9 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         }
     }
 
->>>>>>> changes review
+    private fun setUpProcedureTests() {
+        db.start()
+        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
+        kafkaConsumer.subscribe(listOf("neo4j"))
+    }
 }
