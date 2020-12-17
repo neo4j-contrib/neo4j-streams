@@ -44,7 +44,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
     // As getting host name in some network configuration can be expensive
     // this can lead to slowness in the start-up process (i.e. slowing the leader 
-    // election in case of a Causal Cluster. We define it a `lazy` value
+    // election in case of a Causal Cluster). We define it a `lazy` value
     // computing it at the first invocation
     private val hostName by lazy { InetAddress.getLocalHost().hostName }
 
