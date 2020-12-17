@@ -110,8 +110,8 @@ Input Parameters:
 |`payload`
 |Object
 |The data that you want to stream
-|===
 
+|===
 
 You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
 
