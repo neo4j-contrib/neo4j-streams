@@ -56,11 +56,12 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
     @Test
     fun testProcedureWithKeyAsMap() {
         db.start()
+        val topic = UUID.randomUUID().toString()
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-        kafkaConsumer.subscribe(listOf("neo4j"))
+        kafkaConsumer.subscribe(listOf(topic))
         val message = "Hello World"
         val keyRecord = mutableMapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
-        db.execute("CALL streams.publish('neo4j', '$message', {key: \$key } )", mapOf("key" to keyRecord))
+        db.execute("CALL streams.publish('$topic', '$message', {key: \$key } )", mapOf("key" to keyRecord))
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertTrue { records.all {
