@@ -112,23 +112,6 @@ Input Parameters:
 |The data that you want to stream
 |===
 
-Configuration parameters:
-[cols="3*",options="header"]
-|===
-|Name
-|Type
-|Description
-
-|`key`
-|Object
-|The key of message that you want to stream
-
-|`partition`
-|Int
-|The partition of message that you want to stream
-
-
-|===
 
 You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
 

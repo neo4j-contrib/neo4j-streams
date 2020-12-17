@@ -14,7 +14,6 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
-import kotlin.test.assertTrue
 
 class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
 
