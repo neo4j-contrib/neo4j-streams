@@ -107,8 +107,8 @@ class KafkaEventRouter: StreamsEventRouter {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
-                JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.logCleanupPolicy)),
-                event.asSourceRecordValue(kafkaConfig.logCleanupPolicy)?.let { JSONUtils.writeValueAsBytes(it) }
+                JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy)),
+                event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
         )
         send(producerRecord)
     }

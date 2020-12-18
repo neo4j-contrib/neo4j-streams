@@ -8,6 +8,7 @@ import org.neo4j.graphdb.schema.ConstraintDefinition
 import org.neo4j.graphdb.schema.ConstraintType
 import streams.events.*
 import streams.extensions.labelNames
+import java.lang.RuntimeException
 
 fun Node.toMap(): Map<String, Any?> {
     return mapOf("id" to id.toString(), "properties" to allProperties, "labels" to labelNames(), "type" to EntityType.node)
@@ -47,37 +48,34 @@ fun StreamsTransactionEvent.asSourceRecordValue(strategy: String): StreamsTransa
         if(!isStrategyDelete(strategy) && meta.operation == OperationType.deleted) null else this
 
 fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
-        if (isStrategyDelete(strategy)) {
-         "${meta.txId + meta.txEventId}-${meta.txEventId}"
-        } else {
-            if (payload is NodePayload) {
-                val payload = payload as NodePayload
-                getNodeConstraintsByLabels(payload.after?.labels ?: payload.before?.labels,
-                        schema.constraints,
-                        payload.id,
-                        payload.after?.properties ?: payload.before?.properties)
-
-            } else  {
-                val payload = payload as RelationshipPayload
-                mapOf(
-                        "start" to payload.start.ids.ifEmpty { payload.start.id },
-                        "end" to payload.end.ids.ifEmpty { payload.end.id },
-                        "id" to payload.id
-                )
+        when {
+            isStrategyDelete(strategy) -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
+            isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNodeWithCompact(payload as NodePayload, schema)
+            isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRelWithCompact(payload as RelationshipPayload)
+            else -> {
+                throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
             }
         }
 
-fun getNodeConstraintsByLabels(labels: List<String>?, constraints: List<Constraint>, id: String,  props: Map<*,*>?): Any =
-        if(labels.isNullOrEmpty() || props.isNullOrEmpty()) {
-            id
-        } else {
-            val constraintFiltered = constraints.sortedBy { it.label }.filter { labels.contains(it.label) }
-            if (constraintFiltered.isNotEmpty()) {
-                val propsConstraint: Set<String> = constraintFiltered.flatMap { it.properties }.toSet()
-                props.filterKeys { it in propsConstraint }
-            } else {
-                id
-            }
-        }
+fun getKeyOfNodeWithCompact(payload: NodePayload, schema: Schema ): Any {
+    val props: Map<String, Any> = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
+
+    return schema.constraints
+            .flatMap { it.properties }
+            .sorted()
+            .firstOrNull {
+                props.containsKey(it)
+            }?.let { mapOf(it to props[it]) }
+            .orEmpty()
+            .ifEmpty { payload.id }
+}
+
+fun getKeyOfRelWithCompact(payload: RelationshipPayload ): Any = mapOf(
+            "start" to payload.start.ids.ifEmpty { payload.start.id },
+            "end" to payload.end.ids.ifEmpty { payload.end.id },
+            "id" to payload.id
+    )
 
 fun isStrategyDelete(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_DELETE
+
+fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT

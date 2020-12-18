@@ -29,7 +29,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val transactionalId: String = StringUtils.EMPTY,
                               val lingerMs: Int = 1,
                               val topicDiscoveryPollingInterval: Long = TimeUnit.MINUTES.toMillis(5),
-                              val logCleanupPolicy: String = TopicConfig.CLEANUP_POLICY_DELETE,
+                              val streamsLogCompactionStrategy: String = TopicConfig.CLEANUP_POLICY_DELETE,
                               val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -57,7 +57,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                     lingerMs = config.getInt("linger.ms", default.lingerMs),
                     topicDiscoveryPollingInterval = config.getOrDefault("topic.discovery.polling.interval",
                             default.topicDiscoveryPollingInterval).toString().toLong(),
-                    logCleanupPolicy = config.getOrDefault("log.cleanup.policy", default.logCleanupPolicy),
+                    streamsLogCompactionStrategy = config.getOrDefault("streams.log.compaction.strategy", default.streamsLogCompactionStrategy),
                     extraProperties = extraProperties // for what we don't provide a default configuration
             )
         }
