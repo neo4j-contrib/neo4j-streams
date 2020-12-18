@@ -75,7 +75,7 @@ class Neo4jSinkTaskTest {
         """.trimIndent()
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
-        props[SinkTask.TOPICS_CONFIG] = "$firstTopic"
+        props[SinkTask.TOPICS_CONFIG] = firstTopic
 
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
