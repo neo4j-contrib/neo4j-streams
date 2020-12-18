@@ -45,11 +45,11 @@ fun ConstraintDefinition.isRelationshipConstraint(): Boolean {
 }
 
 fun StreamsTransactionEvent.asSourceRecordValue(strategy: String): StreamsTransactionEvent? =
-        if(!isStrategyDelete(strategy) && meta.operation == OperationType.deleted) null else this
+        if(isStrategyCompact(strategy) && meta.operation == OperationType.deleted) null else this
 
 fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
         when {
-            isStrategyDelete(strategy) -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
+            strategy == TopicConfig.CLEANUP_POLICY_DELETE -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
             isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNodeWithCompact(payload as NodePayload, schema)
             isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRelWithCompact(payload as RelationshipPayload)
             else -> {
@@ -75,7 +75,5 @@ fun getKeyOfRelWithCompact(payload: RelationshipPayload ): Any = mapOf(
             "end" to payload.end.ids.ifEmpty { payload.end.id },
             "id" to payload.id
     )
-
-fun isStrategyDelete(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_DELETE
 
 fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
