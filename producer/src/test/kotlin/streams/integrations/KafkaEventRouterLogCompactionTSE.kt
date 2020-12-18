@@ -18,6 +18,12 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
 
     private val bootstrapServerMap = mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)
 
+    private fun createCompactTopic(topic: String) = AdminClient.create(bootstrapServerMap).use {
+        it.createTopics(listOf(
+                compactTopic(topic)
+        )).all().get()
+    }
+
     private fun compactTopic(topic: String) =
             NewTopic(topic, 1, 1).configs(mapOf(
                     "cleanup.policy" to "compact",
@@ -47,26 +53,23 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
     fun `compact message with streams publish`() {
         val topic = UUID.randomUUID().toString()
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT)
+        createCompactTopic(topic)
 
-        AdminClient.create(bootstrapServerMap).use {
-            it.createTopics(listOf(compactTopic(topic))).all().get()
+        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
+        kafkaConsumer.subscribe(listOf(topic))
 
-            KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-            kafkaConsumer.subscribe(listOf(topic))
-
-            val keyRecord = "test"
-            db.execute("CALL streams.publish('$topic', 'Compaction 0', {key: 'Baz'})")
-            db.execute("CALL streams.publish('$topic', 'Compaction 1', {key: '$keyRecord'})")
-            db.execute("CALL streams.publish('$topic', 'Compaction 2', {key: '$keyRecord'})")
-            db.execute("CALL streams.publish('$topic', 'Compaction 3', {key: 'Foo'})")
-            db.execute("CALL streams.publish('$topic', 'Compaction 4', {key: '$keyRecord'})")
-            (1..9999).forEach {
-                db.execute("CALL streams.publish('$topic', '$it', {key: '$it'})")
-            }
-
-            val records = kafkaConsumer.poll(Duration.ofMinutes(1))
-            assertEquals(1, records.filter{ JSONUtils.readValue<String>(it.key()) == keyRecord }.count())
+        val keyRecord = "test"
+        db.execute("CALL streams.publish('$topic', 'Compaction 0', {key: 'Baz'})")
+        db.execute("CALL streams.publish('$topic', 'Compaction 1', {key: '$keyRecord'})")
+        db.execute("CALL streams.publish('$topic', 'Compaction 2', {key: '$keyRecord'})")
+        db.execute("CALL streams.publish('$topic', 'Compaction 3', {key: 'Foo'})")
+        db.execute("CALL streams.publish('$topic', 'Compaction 4', {key: '$keyRecord'})")
+        (1..9999).forEach {
+            db.execute("CALL streams.publish('$topic', '$it', {key: '$it'})")
         }
+
+        val records = kafkaConsumer.poll(Duration.ofMinutes(1))
+        assertEquals(1, records.filter{ JSONUtils.readValue<String>(it.key()) == keyRecord }.count())
     }
 
     @Test
@@ -78,24 +81,22 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
                         "streams.source.topic.relationships.${topic}" to "KNOWS{*}"),
                 listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         )
-        AdminClient.create(bootstrapServerMap).use {
+        createCompactTopic(topic)
 
-            it.createTopics(listOf(compactTopic(topic))).all().get()
-            kafkaConsumer.subscribe(listOf(topic))
+        kafkaConsumer.subscribe(listOf(topic))
 
-            db.execute("CREATE (:Person {name:'Pippo'})")
-            db.execute("CREATE (:Person {name:'Pluto'})")
-            db.execute("""
-                |MATCH (pippo:Person {name:'Pippo'})
-                |MATCH (pluto:Person {name:'Pluto'})
-                |MERGE (pippo)-[:KNOWS]->(pluto)
-            """.trimMargin())
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
-            createManyPersons()
+        db.execute("CREATE (:Person {name:'Pippo'})")
+        db.execute("CREATE (:Person {name:'Pluto'})")
+        db.execute("""
+            |MATCH (pippo:Person {name:'Pippo'})
+            |MATCH (pluto:Person {name:'Pluto'})
+            |MERGE (pippo)-[:KNOWS]->(pluto)
+        """.trimMargin())
+        db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
+        createManyPersons()
 
-            val records = kafkaConsumer.poll(Duration.ofSeconds(10))
-            assertTrue { records.all { JSONUtils.asStreamsTransactionEvent(it.value()).payload is NodePayload} }
-        }
+        val records = kafkaConsumer.poll(Duration.ofSeconds(10))
+        assertTrue { records.all { JSONUtils.asStreamsTransactionEvent(it.value()).payload is NodePayload} }
     }
 
     @Test
@@ -107,25 +108,22 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
                 mapOf("streams.source.topic.nodes.${topic}" to "Person{*}",
                         "streams.source.topic.relationships.${topic}" to "KNOWS{*}")
         )
-        AdminClient.create(bootstrapServerMap).use {
+        createCompactTopic(topic)
 
-            it.createTopics(listOf(compactTopic(topic))).all().get()
-            kafkaConsumer.subscribe(listOf(topic))
+        kafkaConsumer.subscribe(listOf(topic))
 
-            db.execute("CREATE (:Person {name:'Pippo'})")
-            db.execute("CREATE (:Person {name:'Pluto'})")
-            db.execute("""
-                |MATCH (pippo:Person {name:'Pippo'})
-                |MATCH (pluto:Person {name:'Pluto'})
-                |MERGE (pippo)-[:KNOWS]->(pluto)
-            """.trimMargin())
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
-            createManyPersons()
+        db.execute("CREATE (:Person {name:'Pippo'})")
+        db.execute("CREATE (:Person {name:'Pluto'})")
+        db.execute("""
+            |MATCH (pippo:Person {name:'Pippo'})
+            |MATCH (pluto:Person {name:'Pluto'})
+            |MERGE (pippo)-[:KNOWS]->(pluto)
+        """.trimMargin())
+        db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
+        createManyPersons()
 
-            val records = kafkaConsumer.poll(Duration.ofMinutes(1))
-            assertTrue { records.all { JSONUtils.asStreamsTransactionEvent(it.value()).payload is NodePayload} }
-        }
-
+        val records = kafkaConsumer.poll(Duration.ofMinutes(1))
+        assertTrue { records.all { JSONUtils.asStreamsTransactionEvent(it.value()).payload is NodePayload} }
     }
 
     @Test
@@ -134,26 +132,23 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT,
                 mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         )
-        AdminClient.create(
-                mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {
+        createCompactTopic(topic)
 
-            it.createTopics(listOf(compactTopic(topic))).all().get()
-            kafkaConsumer.subscribe(listOf(topic))
+        kafkaConsumer.subscribe(listOf(topic))
 
-            db.execute("CREATE (:Person {name:'Watson'})")
-            db.execute("CREATE (:Person {name:'Sherlock'})")
-            db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.address = '221B Baker Street'")
-            db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
-            createManyPersons()
+        db.execute("CREATE (:Person {name:'Watson'})")
+        db.execute("CREATE (:Person {name:'Sherlock'})")
+        db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.address = '221B Baker Street'")
+        db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
+        createManyPersons()
 
-            val records = kafkaConsumer.poll(Duration.ofSeconds(10))
-            assertTrue { records.none {
-                JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Sherlock"
-            }}
-            assertTrue { records.any {
-                JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Watson"
-            }}
-        }
+        val records = kafkaConsumer.poll(Duration.ofSeconds(10))
+        assertTrue { records.none {
+            JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Sherlock"
+        }}
+        assertTrue { records.any {
+            JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Watson"
+        }}
     }
 
     @Test
@@ -163,26 +158,23 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
                 mapOf("streams.source.topic.nodes.$topic" to "Person{*}"),
                 listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         )
-        AdminClient.create(
-                mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {
+        createCompactTopic(topic)
 
-            it.createTopics(listOf(compactTopic(topic))).all().get()
-            kafkaConsumer.subscribe(listOf(topic))
+        kafkaConsumer.subscribe(listOf(topic))
 
-            db.execute("CREATE (:Person {name:'Watson'})")
-            db.execute("CREATE (:Person {name:'Sherlock'})")
-            db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.address = '221B Baker Street'")
-            db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
-            createManyPersons()
+        db.execute("CREATE (:Person {name:'Watson'})")
+        db.execute("CREATE (:Person {name:'Sherlock'})")
+        db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.address = '221B Baker Street'")
+        db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
+        createManyPersons()
 
-            val records = kafkaConsumer.poll(Duration.ofSeconds(10))
-            assertTrue { records.none {
-                JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Sherlock"
-            }}
-            assertTrue { records.any {
-                JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Watson"
-            }}
-        }
+        val records = kafkaConsumer.poll(Duration.ofSeconds(10))
+        assertTrue { records.none {
+            JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Sherlock"
+        }}
+        assertTrue { records.any {
+            JSONUtils.asStreamsTransactionEvent(it.value()).payload.after?.properties?.get("name").toString() == "Watson"
+        }}
     }
 
     @Test
