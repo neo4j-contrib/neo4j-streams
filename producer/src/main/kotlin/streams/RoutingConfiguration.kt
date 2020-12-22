@@ -1,5 +1,6 @@
 package streams
 
+import org.apache.commons.lang3.StringUtils
 import org.apache.kafka.common.internals.Topic
 import org.neo4j.graphdb.Entity
 import org.neo4j.graphdb.Node
@@ -7,12 +8,13 @@ import org.neo4j.graphdb.Relationship
 import streams.events.*
 
 
-private val PATTERN_REG: Regex = "^(\\w+\\s*(?::\\s*(?:[\\w|\\*]+)\\s*)*)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
-private val PATTERN_COLON_REG = "\\s*:\\s*".toRegex()
+private val PATTERN_REG: Regex = "^(\\`?\\s*\\w+\\s*(?:\\:*\\s*\\`?\\s*(?:[\\w|\\*]+)\\s*)*\\`?)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
+private val PATTERN_COLON_REG = "\\s*:\\s*(?=(?:[^\\`]*\\`[^\\`]*\\`)*[^\\`]*\$)".toRegex()
 private val PATTERN_COMMA = "\\s*,\\s*".toRegex()
 private const val PATTERN_WILDCARD = "*"
 private const val PATTERN_PROP_MINUS = '-'
 private const val PATTERN_SPLIT = ";"
+private const val BACKTICK_CHAR = "`"
 
 data class RoutingProperties(val all: Boolean,
                              val include: List<String>,
@@ -106,7 +108,7 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                 if (matcher == null) {
                     throw IllegalArgumentException("The pattern $pattern for topic $topic is invalid")
                 } else {
-                    val labels = matcher.groupValues[1].split(PATTERN_COLON_REG)
+                    val labels = matcher.groupValues[1].split(PATTERN_COLON_REG).map { it.replace(BACKTICK_CHAR, StringUtils.EMPTY) }
                     val properties = RoutingProperties.from(matcher)
                     NodeRoutingConfiguration(labels = labels, topic = topic, all = properties.all,
                             include = properties.include, exclude = properties.exclude)
@@ -183,7 +185,8 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                         throw IllegalArgumentException("The pattern $pattern for topic $topic is invalid")
                     }
                     val properties = RoutingProperties.from(matcher)
-                    RelationshipRoutingConfiguration(name = labels.first(), topic = topic, all = properties.all,
+                    RelationshipRoutingConfiguration(name = labels.first().replace(BACKTICK_CHAR, StringUtils.EMPTY),
+                            topic = topic, all = properties.all,
                             include = properties.include, exclude = properties.exclude)
                 }
             }
