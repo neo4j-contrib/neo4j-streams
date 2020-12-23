@@ -20,7 +20,7 @@ class MockStreamsEventRouter(logService: LogService? = null, config: Config? = n
         events.addAll(streamsTransactionEvents as List<StreamsTransactionEvent>)
     }
 
-    override fun sendEventsSync(topic: String, streamsTransactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
+    override fun sendEventsSync(topic: String, streamsTransactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         val result = mutableListOf<Map<String, Any>>()
         streamsTransactionEvents.forEach {
             result.add(fakeRecordMetadata(topic))

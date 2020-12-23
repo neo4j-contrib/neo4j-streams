@@ -100,7 +100,7 @@ class KafkaEventRouter: StreamsEventRouter {
     }
 
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         producer.beginTransaction()
 
         val results = transactionEvents.mapNotNull {
