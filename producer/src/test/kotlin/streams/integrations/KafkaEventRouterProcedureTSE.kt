@@ -162,60 +162,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
     }
 
     @Test
-    fun testProcedureWithKey() {
-        db.start()
-        val topic = UUID.randomUUID().toString()
-        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-        kafkaConsumer.subscribe(listOf(topic))
-        val message = "Hello World"
-        val keyRecord = "test"
-        db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord'} )")
-        val records = kafkaConsumer.poll(5000)
-        assertEquals(1, records.count())
-        assertTrue { records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-            && keyRecord == it.key()
-        }}
-    }
-
-    @Test
-    fun testProcedureWithPartitionAsNotNumber() {
-        db.start()
-        val topic = UUID.randomUUID().toString()
-        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-        kafkaConsumer.subscribe(listOf(topic))
-        val message = "Hello World"
-        val keyRecord = "test"
-        val partitionRecord = "notNumber"
-        assertFailsWith(QueryExecutionException::class) {
-            db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: '$partitionRecord' })")
-        }
-    }
-
-    @Test
-    fun testProcedureWithPartitionAndKey() {
-        db.start()
-        val topic = UUID.randomUUID().toString()
-        KafkaEventRouterSuiteIT.registerPublishProcedure(db)
-        kafkaConsumer.subscribe(listOf(topic))
-        val message = "Hello World"
-        val keyRecord = "test"
-        val partitionRecord = 0
-        db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })")
-        val records = kafkaConsumer.poll(5000)
-        assertEquals(1, records.count())
-        assertTrue{ records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
-            && partitionRecord == it.partition()
-        }}
-    }
-
-    @Test
     fun testProcedureSyncWithKeyNull() {
         setUpProcedureTests()
         db.execute("CREATE (n:Foo {id: 1, name: 'Bar'})")
@@ -243,7 +189,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         }}
     }
 
-    @Test
     fun testProcedureSyncWithConfig() {
         db.start()
         AdminClient.create(mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {

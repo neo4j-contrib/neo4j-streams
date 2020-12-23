@@ -61,7 +61,7 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, Exception::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray?>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             if (log.isDebugEnabled) {
                 log.debug("Error while sending record to ${producerRecord.topic()}, because it doesn't exists")
