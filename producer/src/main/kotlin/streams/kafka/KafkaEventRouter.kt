@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
+    private lateinit var producer: Neo4jKafkaProducer<ByteArray, ByteArray>
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
 
@@ -57,7 +57,7 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray, ByteArray>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
             return null
@@ -86,7 +86,7 @@ class KafkaEventRouter: StreamsEventRouter {
         }
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
+                JSONUtils.writeValueAsBytes(event))
         return send(producerRecord, sync)
     }
 
@@ -95,7 +95,7 @@ class KafkaEventRouter: StreamsEventRouter {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), getProducerRecordId(event),
-                JSONUtils.writeValueAsBytes(event)) as ProducerRecord<String, ByteArray>
+                JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
 
