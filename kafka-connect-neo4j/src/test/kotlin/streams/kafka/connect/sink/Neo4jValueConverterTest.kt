@@ -102,6 +102,13 @@ class Neo4jValueConverterTest {
 
         assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
+
+        val number2 = BigDecimal.valueOf(Double.MIN_VALUE).pow(2)
+        val result2 = Neo4jValueConverter().convert(mapOf(null to number2))
+        val item2 = result2["item"]
+
+        assertTrue{ item2 is StringValue }
+        assertEquals(number.toPlainString(), item?.asString())
     }
 
     @Test
@@ -236,6 +243,18 @@ class Neo4jValueConverterTest {
                         ConnectSchema(Schema.Type.INT32,
                                 false,
                                 Date.from(Instant.ofEpochMilli(123)),
+                                Time.LOGICAL_NAME,
+                                null, null))
+                .field("nullField",
+                        ConnectSchema(Schema.Type.INT64,
+                                false,
+                                null,
+                                Time.LOGICAL_NAME,
+                                null, null))
+                .field("nullFieldBytes",
+                        ConnectSchema(Schema.Type.BYTES,
+                                false,
+                                null,
                                 Time.LOGICAL_NAME,
                                 null, null))
                 .build()
