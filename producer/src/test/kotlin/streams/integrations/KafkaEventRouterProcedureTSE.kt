@@ -46,10 +46,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertTrue { records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+            && JSONUtils.readValue<String>(it.key()) == keyRecord
         }}
     }
 
@@ -60,19 +58,13 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
         kafkaConsumer.subscribe(listOf(topic))
         val message = "Hello World"
-        val keyRecord = mutableMapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
+        val keyRecord = mapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
         db.execute("CALL streams.publish('$topic', '$message', {key: \$key } )", mapOf("key" to keyRecord))
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertTrue { records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-            && JSONUtils.readValue<Map<String, String>>(it.key()).let {
-                keyRecord["one"] == it["one"]
-                    && keyRecord["two"] == it["two"]
-                    && keyRecord["three"] == it["three"]
-            }
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+            && JSONUtils.readValue<Map<String, String>>(it.key()) == keyRecord
         }}
     }
 
@@ -103,10 +95,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertTrue{ records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
-            && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+            && JSONUtils.readValue<String>(it.key()) == keyRecord
             && partitionRecord == it.partition()
         }}
     }
@@ -144,8 +134,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(3, ((records.map {
-            JSONUtils.readValue<StreamsEvent>(it.value())
-                    .let { it.payload }
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload
         }[0] as Map<String, Any>)["properties"] as Map<String, Any>).size)
     }
 
@@ -167,9 +156,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
-            JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                message == it.payload
-            }
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
         })
     }
 
@@ -201,10 +188,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             assertEquals(1, records.count())
             assertEquals(1, records.count { it.partition() == 1 })
             assertTrue{ records.all {
-                JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                    message == it.payload
-                }
-                && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                && JSONUtils.readValue<String>(it.key()) == keyRecord
                 && partitionRecord == it.partition()
             }}
         }
@@ -229,10 +214,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             assertEquals(1, records.count())
             assertEquals(1, records.count { it.partition() == 2 })
             assertTrue{ records.all {
-                JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                    message == it.payload
-                }
-                && JSONUtils.readValue<String>(it.key()).let { keyRecord == it }
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                && JSONUtils.readValue<String>(it.key()) == keyRecord
                 && partitionRecord == it.partition()
             }}
         }
