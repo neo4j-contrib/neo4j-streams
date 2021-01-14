@@ -50,19 +50,16 @@ fun StreamsTransactionEvent.asSourceRecordValue(strategy: String): StreamsTransa
 fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
         when {
             strategy == TopicConfig.CLEANUP_POLICY_DELETE -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
-            isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNodeWithCompact(payload as NodePayload, schema)
-            isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRelWithCompact(payload as RelationshipPayload)
-            else -> {
-                throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
-            }
+            isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNode(payload as NodePayload, schema)
+            isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRel(payload as RelationshipPayload)
+            else -> throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
         }
 
-fun getKeyOfNodeWithCompact(payload: NodePayload, schema: Schema ): Any {
+private fun getKeyOfNode(payload: NodePayload, schema: Schema): Any {
     val props: Map<String, Any> = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
 
     return schema.constraints
             .flatMap { it.properties }
-            .sorted()
             .firstOrNull {
                 props.containsKey(it)
             }?.let { mapOf(it to props[it]) }
@@ -70,10 +67,10 @@ fun getKeyOfNodeWithCompact(payload: NodePayload, schema: Schema ): Any {
             .ifEmpty { payload.id }
 }
 
-fun getKeyOfRelWithCompact(payload: RelationshipPayload ): Any = mapOf(
+private fun getKeyOfRel(payload: RelationshipPayload) = mapOf(
             "start" to payload.start.ids.ifEmpty { payload.start.id },
             "end" to payload.end.ids.ifEmpty { payload.end.id },
             "id" to payload.id
     )
 
-fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
+private fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
