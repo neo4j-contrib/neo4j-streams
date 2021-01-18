@@ -73,7 +73,7 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         }
     }
 
-    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray?>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
             return null
@@ -119,7 +119,6 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
-
 
     override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         producer?.beginTransaction()

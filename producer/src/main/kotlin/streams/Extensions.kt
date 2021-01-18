@@ -56,7 +56,7 @@ fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
             else -> throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
         }
 
-private fun getKeyOfNode(payload: NodePayload, schema: Schema ): Any {
+private fun getKeyOfNode(payload: NodePayload, schema: Schema): Any {
     val props: Map<String, Any> = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
 
     return schema.constraints
@@ -68,7 +68,7 @@ private fun getKeyOfNode(payload: NodePayload, schema: Schema ): Any {
             .ifEmpty { payload.id }
 }
 
-private fun getKeyOfRel(payload: RelationshipPayload ): Any = mapOf(
+private fun getKeyOfRel(payload: RelationshipPayload) = mapOf(
         "start" to payload.start.ids.ifEmpty { payload.start.id },
         "end" to payload.end.ids.ifEmpty { payload.end.id },
         "id" to payload.id
