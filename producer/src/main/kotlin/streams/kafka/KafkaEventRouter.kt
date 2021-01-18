@@ -80,21 +80,26 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
+    // this method is used by the procedures
     private fun sendEvent(topic: String, event: StreamsEvent, config: Map<String, Any?>, sync: Boolean = false): Map<String, Any>? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
+        // in the procedures we allow to define a custom message key via the configuration property key
+        // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key ?: ""),
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key!!),
                 JSONUtils.writeValueAsBytes(event))
         return send(producerRecord, sync)
     }
 
+    // this method is used by the transaction event handler
     private fun sendEvent(topic: String, event: StreamsTransactionEvent, config: Map<String, Any?>) {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), getProducerRecordId(event),
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
+                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
                 JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
@@ -137,8 +142,6 @@ class KafkaEventRouter: StreamsEventRouter {
             producer.abortTransaction()
         }
     }
-
-    private fun getProducerRecordId(event: StreamsTransactionEvent) = JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
 
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
