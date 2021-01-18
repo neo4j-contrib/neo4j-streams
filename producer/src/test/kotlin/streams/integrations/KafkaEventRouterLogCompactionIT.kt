@@ -48,7 +48,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
 
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
-    private fun createManyPersons() = db.execute("UNWIND range(1, 9999) AS id CREATE (:Person {name:id})")
+    private fun createManyPersons() = db.execute("UNWIND range(1, 10) AS id CREATE (:Person {name:id})")
 
     private fun initDbWithLogStrategy(strategy: String, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
         graphDatabaseBuilder.setConfig("streams.source.schema.polling.interval", "0")
@@ -173,7 +173,6 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     fun `delete node tombstone with strategy compact`() {
         val topic = UUID.randomUUID().toString()
         val sourceTopisc = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
-        val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopisc)
         createCompactTopic(topic)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
@@ -186,13 +185,14 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             // to activate the log compaction process we create dummy messages and we waiting for message population
             db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
             createManyPersons()
-            Thread.sleep(20000)
+            Thread.sleep(30000)
 
             val records = consumer.poll(Duration.ofMinutes(1))
             val nullRecords = records.filter { it.value() == null }
             assertEquals(1, nullRecords.count())
-//            val keyRecord: Map<String, Any> = JSONUtils.readValue(nullRecords.first().key())
-//            assertEquals(mapOf("name" to "Sherlock"), keyRecord)
+            val keyRecord= JSONUtils.readValue<String>(nullRecords.first().key())
+            val secondRecordKey = JSONUtils.readValue<String>(records.elementAt(1).key())
+            assertEquals(secondRecordKey, keyRecord)
         }
     }
 
