@@ -114,16 +114,9 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-<<<<<<< HEAD
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
-                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
-                JSONUtils.writeValueAsBytes(event))
-=======
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(),
-                JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy)),
-                event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
-        )
->>>>>>> WIP: rebase issue-272-3.5
+        val key = JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy))
+        val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
 
