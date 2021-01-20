@@ -161,6 +161,34 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
     }
 
     @Test
+    fun testProcedureSyncWithKeyNull() {
+        setUpProcedureTests()
+        db.execute("CREATE (n:Foo {id: 1, name: 'Bar'})")
+
+        val recordsCreation = kafkaConsumer.poll(5000)
+        assertEquals(1, recordsCreation.count())
+
+        val message = "Hello World"
+            db.execute("MATCH (n:Foo {id: 1}) CALL streams.publish.sync('neo4j', '$message', {key: n.foo}) YIELD value RETURN value") {
+            assertTrue { it.hasNext() }
+            val resultMap = (it.next())["value"] as Map<String, Any>
+            assertNotNull(resultMap["offset"])
+            assertNotNull(resultMap["partition"])
+            assertNotNull(resultMap["keySize"])
+            assertNotNull(resultMap["valueSize"])
+            assertNotNull(resultMap["timestamp"])
+            assertFalse { it.hasNext() }
+        }
+
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+        assertTrue { records.all {
+            JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                    && it.key() == null
+        }}
+    }
+
+    @Test
     fun testProcedureSyncWithConfig() {
         db.start()
         AdminClient.create(mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {
