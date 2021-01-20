@@ -91,7 +91,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
 
     private fun addSerializers() : Properties {
         val props = Properties()
-        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  StringSerializer::class.java
+        props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] =  ByteArraySerializer::class.java
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
         return props
     }

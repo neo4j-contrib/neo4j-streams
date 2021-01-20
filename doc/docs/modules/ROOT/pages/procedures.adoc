@@ -113,6 +113,23 @@ Input Parameters:
 
 |===
 
+Configuration parameters:
+[cols="3*",options="header"]
+|===
+|Name
+|Type
+|Description
+
+|`key`
+|Object
+|The key value of message that you want to stream. Please note that if the key doesn't exist, you get a message with a random UUID as key value
+
+|`partition`
+|Int
+|The partition of message that you want to stream
+
+|===
+
 You can send any kind of data in the payload, nodes, relationships, paths, lists, maps, scalar values and nested versions thereof.
 
 In case of nodes or relationships if the topic is defined in the patterns provided by the configuration their properties will be filtered in according with the configuration.
