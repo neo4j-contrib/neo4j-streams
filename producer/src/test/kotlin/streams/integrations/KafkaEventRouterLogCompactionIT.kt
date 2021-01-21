@@ -170,33 +170,6 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     }
 
     @Test
-    fun `delete node tombstone with strategy compact`() {
-        val topic = UUID.randomUUID().toString()
-        val sourceTopisc = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
-        initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopisc)
-        createCompactTopic(topic)
-        createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
-            consumer.subscribe(listOf(topic))
-
-            db.execute("CREATE (:Person {name:'Watson'})")
-            db.execute("CREATE (:Person {name:'Sherlock'})")
-            db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.address = '221B Baker Street'")
-
-            // to activate the log compaction process we create dummy messages and we waiting for message population
-            db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
-            createManyPersons()
-            Thread.sleep(30000)
-
-            val records = consumer.poll(Duration.ofMinutes(1))
-            val nullRecords = records.filter { it.value() == null }
-            assertEquals(1, nullRecords.count())
-            val keyRecord= JSONUtils.readValue<String>(nullRecords.first().key())
-            val secondRecordKey = JSONUtils.readValue<String>(records.elementAt(1).key())
-            assertEquals(secondRecordKey, keyRecord)
-        }
-    }
-
-    @Test
     fun `delete node tombstone with strategy compact and constraint`() {
         val topic = UUID.randomUUID().toString()
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")

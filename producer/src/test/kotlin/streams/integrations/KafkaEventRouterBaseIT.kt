@@ -45,14 +45,8 @@ open class KafkaEventRouterBaseIT {
         @JvmStatic
         lateinit var kafka: KafkaContainer
 
-//        @ClassRule @JvmStatic
-//        var classWatcher: CustomTestWatcher = CustomTestWatcher()
-
-//        var isLogCompactionTest = false
-
         @BeforeClass @JvmStatic
         fun setUpContainer() {
-//            if (classWatcher.get)
             var exists = false
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
