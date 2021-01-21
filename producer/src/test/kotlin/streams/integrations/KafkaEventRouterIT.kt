@@ -485,12 +485,11 @@ class KafkaEventRouterIT {
 
     @Test
     fun testProcedureSyncWithKeyNull() {
-        val topic = UUID.randomUUID().toString()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         createConsumer(config).use { consumer ->
 
             val message = "Hello World"
-            consumer.subscribe(listOf(topic))
+            consumer.subscribe(listOf("neo4j"))
             db.execute("CREATE (n:Foo {id: 1, name: 'Bar'})").close()
 
             val recordsCreation = consumer.poll(5000)
