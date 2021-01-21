@@ -48,7 +48,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
 
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
-    private fun createManyPersons() = db.execute("UNWIND range(1, 10) AS id CREATE (:Person {name:id})")
+    private fun createManyPersons() = db.execute("UNWIND range(1, 9999) AS id CREATE (:Person {name:id})")
 
     private fun initDbWithLogStrategy(strategy: String, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
         graphDatabaseBuilder.setConfig("streams.source.schema.polling.interval", "0")

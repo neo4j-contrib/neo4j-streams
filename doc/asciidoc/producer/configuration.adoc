@@ -15,7 +15,6 @@ kafka.linger.ms=1
 kafka.transactional.id=
 kafka.topic.discovery.polling.interval=300000
 kafka.streams.log.compaction.strategy=delete
-Namely, the operations which will involve the same nodes or relationships, will have the same key.
 
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
