@@ -85,7 +85,7 @@ Configuration parameters:
 
 |`key`
 |Object
-|The key of message that you want to stream
+|The key value of message that you want to stream. Please note that if the key doesn't exist, you get a message with a random UUID as key value
 
 |`partition`
 |Int

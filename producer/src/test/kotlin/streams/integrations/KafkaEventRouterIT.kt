@@ -484,6 +484,41 @@ class KafkaEventRouterIT {
     }
 
     @Test
+    fun testProcedureSyncWithKeyNull() {
+        val topic = UUID.randomUUID().toString()
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+
+            val message = "Hello World"
+            consumer.subscribe(listOf(topic))
+            db.execute("CREATE (n:Foo {id: 1, name: 'Bar'})").close()
+
+            val recordsCreation = consumer.poll(5000)
+            assertEquals(1, recordsCreation.count())
+
+            db.execute("MATCH (n:Foo {id: 1}) CALL streams.publish.sync('neo4j', '$message', {key: n.foo}) YIELD value RETURN value").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
+
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
+
+                assertFalse { result.hasNext() }
+            }
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue { records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                        && it.key() == null
+            }}
+        }
+    }
+
+    @Test
     fun testProcedureSyncWithConfig() {
         AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
             val topic = UUID.randomUUID().toString()
