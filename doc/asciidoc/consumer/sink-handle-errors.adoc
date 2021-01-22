@@ -1,3 +1,0 @@
-{environment}.errors.tolerance=all
-{environment}.errors.deadletterqueue.topic.name=my-dlq-topic
-{environment}.errors.deadletterqueue.context.headers.enable=true

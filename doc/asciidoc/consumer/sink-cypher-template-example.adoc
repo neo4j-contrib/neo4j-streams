@@ -1,2 +1,0 @@
-{environment}.topic.cypher.my-topic=MERGE (n:Label {id: event.id}) \
-ON CREATE SET n += event.properties
