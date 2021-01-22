@@ -99,6 +99,30 @@ class RoutingConfigurationTest {
         assertEquals(listOf("Label", " lorem  : ipsum : dolor : sit "), routing[0].labels)
         assertTrue { routing[0].exclude.isEmpty() }
         assertEquals(listOf("name","surname"), routing[0].include)
+
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic9", "`labels::label`:Label:Label1{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
+        assertEquals(1, routing.size)
+        assertEquals("topic9", routing[0].topic)
+        assertFalse { routing[0].all }
+        assertEquals(listOf("labels::label", "Label", "Label1"), routing[0].labels)
+        assertTrue { routing[0].exclude.isEmpty() }
+        assertEquals(listOf("name","surname"), routing[0].include)
+
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic10", ":Label:```labels::label```:Label1{one, two}", EntityType.node) as List<NodeRoutingConfiguration>
+        assertEquals(1, routing.size)
+        assertEquals("topic10", routing[0].topic)
+        assertFalse { routing[0].all }
+        assertEquals(listOf("Label", "labels::label", "Label1"), routing[0].labels)
+        assertTrue { routing[0].exclude.isEmpty() }
+        assertEquals(listOf("one","two"), routing[0].include)
+
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic11", ":Label:`labels::label`:`labels1::label1`:Label1{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
+        assertEquals(1, routing.size)
+        assertEquals("topic11", routing[0].topic)
+        assertFalse { routing[0].all }
+        assertEquals(listOf("Label", "labels::label", "labels1::label1", "Label1"), routing[0].labels)
+        assertTrue { routing[0].exclude.isEmpty() }
+        assertEquals(listOf("name","surname"), routing[0].include)
     }
 
     @Test
@@ -171,7 +195,7 @@ class RoutingConfigurationTest {
         // Given
         val payload = NodePayloadBuilder()
                 .withBefore(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3), labels = listOf("Label1", "Label2")))
-                .withAfter(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4), labels = listOf("Label1", "Label2")))
+                .withAfter(NodeChange(properties = mapOf("prop1" to 1, "prop2" to "pippo", "prop3" to 3, "prop4" to 4), labels = listOf("Label1", "Label2", "Label3 :: Label4")))
                 .build()
         val streamsEvent = StreamsTransactionEventBuilder()
                 .withMeta(StreamsEventMetaBuilder()

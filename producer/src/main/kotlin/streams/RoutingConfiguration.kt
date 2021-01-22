@@ -8,7 +8,7 @@ import org.neo4j.graphdb.Relationship
 import streams.events.*
 
 
-private val PATTERN_REG: Regex = "^(\\`?\\s*\\w+\\s*(?:\\:*\\s*\\`?\\s*(?:[\\w|\\*]+)\\s*)*\\`?)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
+private val PATTERN_REG: Regex = "^(\\:?\\`*\\s*\\w+\\s*(?:\\:*\\s*\\`*\\s*\\:?(?:[\\w\\`|\\*]+)\\s*)*\\`*\\:?)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
 private val PATTERN_COLON_REG = "\\s*:\\s*(?=(?:[^\\`]*\\`[^\\`]*\\`)*[^\\`]*\$)".toRegex()
 private val PATTERN_COMMA = "\\s*,\\s*".toRegex()
 private const val PATTERN_WILDCARD = "*"
@@ -108,7 +108,7 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
                 if (matcher == null) {
                     throw IllegalArgumentException("The pattern $pattern for topic $topic is invalid")
                 } else {
-                    val labels = matcher.groupValues[1].split(PATTERN_COLON_REG).map { it.replace(BACKTICK_CHAR, StringUtils.EMPTY) }
+                    val labels = matcher.groupValues[1].split(PATTERN_COLON_REG).map { it.replace(BACKTICK_CHAR, StringUtils.EMPTY) }.filter{ it.isNotBlank() }
                     val properties = RoutingProperties.from(matcher)
                     NodeRoutingConfiguration(labels = labels, topic = topic, all = properties.all,
                             include = properties.include, exclude = properties.exclude)
