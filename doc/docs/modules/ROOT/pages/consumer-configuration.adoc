@@ -43,6 +43,7 @@ streams.sink.enabled.to.<DB_NAME>=<true/false, default=true>
 ----
 
 This means that for each db instance you can specify if:
+
 * use the source connector
 * the routing patterns
 
@@ -92,17 +93,17 @@ streams.sink.enabled=<true/false, default=true>
 This means that if you have Neo4j with 3 db instances:
 
 * neo4j (default)
-* customers
-* products
+* foo
+* bar
 
 and you want to enable the Sink plugin on all instance
 you can simply omit any configuration about enabling it, you just need to provide the routing configuration for each instance:
 
 [source]
 ----
-streams.sink.topic.cypher.customersTopic.to.customers=MERGE (c:Customer{customerId: event.customerId}) SET c += event.properties
-streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: event.productId}) SET c += event.properties
-streams.sink.topic.cypher.productsTopic.to.neo4j=MERGE (c:MyLabel{myId: event.myId}) SET c += event.properties
+streams.sink.topic.cypher.fooTopic.to.foo=MERGE (f:Foo{fooId: event.fooId}) SET c += event.properties
+streams.sink.topic.cypher.barTopic.to.bar=MERGE (b:Bar{barId: event.barId}) SET c += event.properties
+streams.sink.topic.cypher.barTopic.to.neo4j=MERGE (c:MyLabel{myId: event.myId}) SET c += event.properties
 ----
 
 Otherwise if you want to enable the Sink plugin only on `customers` and `products` instances
@@ -111,10 +112,10 @@ you can do it in this way:
 [source]
 ----
 streams.sink.enabled=false
-streams.sink.enabled.to.customers=true
-streams.sink.enabled.to.products=true
-streams.sink.topic.cypher.customersTopic.to.customers=MERGE (c:Customer{customerId: event.customerId}) SET c += event.properties
-streams.sink.topic.cypher.productsTopic.to.products=MERGE (c:Product{productId: event.productId}) SET c += event.properties
+streams.sink.enabled.to.foo=true
+streams.sink.enabled.to.bar=true
+streams.sink.topic.cypher.fooTopic.to.foo=MERGE (f:Foo{fooId: event.fooId}) SET c += event.properties
+streams.sink.topic.cypher.barTopic.to.bar=MERGE (b:Bar{barId: event.barId}) SET c += event.properties
 ----
 
 So in general if you have:
