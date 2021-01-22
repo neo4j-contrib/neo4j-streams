@@ -61,6 +61,7 @@ streams.source.enabled.from.<DB_NAME>=<true/false, default=true>
 ----
 
 This means that for each db instance you can specify if:
+
 * use the source connector
 * the routing patterns
 
@@ -104,28 +105,45 @@ streams.source.enabled=<true/false, default=true>
 This means that if you have Neo4j with 3 db instances:
 
 * neo4j (default)
-* customers
-* products
+* foo
+* bar
 
-and you want to enable the Source plugin on all instance
+and you want to enable the Source plugin on all instances,
 you can simply omit any configuration about enabling it, you just need to provide the routing configuration for each instance:
 
 [source]
 ----
-streams.source.topic.nodes.loginTopic=Login{userId}
-streams.source.topic.nodes.customerTopic.from.customers=Customer{customerId,name,surname}
-streams.source.topic.relationships.productTopic.from.products=Products{productId,name}
+streams.source.topic.nodes.testTopic=Test{testId}
+streams.source.topic.nodes.fooTopic.from.foo=Foo{fooId,fooName}
+streams.source.topic.relationships.barTopic.from.bar=Bar{barId,barName}
 ----
 
-Otherwise if you want to enable the Source plugin only on `customers` and `products` instances
+Otherwise if you want to enable the Source plugin only on `foo` and `bar` instances,
 you can do it in this way:
 
 [source]
 ----
 streams.source.enabled=false
-streams.source.enabled.from.customers=true
-streams.source.enabled.from.products=true
-streams.source.topic.nodes.loginTopic=Login{userId}
-streams.source.topic.nodes.customerTopic.from.customers=Customer{customerId,name,surname}
-streams.source.topic.relationships.productTopic.from.products=Products{productId,name}
+streams.source.enabled.from.foo=true
+streams.source.enabled.from.bar=true
+streams.source.topic.nodes.testTopic=Test{testId}
+streams.source.topic.nodes.fooTopic.from.foo=Foo{fooId,fooName}
+streams.source.topic.relationships.barTopic.from.bar=Bar{barId,barName}
 ----
+
+[NOTE]
+====
+As you can see, if you want to enable the Source plugin only on one or more specific db instances, you have to previously
+disable the Source plugin (`streams.source.enabled=false`) and then enable it only on the desired instances (i.e. `streams.source.enabled.from.foo=true`).
+Furthermore, please note that the `streams.source.topic.nodes.testTopic=Test{testId}` will not be considered because the Source plugin on the default database instance `neo4j` has been disabled.
+====
+
+So in general if you have:
+
+[source]
+----
+streams.source.enabled=true
+streams.source.enabled.from.foo=false
+----
+
+Then Source module is enabled on all databases EXCEPT `foo` (local overrides global)
