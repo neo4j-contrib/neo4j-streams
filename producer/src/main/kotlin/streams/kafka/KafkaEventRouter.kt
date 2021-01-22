@@ -25,7 +25,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 class KafkaEventRouter: StreamsEventRouter {
     private val log: Log
-    private lateinit var producer: Neo4jKafkaProducer<String, ByteArray>
+    private lateinit var producer: Neo4jKafkaProducer<ByteArray, ByteArray>
     private lateinit var kafkaConfig: KafkaConfiguration
     private lateinit var kafkaAdminService: KafkaAdminService
 
@@ -57,7 +57,7 @@ class KafkaEventRouter: StreamsEventRouter {
         StreamsUtils.ignoreExceptions({ kafkaAdminService.stop() }, UninitializedPropertyAccessException::class.java)
     }
 
-    private fun send(producerRecord: ProducerRecord<String, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
             return null
@@ -80,46 +80,51 @@ class KafkaEventRouter: StreamsEventRouter {
         }
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsEvent, sync: Boolean = false): Map<String, Any>? {
+    // this method is used by the procedures
+    private fun sendEvent(topic: String, event: StreamsEvent, config: Map<String, Any?>, sync: Boolean = false): Map<String, Any>? {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a simple event with payload ${event.payload} to kafka")
         }
-        val uuid = UUID.randomUUID().toString()
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), uuid,
+        // in the procedures we allow to define a custom message key via the configuration property key
+        // in order to have the backwards compatibility we define as default value the old key
+        val key = config.getOrDefault("key", UUID.randomUUID().toString())
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
         return send(producerRecord, sync)
     }
 
-    private fun sendEvent(partition: Int, topic: String, event: StreamsTransactionEvent) {
+    // this method is used by the transaction event handler
+    private fun sendEvent(topic: String, event: StreamsTransactionEvent, config: Map<String, Any?>) {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), "${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}",
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
+                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
                 JSONUtils.writeValueAsBytes(event))
         send(producerRecord)
     }
 
 
-    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>): List<Map<String, Any>> {
+    override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         producer.beginTransaction()
 
         val results = transactionEvents.mapNotNull {
-            sendEvent(ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions), topic, it, true)
+            sendEvent(topic, it, config, true)
         }
         producer.commitTransaction()
 
         return results
     }
 
-    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>) {
+    override fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>) {
         try {
             producer.beginTransaction()
             transactionEvents.forEach {
                 val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
                 if (it is StreamsTransactionEvent) {
-                    sendEvent(partition, topic, it)
+                    sendEvent(topic, it, config)
                 } else {
-                    sendEvent(partition, topic, it)
+                    sendEvent(topic, it, config)
                 }
             }
             producer.commitTransaction()
@@ -137,6 +142,8 @@ class KafkaEventRouter: StreamsEventRouter {
             producer.abortTransaction()
         }
     }
+
+    private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
 }
 

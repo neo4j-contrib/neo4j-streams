@@ -24,7 +24,7 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
-        return eventRouter.sendEventsSync(topic, listOf(streamsEvent))
+        return eventRouter.sendEventsSync(topic, listOf(streamsEvent), config ?: emptyMap())
                 .map { StreamPublishResult(it) }
                 .stream()
     }
@@ -41,7 +41,7 @@ class StreamsProcedures {
 
         val streamsEvent = buildStreamEvent(topic!!, payload!!)
 
-        eventRouter.sendEvents(topic, listOf(streamsEvent))
+        eventRouter.sendEvents(topic, listOf(streamsEvent), config ?: emptyMap())
     }
 
     private fun isTopicNullOrEmpty(topic: String?): Boolean {

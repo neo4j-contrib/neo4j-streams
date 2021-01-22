@@ -2,10 +2,13 @@ package streams.integrations
 
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.NewTopic
 import org.hamcrest.Matchers
 import org.junit.*
 import org.junit.rules.TestName
 import org.neo4j.function.ThrowingSupplier
+import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -16,6 +19,7 @@ import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
 import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -186,19 +190,91 @@ class KafkaEventRouterIT {
 
     @Test
     fun testProcedure() {
+        val topic = UUID.randomUUID().toString()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
-        consumer.subscribe(listOf("neo4j"))
+        consumer.subscribe(listOf(topic))
         val message = "Hello World"
-        db.execute("CALL streams.publish('neo4j', '$message')").close()
+        db.execute("CALL streams.publish('$topic', '$message')").close()
         val records = consumer.poll(5000)
         assertEquals(1, records.count())
-        assertEquals(true, records.all {
+        assertTrue { records.all {
             JSONUtils.readValue<StreamsEvent>(it.value()).let {
                 message == it.payload
             }
-        })
+        }}
         consumer.close()
+    }
+    
+    @Test
+    fun testProcedureWithKey() {
+        val topic = UUID.randomUUID().toString()
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf(topic))
+            val message = "Hello World"
+            val keyRecord = "test"
+            db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord'} )").close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue { records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                        && JSONUtils.readValue<String>(it.key()) == keyRecord
+            }}
+        }
+    }
+
+    @Test
+    fun testProcedureWithKeyAsMap() {
+        val topic = UUID.randomUUID().toString()
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf(topic))
+            val message = "Hello World"
+            val keyRecord = mutableMapOf("one" to "Foo", "two" to "Baz", "three" to "Bar")
+            db.execute("CALL streams.publish('$topic', '$message', {key: \$key } )", mapOf("key" to keyRecord)).close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue { records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                        && JSONUtils.readValue<Map<String, String>>(it.key()) == keyRecord
+            }}
+        }
+    }
+
+    @Test
+    fun testProcedureWithPartitionAsNotNumber() {
+        val topic = UUID.randomUUID().toString()
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf(topic))
+            val message = "Hello World"
+            val keyRecord = "test"
+            val partitionRecord = "notNumber"
+            assertFailsWith(QueryExecutionException::class) {
+                db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: '$partitionRecord' })").close()
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureWithPartitionAndKey() {
+        val topic = UUID.randomUUID().toString()
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use {
+            it.subscribe(listOf(topic))
+            val message = "Hello World"
+            val keyRecord = "test"
+            val partitionRecord = 0
+            db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })").close()
+            val records = it.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue{ records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                        && JSONUtils.readValue<String>(it.key()) == keyRecord
+                        && partitionRecord == it.partition()
+            }}
+        }
     }
 
     @Test
@@ -244,8 +320,7 @@ class KafkaEventRouterIT {
             val records = consumer.poll(5000)
             assertEquals(1, records.count())
             assertEquals(3, ((records.map {
-                JSONUtils.readValue<StreamsEvent>(it.value())
-                        .let { it.payload }
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload
             }[0] as Map<String, Any>)["properties"] as Map<String, Any>).size)
         }
     }
@@ -271,9 +346,7 @@ class KafkaEventRouterIT {
             val records = consumer.poll(5000)
             assertEquals(1, records.count())
             assertEquals(true, records.all {
-                JSONUtils.readValue<StreamsEvent>(it.value()).let {
-                    message == it.payload
-                }
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
             })
         }
     }
@@ -408,5 +481,114 @@ class KafkaEventRouterIT {
                     .count() > 0
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         kafkaConsumer.close()
+    }
+
+    @Test
+    fun testProcedureSyncWithKeyNull() {
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+
+            val message = "Hello World"
+            consumer.subscribe(listOf("neo4j"))
+            db.execute("CREATE (n:Foo {id: 1, name: 'Bar'})").close()
+
+            val recordsCreation = consumer.poll(5000)
+            assertEquals(1, recordsCreation.count())
+
+            db.execute("MATCH (n:Foo {id: 1}) CALL streams.publish.sync('neo4j', '$message', {key: n.foo}) YIELD value RETURN value").use { result ->
+                assertTrue { result.hasNext() }
+                val resultMap = (result.next())["value"] as Map<String, Any>
+
+                assertNotNull(resultMap["offset"])
+                assertNotNull(resultMap["partition"])
+                assertNotNull(resultMap["keySize"])
+                assertNotNull(resultMap["valueSize"])
+                assertNotNull(resultMap["timestamp"])
+
+                assertFalse { result.hasNext() }
+            }
+
+            val records = consumer.poll(5000)
+            assertEquals(1, records.count())
+            assertTrue { records.all {
+                JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                        && it.key() == null
+            }}
+        }
+    }
+
+    @Test
+    fun testProcedureSyncWithConfig() {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+            val topic = UUID.randomUUID().toString()
+            it.createTopics(listOf(NewTopic(topic, 5, 1)))
+            val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+            createConsumer(config).use { consumer ->
+                consumer.subscribe(listOf(topic))
+                val message = "Hello World"
+                val keyRecord = "test"
+                val partitionRecord = 1
+                db.execute("CALL streams.publish.sync('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })").use {result ->
+                    assertTrue { result.hasNext() }
+                    val resultMap = (result.next())["value"] as Map<String, Any>
+                    assertNotNull(resultMap["offset"])
+                    assertEquals(partitionRecord, resultMap["partition"])
+                    assertNotNull(resultMap["keySize"])
+                    assertNotNull(resultMap["valueSize"])
+                    assertNotNull(resultMap["timestamp"])
+                    assertFalse { result.hasNext() }
+                }
+                val records = consumer.poll(5000)
+                assertEquals(1, records.count())
+                assertEquals(1, records.count { it.partition() == 1 })
+                assertTrue{ records.all {
+                    JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                            && JSONUtils.readValue<String>(it.key()) == keyRecord
+                            && partitionRecord == it.partition()
+                }}
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureWithTopicWithMultiplePartitionAndKey() {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+            val topic = UUID.randomUUID().toString()
+            it.createTopics(listOf(NewTopic(topic, 3, 1)))
+            val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+            createConsumer(config).use { consumer ->
+                consumer.subscribe(listOf(topic))
+                val message = "Hello World"
+                val keyRecord = "test"
+                val partitionRecord = 2
+                db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })")
+                val records = consumer.poll(5000)
+                assertEquals(1, records.count())
+                assertEquals(1, records.count { it.partition() == 2 })
+                assertTrue{ records.all {
+                    JSONUtils.readValue<StreamsEvent>(it.value()).payload == message
+                            && JSONUtils.readValue<String>(it.key()) == keyRecord
+                            && partitionRecord == it.partition()
+                }}
+            }
+        }
+    }
+
+    @Test
+    fun testProcedureSendMessageToNotExistentPartition() {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+            val topic = UUID.randomUUID().toString()
+            it.createTopics(listOf(NewTopic(topic, 3, 1)))
+            val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+            createConsumer(config).use { consumer ->
+                consumer.subscribe(listOf(topic))
+                val message = "Hello World"
+                val keyRecord = "test"
+                val partitionRecord = 9
+                db.execute("CALL streams.publish('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })")
+                val records = consumer.poll(5000)
+                assertEquals(0, records.count())
+            }
+        }
     }
 }
