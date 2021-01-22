@@ -1,1 +1,0 @@
-{environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>

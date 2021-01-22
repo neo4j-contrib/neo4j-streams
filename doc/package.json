@@ -8,7 +8,8 @@
     "lint": "antora --generator @antora/xref-validator docs.yml",
     "serve": "node server.js",
     "build": "antora --stacktrace docs.yml",
-    "publish": "git push origin HEAD:publish"
+    "publish": "git push origin HEAD:publish",
+    "lint:links": "node tasks/lint-links.js"
   },
   "license": "ISC",
   "dependencies": {
@@ -18,7 +19,10 @@
   },
   "devDependencies": {
     "express": "^4.17.1",
-    "@antora/xref-validator": "gitlab:antora/xref-validator"
+    "@antora/xref-validator": "gitlab:antora/xref-validator",
+    "hyperlink": "^4.6.0",
+    "npm-watch": "^0.7.0",
+    "forever": "^3.0.2"
   },
   "watch": {
     "build": {
