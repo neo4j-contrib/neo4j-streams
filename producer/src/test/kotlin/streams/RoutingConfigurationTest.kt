@@ -92,7 +92,7 @@ class RoutingConfigurationTest {
         assertTrue { routing[0].exclude.isEmpty() }
         assertEquals(listOf("p1","p2","p3","p4"), routing[0].include)
 
-        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic8", "Label  :  ` lorem  : ipsum : dolor : sit `{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic8", " Label  :  ` lorem  : ipsum : dolor : sit `{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
         assertEquals(1, routing.size)
         assertEquals("topic8", routing[0].topic)
         assertFalse { routing[0].all }
@@ -100,7 +100,7 @@ class RoutingConfigurationTest {
         assertTrue { routing[0].exclude.isEmpty() }
         assertEquals(listOf("name","surname"), routing[0].include)
 
-        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic9", "`labels::label`:Label:Label1{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic9", "  `labels::label`:Label:Label1{name, surname}", EntityType.node) as List<NodeRoutingConfiguration>
         assertEquals(1, routing.size)
         assertEquals("topic9", routing[0].topic)
         assertFalse { routing[0].all }

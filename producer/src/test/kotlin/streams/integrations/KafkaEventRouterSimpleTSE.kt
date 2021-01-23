@@ -26,9 +26,8 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
 
     @Test
     fun testCreateNode() {
-        val topic = UUID.randomUUID().toString()
-        db.setConfig("streams.source.topic.nodes.$topic", "Person{*}").start()
-        kafkaConsumer.subscribe(listOf(topic))
+        db.start()
+        kafkaConsumer.subscribe(listOf("neo4j"))
         db.execute("CREATE (:Person {name:'John Doe', age:42})")
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
@@ -239,10 +238,16 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
 
     @Test
     fun testCreateRelWithBacktickPattern() {
-        val topic = UUID.randomUUID().toString()
-        db.setConfig("streams.source.topic.relationships.$topic", "`KNOWS::VERY:WELL`{*}").start()
-        kafkaConsumer.subscribe(listOf(topic))
-        db.execute("CREATE (:NoteTest {name:'Foo'})-[:`KNOWS::VERY:WELL`{since: 2014}]->(:NoteTest {name:'Bar'})")
+        val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString())
+        db.setConfig("streams.source.topic.nodes.${topic[0]}", " `Note :: Test`{*}")
+                .setConfig("streams.source.topic.relationships.${topic[1]}", "`KNOWS::VERY:WELL`{*}")
+                .start()
+        kafkaConsumer.subscribe(topic)
+        db.execute("CREATE (:`Note :: Test`{name:'Foo'}), (:`Note :: Test`{name:'Bar'})")
+        val recordsNodes = kafkaConsumer.poll(5000)
+        assertEquals(2, recordsNodes.count())
+
+        db.execute("MATCH (a:`Note :: Test`{name:'Foo'}), (b:`Note :: Test`{name:'Bar'}) CREATE (a)-[:`KNOWS::VERY:WELL`{since: 2014}]->(b)")
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertTrue { records.all {
