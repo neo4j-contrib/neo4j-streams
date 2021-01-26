@@ -5,7 +5,7 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.TopicConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringSerializer
+import org.neo4j.logging.Log
 import streams.extensions.getInt
 import streams.extensions.toPointCase
 import streams.utils.JSONUtils
