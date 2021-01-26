@@ -188,6 +188,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         }}
     }
 
+    @Test
     fun testProcedureSyncWithConfig() {
         db.start()
         AdminClient.create(mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)).use {

@@ -49,10 +49,9 @@ fun StreamsTransactionEvent.asSourceRecordValue(strategy: String): StreamsTransa
 
 fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
         when {
-            strategy == TopicConfig.CLEANUP_POLICY_DELETE -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
             isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNode(payload as NodePayload, schema)
             isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRel(payload as RelationshipPayload)
-            else -> throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
+            else -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
         }
 
 private fun getKeyOfNode(payload: NodePayload, schema: Schema): Any {

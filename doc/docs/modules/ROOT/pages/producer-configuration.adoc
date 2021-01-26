@@ -50,6 +50,7 @@ to send events to the defined topics.
 With `kafka.streams.log.compaction.strategy=delete` will be generated a sequence of unique keys with Neo4j Streams Source.
 instead with `kafka.streams.log.compaction.strategy=compact` the keys will be adapted to enable
 https://kafka.apache.org/documentation.html#compaction[Log Compaction] on the Kafka side.
+Please note that delete strategy does not actually delete records, it has this name  to match the topic config `cleanup.policy=delete/compact`.
 Namely, the operations which will involve the same nodes or relationships, will have the same key.
 
 === Multi Database Support

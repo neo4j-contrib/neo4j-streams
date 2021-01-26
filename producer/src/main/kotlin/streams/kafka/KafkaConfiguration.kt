@@ -5,13 +5,15 @@ import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.TopicConfig
 import org.apache.kafka.common.serialization.ByteArraySerializer
-import org.apache.kafka.common.serialization.StringSerializer
+import org.neo4j.logging.Log
 import streams.extensions.getInt
 import streams.extensions.toPointCase
 import streams.utils.JSONUtils
 import streams.utils.ValidationUtils.validateConnection
 import java.util.Properties
 import java.util.concurrent.TimeUnit
+
+enum class LogStrategy { delete, compact }
 
 private val configPrefix = "kafka."
 
@@ -29,7 +31,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
                               val transactionalId: String = StringUtils.EMPTY,
                               val lingerMs: Int = 1,
                               val topicDiscoveryPollingInterval: Long = TimeUnit.MINUTES.toMillis(5),
-                              val streamsLogCompactionStrategy: String = TopicConfig.CLEANUP_POLICY_DELETE,
+                              val streamsLogCompactionStrategy: String = LogStrategy.delete.toString(),
                               val extraProperties: Map<String, String> = emptyMap()) {
 
     companion object {
@@ -62,15 +64,21 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
             )
         }
 
-        fun from(cfg: Map<String, String>): KafkaConfiguration {
+        fun from(cfg: Map<String, String>, log: Log): KafkaConfiguration {
             val kafkaCfg = create(cfg)
-            validate(kafkaCfg, cfg)
+            validate(kafkaCfg, cfg, log)
             return kafkaCfg
         }
 
-        private fun validate(config: KafkaConfiguration, rawConfig: Map<String, String>) {
+        private fun validate(config: KafkaConfiguration, rawConfig: Map<String, String>, log: Log? = null) {
             validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
             validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
+            try {
+                LogStrategy.valueOf(config.streamsLogCompactionStrategy)
+            } catch (e: IllegalArgumentException) {
+                log?.warn("Invalid log compaction strategy setting, switching to default value ${TopicConfig.CLEANUP_POLICY_DELETE}")
+                config.streamsLogCompactionStrategy.apply { LogStrategy.delete.toString() }
+            }
         }
 
     }

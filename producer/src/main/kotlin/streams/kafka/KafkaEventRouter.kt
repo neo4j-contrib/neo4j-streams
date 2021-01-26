@@ -44,7 +44,7 @@ class KafkaEventRouter: StreamsEventRouter {
 
     override fun start() {
         log.info("Initialising Kafka Connector")
-        kafkaConfig = KafkaConfiguration.from(config.config)
+        kafkaConfig = KafkaConfiguration.from(config.config, log)
         val props = kafkaConfig.asProperties()
         val definedTopics = StreamsEventRouterConfiguration
                 .from(config, dbName)
