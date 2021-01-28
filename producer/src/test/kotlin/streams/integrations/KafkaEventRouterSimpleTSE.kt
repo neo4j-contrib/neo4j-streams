@@ -119,7 +119,7 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
 
     @Test
     fun testCreateNodeWithFrom() {
-        db.setConfig("streams.source.topic.nodes.fromTopic.from.neo4j", "Person : Neo4j{*}")
+        db.setConfig("streams.source.topic.nodes.fromTopic.from.neo4j", "Person:Neo4j{*}")
                 .start()
         kafkaConsumer.subscribe(listOf("fromTopic"))
         db.execute("CREATE (:Person:Neo4j {name:'John Doe', age:42})")
