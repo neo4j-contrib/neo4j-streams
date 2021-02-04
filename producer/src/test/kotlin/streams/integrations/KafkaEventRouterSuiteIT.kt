@@ -17,7 +17,8 @@ import streams.utils.StreamsUtils
         KafkaEventRouterSimpleTSE::class,
         KafkaEventRouterWithConstraintsTSE::class,
         KafkaEventRouterEnterpriseTSE::class,
-        KafkaEventRouterLogCompactionTSE::class
+        KafkaEventRouterLogCompactionTSE::class,
+        KafkaEventRouterEnterpriseLogCompactionTSE::class
 )
 class KafkaEventRouterSuiteIT {
 
