@@ -45,10 +45,6 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         else -> StreamsPluginStatus.STOPPED
     }
 
-    override fun status(): StreamsPluginStatus = runBlocking {
-        mutex.withLock(producer) { status(producer) }
-    }
-
     override fun start() = runBlocking {
         mutex.withLock(producer) {
             if (status(producer) == StreamsPluginStatus.RUNNING) {

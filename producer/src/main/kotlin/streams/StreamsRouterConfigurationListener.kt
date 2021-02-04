@@ -9,6 +9,7 @@ import org.neo4j.logging.Log
 import org.neo4j.plugin.configuration.ConfigurationLifecycleUtils
 import org.neo4j.plugin.configuration.EventType
 import org.neo4j.plugin.configuration.listners.ConfigurationLifecycleListener
+import streams.events.StreamsPluginStatus
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import streams.utils.KafkaValidationUtils
@@ -59,7 +60,7 @@ class StreamsRouterConfigurationListener(private val db: GraphDatabaseAPI,
     }
 
     private fun shutdown() {
-        val isShuttingDown = txHandler != null
+        val isShuttingDown = txHandler?.status() == StreamsPluginStatus.RUNNING
         if (isShuttingDown) {
             log.info("[Sink] Shutting down the Streams Source Module")
         }
@@ -68,10 +69,8 @@ class StreamsRouterConfigurationListener(private val db: GraphDatabaseAPI,
             streamsEventRouter?.stop()
             streamsEventRouter = null
             StreamsProcedures.unregisterEventRouter(db)
-            if (txHandler != null) {
-                db.unregisterTransactionEventHandler(txHandler)
-                txHandler = null
-            }
+            txHandler?.stop()
+            txHandler = null
         }
         if (isShuttingDown) {
             log.info("[Source] Shutdown of the Streams Source Module completed")
@@ -82,19 +81,17 @@ class StreamsRouterConfigurationListener(private val db: GraphDatabaseAPI,
         lastConfig = KafkaConfiguration.create(configMap)
         streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configMap)
         streamsEventRouter = StreamsEventRouterFactory.getStreamsEventRouter(configMap, log)
-        if (streamsConstraintsService == null) {
-            streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration!!.schemaPollingInterval)
-        }
+        streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration!!.schemaPollingInterval)
         if (streamsEventRouterConfiguration?.enabled == true || streamsEventRouterConfiguration?.proceduresEnabled == true) {
             streamsConstraintsService!!.start()
             streamsEventRouter!!.start()
         }
+        txHandler = StreamsTransactionEventHandler(streamsEventRouter!!, db, streamsConstraintsService!!)
         if (streamsEventRouterConfiguration?.enabled == true) {
-            txHandler = StreamsTransactionEventHandler(streamsEventRouter!!, streamsConstraintsService!!)
             streamsEventRouter!!.printInvalidTopics()
-            db.registerTransactionEventHandler(txHandler)
+            txHandler!!.start()
         }
-        StreamsProcedures.registerEventRouter(db, streamsEventRouter!!)
+        StreamsProcedures.registerEventRouter(db, streamsEventRouter!! to txHandler!!)
         log.info("[Source] Streams Source module initialised")
     }
 

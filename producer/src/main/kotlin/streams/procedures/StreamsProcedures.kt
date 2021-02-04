@@ -12,6 +12,7 @@ import org.neo4j.procedure.Mode
 import org.neo4j.procedure.Name
 import org.neo4j.procedure.Procedure
 import streams.StreamsEventRouter
+import streams.StreamsTransactionEventHandler
 import streams.events.StreamsEventBuilder
 import streams.events.StreamsPluginStatus
 import streams.utils.StreamsUtils
@@ -94,15 +95,16 @@ class StreamsProcedures {
             .build()
 
     companion object {
-        private val cache = ConcurrentHashMap<String, StreamsEventRouter>()
+        private val cache = ConcurrentHashMap<String, Pair<StreamsEventRouter, StreamsTransactionEventHandler>>()
 
-        private fun getEventRouter(db: GraphDatabaseService) = cache[StreamsUtils.getName(db as GraphDatabaseAPI)]
+        private fun getEventRouter(db: GraphDatabaseService) = cache[StreamsUtils.getName(db as GraphDatabaseAPI)]?.first
 
-        fun registerEventRouter(db: GraphDatabaseAPI, eventRouter: StreamsEventRouter) = cache.put(StreamsUtils.getName(db), eventRouter)
+        fun registerEventRouter(db: GraphDatabaseAPI, pair: Pair<StreamsEventRouter, StreamsTransactionEventHandler>) = cache
+            .put(StreamsUtils.getName(db), pair)
 
         fun unregisterEventRouter(db: GraphDatabaseAPI) = cache.remove(StreamsUtils.getName(db))
 
-        fun hasStatus(db: GraphDatabaseAPI, status: StreamsPluginStatus) = getEventRouter(db)?.status() == status
+        fun hasStatus(db: GraphDatabaseAPI, status: StreamsPluginStatus) = cache[StreamsUtils.getName(db)]?.second?.status() == status
 
         fun isRegistered(db: GraphDatabaseAPI) = getEventRouter(db) != null
     }

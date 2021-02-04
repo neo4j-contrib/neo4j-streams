@@ -38,4 +38,21 @@ class StreamsConfigProceduresIT {
         val expected = mapOf("name" to "streams.procedures.enabled", "value" to "true")
         assertEquals(expected, actual[0])
     }
+
+    @Test
+    fun `should remove properties`() {
+        db.dependencyResolver.resolveDependency(Procedures::class.java)
+            .registerProcedure(StreamsConfigProcedures::class.java, true)
+        val props = mapOf("streams.procedures.enabled" to "true")
+        val actual = db.execute("CALL streams.configuration.set(\$props, {save: false})", mapOf("props" to props))
+            .stream()
+            .toList()
+        assertEquals(1, actual.size)
+        val expected = mapOf("name" to "streams.procedures.enabled", "value" to "true")
+        assertEquals(expected, actual[0])
+        val actualRemoved = db.execute("CALL streams.configuration.remove(\$props, {save: false})", mapOf("props" to props.keys))
+            .stream()
+            .toList()
+        assertEquals(0, actualRemoved.size)
+    }
 }

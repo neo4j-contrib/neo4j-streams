@@ -57,6 +57,14 @@ class StreamsConfig(triggerPeriod: Int = DEFAULT_TRIGGER_PERIOD, log: Log) {
         configLifecycle.setProperties(map, save)
     }
 
+    fun removeProperty(key: String, save: Boolean = true) {
+        configLifecycle.removeProperty(key, save)
+    }
+
+    fun removeProperties(keys: Collection<String>, save: Boolean = true) {
+        configLifecycle.removeProperties(keys, save)
+    }
+
     fun reload() {
         configLifecycle.reload()
     }

@@ -18,8 +18,6 @@ abstract class StreamsEventRouter(config: Map<String, String>, log: Log) {
 
     open fun printInvalidTopics() {}
 
-    abstract fun status(): StreamsPluginStatus
-
 }
 
 

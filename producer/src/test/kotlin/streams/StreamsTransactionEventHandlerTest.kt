@@ -39,7 +39,7 @@ class StreamsTransactionEventHandlerTest {
         Mockito.`when`(dbMock.schema()).thenReturn(schemaMock)
         streamsConstraintsService = StreamsConstraintsService(dbMock, 0)
         streamsConstraintsService.start()
-        handler = StreamsTransactionEventHandler(MockStreamsEventRouter(),
+        handler = StreamsTransactionEventHandler(MockStreamsEventRouter(), dbMock,
                 streamsConstraintsService)
         MockStreamsEventRouter.reset()
     }

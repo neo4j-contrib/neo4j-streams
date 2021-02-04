@@ -39,11 +39,13 @@ and `Source` with the new configuration.
 
 === Procedure based changes
 
-From version `3.5.13` you'll find two new procedures:
+From version `3.5.13` you'll find three new procedures:
 
 * `streams.configuration.get` returns the current configuration
 * `streams.configuration.set({<plugin_config_map>}, {<procedure_config>})` that applies
 the new configuration and returns it
+* `streams.configuration.remove({<plugin_config_keys_list>}, {<procedure_config>})` that removes
+the provided configuration keys and returns the new configuration status
 
 ==== `streams.configuration.get`
 
@@ -108,8 +110,7 @@ You'll have this following output (it's related to *your* configuration 😄)
 
 ==== `streams.configuration.set`
 
-This procedure applies the map of configuration parameters passed as first argument
-and the procedure configuration parameters passed as second argument.
+This procedure applies the map of configuration parameters passed as first argument.
 
 Input Parameters:
 
@@ -122,7 +123,7 @@ Input Parameters:
 |This map represents the set of configurations applied to the `Sink` and the `Source`
 
 |`procedure_config`
-|The configuration value
+|The configuration map
 
 |===
 
@@ -196,9 +197,95 @@ You'll have this following output (it's related to *your* configuration 😄)
 
 |===
 
+==== `streams.configuration.remove`
+
+This procedure removes the provided list of keys from the configuration.
+
+Input Parameters:
+
+[cols="2*",options="header"]
+|===
+|Variable Name
+|Description
+
+|`plugin_config_keys_list`
+|This list represents the properties set that will be removed from the configuration.
+
+|`procedure_config`
+|The configuration map
+
+|===
+
+Output Parameters:
+
+[cols="2*",options="header"]
+|===
+|Variable Name
+|Description
+
+|`name`
+|The configuration name
+
+|`value`
+|The configuration value
+
+|===
+
+Following the accepted parameters for the `procedure_config`:
+
+[cols="2*",options="header"]
+|===
+|Configuration Name
+|Description
+
+|`save`
+|(Boolean, default `true`) if persist or not the configuration
+into the file in order to have it back once the database is restarted
+for whatever reason
+
+|===
+
+So given the following procedure call:
+
+[source,cypher]
+----
+CALL streams.configuration.remove([`kafka.zookeeper.connect`], {save: false}) YIELD name, value
+RETURN name, value
+----
+
+You'll have this following output (it's related to *your* configuration 😄)
+
+[cols="2*",options="header"]
+|===
+|name
+|value
+
+|"streams.sink.topic.cypher.test"
+|"CREATE (p:Person{name: event.name, surname: event.surname})"
+
+|"streams.sink.errors.tolerance"
+|"all"
+
+|"kafka.default.api.timeout.ms"
+|"5000"
+
+|"kafka.bootstrap.servers"
+|"broker:9093"
+
+|"streams.sink.errors.log.include.messages"
+|"true"
+
+|"streams.sink.enabled"
+|"true"
+
+|"streams.sink.errors.log.enable"
+|"true"
+
+|===
+
 ====== What happens when we change a configuration properties from procedure
 
-When we change the configuration properties from `streams.configuration.set`,
+When we change the configuration properties from `streams.configuration.set/remove`,
 under-the-hood `Sink` and `Source` modules are reloaded. So use it carefully
 because it has an impact in your Stream flow.
 

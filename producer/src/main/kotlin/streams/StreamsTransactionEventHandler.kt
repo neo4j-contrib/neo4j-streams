@@ -4,16 +4,33 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventHandler
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.events.*
 import streams.extensions.labelNames
 import streams.utils.SchemaUtils.getNodeKeys
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 
 class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
+                                     private val db: GraphDatabaseAPI,
                                      private val streamsConstraintsService: StreamsConstraintsService)
     : TransactionEventHandler<PreviousTransactionData> {
+
+    private val status = AtomicReference<StreamsPluginStatus>(StreamsPluginStatus.UNKNOWN)
+
+    fun start() {
+        db.registerTransactionEventHandler(this)
+        status.set(StreamsPluginStatus.RUNNING)
+    }
+
+    fun stop() {
+        db.unregisterTransactionEventHandler(this)
+        status.set(StreamsPluginStatus.STOPPED)
+    }
+
+    fun status() = status.get()
 
     private val configuration = router.eventRouterConfiguration
 

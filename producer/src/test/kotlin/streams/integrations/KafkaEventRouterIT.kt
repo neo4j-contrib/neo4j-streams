@@ -518,9 +518,9 @@ class KafkaEventRouterIT {
 
     @Test
     fun testProcedureSyncWithConfig() {
-        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use { admin ->
             val topic = UUID.randomUUID().toString()
-            it.createTopics(listOf(NewTopic(topic, 5, 1)))
+            admin.createTopics(listOf(NewTopic(topic, 5, 1))).all().get()
             val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
             createConsumer(config).use { consumer ->
                 consumer.subscribe(listOf(topic))
@@ -551,9 +551,9 @@ class KafkaEventRouterIT {
 
     @Test
     fun testProcedureWithTopicWithMultiplePartitionAndKey() {
-        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use { admin ->
             val topic = UUID.randomUUID().toString()
-            it.createTopics(listOf(NewTopic(topic, 3, 1)))
+            admin.createTopics(listOf(NewTopic(topic, 3, 1))).all().get()
             val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
             createConsumer(config).use { consumer ->
                 consumer.subscribe(listOf(topic))
@@ -575,9 +575,9 @@ class KafkaEventRouterIT {
 
     @Test
     fun testProcedureSendMessageToNotExistentPartition() {
-        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use { admin ->
             val topic = UUID.randomUUID().toString()
-            it.createTopics(listOf(NewTopic(topic, 3, 1)))
+            admin.createTopics(listOf(NewTopic(topic, 3, 1))).all().get()
             val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
             createConsumer(config).use { consumer ->
                 consumer.subscribe(listOf(topic))

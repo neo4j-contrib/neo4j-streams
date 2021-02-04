@@ -44,8 +44,6 @@ class MockStreamsEventRouter(map: Map<String, String> = emptyMap(),
         status.set(StreamsPluginStatus.STOPPED)
     }
 
-    override fun status(): StreamsPluginStatus = status.get()
-
     companion object {
         val events = mutableListOf<StreamsTransactionEvent>()
 

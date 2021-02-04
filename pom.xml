@@ -44,7 +44,7 @@
         <avro.version>1.8.2</avro.version>
         <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
         <hamcrest.version>1.3</hamcrest.version>
-        <neo4j.configuration-lifecycle.version>65750ed701</neo4j.configuration-lifecycle.version>
+        <neo4j.configuration-lifecycle.version>ad59084711</neo4j.configuration-lifecycle.version>
     </properties>
 
     <organization>
