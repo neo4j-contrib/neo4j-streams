@@ -12,7 +12,7 @@ import org.junit.Assume.assumeTrue
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert.assertEventually
 import streams.utils.JSONUtils
-import streams.integrations.KafkaLogCompactionTestCommon.Companion.assertTopicFilled
+import streams.integrations.CompactionStrategyTestCommon.Companion.assertTopicFilled
 import java.util.concurrent.TimeUnit
 
 class KafkaEventRouterEnterpriseLogCompactionTSE {

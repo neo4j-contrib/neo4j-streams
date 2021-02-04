@@ -71,4 +71,4 @@ private fun relationshipAsMessageKey(payload: RelationshipPayload) = mapOf(
         "end" to payload.end.toKey(),
         "label" to payload.label)
 
-private fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
+fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
