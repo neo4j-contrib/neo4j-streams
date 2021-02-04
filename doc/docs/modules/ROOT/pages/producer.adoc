@@ -21,6 +21,9 @@ To allow insertion of keys in any format (e.g. through `streams.publish` procedu
 **the `key.serializer` is set with the `org.apache.kafka.common.serialization.ByteArraySerializer`**
 like `value.serializer`
 
+
+include::message-structure.adoc[]
+
 [#source-patterns]
 == Patterns
 
