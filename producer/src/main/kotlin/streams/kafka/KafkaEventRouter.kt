@@ -91,7 +91,7 @@ class KafkaEventRouter: StreamsEventRouter {
         // in the procedures we allow to define a custom message key via the configuration property key
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
-        val partition = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
+        val partition = (config["partition"])?.toString()?.toInt()
 
         val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
@@ -106,13 +106,7 @@ class KafkaEventRouter: StreamsEventRouter {
         val key = event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy)
         val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
 
-        val partition = if (isStrategyCompact(kafkaConfig.streamsLogCompactionStrategy)) {
-                abs(key.hashCode()) % kafkaConfig.numPartitions
-            } else {
-                ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
-            }
-
-        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key), value)
+        val producerRecord = ProducerRecord(topic, null, System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key), value)
         send(producerRecord)
     }
 
