@@ -147,3 +147,46 @@ streams.source.enabled.from.foo=false
 ----
 
 Then Source module is enabled on all databases EXCEPT `foo` (local overrides global)
+
+[NOTE]
+====
+For example purposes only, imagine a situation like the following:
+
+You have a Neo4j instance, without Neo4j Streams installed, where a database "testdb" was created and populated.
+You decide to install the Neo4j Streams plugin because we want to have also our graph data into Kafka.
+So you add the following configuration:
+
+[source]
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+streams.source.enabled=true
+streams.sink.enabled=false
+streams.procedures.enabled=true
+streams.source.topic.nodes.topicTest.from.testdb=Test{*}
+----
+
+Doing so you expect to reflect all the created/updated nodes with label `Test` into the topic `topicTest`.
+What actually happens is:
+
+- all the nodes and relationship inserted before the Kafka setup, are reflected into a topic called "testdb" which is created by default with the database name.
+- all the created/updated nodes with label `Test`, after the Kafka setup, are reflected into the configured topic `topicTest`.
+
+The second point happens because, since the database "testdb" is already populated, by enabling the Source module (`streams.source.enabled=true`) the plugin will create a default topic with the same name as the database name, and it will reflect all the "testdb" data into it.
+
+If you want to turn off this default behaviour you have to disable the "generic" Source module and enable it just for the
+database you are interested of:
+
+[source]
+----
+kafka.zookeeper.connect=localhost:2181
+kafka.bootstrap.servers=localhost:9092
+streams.source.enabled=false
+streams.sink.enabled=false
+streams.procedures.enabled=true
+streams.source.enabled.from.test1=true
+streams.source.topic.nodes.topicTest.from.testdb=Test{*}
+----
+
+====
+
