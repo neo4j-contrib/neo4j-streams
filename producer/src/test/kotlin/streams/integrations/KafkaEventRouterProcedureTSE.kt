@@ -195,6 +195,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             val topic = UUID.randomUUID().toString()
 
             it.createTopics(listOf(NewTopic(topic, 5, 1)))
+                    .all()
+                    .get()
             KafkaEventRouterSuiteIT.registerPublishProcedure(db)
             kafkaConsumer.subscribe(listOf(topic))
 
@@ -230,6 +232,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             val topic = UUID.randomUUID().toString()
 
             it.createTopics(listOf(NewTopic(topic, 3, 1)))
+                    .all()
+                    .get()
             KafkaEventRouterSuiteIT.registerPublishProcedure(db)
             kafkaConsumer.subscribe(listOf(topic))
 
@@ -256,6 +260,8 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             val topic = UUID.randomUUID().toString()
 
             it.createTopics(listOf(NewTopic(topic, 3, 1)))
+                    .all()
+                    .get()
             KafkaEventRouterSuiteIT.registerPublishProcedure(db)
             kafkaConsumer.subscribe(listOf(topic))
 
