@@ -17,8 +17,10 @@ import streams.KafkaTestUtils
 import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
+import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
 
@@ -166,5 +168,97 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
                 .count()
             count > 0
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun testIssue382() {
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.source.topic.nodes.$topic", "Label:`labels::label`{*}").start()
+        kafkaConsumer.subscribe(listOf(topic))
+        db.execute("CREATE (:Label:`labels::label` {name:'John Doe', age:42})")
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+
+        assertTrue { records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val after = it.payload.after as NodeChange
+                val labels = after.labels
+                val propertiesAfter = after.properties
+                labels == listOf("Label", "labels::label") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        }}
+    }
+
+    @Test
+    fun testCreateNodeWithMultiplePatternAndWithMultipeTwoPointsAndWhiteSpaces() {
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.source.topic.nodes.$topic", "Label  :  ` lorem  : ipsum : dolor : sit `{name, surname}").start()
+        kafkaConsumer.subscribe(listOf(topic))
+        db.execute("CREATE (:Label:` lorem  : ipsum : dolor : sit ` {name:'John', surname:'Doe', age: 42})")
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+
+        assertTrue { records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val after = it.payload.after as NodeChange
+                val labels = after.labels
+                val propertiesAfter = after.properties
+                labels == listOf("Label", " lorem  : ipsum : dolor : sit ") && propertiesAfter == mapOf("name" to "John", "surname" to "Doe")
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String", "surname" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        }}
+    }
+
+    @Test
+    fun testCreateNodeWithSinglePatternAndWithMultipeTwoPoints() {
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.source.topic.nodes.$topic", "` lorem:ipsum:dolor:sit `{*}").start()
+        kafkaConsumer.subscribe(listOf(topic))
+        db.execute("CREATE (:` lorem:ipsum:dolor:sit ` {name:'John Doe', age:42})")
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+
+        assertTrue { records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val after = it.payload.after as NodeChange
+                val labels = after.labels
+                val propertiesAfter = after.properties
+                labels == listOf(" lorem:ipsum:dolor:sit ") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        }}
+    }
+
+    @Test
+    fun testCreateRelWithBacktickPattern() {
+        val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString())
+        db.setConfig("streams.source.topic.nodes.${topic[0]}", " `Note :: Test`{*}")
+                .setConfig("streams.source.topic.relationships.${topic[1]}", "`KNOWS::VERY:WELL`{*}")
+                .start()
+        kafkaConsumer.subscribe(topic)
+        db.execute("CREATE (:`Note :: Test`{name:'Foo'}), (:`Note :: Test`{name:'Bar'})")
+        val recordsNodes = kafkaConsumer.poll(5000)
+        assertEquals(2, recordsNodes.count())
+
+        db.execute("MATCH (a:`Note :: Test`{name:'Foo'}), (b:`Note :: Test`{name:'Bar'}) CREATE (a)-[:`KNOWS::VERY:WELL`{since: 2014}]->(b)")
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+        assertTrue { records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val payload = it.payload as RelationshipPayload
+                val properties = payload.after!!.properties!!
+                payload.type == EntityType.relationship && payload.label == "KNOWS::VERY:WELL"
+                        && properties["since"] == 2014
+                        && it.schema.properties == mapOf("since" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        }}
     }
 }
