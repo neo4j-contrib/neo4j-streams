@@ -1,17 +1,16 @@
 package streams.integrations
 
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.common.config.TopicConfig
 import org.junit.Before
 import org.junit.Test
-import org.neo4j.graphdb.TransactionFailureException
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder
 import org.neo4j.helpers.collection.Iterators
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import streams.events.*
+import streams.integrations.CompactionStrategyTestCommon.Companion.assertTopicFilled
+import streams.integrations.CompactionStrategyTestCommon.Companion.createCompactTopic
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import java.time.Duration
@@ -23,7 +22,7 @@ import streams.serialization.JSONUtils
 @Suppress("DEPRECATION")
 class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
 
-    lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
+    private lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
 
     @Before
     override fun setUp() {
@@ -31,20 +30,6 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
     }
-
-    private fun createCompactTopic(topic: String) = AdminClient
-            .create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
-        val topics = listOf(compactTopic(topic))
-        it.createTopics(topics).all().get()
-    }
-
-    private fun compactTopic(topic: String) =
-            NewTopic(topic, 1, 1).configs(mapOf(
-                    "cleanup.policy" to "compact",
-                    "segment.ms" to "10",
-                    "retention.ms" to "1",
-                    "min.cleanable.dirty.ratio" to "0.01"
-            ))
 
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
@@ -81,26 +66,28 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("CALL streams.publish('$topic', 'Compaction 4', {key: '$keyRecord'})")
 
             // to activate the log compaction process we publish dummy messages
-            db.execute("UNWIND range(1,9999) as id CALL streams.publish('$topic', 'id', {key: 'id'}) RETURN null").use {
+            // and waiting for messages population in topic
+            db.execute("UNWIND range(1,9999) as id CALL streams.publish('$topic', id, {key: id}) RETURN null").use {
                 assertEquals(9999, Iterators.count(it))
             }
-            // wait for messages population in topic
-            Thread.sleep(15000)
-            val records = consumer.poll(Duration.ofMinutes(1))
 
             // check if there is only one record with key 'test' and payload 'Compaction 4'
-            val compactedRecord = records.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
-            assertEquals(1, compactedRecord.count())
-            assertEquals("Compaction 4", JSONUtils.readValue<Map<*, *>>(compactedRecord.first().value())["payload"])
+            assertTopicFilled(consumer, true) {
+                val compactedRecord = it.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
+                it.count() == 500 &&
+                        compactedRecord.count() == 1 &&
+                        JSONUtils.readValue<Map<*,*>>(compactedRecord.first().value())["payload"] == "Compaction 4"
+            }
         }
     }
 
     @Test
     fun `delete single tombstone relation with strategy compact and constraints`() {
         // we create a topic with strategy compact
+        val keyRel = "KNOWS"
         val topic = UUID.randomUUID().toString()
-        val sourceTopics = mapOf("streams.source.topic.nodes.${topic}" to "Person{*}",
-                "streams.source.topic.relationships.${topic}" to "KNOWS{*}")
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
+                "streams.source.topic.relationships.$topic" to "KNOWS{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
         createCompactTopic(topic)
@@ -112,21 +99,21 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("""
             |MATCH (pippo:Person {name:'Pippo'})
             |MATCH (pluto:Person {name:'Pluto'})
-            |MERGE (pippo)-[:KNOWS]->(pluto)
+            |MERGE (pippo)-[:$keyRel]->(pluto)
         """.trimMargin())
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
+            db.execute("MATCH (:Person {name:'Pippo'})-[rel:$keyRel]->(:Person {name:'Pluto'}) DELETE rel")
 
             // to activate the log compaction process we create dummy messages
             createManyPersons()
-            Thread.sleep(20000)
 
-            val records = consumer.poll(Duration.ofMinutes(1))
-            val nullRecords = records.filter { it.value() == null }
-            assertEquals(1, nullRecords.count())
-            val mapRecord: Map<String, Any> = JSONUtils.readValue(nullRecords.first().key())
-            assertEquals(mapOf("name" to "Pippo"), mapRecord["start"])
-            assertEquals(mapOf("name" to "Pluto"), mapRecord["end"])
-            assertEquals("0", mapRecord["id"])
+            assertTopicFilled(consumer, true) {
+                val nullRecords = it.filter { it.value() == null }
+                val start = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
+                val end = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf("Person"))
+                it.count() == 500
+                        && nullRecords.count() == 1
+                        && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to start, "end" to end, "label" to keyRel)
+            }
         }
 
     }
@@ -134,9 +121,10 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     @Test
     fun `delete single tombstone relation with strategy compact`() {
         // we create a topic with strategy compact
+        val relType = "KNOWS"
         val topic = UUID.randomUUID().toString()
-        val sourceTopics = mapOf("streams.source.topic.nodes.${topic}" to "Person{*}",
-                "streams.source.topic.relationships.${topic}" to "KNOWS{*}")
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
+                "streams.source.topic.relationships.$topic" to "$relType{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
         createCompactTopic(topic)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
@@ -146,26 +134,27 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("CREATE (:Person {name:'Pluto'})")
             // we create a relation, so will be created a record with payload not null
             db.execute("""
-            |MATCH (pippo:Person {name:'Pippo'})
-            |MATCH (pluto:Person {name:'Pluto'})
-            |MERGE (pippo)-[:KNOWS]->(pluto)
-        """.trimMargin())
+                |MATCH (pippo:Person {name:'Pippo'})
+                |MATCH (pluto:Person {name:'Pluto'})
+                |MERGE (pippo)-[:$relType]->(pluto)
+            """.trimMargin())
 
             // we delete the relation, so will be created a tombstone record
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) DELETE rel")
+            db.execute("MATCH (:Person {name:'Pippo'})-[rel:$relType]->(:Person {name:'Pluto'}) DELETE rel")
             db.execute("CREATE (:Person {name:'Paperino'})")
 
             // to activate the log compaction process we create dummy messages
             createManyPersons()
-            Thread.sleep(20000)
 
             // we check that there is only one tombstone record
-            val records = consumer.poll(Duration.ofMinutes(1))
-            val nullRecords = records.filter { it.value() == null }
-            assertEquals(1, nullRecords.count())
-            val keyRecord: Map<String, Any> = JSONUtils.readValue(nullRecords.first().key())
-            assertEquals(JSONUtils.readValue<String>(records.first().key()), keyRecord["start"])
-            assertEquals(JSONUtils.readValue<String>(records.elementAt(1).key()), keyRecord["end"])
+            assertTopicFilled(consumer, true) {
+                val nullRecords = it.filter { it.value() == null }
+                val keyStartRecord = JSONUtils.readValue<String>(it.first().key())
+                val keyEndRecord = it.elementAtOrNull(1)?.let { JSONUtils.readValue<String>(it.key()) }
+                it.count() == 500
+                        && nullRecords.count() == 1
+                        && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to keyStartRecord, "end" to keyEndRecord, "label" to relType)
+            }
         }
     }
 
@@ -185,22 +174,24 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
 
             // to activate the log compaction process we create dummy messages and we waiting for message population
             db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
-            createManyPersons()
-            Thread.sleep(20000)
 
-            val records = consumer.poll(Duration.ofMinutes(1))
-            val nullRecords = records.filter { it.value() == null }
-            assertEquals(1, nullRecords.count())
-            val keyRecord: Map<String, Any> = JSONUtils.readValue(nullRecords.first().key())
-            assertEquals(mapOf("name" to "Sherlock"), keyRecord)
+            createManyPersons()
+            assertTopicFilled(consumer, true) {
+                val nullRecords = it.filter { it.value() == null }
+                val keyRecordExpected = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person"))
+                it.count() == 500
+                        && nullRecords.count() == 1
+                        && keyRecordExpected == JSONUtils.readValue<Map<*,*>>(nullRecords.first().key())
+            }
         }
     }
 
     @Test
     fun `test relationship with multiple constraint and strategy compact`() {
+        val relType = "BUYS"
         val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString())
         val sourceTopics = mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
-                "streams.source.topic.relationships.${topic[1]}" to "BUYS{*}",
+                "streams.source.topic.relationships.${topic[1]}" to "$relType{*}",
                 "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
         )
         val queries = listOf("CREATE CONSTRAINT ON (p:Product) ASSERT p.code IS UNIQUE",
@@ -214,12 +205,14 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("CREATE (:Person:Other {name: 'Sherlock', surname: 'Holmes', address: 'Baker Street'})")
             val records = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, records.count())
-            assertEquals(mapOf("address" to "Baker Street"), JSONUtils.readValue(records.first().key()))
+            var keyStart = mapOf("ids" to mapOf("address" to "Baker Street"), "labels" to listOf("Other", "Person"))
+            assertEquals(keyStart, JSONUtils.readValue(records.first().key()))
 
             db.execute("CREATE (p:Product {code:'1367', name: 'Notebook'})")
             val recordsTwo = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsTwo.count())
-            assertEquals(mapOf("code" to "1367"), JSONUtils.readValue(recordsTwo.first().key()))
+            val keyEnd = mapOf("ids" to mapOf("code" to "1367"), "labels" to listOf("Product"))
+            assertEquals(keyEnd, JSONUtils.readValue(recordsTwo.first().key()))
 
             // we create a relationship with start and end node with constraint
             db.execute("MATCH (pe:Person:Other {name:'Sherlock'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:BUYS]->(pr)")
@@ -227,9 +220,10 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             assertEquals(1, recordsThree.count())
             val mapRel: Map<String, Any> = JSONUtils.readValue(recordsThree.first().key())
 
-            assertEquals(mapOf("name" to "Sherlock"), mapRel["start"])
-            assertEquals(mapOf("code" to "1367"), mapRel["end"])
-            assertEquals("0", mapRel["id"])
+            keyStart = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Other", "Person"))
+            assertEquals(keyStart, mapRel["start"])
+            assertEquals(keyEnd, mapRel["end"])
+            assertEquals(relType, mapRel["label"])
 
             // we update the relationship
             db.execute("MATCH (:Person:Other {name:'Sherlock'})-[rel:BUYS]->(:Product {name:'Notebook'}) SET rel.price = '100'")
@@ -259,22 +253,24 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("CREATE (:Person:Neo4j {name:'Sherlock', surname: 'Holmes', address: 'Baker Street'})")
             val records = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, records.count())
-            assertEquals(mapOf("name" to "Sherlock"), JSONUtils.readValue<Map<*, *>>(records.first().key()))
+            var keyNode = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person", "Neo4j"))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(records.first().key()))
 
             db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.name='Foo'")
             val recordsTwo = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsTwo.count())
-            assertEquals(mapOf("name" to "Foo"), JSONUtils.readValue<Map<*, *>>(recordsTwo.first().key()))
+            keyNode = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf("Person", "Neo4j"))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsTwo.first().key()))
 
             db.execute("MATCH (p:Person {name:'Foo'}) SET p.surname='Bar'")
             val recordsThree = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsThree.count())
-            assertEquals(mapOf("name" to "Foo"), JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
 
             db.execute("MATCH (p:Person {name:'Foo'}) DETACH DELETE p")
             val recordsFour = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsFour.count())
-            assertEquals(mapOf("name" to "Foo"), JSONUtils.readValue<Map<*, *>>(recordsFour.first().key()))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsFour.first().key()))
             assertNull(recordsFour.first().value())
         }
     }
@@ -321,28 +317,31 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("CREATE (:Person {name:'Pippo'})")
             val records = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, records.count())
-            assertEquals(mapOf("name" to "Pippo"), JSONUtils.readValue<Map<*, *>>(records.first().key()))
+            var keyNode = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(records.first().key()))
 
             // we update the node
             db.execute("MATCH (p:Person {name:'Pippo'}) SET p.name='Pluto'")
             val recordsTwo = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsTwo.count())
-            assertEquals(mapOf("name" to "Pluto"), JSONUtils.readValue<Map<*, *>>(recordsTwo.first().key()))
+            keyNode = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf("Person"))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsTwo.first().key()))
 
             // we delete the node
             db.execute("MATCH (p:Person {name:'Pluto'}) DETACH DELETE p")
             val recordsThree = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsThree.count())
-            assertEquals(mapOf("name" to "Pluto"), JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
+            assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
             assertNull(recordsThree.first().value())
         }
     }
 
     @Test
     fun `relation with nodes without constraint and topic compact`() {
+        val relType = "BUYS"
         val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString())
         val sourceTopics = mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
-                "streams.source.topic.relationships.${topic[1]}" to "BUYS{*}",
+                "streams.source.topic.relationships.${topic[1]}" to "$relType{*}",
                 "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
         )
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
@@ -366,39 +365,38 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("MATCH (pe:Person {name:'Pippo'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:BUYS]->(pr)")
             val recordsThree = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsThree.count())
-            var idPayloadRel = (JSONUtils.readValue<Map<*, *>>(recordsThree.first().value())["payload"] as Map<*, *>)["id"]
             var keyRel = recordsThree.first().key()
-            assertEquals(idPayloadRel, JSONUtils.readValue<Map<*, *>>(keyRel)["id"])
-            assertEquals(idPayloadStart, JSONUtils.readValue<Map<*, *>>(keyRel)["start"])
-            assertEquals(idPayloadEnd, JSONUtils.readValue<Map<*, *>>(keyRel)["end"])
+            assertEquals(relType,  JSONUtils.readValue<Map<*,*>>(keyRel)["label"])
+            assertEquals(idPayloadStart,  JSONUtils.readValue<Map<*,*>>(keyRel)["start"])
+            assertEquals(idPayloadEnd,  JSONUtils.readValue<Map<*,*>>(keyRel)["end"])
 
             // we update the relation
             db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) SET rel.price = '100'")
             val recordsFour = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsFour.count())
-            idPayloadRel = (JSONUtils.readValue<Map<*, *>>(recordsFour.first().value())["payload"] as Map<*, *>)["id"]
             keyRel = recordsThree.first().key()
-            assertEquals(idPayloadRel, JSONUtils.readValue<Map<*, *>>(keyRel)["id"])
-            assertEquals(idPayloadStart, JSONUtils.readValue<Map<*, *>>(keyRel)["start"])
-            assertEquals(idPayloadEnd, JSONUtils.readValue<Map<*, *>>(keyRel)["end"])
+            assertEquals(relType,  JSONUtils.readValue<Map<*,*>>(keyRel)["label"])
+            assertEquals(idPayloadStart,  JSONUtils.readValue<Map<*,*>>(keyRel)["start"])
+            assertEquals(idPayloadEnd,  JSONUtils.readValue<Map<*,*>>(keyRel)["end"])
 
             // we delete the relation and check if payload is null
             db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
             val recordsFive = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsFive.count())
             keyRel = recordsThree.first().key()
-            assertEquals(idPayloadRel, JSONUtils.readValue<Map<*, *>>(keyRel)["id"])
-            assertEquals(idPayloadStart, JSONUtils.readValue<Map<*, *>>(keyRel)["start"])
-            assertEquals(idPayloadEnd, JSONUtils.readValue<Map<*, *>>(keyRel)["end"])
+            assertEquals(relType,  JSONUtils.readValue<Map<*,*>>(keyRel)["label"])
+            assertEquals(idPayloadStart,  JSONUtils.readValue<Map<*,*>>(keyRel)["start"])
+            assertEquals(idPayloadEnd,  JSONUtils.readValue<Map<*,*>>(keyRel)["end"])
             assertNull(recordsFive.first().value())
         }
     }
 
     @Test
     fun `relation with nodes with constraint and strategy compact`() {
+        val labelRel = "BUYS"
         val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString())
         val sourceTopics = mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
-                "streams.source.topic.relationships.${topic[1]}" to "BUYS{*}",
+                "streams.source.topic.relationships.${topic[1]}" to "$labelRel{*}",
                 "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
         )
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE",
@@ -411,42 +409,42 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             val records = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, records.count())
             val propsAfterStartNode = JSONUtils.asStreamsTransactionEvent(records.first().value()).payload.after?.properties
-            val keyStartNode = JSONUtils.readValue<Map<String, String>>(records.first().key())
-            assertEquals(mapOf("name" to "Pippo"), keyStartNode)
+            val keyStartNodeActual = JSONUtils.readValue<Map<String, Any>>(records.first().key())
+            val keyStartExpected = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
+            assertEquals(keyStartExpected, keyStartNodeActual)
             assertEquals(mapOf("name" to "Pippo"), propsAfterStartNode)
 
             db.execute("CREATE (p:Product {code:'1367', name: 'Notebook'})")
             val recordsTwo = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsTwo.count())
-            val propsAfterEndNode = JSONUtils.asStreamsTransactionEvent(recordsTwo.first().value()).payload.after?.properties
-            val keyEndNode = JSONUtils.readValue<Map<String, String>>(recordsTwo.first().key())
-            assertEquals(mapOf("code" to "1367"), keyEndNode)
+            val propsAfterEndNode =  JSONUtils.asStreamsTransactionEvent(recordsTwo.first().value()).payload.after?.properties
+            val keyEndNodeActual = JSONUtils.readValue<Map<String, Any>>(recordsTwo.first().key())
+            val keyEndExpected = mapOf("ids" to mapOf("code" to "1367"), "labels" to listOf("Product"))
+            assertEquals(keyEndExpected, keyEndNodeActual)
             assertEquals(mapOf("code" to "1367", "name" to "Notebook"), propsAfterEndNode)
 
-            db.execute("MATCH (pe:Person {name:'Pippo'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:BUYS]->(pr)")
+            db.execute("MATCH (pe:Person {name:'Pippo'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:$labelRel]->(pr)")
             val recordsThree = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsThree.count())
-            var relPayload = JSONUtils.asStreamsTransactionEvent(recordsThree.first().value()).payload as RelationshipPayload
-            assertEquals(mapOf("start" to relPayload.start.ids,
-                    "end" to relPayload.end.ids,
-                    "id" to relPayload.id),
+            assertEquals(mapOf("start" to keyStartExpected,
+                    "end" to keyEndExpected,
+                    "label" to labelRel),
                     JSONUtils.readValue(recordsThree.first().key()))
 
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) SET rel.price = '100'")
+            db.execute("MATCH (:Person {name:'Pippo'})-[rel:$labelRel]->(:Product {name:'Notebook'}) SET rel.price = '100'")
             val recordsFour = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsFour.count())
-            relPayload = JSONUtils.asStreamsTransactionEvent(recordsFour.first().value()).payload as RelationshipPayload
-            assertEquals(mapOf("start" to relPayload.start.ids,
-                    "end" to relPayload.end.ids,
-                    "id" to relPayload.id),
+            assertEquals(mapOf("start" to keyStartExpected,
+                    "end" to keyEndExpected,
+                    "label" to labelRel),
                     JSONUtils.readValue(recordsFour.first().key()))
 
-            db.execute("MATCH (:Person {name:'Pippo'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel")
+            db.execute("MATCH (:Person {name:'Pippo'})-[rel:$labelRel]->(:Product {name:'Notebook'}) DELETE rel")
             val recordsFive = consumer.poll(Duration.ofSeconds(10))
             assertEquals(1, recordsFive.count())
-            assertEquals(mapOf("start" to relPayload.start.ids,
-                    "end" to relPayload.end.ids,
-                    "id" to relPayload.id),
+            assertEquals(mapOf("start" to keyStartExpected,
+                    "end" to keyEndExpected,
+                    "label" to labelRel),
                     JSONUtils.readValue(recordsFive.first().key()))
             assertNull(recordsFive.first().value())
         }
@@ -456,7 +454,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     @Test
     fun `node without constraint and strategy delete`() {
         val topic = UUID.randomUUID().toString()
-        val sourceTopics = mapOf("streams.source.topic.nodes.${topic}" to "Person{*}")
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_DELETE, sourceTopics)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topic))
@@ -489,7 +487,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     fun `node with constraint and strategy delete`() {
         val topic = UUID.randomUUID().toString()
 
-        val sourceTopics = mapOf("streams.source.topic.nodes.${topic}" to "Person{*}")
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_DELETE, sourceTopics, queries)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
@@ -571,15 +569,13 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     @Test
     fun `relation with nodes with constraint and strategy delete`() {
         val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString())
-        initDbWithLogStrategy(
-                TopicConfig.CLEANUP_POLICY_DELETE,
-                mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
-                        "streams.source.topic.relationships.${topic[1]}" to "BUYS{*}",
-                        "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
-                ),
-                listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE",
-                        "CREATE CONSTRAINT ON (p:Product) ASSERT p.code IS UNIQUE")
+        val sourceTopics = mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
+                "streams.source.topic.relationships.${topic[1]}" to "BUYS{*}",
+                "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
         )
+        val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:Product) ASSERT p.code IS UNIQUE")
+        initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_DELETE, sourceTopics, queries)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(topic)
 
@@ -622,19 +618,21 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     }
 
     @Test
-    fun `invalid log strategy`() {
+    fun `invalid log strategy should switch to default strategy value`() {
         val topic = UUID.randomUUID().toString()
-        val invalid = "invalid"
-        initDbWithLogStrategy(
-                invalid,
-                mapOf("streams.source.topic.nodes.${topic}" to "Person{*}")
-        )
+        // we create an invalid log strategy
+        initDbWithLogStrategy("invalid", mapOf("streams.source.topic.nodes.$topic" to "Person{*}"))
+
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topic))
 
-            assertFailsWith(TransactionFailureException::class, "Invalid kafka.streams.log.compaction.strategy value: $invalid") {
-                db.execute("CREATE (:Person {name:'Pippo'})")
-            }
+            // we verify that log strategy is default
+            db.execute("CREATE (:Person {name:'Pippo'})")
+            val records = consumer.poll(Duration.ofSeconds(10))
+            assertEquals(1, records.count())
+            val record = records.first()
+            val meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
+            assertEquals(createProducerRecordKeyForDeleteStrategy(meta), JSONUtils.readValue(record.key()))
         }
     }
 }

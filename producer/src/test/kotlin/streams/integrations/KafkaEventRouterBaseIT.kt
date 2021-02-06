@@ -1,28 +1,13 @@
 package streams.integrations
 
-import kotlinx.coroutines.async
-import kotlinx.coroutines.runBlocking
-import org.apache.kafka.clients.admin.AdminClient
-import org.apache.kafka.clients.admin.NewTopic
-import org.hamcrest.Matchers
 import org.junit.*
-import org.junit.Test
 import org.junit.rules.TestName
-import org.neo4j.function.ThrowingSupplier
-import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
-import streams.events.*
-import streams.kafka.KafkaConfiguration
-import streams.kafka.KafkaTestUtils.createConsumer
 import streams.procedures.StreamsProcedures
-import streams.serialization.JSONUtils
 import streams.utils.StreamsUtils
-import java.util.*
-import java.util.concurrent.TimeUnit
-import kotlin.test.*
 
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")

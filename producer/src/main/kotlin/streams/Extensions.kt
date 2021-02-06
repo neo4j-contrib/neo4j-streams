@@ -1,14 +1,14 @@
 package streams
 
-import org.apache.kafka.common.config.TopicConfig
 import org.apache.kafka.clients.producer.RecordMetadata
+import org.apache.kafka.common.config.TopicConfig
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.schema.ConstraintDefinition
 import org.neo4j.graphdb.schema.ConstraintType
 import streams.events.*
 import streams.extensions.labelNames
-import java.lang.RuntimeException
+import streams.utils.SchemaUtils
 
 fun Node.toMap(): Map<String, Any?> {
     return mapOf("id" to id.toString(), "properties" to allProperties, "labels" to labelNames(), "type" to EntityType.node)
@@ -28,7 +28,6 @@ fun RecordMetadata.toMap(): Map<String, Any> = mapOf(
         "valueSize" to serializedValueSize(),
         "partition" to partition()
 )
-
 
 fun ConstraintDefinition.streamsConstraintType(): StreamsConstraintType {
     return when (this.constraintType) {
@@ -50,28 +49,26 @@ fun StreamsTransactionEvent.asSourceRecordValue(strategy: String): StreamsTransa
 
 fun StreamsTransactionEvent.asSourceRecordKey(strategy: String): Any =
         when {
-            strategy == TopicConfig.CLEANUP_POLICY_DELETE -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
-            isStrategyCompact(strategy) && payload is NodePayload -> getKeyOfNode(payload as NodePayload, schema)
-            isStrategyCompact(strategy) && payload is RelationshipPayload -> getKeyOfRel(payload as RelationshipPayload)
-            else -> throw RuntimeException("Invalid kafka.streams.log.compaction.strategy value: $strategy")
+            isStrategyCompact(strategy) && payload is NodePayload -> nodePayloadAsMessageKey(payload as NodePayload, schema)
+            isStrategyCompact(strategy) && payload is RelationshipPayload -> relationshipAsMessageKey(payload as RelationshipPayload)
+            else -> "${meta.txId + meta.txEventId}-${meta.txEventId}"
         }
 
-private fun getKeyOfNode(payload: NodePayload, schema: Schema): Any {
-    val props: Map<String, Any> = payload.after?.properties ?: payload.before?.properties ?: emptyMap()
+private fun nodePayloadAsMessageKey(payload: NodePayload, schema: Schema) = run {
+    val nodeChange: NodeChange = payload.after ?: payload.before!!
+    val labels = nodeChange.labels ?: emptyList()
+    val props: Map<String, Any> = nodeChange.properties ?: emptyMap()
+    val keys = SchemaUtils.getNodeKeys(labels, props.keys, schema.constraints)
+    val ids = props.filterKeys { keys.contains(it) }
 
-    return schema.constraints
-            .flatMap { it.properties }
-            .firstOrNull {
-                props.containsKey(it)
-            }?.let { mapOf(it to props[it]) }
-            .orEmpty()
-            .ifEmpty { payload.id }
+    if (ids.isEmpty()) payload.id else mapOf("ids" to ids, "labels" to labels)
 }
 
-private fun getKeyOfRel(payload: RelationshipPayload) = mapOf(
-        "start" to payload.start.ids.ifEmpty { payload.start.id },
-        "end" to payload.end.ids.ifEmpty { payload.end.id },
-        "id" to payload.id
-)
+private fun RelationshipNodeChange.toKey(): Any = if (ids.isEmpty()) id else mapOf("ids" to ids, "labels" to labels)
 
-private fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
+private fun relationshipAsMessageKey(payload: RelationshipPayload) = mapOf(
+        "start" to payload.start.toKey(),
+        "end" to payload.end.toKey(),
+        "label" to payload.label)
+
+fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
