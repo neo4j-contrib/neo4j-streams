@@ -31,12 +31,12 @@ class KafkaLogCompactionTestCommon {
         }
 
         fun assertTopicFilled(kafkaConsumer: KafkaConsumer<String, ByteArray>,
-                              withSeek: Boolean = false,
+                              fromBeginning: Boolean = false,
                               timeout: Long = 30,
                               assertion: (ConsumerRecords<String, ByteArray>) -> Boolean = { it.count() == 1 }
             ) {
             Assert.assertEventually(ThrowingSupplier {
-                if(withSeek) {
+                if(fromBeginning) {
                     kafkaConsumer.seekToBeginning(kafkaConsumer.assignment())
                 }
                 val records = kafkaConsumer.poll(Duration.ofSeconds(5))
