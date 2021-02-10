@@ -89,17 +89,22 @@ class KafkaEventRouterEnterpriseTSE {
         assertTopicFilled(kafkaConsumer)
     }
 
-    private fun runQueryInDb(query: String, db: String) = neo4j.driver!!.session(SessionConfig.forDatabase(db)).run(query)
+    private fun runQueryInDb(query: String, db: String) =
+        neo4j.driver!!.session(SessionConfig.forDatabase(db)).beginTransaction().use {
+            it.run(query)
+            it.commit()
+        }
+
 
     private fun createManyPersons(db: String) {
         runQueryInDb("UNWIND range(1, 999) AS id CREATE (:Person {name:id, surname: id})", db)
     }
 
-    private fun createConstraintAndAssert(constraints: List<String>, db: String, size: Int = 0) {
+    private fun createConstraintAndAssert(constraints: List<String>, db: String, size: Int = 1) {
         constraints.forEach { runQueryInDb(it, db) }
 
         Assert.assertEventually(ThrowingSupplier {
-            runQueryInDb("call db.constraints()", db).list().size > size
+            neo4j.driver!!.session(SessionConfig.forDatabase(db)).run("call db.constraints()").list().size == size
         }, Matchers.equalTo(true), 60, TimeUnit.SECONDS)
     }
 
@@ -213,7 +218,7 @@ class KafkaEventRouterEnterpriseTSE {
 
     @Test
     fun `node with node key constraint and topic compact`() {
-        val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT (p.name, p.surname) IS NODE KEY")
+        val queries = listOf("CREATE CONSTRAINT person ON (p:Person) ASSERT (p.name, p.surname) IS NODE KEY")
         createConstraintAndAssert(queries, DB_TEST_NODE_WITH_COMPACT)
 
         kafkaConsumer.subscribe(listOf(TOPIC_IN_DB_TEST_NODE))
@@ -244,7 +249,7 @@ class KafkaEventRouterEnterpriseTSE {
     fun `delete single tombstone relation with strategy compact and constraints`() {
         // we create a topic with strategy compact
         val keyRel = "KNOWS"
-        val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT (p.name, p.surname) IS NODE KEY")
+        val queries = listOf("CREATE CONSTRAINT person ON (p:Person) ASSERT (p.name, p.surname) IS NODE KEY")
         createConstraintAndAssert(queries, DB_TOMBSTONE_WITH_COMPACT)
 
         kafkaConsumer.subscribe(listOf(TOPIC_WITH_TOMBSTONE))
@@ -284,9 +289,9 @@ class KafkaEventRouterEnterpriseTSE {
     @Test
     fun `relationship with node key constraints and strategy compact`() {
         val relType = "BUYS"
-        val queries = listOf("CREATE CONSTRAINT ON (p:Product) ASSERT (p.code, p.price) IS NODE KEY",
-                "CREATE CONSTRAINT ON (p:Other) ASSERT (p.address, p.city) IS NODE KEY")
-        createConstraintAndAssert(queries, DB_TEST_REL_WITH_COMPACT)
+        val queries = listOf("CREATE CONSTRAINT product ON (p:Product) ASSERT (p.code, p.price) IS NODE KEY",
+                "CREATE CONSTRAINT other ON (p:Other) ASSERT (p.address, p.city) IS NODE KEY")
+        createConstraintAndAssert(queries, DB_TEST_REL_WITH_COMPACT, 2)
 
         kafkaConsumer.subscribe(listOf(TOPIC_PERSON_AND_BUYS_IN_DB_TEST_REL, TOPIC_PRODUCT_IN_DB_TEST_REL))
 
