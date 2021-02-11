@@ -10,7 +10,7 @@ import streams.Assert
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-class KafkaLogCompactionTestCommon {
+open class KafkaLogCompactionTestCommon {
 
     companion object {
 

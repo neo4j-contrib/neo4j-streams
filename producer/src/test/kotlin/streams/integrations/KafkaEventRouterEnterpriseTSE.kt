@@ -20,9 +20,8 @@ import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import org.neo4j.function.ThrowingSupplier
-import streams.integrations.KafkaLogCompactionTestCommon.Companion.assertTopicFilled
 
-class KafkaEventRouterEnterpriseTSE {
+class KafkaEventRouterEnterpriseTSE: KafkaLogCompactionTestCommon() {
 
     companion object {
 
@@ -84,6 +83,17 @@ class KafkaEventRouterEnterpriseTSE {
         }
     }
 
+    @Before
+    fun before() {
+        DB_NAME_NAMES.forEach(this::cleanAll)
+        kafkaConsumer = KafkaTestUtils.createConsumer(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+    }
+
+    @After
+    fun after() {
+        kafkaConsumer.close()
+    }
+
     private fun runQueryAndAssertIsFilled(query: String, db: String) {
         runQueryInDb(query, db)
         assertTopicFilled(kafkaConsumer)
@@ -104,19 +114,13 @@ class KafkaEventRouterEnterpriseTSE {
         constraints.forEach { runQueryInDb(it, db) }
 
         Assert.assertEventually(ThrowingSupplier {
-            neo4j.driver!!.session(SessionConfig.forDatabase(db)).run("call db.constraints()").list().size == size
+            val expectedSize: Int
+            neo4j.driver!!.session(SessionConfig.forDatabase(db)).beginTransaction().use {
+                expectedSize = it.run("call db.constraints()").list().size
+                it.commit()
+            }
+            expectedSize == size
         }, Matchers.equalTo(true), 60, TimeUnit.SECONDS)
-    }
-
-    @Before
-    fun before() {
-        DB_NAME_NAMES.forEach(this::cleanAll)
-        kafkaConsumer = KafkaTestUtils.createConsumer(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
-    }
-
-    @After
-    fun tearDown() {
-        kafkaConsumer.close()
     }
 
     private fun createNodeAndConsumeKafkaRecords(dbName: String): ConsumerRecords<String, ByteArray> {
@@ -165,7 +169,7 @@ class KafkaEventRouterEnterpriseTSE {
         delay(5000)
 
         // when
-        var kafkaConsumerFoo = KafkaTestUtils
+        val kafkaConsumerFoo = KafkaTestUtils
                 .createConsumer<String, ByteArray>(
                         bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
         val kafkaConsumerBarKnows = KafkaTestUtils
