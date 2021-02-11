@@ -20,8 +20,9 @@ import streams.utils.StreamsUtils
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
 import org.neo4j.function.ThrowingSupplier
+import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
 
-class KafkaEventRouterEnterpriseTSE: KafkaLogCompactionTestCommon() {
+class KafkaEventRouterEnterpriseTSE {
 
     companion object {
 

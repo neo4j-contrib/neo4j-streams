@@ -5,7 +5,7 @@ import org.junit.Test
 import org.neo4j.internal.helpers.collection.Iterators
 import streams.extensions.execute
 import streams.events.*
-import streams.integrations.KafkaLogCompactionTestCommon.Companion.assertTopicFilled
+import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
