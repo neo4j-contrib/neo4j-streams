@@ -15,6 +15,8 @@ import kotlin.test.*
 
 class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
 
+    private val bootstrapServerMap = mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
     private fun initDbWithLogStrategy(strategy: String, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
@@ -33,7 +35,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
     fun `compact message with streams publish`() {
         val topic = UUID.randomUUID().toString()
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic)
+        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
         kafkaConsumer.subscribe(listOf(topic))
@@ -71,7 +73,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
                 "streams.source.topic.relationships.$topic" to "$keyRel{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic)
+        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -104,7 +106,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
                 "streams.source.topic.relationships.$topic" to "$relType{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic)
+        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -137,7 +139,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val topic = UUID.randomUUID().toString()
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic)
+        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -163,7 +165,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic)
+        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
