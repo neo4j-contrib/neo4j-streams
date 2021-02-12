@@ -1,18 +1,17 @@
 package streams
 
-import org.neo4j.kernel.configuration.Config
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.events.StreamsPluginStatus
 
-abstract class StreamsEventSink(private val config: Config,
-                                private val queryExecution: StreamsEventSinkQueryExecution,
-                                private val streamsTopicService: StreamsTopicService,
-                                private val log: Log,
-                                private val db: GraphDatabaseAPI) {
+abstract class StreamsEventSink(private val config: Map<String, String>,
+                                queryExecution: StreamsEventSinkQueryExecution,
+                                streamsTopicService: StreamsTopicService,
+                                log: Log,
+                                db: GraphDatabaseAPI) {
 
     abstract val mappingKeys: Map<String, String>
-    abstract val streamsConfigMap: Map<String, String>
+    abstract val streamsSinkConfiguration: StreamsSinkConfiguration
 
     abstract fun stop()
 
@@ -20,7 +19,7 @@ abstract class StreamsEventSink(private val config: Config,
 
     abstract fun getEventConsumerFactory(): StreamsEventConsumerFactory
 
-    open fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper = StreamsEventSinkConfigMapper(streamsConfigMap, mappingKeys)
+    open fun getEventSinkConfigMapper(): StreamsEventSinkConfigMapper = StreamsEventSinkConfigMapper(config, mappingKeys)
 
     open fun printInvalidTopics() {}
 
@@ -29,10 +28,13 @@ abstract class StreamsEventSink(private val config: Config,
 }
 
 object StreamsEventSinkFactory {
-    fun getStreamsEventSink(config: Config, streamsQueryExecution: StreamsEventSinkQueryExecution,
-                            streamsTopicService: StreamsTopicService, log: Log, db: GraphDatabaseAPI): StreamsEventSink {
-        return Class.forName(config.raw.getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
-                .getConstructor(Config::class.java,
+    fun getStreamsEventSink(config: Map<String, String>,
+                            streamsQueryExecution: StreamsEventSinkQueryExecution,
+                            streamsTopicService: StreamsTopicService,
+                            log: Log,
+                            db: GraphDatabaseAPI): StreamsEventSink {
+        return Class.forName(config.getOrDefault("streams.sink", "streams.kafka.KafkaEventSink"))
+                .getConstructor(Map::class.java,
                         StreamsEventSinkQueryExecution::class.java,
                         StreamsTopicService::class.java,
                         Log::class.java,

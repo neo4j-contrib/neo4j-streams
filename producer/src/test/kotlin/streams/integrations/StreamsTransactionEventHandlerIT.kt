@@ -1,5 +1,6 @@
 package streams.integrations
 
+import extension.newDatabase
 import org.junit.After
 import org.junit.Before
 import org.junit.Test
@@ -23,7 +24,7 @@ class StreamsTransactionEventHandlerIT {
         db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("streams.router", "streams.mocks.MockStreamsEventRouter")
-                .newGraphDatabase()
+                .newDatabase()
     }
 
     @After

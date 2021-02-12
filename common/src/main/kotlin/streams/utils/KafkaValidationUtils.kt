@@ -1,7 +1,15 @@
 package streams.utils
 
+import org.apache.kafka.clients.CommonClientConfigs
 import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.AdminClientConfig
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.common.config.ConfigResource
+import org.apache.kafka.common.config.SaslConfigs
+import org.apache.kafka.common.config.SslConfigs
+import org.apache.kafka.common.config.TopicConfig
+import java.lang.reflect.Modifier
 import java.util.Properties
 
 object KafkaValidationUtils {
@@ -35,4 +43,19 @@ object KafkaValidationUtils {
     } catch (e: Exception) {
         false
     }
+
+    private fun getConfigProperties(clazz: Class<*>) = clazz.declaredFields
+        .filter { Modifier.isStatic(it.modifiers) && it.name.endsWith("_CONFIG") }
+        .map { it.get(null).toString() }
+        .toSet()
+
+    private fun getBaseConfigs() = (getConfigProperties(CommonClientConfigs::class.java)
+            + AdminClientConfig.configNames()
+            + getConfigProperties(SaslConfigs::class.java)
+            + getConfigProperties(TopicConfig::class.java)
+            + getConfigProperties(SslConfigs::class.java))
+
+    fun getProducerProperties() = ProducerConfig.configNames() - getBaseConfigs()
+
+    fun getConsumerProperties() = ConsumerConfig.configNames() - getBaseConfigs()
 }

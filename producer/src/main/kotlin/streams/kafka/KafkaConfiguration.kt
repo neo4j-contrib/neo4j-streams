@@ -76,10 +76,10 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
         val props = Properties()
         val map = JSONUtils.asMap(this)
                 .filter {
-                    if (it.key == "transactionalId") {
-                        it.value != StringUtils.EMPTY
-                    } else {
-                        true
+                    when (it.key) {
+                        "transactionalId" -> it.value != StringUtils.EMPTY
+                        "extraProperties" -> false
+                        else -> true
                     }
                 }
                 .mapKeys { it.key.toPointCase() }

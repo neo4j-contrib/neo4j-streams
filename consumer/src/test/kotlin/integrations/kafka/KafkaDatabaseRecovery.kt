@@ -1,15 +1,18 @@
 package integrations.kafka
 
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import extension.newDatabase
 import org.apache.kafka.clients.producer.ProducerRecord
+import org.hamcrest.CoreMatchers
 import org.hamcrest.Matchers
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
 import org.neo4j.adversaries.ClassGuardedAdversary
 import org.neo4j.adversaries.CountingAdversary
+import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.Node
@@ -82,11 +85,11 @@ import org.neo4j.test.AdversarialPageCacheGraphDatabaseFactory
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.neo4j.test.TestGraphDatabaseFactoryState
 import org.neo4j.test.TestLabels
+import org.neo4j.test.assertion.Assert
 import org.neo4j.test.rule.RandomRule
 import org.neo4j.test.rule.TestDirectory
 import org.neo4j.test.rule.fs.DefaultFileSystemRule
-import streams.StreamsEventSinkExtensionFactory
-import streams.extensions.labelNames
+import streams.events.StreamsPluginStatus
 import streams.serialization.JSONUtils
 import java.io.File
 import java.io.IOException
@@ -97,6 +100,7 @@ import java.util.HashMap
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
 import java.util.function.Consumer
 
@@ -133,7 +137,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
 
         // copying only transaction log simulate non clean shutdown db that should be able to recover just from logs
         val restoreDbStoreDir = copyTransactionLogs()
-        val recoveredDatabase = startDatabase(restoreDbStoreDir, true)
+        val recoveredDatabase = startDatabase(restoreDbStoreDir, true, StreamsPluginStatus.STOPPED)
         sendKafkaEvents()
         recoveredDatabase.beginTx().use { tx ->
             org.junit.Assert.assertEquals(numberOfNodes.toLong(), Iterables.count(recoveredDatabase.allNodes))
@@ -196,7 +200,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
         val databaseDir = directory.databaseDir()
         var db = AdversarialPageCacheGraphDatabaseFactory.create(fileSystemRule.get(), adversary)
                 .newEmbeddedDatabaseBuilder(databaseDir)
-                .newGraphDatabase()
+                .newDatabase(StreamsPluginStatus.STOPPED)
         try {
             db.beginTx().use { tx ->
                 db.schema().constraintFor(label).assertPropertyIsUnique(property).create()
@@ -280,12 +284,12 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
         val crashedFs = fs.snapshot()
         val updatesAtCrash = updateCapturingIndexProvider.snapshot()
 
-        // Crash and start anew
+        // Crash and start a new
         val recoveredUpdateCapturingIndexProvider = UpdateCapturingIndexProvider(IndexProvider.EMPTY, updatesAtLastCheckPoint)
         val lastCommittedTxIdBeforeRecovered = lastCommittedTxId(db)
         db.shutdown()
         fs.close()
-        sendKafkaEvents()
+        // sendKafkaEvents()
         db = startDatabase(storeDir, crashedFs, recoveredUpdateCapturingIndexProvider)
         val lastCommittedTxIdAfterRecovered = lastCommittedTxId(db)
         val updatesAfterRecovery = recoveredUpdateCapturingIndexProvider.snapshot()
@@ -297,15 +301,15 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
         crashedFs.close()
     }
 
-    private fun sendKafkaEvents() = runBlocking {
-        (1..10).forEach {
+    private fun sendKafkaEvents() {
+        val totalRecords = 10L
+        (1..totalRecords).forEach {
             val dataProperties = mapOf("prop1" to "foo $it", "bar" to it)
             val data = mapOf("id" to it, "properties" to dataProperties)
             val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
             val metadata = kafkaProducer.send(producerRecord).get()
             println("Sent record $it to topic ${metadata.topic()}")
         }
-        delay(5000)
     }
 
     @Test
@@ -320,7 +324,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase()
+                .newDatabase()
         produceRandomGraphUpdates(db, 100)
         checkPoint(db)
         val checkPointFs = fs.snapshot()
@@ -375,7 +379,7 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase()
+                .newDatabase()
                 .shutdown()
 
         // then
@@ -655,27 +659,26 @@ class KafkaDatabaseRecovery: KafkaEventSinkBase() {
     private fun startDatabase(storeDir: File, fs: EphemeralFileSystemAbstraction, indexProvider: UpdateCapturingIndexProvider): GraphDatabaseAPI {
         return TestGraphDatabaseFactory()
                 .setFileSystem(fs)
-                .setKernelExtensions(listOf(IndexExtensionFactory(indexProvider), StreamsEventSinkExtensionFactory()))
+                .addKernelExtension(IndexExtensionFactory(indexProvider))
                 .newImpermanentDatabaseBuilder(storeDir)
                 .setConfig(GraphDatabaseSettings.default_schema_provider, indexProvider.providerDescriptor.name())
                 .setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
     }
 
-    private fun startDatabase(storeDir: File, clusterOnly: Boolean = false): GraphDatabaseService {
+    private fun startDatabase(storeDir: File, clusterOnly: Boolean = false, status: StreamsPluginStatus = StreamsPluginStatus.RUNNING): GraphDatabaseService {
         return TestGraphDatabaseFactory()
                 .setInternalLogProvider(logProvider)
-                .addKernelExtension(StreamsEventSinkExtensionFactory())
                 .newEmbeddedDatabaseBuilder(storeDir)
                 .setConfig("streams.sink.topic.cypher.$topic", cypherQueryTemplate)
                 .setConfig("kafka.bootstrap.servers", KafkaEventSinkSuiteIT.kafka.bootstrapServers)
                 .setConfig("kafka.zookeeper.connect", KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"])
                 .setConfig("streams.sink.enabled", "true")
                 .setConfig("streams.cluster.only", clusterOnly.toString())
-                .newGraphDatabase()
+                .newDatabase(status)
     }
 
     class UpdateCapturingIndexProvider internal constructor(private val actual: IndexProvider, private val initialUpdates: Map<Long?, Collection<IndexEntryUpdate<*>>>) : IndexProvider(actual) {

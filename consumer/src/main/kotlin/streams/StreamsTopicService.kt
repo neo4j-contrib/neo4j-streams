@@ -3,16 +3,13 @@ package streams
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.service.TopicType
 import streams.service.Topics
 import streams.utils.Neo4jUtils
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
-class StreamsTopicService(db: GraphDatabaseAPI) {
-    private val log = Neo4jUtils.getLogService(db).getUserLog(StreamsTopicService::class.java)
-
+class StreamsTopicService() {
     private val mutex = Mutex()
 
     private val storage = ConcurrentHashMap<TopicType, Any>()

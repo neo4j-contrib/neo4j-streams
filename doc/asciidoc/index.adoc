@@ -22,6 +22,7 @@ The guide covers the following areas:
 
 * <<_project_overview>> -- Project overview
 * <<_quick_start>> -- Get Started Fast with the most Common Scenarios
+* <<neo4j_configuration_system>> -- Understand how the configuration system works
 * <<neo4j_streams_source>> -- How to configure Neo4j Streams as Source
 * <<neo4j_streams_sink>> -- How to configure Neo4j Streams as Sink
 * <<neo4j_streams_procedures>> -- How to use Neo4j Streams Procedures
@@ -38,6 +39,8 @@ The guide covers the following areas:
 include::overview/index.adoc[]
 
 include::quickstart/index.adoc[]
+
+include::overview/configuration.adoc[]
 
 include::streams/index.adoc[]
 

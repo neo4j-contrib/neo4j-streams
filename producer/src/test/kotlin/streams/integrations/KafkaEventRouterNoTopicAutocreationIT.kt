@@ -1,11 +1,12 @@
 package streams.integrations
 
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
+import extension.newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
+import org.junit.After
 import org.junit.AfterClass
 import org.junit.Assume
 import org.junit.BeforeClass
@@ -17,8 +18,6 @@ import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterNoTopicAutocreationIT {
@@ -67,14 +66,21 @@ class KafkaEventRouterNoTopicAutocreationIT {
         }
     }
 
+    private lateinit var db: GraphDatabaseAPI
+
+    @After
+    fun shutdown() {
+        db.shutdown()
+    }
+
     @Test
     fun `should start even with no topic created`() {
         // when
-        val db = TestGraphDatabaseFactory()
+        db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.personNotDefined", "Person{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
 
         // then
         val count = db.execute("MATCH (n) RETURN COUNT(n) AS count")
@@ -90,12 +96,12 @@ class KafkaEventRouterNoTopicAutocreationIT {
         val customerTopic = "customer"
         val neo4jTopic = "neo4j"
         val expectedTopics = listOf(personTopic, customerTopic, neo4jTopic)
-        val db = TestGraphDatabaseFactory()
+        db = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
                 .setConfig("streams.source.topic.nodes.$personTopic", "Person{*}")
                 .setConfig("streams.source.topic.nodes.$customerTopic", "Customer{*}")
-                .newGraphDatabase() as GraphDatabaseAPI
+                .newDatabase() as GraphDatabaseAPI
         // we create a new node an check that the source plugin is working
         db.execute("CREATE (p:Person{id: 1})").close()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)

@@ -1,10 +1,12 @@
 package streams
 
-import org.neo4j.kernel.configuration.Config
-import org.neo4j.logging.internal.LogService
+import org.neo4j.logging.Log
 import streams.events.StreamsEvent
+import streams.events.StreamsPluginStatus
 
-abstract class StreamsEventRouter(val logService: LogService?, val config: Config?) {
+abstract class StreamsEventRouter(config: Map<String, String>, log: Log) {
+
+    abstract val eventRouterConfiguration: StreamsEventRouterConfiguration
 
     abstract fun sendEvents(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?> = emptyMap())
 
@@ -20,10 +22,10 @@ abstract class StreamsEventRouter(val logService: LogService?, val config: Confi
 
 
 object StreamsEventRouterFactory {
-    fun getStreamsEventRouter(logService: LogService, config: Config): StreamsEventRouter {
-        return Class.forName(config.raw.getOrDefault("streams.router", "streams.kafka.KafkaEventRouter"))
-                .getConstructor(LogService::class.java, Config::class.java)
-                .newInstance(logService, config) as StreamsEventRouter
+    fun getStreamsEventRouter(config: Map<String, String>,log: Log): StreamsEventRouter {
+        return Class.forName(config.getOrDefault("streams.router", "streams.kafka.KafkaEventRouter"))
+                .getConstructor(Map::class.java, Log::class.java)
+                .newInstance(config, log) as StreamsEventRouter
     }
 }
 

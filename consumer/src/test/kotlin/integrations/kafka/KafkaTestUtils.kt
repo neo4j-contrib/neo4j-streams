@@ -19,7 +19,6 @@ object KafkaTestUtils {
                               vararg topics: String): KafkaConsumer<K, V> {
         val props = Properties()
         props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
-        props["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
         props["group.id"] = "neo4j"
         props["enable.auto.commit"] = "true"
         props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = keyDeserializer
@@ -41,7 +40,6 @@ object KafkaTestUtils {
                               valueSerializer: String = ByteArraySerializer::class.java.name): KafkaProducer<K, V> {
         val props = Properties()
         props[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = kafka.bootstrapServers
-        props["zookeeper.connect"] = kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
         props["group.id"] = "neo4j"
         props[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = keySerializer
         props[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = valueSerializer

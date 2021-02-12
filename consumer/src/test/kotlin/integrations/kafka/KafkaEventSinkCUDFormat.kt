@@ -1,5 +1,6 @@
 package integrations.kafka
 
+import extension.newDatabase
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.hamcrest.Matchers
 import org.junit.Test
@@ -37,7 +38,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         // when
         list.forEach {
@@ -76,7 +77,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val key = "_id"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         val idList = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})").close()
             assertEquals(10, db.allNodes.count())
@@ -140,7 +141,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (n:Foo:Bar {key: id})").close()
             assertEquals(10, db.allNodes.count())
@@ -178,7 +179,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.beginTx().use {
             db.execute("UNWIND range(1, 5) AS id CREATE (s:Foo:Bar {key: id})-[:MY_REL]->(u:Foo:Bar {key: id + 1})").close()
             assertEquals(10, db.allNodes.count())
@@ -215,7 +216,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.beginTx().use {
             db.execute("""
                 UNWIND range(1, 10) AS id
@@ -266,7 +267,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         }
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
             assertEquals(10, db.allRelationships.count())
@@ -306,7 +307,7 @@ class KafkaEventSinkCUDFormat : KafkaEventSinkBase() {
         val rel_type = "MY_REL"
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.cud", topic)
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         val idMap = db.beginTx().use {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})").close()
             assertEquals(10, db.allRelationships.count())

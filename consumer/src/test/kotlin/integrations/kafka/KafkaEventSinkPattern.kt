@@ -1,6 +1,7 @@
 package integrations.kafka
 
 import kotlinx.coroutines.runBlocking
+import extension.newDatabase
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerConfig
 import org.apache.kafka.clients.producer.ProducerRecord
@@ -11,7 +12,6 @@ import org.neo4j.function.ThrowingSupplier
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
 import streams.serialization.JSONUtils
-import java.io.PrintWriter
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -22,7 +22,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname,address.city})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano",
                 "address" to mapOf("city" to "Venice", "CAP" to "30100"))
@@ -41,7 +41,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.relationship.$topic",
                 "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
                 "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
 
@@ -62,7 +62,7 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
         val topic = UUID.randomUUID().toString()
         graphDatabaseBuilder.setConfig("streams.sink.topic.pattern.node.$topic",
                 "(:User{!userId,name,surname})")
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
 
         db.execute("CREATE (u:User{userId: 1, name: 'Andrea', surname: 'Santurbano'})").close()
         val count = db.execute("MATCH (n:User) RETURN count(n) AS count").columnAs<Long>("count").next()
@@ -71,7 +71,6 @@ class KafkaEventSinkPattern : KafkaEventSinkBase() {
 
         val kafkaProperties = Properties()
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = KafkaEventSinkSuiteIT.kafka.bootstrapServers
-        kafkaProperties["zookeeper.connect"] = KafkaEventSinkSuiteIT.kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"]
         kafkaProperties["group.id"] = "neo4j"
         kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
