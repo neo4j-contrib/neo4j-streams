@@ -1,16 +1,21 @@
 package streams.integrations
 
+import org.apache.kafka.clients.admin.AdminClient
+import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.consumer.ConsumerRecords
+import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.config.TopicConfig
+import org.hamcrest.Matchers
 import org.junit.Before
 import org.junit.Test
+import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.factory.GraphDatabaseBuilder
 import org.neo4j.helpers.collection.Iterators
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
+import org.neo4j.test.assertion.Assert
 import streams.events.*
-import streams.integrations.CompactionStrategyTestCommon.Companion.assertTopicFilled
-import streams.integrations.CompactionStrategyTestCommon.Companion.createCompactTopic
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import java.time.Duration
@@ -18,9 +23,39 @@ import java.util.*
 import kotlin.test.*
 import streams.kafka.KafkaTestUtils.createConsumer
 import streams.serialization.JSONUtils
+import java.util.concurrent.TimeUnit
 
 @Suppress("DEPRECATION")
 class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
+
+    private fun compactTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
+        val newTopic = NewTopic(topic, numTopics, 1)
+        if (withCompact) {
+            newTopic.configs(mapOf(
+                    "cleanup.policy" to "compact",
+                    "segment.ms" to "10",
+                    "retention.ms" to "1",
+                    "min.cleanable.dirty.ratio" to "0.01"))
+        }
+        newTopic
+    }
+
+    private fun createCompactTopic(topic: String, numTopics: Int = 1, withCompact: Boolean = true) {
+        AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
+            val topics = listOf(compactTopic(topic, numTopics, withCompact))
+            it.createTopics(topics).all().get()
+        }
+    }
+
+    private fun assertTopicFilled(kafkaConsumer: KafkaConsumer<String, ByteArray>,
+                          assertion: (ConsumerRecords<String, ByteArray>) -> Boolean
+    ) {
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            kafkaConsumer.seekToBeginning(kafkaConsumer.assignment())
+            val records = kafkaConsumer.poll(Duration.ofSeconds(5))
+            assertion(records)
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
 
     private lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
 
@@ -72,7 +107,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             }
 
             // check if there is only one record with key 'test' and payload 'Compaction 4'
-            assertTopicFilled(consumer, true) {
+            assertTopicFilled(consumer) {
                 val compactedRecord = it.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
                 it.count() == 500 &&
                         compactedRecord.count() == 1 &&
@@ -106,7 +141,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             // to activate the log compaction process we create dummy messages
             createManyPersons()
 
-            assertTopicFilled(consumer, true) {
+            assertTopicFilled(consumer) {
                 val nullRecords = it.filter { it.value() == null }
                 val start = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
                 val end = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf("Person"))
@@ -147,7 +182,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             createManyPersons()
 
             // we check that there is only one tombstone record
-            assertTopicFilled(consumer, true) {
+            assertTopicFilled(consumer) {
                 val nullRecords = it.filter { it.value() == null }
                 val keyStartRecord = JSONUtils.readValue<String>(it.first().key())
                 val keyEndRecord = it.elementAtOrNull(1)?.let { JSONUtils.readValue<String>(it.key()) }
@@ -176,7 +211,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             db.execute("MATCH (p:Person {name:'Sherlock'}) DETACH DELETE p")
 
             createManyPersons()
-            assertTopicFilled(consumer, true) {
+            assertTopicFilled(consumer) {
                 val nullRecords = it.filter { it.value() == null }
                 val keyRecordExpected = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person"))
                 it.count() == 500
