@@ -5,7 +5,7 @@ import org.junit.Test
 import org.neo4j.internal.helpers.collection.Iterators
 import streams.extensions.execute
 import streams.events.*
-import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
+import streams.integrations.CompactionStrategyTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
@@ -13,7 +13,7 @@ import java.time.Duration
 import java.util.*
 import kotlin.test.*
 
-class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
+class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
 
     private val bootstrapServerMap = mapOf("bootstrap.servers" to KafkaEventRouterSuiteIT.kafka.bootstrapServers)
 
@@ -35,7 +35,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
     fun `compact message with streams publish`() {
         val topic = UUID.randomUUID().toString()
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
         kafkaConsumer.subscribe(listOf(topic))
@@ -73,7 +73,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
                 "streams.source.topic.relationships.$topic" to "$keyRel{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -106,7 +106,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
                 "streams.source.topic.relationships.$topic" to "$relType{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -139,7 +139,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val topic = UUID.randomUUID().toString()
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -165,7 +165,7 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        KafkaLogCompactionTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -611,5 +611,114 @@ class KafkaEventRouterLogCompactionTSE : KafkaEventRouterBaseTSE() {
         val record = records.first()
         val meta = JSONUtils.asStreamsTransactionEvent(record.value()).meta
         assertEquals(createProducerRecordKeyForDeleteStrategy(meta), JSONUtils.readValue(record.key()))
+    }
+
+    @Test
+    fun `same nodes and entities in same partitions with strategy compact and without constraints`() {
+
+        createTopicAndEntitiesAndAssertPartition(false,
+                "0", "1", "3", "4")
+    }
+
+    @Test
+    fun `same nodes and entities in same partitions with strategy compact and with constraints`() {
+
+        val personLabel = "Person"
+        val otherLabel = "Other"
+
+        val expectedKeyPippo = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf(personLabel))
+        val expectedKeyPluto = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf(personLabel, otherLabel))
+        val expectedKeyFoo = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf(personLabel))
+        val expectedKeyBar = mapOf("ids" to mapOf("name" to "Bar"), "labels" to listOf(personLabel, otherLabel))
+
+        createTopicAndEntitiesAndAssertPartition(true, expectedKeyPippo, expectedKeyPluto, expectedKeyFoo, expectedKeyBar)
+    }
+
+    private fun createTopicAndEntitiesAndAssertPartition(withConstraints: Boolean,
+                                                         firstExpectedKey: Any,
+                                                         secondExpectedKey: Any,
+                                                         thirdExpectedKey: Any,
+                                                         fourthExpectedKey: Any) {
+        val relType = "KNOWS"
+
+        // we create a topic with strategy compact
+        val topic = UUID.randomUUID().toString()
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
+                "streams.source.topic.relationships.$topic" to "$relType{*}",
+                "kafka.num.partitions" to "10" )
+        val queries = if(withConstraints) listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE") else null
+
+        initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
+        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap, 10, false)
+
+        kafkaConsumer.subscribe(listOf(topic))
+
+        // we create some nodes and rels
+        db.execute("CREATE (:Person {name:'Pippo', surname: 'Pippo_1'})")
+        db.execute("CREATE (:Person:Other {name:'Pluto', surname: 'Pluto_1'})")
+        db.execute("CREATE (:Person:Other {name:'Paperino', surname: 'Paperino_1'})")
+        db.execute("CREATE (:Person {name:'Foo'})")
+        db.execute("CREATE (:Person:Other {name:'Bar'})")
+        db.execute("CREATE (:Person {name:'Baz'})")
+        db.execute("CREATE (:Person {name:'Baa'})")
+        db.execute("CREATE (:Person {name:'One'})")
+        db.execute("CREATE (:Person {name:'Two'})")
+        db.execute("CREATE (:Person {name:'Three'})")
+        db.execute("""
+                |MATCH (pippo:Person {name:'Pippo'})
+                |MATCH (pluto:Person {name:'Pluto'})
+                |MERGE (pippo)-[:KNOWS]->(pluto)
+            """.trimMargin())
+        db.execute("""
+                |MATCH (foo:Person {name:'Foo'})
+                |MATCH (bar:Person {name:'Bar'})
+                |MERGE (foo)-[:KNOWS]->(bar)
+            """.trimMargin())
+        db.execute("""
+                |MATCH (one:Person {name:'One'})
+                |MATCH (two:Person {name:'Two'})
+                |MERGE (one)-[:KNOWS]->(two)
+            """.trimMargin())
+
+        // we update 4 nodes and 2 rels
+        db.execute("MATCH (p:Person {name:'Pippo'}) SET p.surname = 'Pippo_update'")
+        db.execute("MATCH (p:Person {name:'Pippo'}) SET p.address = 'Rome'")
+
+        db.execute("MATCH (p:Person {name:'Pluto'}) SET p.surname = 'Pluto_update'")
+        db.execute("MATCH (p:Person {name:'Pluto'}) SET p.address = 'London'")
+
+        db.execute("MATCH (p:Person {name:'Foo'}) SET p.surname = 'Foo_update'")
+        db.execute("MATCH (p:Person {name:'Foo'}) SET p.address = 'Rome'")
+
+        db.execute("MATCH (p:Person {name:'Bar'}) SET p.surname = 'Bar_update'")
+        db.execute("MATCH (p:Person {name:'Bar'}) SET p.address = 'Tokyo'")
+
+        db.execute("MATCH (:Person {name:'Foo'})-[rel:KNOWS]->(:Person {name:'Bar'}) SET rel.since = 1999")
+        db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) SET rel.since = 2019")
+
+        val records = kafkaConsumer.poll(Duration.ofSeconds(30))
+
+        assertEquals(23, records.count())
+
+        val firstRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == firstExpectedKey }
+        val secondRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) ==  secondExpectedKey }
+        val thirdRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == thirdExpectedKey }
+        val fourthRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == fourthExpectedKey }
+        val firstRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to thirdExpectedKey, "end" to fourthExpectedKey, "label" to relType) }
+        val secondRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to firstExpectedKey, "end" to secondExpectedKey, "label" to relType) }
+
+        assertEquals(3, firstRecordNode.count())
+        assertEquals(3, secondRecordNode.count())
+        assertEquals(3, thirdRecordNode.count())
+        assertEquals(3, fourthRecordNode.count())
+        assertEquals(2, firstRecordRel.count())
+        assertEquals(2, secondRecordRel.count())
+
+        assertEquals(1, firstRecordNode.groupBy { it.partition() }.count())
+        assertEquals(1, secondRecordNode.groupBy { it.partition() }.count())
+        assertEquals(1, thirdRecordNode.groupBy { it.partition() }.count())
+        assertEquals(1, fourthRecordNode.groupBy { it.partition() }.count())
+        assertEquals(1, firstRecordRel.groupBy { it.partition() }.count())
+        assertEquals(1, secondRecordRel.groupBy { it.partition() }.count())
     }
 }

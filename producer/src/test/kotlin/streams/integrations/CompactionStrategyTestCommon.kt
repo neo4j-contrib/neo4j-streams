@@ -10,18 +10,23 @@ import streams.Assert
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-object KafkaLogCompactionTestCommon {
+object CompactionStrategyTestCommon {
 
-    private fun compactTopic(topic: String) =
-            NewTopic(topic, 1, 1).configs(mapOf(
+    private fun compactTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
+        val newTopic = NewTopic(topic, numTopics, 1)
+        if (withCompact) {
+            newTopic.configs(mapOf(
                     "cleanup.policy" to "compact",
                     "segment.ms" to "10",
                     "retention.ms" to "1",
                     "min.cleanable.dirty.ratio" to "0.01"))
+        }
+        newTopic
+    }
 
-    fun createCompactTopic(topic: String, bootstrapServerMap: Map<String, Any>) {
+    fun createCompactTopic(topic: String, bootstrapServerMap: Map<String, Any>, numTopics: Int = 1, withCompact: Boolean = true) {
         AdminClient.create(bootstrapServerMap).use {
-            val topics = listOf(compactTopic(topic))
+            val topics = listOf(compactTopic(topic, numTopics, withCompact))
             it.createTopics(topics).all().get()
         }
     }
