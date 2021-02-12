@@ -17,8 +17,6 @@ import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
 import java.util.Properties
 import java.util.UUID
-import java.util.concurrent.ThreadLocalRandom
-import kotlin.math.abs
 
 
 class KafkaEventRouter: StreamsEventRouter {
@@ -103,10 +101,10 @@ class KafkaEventRouter: StreamsEventRouter {
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val key = event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy)
+        val key = JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy))
         val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
 
-        val producerRecord = ProducerRecord(topic, null, System.currentTimeMillis(), JSONUtils.writeValueAsBytes(key), value)
+        val producerRecord = ProducerRecord(topic, null, System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
 
