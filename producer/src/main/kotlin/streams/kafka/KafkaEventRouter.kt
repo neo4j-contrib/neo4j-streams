@@ -8,7 +8,11 @@ import org.apache.kafka.common.errors.OutOfOrderSequenceException
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
-import streams.*
+import streams.StreamsEventRouterConfiguration
+import streams.asSourceRecordKey
+import streams.asSourceRecordValue
+import streams.toMap
+import streams.StreamsEventRouter
 import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent

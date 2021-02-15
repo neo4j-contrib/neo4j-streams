@@ -10,9 +10,9 @@ import streams.Assert
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-object CompactionStrategyTestCommon {
+object KafkaLogCompactionTestCommon {
 
-    private fun compactTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
+    private fun createTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
         val newTopic = NewTopic(topic, numTopics, 1)
         if (withCompact) {
             newTopic.configs(mapOf(
@@ -24,9 +24,9 @@ object CompactionStrategyTestCommon {
         newTopic
     }
 
-    fun createCompactTopic(topic: String, bootstrapServerMap: Map<String, Any>, numTopics: Int = 1, withCompact: Boolean = true) {
+    fun createTopic(topic: String, bootstrapServerMap: Map<String, Any>, numTopics: Int = 1, withCompact: Boolean = true) {
         AdminClient.create(bootstrapServerMap).use {
-            val topics = listOf(compactTopic(topic, numTopics, withCompact))
+            val topics = listOf(createTopic(topic, numTopics, withCompact))
             it.createTopics(topics).all().get()
         }
     }

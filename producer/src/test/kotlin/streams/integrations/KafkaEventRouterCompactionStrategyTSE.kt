@@ -5,7 +5,7 @@ import org.junit.Test
 import org.neo4j.internal.helpers.collection.Iterators
 import streams.extensions.execute
 import streams.events.*
-import streams.integrations.CompactionStrategyTestCommon.assertTopicFilled
+import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
@@ -35,7 +35,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
     fun `compact message with streams publish`() {
         val topic = UUID.randomUUID().toString()
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap)
 
         KafkaEventRouterSuiteIT.registerPublishProcedure(db)
         kafkaConsumer.subscribe(listOf(topic))
@@ -73,7 +73,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
                 "streams.source.topic.relationships.$topic" to "$keyRel{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -106,7 +106,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
                 "streams.source.topic.relationships.$topic" to "$relType{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -139,7 +139,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val topic = UUID.randomUUID().toString()
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -165,7 +165,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -616,6 +616,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
     @Test
     fun `same nodes and entities in same partitions with strategy compact and without constraints`() {
 
+        // db without constraints
         createTopicAndEntitiesAndAssertPartition(false,
                 "0", "1", "3", "4")
     }
@@ -631,9 +632,13 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val expectedKeyFoo = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf(personLabel))
         val expectedKeyBar = mapOf("ids" to mapOf("name" to "Bar"), "labels" to listOf(personLabel, otherLabel))
 
+        // db with unique constraint
         createTopicAndEntitiesAndAssertPartition(true, expectedKeyPippo, expectedKeyPluto, expectedKeyFoo, expectedKeyBar)
     }
 
+    // we create a topic with kafka.streams.log.compaction.strategy=compact
+    // after that, we create and update some nodes and relationships
+    // finally, we check that each node/relationship has no records spread across multiple partitions but only in a single partition
     private fun createTopicAndEntitiesAndAssertPartition(withConstraints: Boolean,
                                                          firstExpectedKey: Any,
                                                          secondExpectedKey: Any,
@@ -646,10 +651,11 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
                 "streams.source.topic.relationships.$topic" to "$relType{*}",
                 "kafka.num.partitions" to "10" )
+        // we optionally create a constraint for Person.name property
         val queries = if(withConstraints) listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE") else null
 
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        CompactionStrategyTestCommon.createCompactTopic(topic, bootstrapServerMap, 10, false)
+        KafkaLogCompactionTestCommon.createTopic(topic, bootstrapServerMap, 10, false)
 
         kafkaConsumer.subscribe(listOf(topic))
 
@@ -700,6 +706,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
 
         assertEquals(23, records.count())
 
+        // we take the records for each node
         val firstRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == firstExpectedKey }
         val secondRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) ==  secondExpectedKey }
         val thirdRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == thirdExpectedKey }
@@ -707,6 +714,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val firstRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to thirdExpectedKey, "end" to fourthExpectedKey, "label" to relType) }
         val secondRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to firstExpectedKey, "end" to secondExpectedKey, "label" to relType) }
 
+        // we check that all queries produced record
         assertEquals(3, firstRecordNode.count())
         assertEquals(3, secondRecordNode.count())
         assertEquals(3, thirdRecordNode.count())
@@ -714,6 +722,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         assertEquals(2, firstRecordRel.count())
         assertEquals(2, secondRecordRel.count())
 
+        // we check that each node/relationship has no records spread across multiple partitions
         assertEquals(1, firstRecordNode.groupBy { it.partition() }.count())
         assertEquals(1, secondRecordNode.groupBy { it.partition() }.count())
         assertEquals(1, thirdRecordNode.groupBy { it.partition() }.count())
