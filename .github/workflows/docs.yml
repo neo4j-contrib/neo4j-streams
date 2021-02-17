@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - '4.0'
+      # temporary: allow to see GH Actions result on fork
+      - '4-0-gh-actions'
   pull_request:
     branches:
       - '*'
