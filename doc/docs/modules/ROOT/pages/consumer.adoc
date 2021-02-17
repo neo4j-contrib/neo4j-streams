@@ -104,7 +104,7 @@ The Neo4j Streams Plugin provides several means to handle processing errors.
 It can fail fast or log errors with different detail levels.
 Another way is to re-route all the data and errors that for something reason it wasn't able to ingest to a `Dead Letter Queue`.
 
-NOTE: It behaves by default like Kafka Connect, see this https://www.confluent.io/blog/kafka-connect-deep-dive-error-handling-dead-letter-queues[blog post^]
+NOTE: It behaves by default like Kafka Connect, see this {url-confluent-blog}/kafka-connect-deep-dive-error-handling-dead-letter-queues/[blog post^]
 
 * fail fast (abort) by default
 * need to configure dead-letter-queue topic to enable

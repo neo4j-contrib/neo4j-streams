@@ -18,4 +18,4 @@ image::graph-etl.png[align="center"]
 
 Using neo4j-streams is a form of graph ETL.   And it pays to separate out these two pieces (the extraction and the transformation) and handle them separately if we want to do this in a performant and easy to maintain manner.   If we are producing records from Neo4j back out to Kafka, it's still the same challenge, just in the opposite direction.
 
-https://www.confluent.io/blog/building-real-time-streaming-etl-pipeline-20-minutes/[Streaming ETL is nothing new for Kafka] -- it is one of the platform's core use cases.   A big complicating factor for Neo4j-streams is that not many people have done it for graph before neo4j-streams.
+{url-confluent-blog}/building-real-time-streaming-etl-pipeline-20-minutes/[Streaming ETL is nothing new for Kafka] -- it is one of the platform's core use cases.   A big complicating factor for Neo4j-streams is that not many people have done it for graph before neo4j-streams.

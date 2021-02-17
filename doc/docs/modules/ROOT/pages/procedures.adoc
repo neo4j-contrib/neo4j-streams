@@ -91,7 +91,7 @@ The message retrieved from the Consumer is the following:
 
 `{"payload":"Hello world from Neo4j!"}`
 
-If you use a local <<neo4j_streams_docker,docker (compose) setup>>, you can check for these messages with:
+If you use a local xref:docker.adoc#neo4j_streams_docker[docker (compose) setup], you can check for these messages with:
 
 `docker exec -it kafka kafka-console-consumer --topic my-topic --bootstrap-server kafka:9092`
 

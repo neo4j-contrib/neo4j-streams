@@ -5,7 +5,7 @@
 
 ifdef::backend-html5[(C) {copyright}]
 
-License: link:{common-license-page-uri}[Creative Commons 4.0]
+License: link:{url-common-license-page}[Creative Commons 4.0]
 
 [abstract]
 This is the user guide for Neo4j Streams version {version}, authored by the Neo4j Labs Team.

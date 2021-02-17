@@ -24,7 +24,7 @@ mvn clean install
 
 1. `cd doc && ./gradlew clean packageHTML`
 2. `cd build/html && python3 -m http.server`
-3. Browse to http://localhost:8000/
+3. Browse to \http://localhost:8000/
 
 [[dev_gen_docs_antora]]
 == Generating this Documentation with Antora
@@ -34,7 +34,7 @@ Open a terminal window and be sure to be in the root of the project, then execut
 1. `cd doc`
 2. `npm run build:docs`
 3. `npm start`
-4. Browse to http://localhost:8000/
+4. Browse to \http://localhost:8000/
 
 [NOTE]
 ====

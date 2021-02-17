@@ -37,7 +37,7 @@ Start the compose file
 docker-compose up -d
 ----
 
-You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+You can access your Neo4j instance under: \http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
 
 ==== Plugin installation
 
@@ -62,7 +62,7 @@ Create a directory `plugins` at the same level of the compose file and unzip the
 --
 Please go to the Confluent Hub page of the plugin:
 
-https://www.confluent.io/connector/kafka-connect-neo4j-sink/
+{url-confluent-hub-neo4j}
 
 And click to the **Download Connector** button.
 
@@ -104,12 +104,12 @@ a param named `neo4j.database` which is the targeted database name.
 === Create the Sink Instance
 
 To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described
-into <<kafka-connect-sink-instance, Create the Sink Instance>> and <<kafka-connect-sink-strategies, Sink Ingestion Strategies>>
+into xref:kafka-connect.adoc#kafka-connect-sink-instance[Create the Sink Instance] and xref:kafka-connect.adoc#kafka-connect-sink-strategies[Sink Ingestion Strategies]
 sections.
 
 ==== Use the Kafka Connect Datagen
 
-In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<examples, `Example with Kafka Connect Datagen`>> section.
+In order to generate a sample dataset you can use Kafka Connect Datagen as explained in xref:examples.adoc[Example with Kafka Connect Datagen] section.
 
 [NOTE]
 Before start using the data generator please create indexes in Neo4j (in order to speed-up the import process)

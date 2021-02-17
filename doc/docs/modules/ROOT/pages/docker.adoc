@@ -137,8 +137,8 @@ This is because Neo4j Streams plugin, if not specified, will produce messages in
 Following you'll find a simple docker compose file that allow you to spin-up two Neo4j instances
 one configured as `Source` and one as `Sink`, allowing you to share any data from the `Source` to the `Sink`:
 
-* The `Source` is listening at `http://localhost:8474/browser/` (bolt: `bolt://localhost:8687`)
-* The `Sink` is listening at `http://localhost:7474/browser/` (bolt: `bolt://localhost:7687`) and is configured with the `Schema` strategy.
+* The `Source` is listening at `\http://localhost:8474/browser/` (bolt: `bolt://localhost:8687`)
+* The `Sink` is listening at `\http://localhost:7474/browser/` (bolt: `bolt://localhost:7687`) and is configured with the `Schema` strategy.
 
 [source,yml]
 ----

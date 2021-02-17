@@ -76,13 +76,13 @@ If you decide to use Kafka Connect plugin for the sink instance, then it has to 
 If the need is to run the connector as a managed service then the answer is no.
 Users who are interested in running Neo4j-Streams as a Cloud managed connector by Confluent should request this of Confluent.
 Right now there are only a few connectors such as that for S3 that can be run as managed services.
-Click https://docs.confluent.io/current/cloud/connectors/index.html[here] to learn more.
+Click {url-confluent-cloud}/connectors/index.html[here] to learn more.
 
 However, it is supported in the sense that Neo4j Streams can be connected to a Confluent Cloud instance,
 and the basic configuration is explained in the xref:cloud.adoc#confluent_cloud[Confluent Cloud] section.
 Other references to how to configure it to connect to the Confluent Cloud can be found at the following links:
 
-* https://www.confluent.io/blog/kafka-graph-visualizations (see the `Configuring Neo4j to interact with Kafka` section).
+* {url-confluent-blog}/kafka-graph-visualizations/ (see the `Configuring Neo4j to interact with Kafka` section).
 
 * https://github.com/neo4j-contrib/neo4j-streams/issues/182
 
@@ -118,13 +118,13 @@ If you would like to use also Kerberos the following tutorial should be useful: 
 Moreover checkout also the Confluent Kafka official documentation for further details on this topic.
 Here are some helpful links:
 
-* https://docs.confluent.io/current/security/security_tutorial.html#[Security Tutorial]
+* https://docs.confluent.io/current/security/security_tutorial.html[Security Tutorial]
 
-* https://docs.confluent.io/current/kafka/encryption.html[Encryption with SSL]
+* {url-confluent-kafka}/encryption.html[Encryption with SSL]
 
-* https://docs.confluent.io/current/kafka/authentication_sasl/index.html[Authentication with SASL]
+* {url-confluent-kafka}/authentication_sasl/index.html[Authentication with SASL]
 
-* https://docs.confluent.io/current/connect/security.html[Kafka Connect Security]
+* https://docs.confluent.io/platform/current/connect/security.html[Kafka Connect Security]
 
 == Enabling DLQ functionality
 
@@ -188,6 +188,6 @@ Please see the following link for further details:
 
 --
 * https://www.oreilly.com/library/view/kafka-the-definitive/9781491936153/ch04.html[Kakfa Consumer and Consumer Groups concepts]
-* https://docs.confluent.io/current/kafka/deployment.html#multi-node-configuration[Kafka multi-node configuration]
-* https://docs.confluent.io/current/zookeeper/deployment.html#multi-node-setup[Zookeeper multi-node setup]
+* https://docs.confluent.io/platform/current/kafka/deployment.html#multi-node-configuration[Kafka multi-node configuration]
+* https://docs.confluent.io/platform/current/zookeeper/deployment.html#multi-node-setup[Zookeeper multi-node setup]
 --

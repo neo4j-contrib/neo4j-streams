@@ -14,6 +14,8 @@ console.log(root)
       // initial redirect
       'load index.html',
       'load docs/index.html',
+      // static
+      'load build/site/developer/_',
       // google fonts
       'load https://fonts.googleapis.com/',
       // static resources
@@ -29,8 +31,10 @@ console.log(root)
       'load docs',
       // rate limit on twitter.com (will return 400 code if quota exceeded)
       'external-check https://twitter.com/neo4j',
-      // workaround: not sure why the following links are not resolved properly by hyperlink :/
-      'load build/site/developer/kafka/4.0/'
+      // workaround: not sure why the following ids are not resolved properly by hyperlink :/
+      'https://kafka.apache.org/documentation/#brokerconfigs',
+      'https://kafka.apache.org/documentation/#streamsapi',
+      'https://kafka.apache.org/documentation.html#compaction',
     ]
     const skipFilter = (report) => {
       return Object.values(report).some((value) => {
@@ -40,7 +44,7 @@ console.log(root)
     };
     await hyperlink({
         root,
-        inputUrls: [`build/site/developer/kafka/4.0/index.html`],
+        inputUrls: [`build/site/labs/kafka/4.0/index.html`],
         skipFilter: skipFilter,
         recursive: true,
       },
