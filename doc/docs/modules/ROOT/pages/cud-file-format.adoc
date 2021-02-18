@@ -283,7 +283,7 @@ MATCH (from)-[r:MY_REL]->(to)
 DELETE r
 ----
 
-We can create non-existent nodes at relationship creation/merging, putting the `"op": "merge"` attribute in `"from"` and/or `"to"` field, for example:
+We can create non-existent nodes at relationship creation/merging, putting `"op": "merge"` in `"from"` and/or `"to"` field, for example:
 
 [source,json]
 ----
