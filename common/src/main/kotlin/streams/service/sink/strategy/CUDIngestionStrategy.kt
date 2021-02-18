@@ -35,7 +35,9 @@ data class CUDNode(override val op: CUDOperations,
 }
 
 data class CUDNodeRel(val ids: Map<String, Any?> = emptyMap(),
-                      val labels: List<String>)
+                      val labels: List<String>,
+                      val op: CUDOperations? = null)
+
 data class CUDRelationship(override val op: CUDOperations,
                            override val properties: Map<String, Any?> = emptyMap(),
                            val rel_type: String,
@@ -66,7 +68,9 @@ class CUDIngestionStrategy: IngestionStrategy {
         @JvmStatic val TO_KEY = "to"
     }
 
-    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>)
+    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>, val op: CUDOperations? = null)
+
+    private fun getNodeRelOperation(from: NodeRelMetadata) = from.op?.toString()?.toUpperCase() ?: "MATCH"
 
     private fun buildNodeLookupByIds(keyword: String = "MATCH", ids: Set<String>, labels: List<String>, identifier: String = "n", field: String = ""): String {
         val fullField = if (field.isNotBlank()) "$field." else field
@@ -86,8 +90,8 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelCreateStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = getNodeRelOperation(from), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${buildNodeLookupByIds(keyword = getNodeRelOperation(to), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |CREATE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r = event.properties
         """.trimMargin()
@@ -101,8 +105,8 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelMergeStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = getNodeRelOperation(from), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${buildNodeLookupByIds(keyword = getNodeRelOperation(to), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |MERGE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r += event.properties
         """.trimMargin()
@@ -233,7 +237,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                 .groupBy({ it.op }, { it })
 
         return data.flatMap { (op, list) ->
-            list.groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type) }
+            list.groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type) }
                     .map {
                         val (from, to, rel_type) = it.key
                         val query = when (op) {

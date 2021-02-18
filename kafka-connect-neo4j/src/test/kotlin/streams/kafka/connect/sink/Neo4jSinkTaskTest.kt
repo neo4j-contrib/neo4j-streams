@@ -693,4 +693,69 @@ class Neo4jSinkTaskTest {
         }
     }
 
+    @Test
+    fun `should create nodes and relationship, if one or both nodes doesn't exist from CUD Events`() {
+        // given
+        val key = "key"
+        val topic = UUID.randomUUID().toString()
+        val relType = "MY_REL"
+        val data = (1..10).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
+        }
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        // when
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(data)
+
+        // then
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("""
+                MATCH (:Foo:Bar)-[r:$relType]->(:FooBar)
+                RETURN count(r) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").next()
+            assertEquals(10L, countFooBarLabel)
+        }
+
+        val dataWithStartPreset = (11..20).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
+        }
+
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
+                UNWIND range(11, 20) AS id
+                CREATE (:Foo:Bar {key: id})
+            """.trimIndent()).close()
+            assertEquals(10, it.allRelationships.count())
+            assertEquals(30, it.allNodes.count())
+            it.commit()
+        }
+
+        task.put(dataWithStartPreset)
+
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("""
+                MATCH (:Foo:Bar)-[r:$relType]->(:FooBar)
+                RETURN count(r) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").next()
+            assertEquals(20L, countFooBarLabel)
+        }
+    }
+
 }
