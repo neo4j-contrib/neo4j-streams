@@ -1,11 +1,8 @@
 package streams.utils
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import org.neo4j.dbms.api.DatabaseManagementService
+import org.neo4j.graphdb.GraphDatabaseService
 import streams.config.StreamsConfig
 import streams.extensions.getSystemDb
 
@@ -30,14 +27,15 @@ object StreamsUtils {
             if (toIgnore.isEmpty()) {
                 return null
             }
-            return when (e::class.java) {
-                in toIgnore -> null
-                else -> throw e
+            return if (toIgnore.any { it.isInstance(e) }) {
+                null
+            } else {
+                throw e
             }
         }
     }
 
-    fun blockUntilTrueOrTimeout(timeout: Long, delay: Long = 1000, action: () -> Boolean): Boolean = runBlocking {
+    fun blockUntilFalseOrTimeout(timeout: Long, delay: Long = 1000, action: () -> Boolean): Boolean = runBlocking {
         val start = System.currentTimeMillis()
         var success = action()
         while (System.currentTimeMillis() - start < timeout && !success) {
@@ -61,5 +59,7 @@ object StreamsUtils {
             }
         }
     }
+
+    fun getName(db: GraphDatabaseService) = db.databaseName()
 
 }

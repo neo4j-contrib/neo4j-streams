@@ -14,6 +14,7 @@ import org.testcontainers.containers.Network
 import org.testcontainers.containers.output.Slf4jLogConsumer
 import org.testcontainers.containers.wait.strategy.AbstractWaitStrategy
 import org.testcontainers.containers.wait.strategy.WaitAllStrategy
+import org.testcontainers.containers.wait.strategy.WaitStrategy
 import org.testcontainers.utility.MountableFile
 import streams.utils.StreamsUtils
 import java.io.File
@@ -70,6 +71,13 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
 
     private var databases = arrayOf<String>()
 
+    private val waitStrategies = mutableListOf<WaitStrategy>()
+
+    fun withWaitStrategy(waitStrategy: WaitStrategy): Neo4jContainerExtension {
+        this.waitStrategies += waitStrategy
+        return this
+    }
+
 
     fun withFixture(cypher: String): Neo4jContainerExtension {
         this.cypher = cypher
@@ -112,8 +120,14 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
 
     override fun start() {
         if (databases.isNotEmpty()) {
+            withWaitStrategy(DatabasesWaitStrategy(createAuth())
+                .forDatabases(*databases)
+                .withStartupTimeout(Duration.ofMinutes(2)))
+        }
+        if (waitStrategies.isNotEmpty()) {
             val waitAllStrategy = waitStrategy as WaitAllStrategy
-            waitAllStrategy.withStrategy(DatabasesWaitStrategy(createAuth()).forDatabases(*databases).withStartupTimeout(Duration.ofMinutes(2)))
+            waitStrategies.reversed()
+                .forEach { waitStrategy -> waitAllStrategy.withStrategy(waitStrategy) }
         }
         if (withLogger) {
             withLogConsumer(Slf4jLogConsumer(logger))

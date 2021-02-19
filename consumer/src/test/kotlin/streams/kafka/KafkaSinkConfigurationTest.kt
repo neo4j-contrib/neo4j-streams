@@ -22,24 +22,7 @@ import kotlin.test.assertTrue
 
 class KafkaSinkConfigurationTest {
 
-    lateinit var streamsConfig: StreamsConfig
-    val defaultDbName = "neo4j"
-
-    @Before
-    fun setUp() {
-        val dbms = Mockito.mock(DatabaseManagementService::class.java)
-        val db = Mockito.mock(GraphDatabaseAPI::class.java)
-        val tx = Mockito.mock(Transaction::class.java)
-        val result = Mockito.mock(Result::class.java)
-        val resource = Mockito.mock(ResourceIterator::class.java) as ResourceIterator<String>
-        Mockito.`when`(dbms.database(Mockito.anyString())).thenReturn(db)
-        Mockito.`when`(db.beginTx()).thenReturn(tx)
-        Mockito.`when`(tx.execute(Mockito.anyString())).thenReturn(result)
-        Mockito.`when`(result.columnAs<String>(Mockito.anyString())).thenReturn(resource)
-        Mockito.`when`(resource.hasNext()).thenReturn(true)
-        Mockito.`when`(resource.next()).thenReturn(defaultDbName)
-        streamsConfig = StreamsConfig(NullLog.getInstance(), dbms)
-    }
+    private val defaultDbName = "neo4j"
 
     @Test
     fun `should return default configuration`() {
@@ -84,8 +67,7 @@ class KafkaSinkConfigurationTest {
                 "key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
-        streamsConfig.config.putAll(config)
-        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(streamsConfig, defaultDbName)
+        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config, defaultDbName, isDefaultDb = true)
         StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, topic, topicValue)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
@@ -98,7 +80,7 @@ class KafkaSinkConfigurationTest {
                 .toMap()
         assertEquals(expectedMap, resultMap)
 
-        val streamsConfig = StreamsSinkConfiguration.from(streamsConfig, defaultDbName)
+        val streamsConfig = StreamsSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
         assertTrue { streamsConfig.topics.cypherTopics.containsKey(topic) }
         assertEquals(topicValue, streamsConfig.topics.cypherTopics[topic])
     }
@@ -135,8 +117,7 @@ class KafkaSinkConfigurationTest {
                 "streams.async.commit" to asyncCommit,
                 "value.deserializer" to KafkaAvroDeserializer::class.java.name)
 
-        streamsConfig.config.putAll(config)
-        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(streamsConfig, dbName)
+        val kafkaSinkConfiguration = KafkaSinkConfiguration.create(config, dbName, isDefaultDb = false)
         StreamsSinkConfigurationTest.testFromConf(kafkaSinkConfiguration.streamsSinkConfiguration, topic, topicValueFoo)
         assertEquals(emptyMap(), kafkaSinkConfiguration.extraProperties)
         assertEquals(zookeeper, kafkaSinkConfiguration.zookeeperConnect)
@@ -150,7 +131,7 @@ class KafkaSinkConfigurationTest {
                 .toMap()
         assertEquals(expectedMap, resultMap)
 
-        val streamsConfig = StreamsSinkConfiguration.from(streamsConfig, dbName)
+        val streamsConfig = StreamsSinkConfiguration.from(config, dbName, isDefaultDb = false)
         assertEquals(1, streamsConfig.topics.cypherTopics.size)
         assertTrue { streamsConfig.topics.cypherTopics.containsKey(topic) }
         assertEquals(topicValueFoo, streamsConfig.topics.cypherTopics[topic])
@@ -177,8 +158,7 @@ class KafkaSinkConfigurationTest {
                     "kafka.group.id" to group,
                     "kafka.key.deserializer" to ByteArrayDeserializer::class.java.name,
                     "kafka.value.deserializer" to KafkaAvroDeserializer::class.java.name)
-            streamsConfig.config.putAll(config)
-            KafkaSinkConfiguration.from(streamsConfig, defaultDbName)
+            KafkaSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
         } catch (e: TopicValidationException) {
             assertEquals("The servers defined into the property `kafka.bootstrap.servers` are not reachable: [$bootstrap]", e.message)
             throw e
@@ -204,8 +184,7 @@ class KafkaSinkConfigurationTest {
                     "kafka.group.id" to group,
                     "kafka.key.deserializer" to ByteArrayDeserializer::class.java.name,
                     "kafka.value.deserializer" to KafkaAvroDeserializer::class.java.name)
-            streamsConfig.config.putAll(config)
-            KafkaSinkConfiguration.from(streamsConfig, defaultDbName)
+            KafkaSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
         } catch (e: RuntimeException) {
             assertEquals("The `kafka.bootstrap.servers` property is empty", e.message)
             throw e

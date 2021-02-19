@@ -50,31 +50,28 @@ data class StreamsEventRouterConfiguration(val enabled: Boolean = StreamsConfig.
 
     companion object {
 
-        fun from(streamsConfig: StreamsConfig, dbName: String): StreamsEventRouterConfiguration {
-            val isDefaultDb = streamsConfig.isDefaultDb(dbName)
-
-            var nodeRouting = filterMap<NodeRoutingConfiguration>(config = streamsConfig.config,
+        fun from(streamsConfig: Map<String, String>, dbName: String, isDefaultDb: Boolean): StreamsEventRouterConfiguration {
+            var nodeRouting = filterMap<NodeRoutingConfiguration>(config = streamsConfig,
                     routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX,
                     dbName = dbName)
-            var relRouting = filterMap<RelationshipRoutingConfiguration>(config = streamsConfig.config,
+            var relRouting = filterMap<RelationshipRoutingConfiguration>(config = streamsConfig,
                     routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX,
                     dbName = dbName)
 
             if (isDefaultDb) {
-                nodeRouting += filterMap<NodeRoutingConfiguration>(config = streamsConfig.config,
+                nodeRouting += filterMap<NodeRoutingConfiguration>(config = streamsConfig,
                         routingPrefix = StreamsRoutingConfigurationConstants.NODE_ROUTING_KEY_PREFIX)
-                relRouting += filterMap<RelationshipRoutingConfiguration>(config = streamsConfig.config,
+                relRouting += filterMap<RelationshipRoutingConfiguration>(config = streamsConfig,
                         routingPrefix = StreamsRoutingConfigurationConstants.REL_ROUTING_KEY_PREFIX)
             }
 
             val default = StreamsEventRouterConfiguration()
             return default.copy(
-                    enabled = streamsConfig.isSourceEnabled(dbName),
-                    proceduresEnabled = streamsConfig.hasProceduresEnabled(dbName),
+                    enabled = StreamsConfig.isSourceEnabled(streamsConfig, dbName),
+                    proceduresEnabled = StreamsConfig.hasProceduresEnabled(streamsConfig, dbName),
                     nodeRouting = if (nodeRouting.isEmpty()) listOf(NodeRoutingConfiguration(topic = dbName)) else nodeRouting,
                     relRouting = if (relRouting.isEmpty()) listOf(RelationshipRoutingConfiguration(topic = dbName)) else relRouting,
-                    schemaPollingInterval = streamsConfig.config
-                            .getOrDefault(StreamsRoutingConfigurationConstants.SCHEMA_POLLING_INTERVAL, default.schemaPollingInterval).toString().toLong()
+                    schemaPollingInterval = streamsConfig.getOrDefault(StreamsRoutingConfigurationConstants.SCHEMA_POLLING_INTERVAL, default.schemaPollingInterval).toString().toLong()
             )
         }
 

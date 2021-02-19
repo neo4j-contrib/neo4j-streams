@@ -8,6 +8,8 @@ import org.apache.kafka.common.config.TopicConfig
 import org.hamcrest.Matchers
 import org.junit.*
 import org.neo4j.driver.SessionConfig
+import org.neo4j.function.ThrowingSupplier
+import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import streams.Assert
 import streams.KafkaTestUtils
 import streams.Neo4jContainerExtension
@@ -15,12 +17,12 @@ import streams.events.EntityType
 import streams.events.NodeChange
 import streams.events.OperationType
 import streams.events.RelationshipPayload
+import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
-import org.neo4j.function.ThrowingSupplier
-import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
 
 class KafkaEventRouterEnterpriseTSE {
 
@@ -40,7 +42,7 @@ class KafkaEventRouterEnterpriseTSE {
         val DB_NAME_NAMES = listOf("foo", "bar", "deletedb", DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT)
 
         @JvmStatic
-        val neo4j = Neo4jContainerExtension()//.withLogging()
+        val neo4j = Neo4jContainerExtension().withLogging()
 
         @BeforeClass
         @JvmStatic
@@ -51,7 +53,13 @@ class KafkaEventRouterEnterpriseTSE {
                 KafkaEventRouterSuiteIT.setUpContainer()
             }
             StreamsUtils.ignoreExceptions({
-                DB_NAME_NAMES.forEach { neo4j.withNeo4jConfig("streams.source.enabled.from.$it", "true") } // we enable the source plugin only for the instances
+                neo4j.withWaitStrategy(LogMessageWaitStrategy()
+                    .withRegEx(".*\\[(${DB_NAME_NAMES.joinToString("|")}|neo4j)] \\[Source\\] Streams Source module initialised\n")
+                    .withTimes(DB_NAME_NAMES.size + 1)
+                    .withStartupTimeout(Duration.ofMinutes(10)))
+                DB_NAME_NAMES.forEach {
+                    neo4j.withNeo4jConfig("streams.source.enabled.from.$it", "true")
+                } // we enable the source plugin only for the instances
                 neo4j.withKafka(KafkaEventRouterSuiteIT.kafka)
                         .withNeo4jConfig("streams.source.enabled", "false") // we disable the source plugin
                 // for the bar instance we create custom routing params
@@ -69,6 +77,7 @@ class KafkaEventRouterEnterpriseTSE {
                         .withNeo4jConfig("streams.source.topic.nodes.$TOPIC_WITH_TOMBSTONE.from.$DB_TOMBSTONE_WITH_COMPACT", "Person{*}")
                         .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_WITH_TOMBSTONE.from.$DB_TOMBSTONE_WITH_COMPACT", "KNOWS{*}")
                 neo4j.withDatabases("foo", "bar", "baz", "deletedb", DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT)
+                        .withNeo4jConfig("dbms.logs.debug.level", "DEBUG")
                 neo4j.start()
                 Assume.assumeTrue("Neo4j must be running", neo4j.isRunning)
             }, IllegalStateException::class.java)
@@ -186,6 +195,7 @@ class KafkaEventRouterEnterpriseTSE {
             val records = it.poll(5000)
             assertEquals(3, records.count()) // foo instance should publish all the events into the foo topic
         }
+
         // bar instance should publish all the events into two topics
         kafkaConsumerBarKnows.use {
             it.subscribe(setOf("knows")) // for the relationships

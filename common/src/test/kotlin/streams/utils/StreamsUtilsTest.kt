@@ -1,6 +1,7 @@
 package streams.utils
 
 import org.junit.Test
+import java.io.IOException
 import java.lang.RuntimeException
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -25,10 +26,10 @@ class StreamsUtilsTest {
         assertNull(data)
     }
 
-    @Test(expected = IllegalArgumentException::class)
+    @Test(expected = IOException::class)
     fun shouldNotIgnoreTheException() {
         StreamsUtils.ignoreExceptions({
-            throw IllegalArgumentException()
+            throw IOException()
         }, RuntimeException::class.java)
     }
 }

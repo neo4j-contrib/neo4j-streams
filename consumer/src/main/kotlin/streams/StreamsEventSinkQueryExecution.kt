@@ -5,7 +5,7 @@ import org.neo4j.logging.Log
 import streams.extensions.execute
 import streams.service.StreamsSinkService
 import streams.service.StreamsStrategyStorage
-import streams.utils.Neo4jUtils
+import streams.utils.ConsumerUtils
 
 class NotInWriteableInstanceException(message: String): RuntimeException(message)
 
@@ -16,7 +16,7 @@ class StreamsEventSinkQueryExecution(private val db: GraphDatabaseAPI,
 
     override fun write(query: String, params: Collection<Any>) {
         if (params.isEmpty()) return
-        if (Neo4jUtils.isWriteableInstance(db)) {
+        if (ConsumerUtils.isWriteableInstance(db)) {
             db.execute(query, mapOf("events" to params)) {
                 if (log.isDebugEnabled) {
                     log.debug("Query statistics:\n${it.queryStatistics}")

@@ -43,20 +43,20 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
 
     companion object {
 
-        fun from(cfg: StreamsConfig, dbName: String): KafkaSinkConfiguration {
-            val kafkaCfg = create(cfg, dbName)
+        fun from(cfg: Map<String, String>, dbName: String, isDefaultDb: Boolean): KafkaSinkConfiguration {
+            val kafkaCfg = create(cfg, dbName, isDefaultDb)
             validate(kafkaCfg)
             val invalidTopics = getInvalidTopics(kafkaCfg.asProperties(), kafkaCfg.streamsSinkConfiguration.topics.allTopics())
             return if (invalidTopics.isNotEmpty()) {
-                kafkaCfg.copy(streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, dbName, invalidTopics))
+                kafkaCfg.copy(streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, dbName, invalidTopics, isDefaultDb))
             } else {
                 kafkaCfg
             }
         }
 
         // Visible for testing
-        fun create(cfg: StreamsConfig, dbName: String): KafkaSinkConfiguration {
-            val config = cfg.config
+        fun create(cfg: Map<String, String>, dbName: String, isDefaultDb: Boolean): KafkaSinkConfiguration {
+            val config = cfg
                     .filterKeys { it.startsWith(kafkaConfigPrefix) }
                     .mapKeys { it.key.substring(kafkaConfigPrefix.length) }
             val default = KafkaSinkConfiguration()
@@ -64,9 +64,8 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
             val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
-            val streamsSinkConfiguration = StreamsSinkConfiguration.from(cfg, dbName)
+            val streamsSinkConfiguration = StreamsSinkConfiguration.from(configMap = cfg, dbName = dbName, isDefaultDb = isDefaultDb)
 
-            val isDefaultDb = cfg.isDefaultDb(dbName)
 
             return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
                     keyDeserializer = config.getOrDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, default.keyDeserializer),

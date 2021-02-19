@@ -45,7 +45,9 @@ For further information on routing drivers, see the link:https://neo4j.com/docs/
 When using Neo4j Streams as a plugin together with a cluster, there are several things to keep in mind:
 
 * The plugin must be present in the plugins directory of _all cluster members_, and not just one.
-* The configuration settings must be present in _all of the neo4j.conf files_, not just one.
+* The configuration settings must be present in:
+- *all neo4j.conf files* for versions prior of `4.0.7`, and not just one;
+- *all streams.conf files* for versions since `4.0.7`, and not just one.
 
 Through the course of the cluster lifecycle, the leader may change; for this reason the plugin must be everywhere,
 and not just on the leader.

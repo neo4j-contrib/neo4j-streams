@@ -1,6 +1,9 @@
 package streams
 
+import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.config.StreamsConfig
+import streams.extensions.isDefaultDb
 import streams.service.StreamsStrategyStorage
 import streams.service.TopicType
 import streams.service.sink.strategy.CUDIngestionStrategy
@@ -14,8 +17,8 @@ import streams.service.sink.strategy.SchemaIngestionStrategy
 import streams.service.sink.strategy.SourceIdIngestionStrategy
 
 class Neo4jStreamsStrategyStorage(private val streamsTopicService: StreamsTopicService,
-                                  private val streamsConfig: StreamsConfig,
-                                  private val dbName: String): StreamsStrategyStorage() {
+                                  private val streamsConfig: Map<String, String>,
+                                  private val db: GraphDatabaseService): StreamsStrategyStorage() {
 
     override fun getTopicType(topic: String): TopicType? {
         return streamsTopicService.getTopicType(topic)
@@ -26,7 +29,7 @@ class Neo4jStreamsStrategyStorage(private val streamsTopicService: StreamsTopicS
     override fun getStrategy(topic: String): IngestionStrategy = when (val topicType = getTopicType(topic)) {
         TopicType.CDC_SOURCE_ID -> {
             val strategyConfig = StreamsSinkConfiguration
-                    .createSourceIdIngestionStrategyConfig(streamsConfig.config, dbName, streamsConfig.isDefaultDb(dbName))
+                    .createSourceIdIngestionStrategyConfig(streamsConfig, db.databaseName(), db.isDefaultDb())
             SourceIdIngestionStrategy(strategyConfig)
         }
         TopicType.CDC_SCHEMA -> SchemaIngestionStrategy()

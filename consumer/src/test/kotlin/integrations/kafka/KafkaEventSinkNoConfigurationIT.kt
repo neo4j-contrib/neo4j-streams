@@ -34,7 +34,7 @@ class KafkaEventSinkNoConfigurationIT {
     }
 
     @Test
-    fun `the db should start even with no bootstrap servers provided()`() {
+    fun `the db should start even with no bootstrap servers provided`() {
         db.setConfig("kafka.bootstrap.servers", "")
             .setConfig("streams.sink.enabled", "true")
             .setConfig("streams.sink.topic.cypher.$topic", "CREATE (p:Place{name: event.name, coordinates: event.coordinates, citizens: event.citizens})")

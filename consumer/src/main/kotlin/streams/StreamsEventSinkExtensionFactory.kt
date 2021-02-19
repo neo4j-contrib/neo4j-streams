@@ -22,7 +22,6 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
         fun graphdatabaseAPI(): GraphDatabaseAPI
         fun dbms(): DatabaseManagementService
         fun log(): LogService
-        fun streamsConfig(): StreamsConfig
         fun availabilityGuard(): AvailabilityGuard
     }
 
@@ -30,19 +29,24 @@ class StreamsEventSinkExtensionFactory : ExtensionFactory<StreamsEventSinkExtens
         private val db = dependencies.graphdatabaseAPI()
         private val logService = dependencies.log()
         private val streamsLog = logService.getUserLog(StreamsEventLifecycle::class.java)
-        private val availabilityListener = StreamsEventSinkAvailabilityListener(dependencies)
+        private val availabilityListener: StreamsEventSinkAvailabilityListener? =  if (db.isSystemDb()) {
+            null
+        } else {
+            StreamsEventSinkAvailabilityListener(dependencies)
+        }
 
         override fun start() {
-            if (db.isSystemDb()) {
-                return
+            availabilityListener?.let {
+                dependencies.availabilityGuard().addListener(availabilityListener)
             }
-            dependencies.availabilityGuard().addListener(availabilityListener)
         }
 
         override fun stop() {
             try {
-                availabilityListener.unavailable()
-                StreamsEventSinkAvailabilityListener.remove(db)
+                availabilityListener?.let {
+                    it.shutdown()
+                    dependencies.availabilityGuard().removeListener(it)
+                }
             } catch (e : Throwable) {
                 val message = e.message ?: "Generic error, please check the stack trace:"
                 streamsLog.error(message, e)

@@ -8,6 +8,9 @@
 // ** xref::quickstart.adoc#neo4j_streams_plugin_quickstart[Neo4j Streams plugin]
 // ** xref::quickstart.adoc#kafka_connect_plugin_quickstart[Kafka Connect plugin]
 
+* xref::configuration.adoc[The Configuration System]
+// ** xref::configuration.adoc#neo4j_configuration_system[Configuration System overview]
+
 * xref::producer.adoc[Source: Neo4j -> Kafka]
 // ** xref::producer.adoc#neo4j_streams_producer_config[Configuration]
 // ** xref::producer.adoc#source-patterns[Patterns]

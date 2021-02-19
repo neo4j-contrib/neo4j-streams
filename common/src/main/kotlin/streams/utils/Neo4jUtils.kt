@@ -9,32 +9,27 @@ import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
-import streams.StreamsEventSinkAvailabilityListener
-import streams.config.StreamsConfig
 import streams.extensions.execute
-import streams.extensions.getSystemDb
 import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
 
 object Neo4jUtils {
-    fun isWriteableInstance(db: GraphDatabaseAPI): Boolean {
+    fun isWriteableInstance(db: GraphDatabaseAPI, availableAction: () -> Boolean = { true }): Boolean {
         try {
             val isSlave = StreamsUtils.ignoreExceptions(
-                    {
-                        val hadb = Class.forName("org.neo4j.kernel.ha.HighlyAvailableGraphDatabase")
-                        hadb.isInstance(db) && !(hadb.getMethod("isMaster").invoke(db) as Boolean)
-                    }, ClassNotFoundException::class.java, IllegalAccessException::class.java,
-                    InvocationTargetException::class.java, NoSuchMethodException::class.java)
+                {
+                    val hadb = Class.forName("org.neo4j.kernel.ha.HighlyAvailableGraphDatabase")
+                    hadb.isInstance(db) && !(hadb.getMethod("isMaster").invoke(db) as Boolean)
+                }, ClassNotFoundException::class.java, IllegalAccessException::class.java,
+                InvocationTargetException::class.java, NoSuchMethodException::class.java)
             if (isSlave != null && isSlave) {
                 return false
             }
 
-            val role = getMemberRole(db)
-            return StreamsEventSinkAvailabilityListener.isAvailable(db)
-                    && role.equals(StreamsUtils.LEADER, ignoreCase = true)
+            return availableAction() && getMemberRole(db).equals(StreamsUtils.LEADER, ignoreCase = true)
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
-                return StreamsEventSinkAvailabilityListener.isAvailable(db)
+                return availableAction()
             }
             throw e
         }
@@ -70,6 +65,11 @@ object Neo4jUtils {
         }
     }
 
+    fun isCluster(dbms: DatabaseManagementService, log: Log? = null): Boolean = dbms.listDatabases()
+        .firstOrNull { it != StreamsUtils.SYSTEM_DATABASE_NAME }
+        ?.let { dbms.database(it) as GraphDatabaseAPI }
+        ?.let { isCluster(it, log) } ?: false
+
     private fun getMemberRole(db: GraphDatabaseAPI) = db.execute("CALL dbms.cluster.role(\$database)",
             mapOf("database" to db.databaseName())) { it.columnAs<String>("role").next() }
 
@@ -90,13 +90,19 @@ object Neo4jUtils {
         throw e
     }
 
-    fun <T> executeInWriteableInstance(db: GraphDatabaseAPI, action: () -> T?): T? = if (isWriteableInstance(db)) {
+    fun <T> executeInWriteableInstance(db: GraphDatabaseAPI,
+                                       availableAction: () -> Boolean,
+                                       action: () -> T?): T? = if (isWriteableInstance(db, availableAction)) {
         action()
     } else {
         null
     }
 
-    fun executeInLeader(db: GraphDatabaseAPI, log: Log, timeout: Long = 120000, action: () -> Unit) {
+    fun executeInLeader(db: GraphDatabaseAPI,
+                        log: Log,
+                        timeout: Long = 120000,
+                        availableAction: () -> Boolean,
+                        action: () -> Unit) {
         GlobalScope.launch(Dispatchers.IO) {
             val start = System.currentTimeMillis()
             val delay: Long = 2000
@@ -104,7 +110,7 @@ object Neo4jUtils {
                 log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
                 delay(delay)
             }
-            executeInWriteableInstance(db, action)
+            executeInWriteableInstance(db, availableAction, action)
         }
     }
 
@@ -113,6 +119,23 @@ object Neo4jUtils {
             val start = System.currentTimeMillis()
             val delay: Long = 2000
             while (!clusterHasLeader(db) && System.currentTimeMillis() - start < timeout) {
+                log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
+                delay(delay)
+            }
+            action()
+        }
+    }
+
+    fun isClusterCorrectlyFormed(dbms: DatabaseManagementService) = dbms.listDatabases()
+        .filterNot { it == StreamsUtils.SYSTEM_DATABASE_NAME }
+        .map { dbms.database(it) as GraphDatabaseAPI }
+        .all { clusterHasLeader(it) }
+
+    fun waitForTheLeaders(dbms: DatabaseManagementService, log: Log, timeout: Long = 120000, action: () -> Unit) {
+        GlobalScope.launch(Dispatchers.IO) {
+            val start = System.currentTimeMillis()
+            val delay: Long = 2000
+            while (!isClusterCorrectlyFormed(dbms) && System.currentTimeMillis() - start < timeout) {
                 log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
                 delay(delay)
             }
