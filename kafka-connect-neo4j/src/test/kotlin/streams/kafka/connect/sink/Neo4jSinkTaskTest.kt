@@ -758,4 +758,65 @@ class Neo4jSinkTaskTest {
         }
     }
 
+    @Test
+    fun `should create entities only with valid CUD operations`() {
+        // given
+        val invalidMarkers = listOf(3, 6, 9)
+        val key = "key"
+        val topic = UUID.randomUUID().toString()
+        val data = (1..10).map {
+            val labels = listOf("Foo", "Bar", "Label")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val (op, ids) = when (it) {
+                in invalidMarkers -> CUDOperations.match to mapOf(key to it)
+                else -> CUDOperations.create to emptyMap()
+            }
+            val cudNode = CUDNode(op = op,
+                    labels = labels,
+                    ids = ids,
+                    properties = properties)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(cudNode), it.toLong())
+        }
+
+        val relType = "MY_REL"
+        val invalidRelMarkers = listOf(1, 4)
+        val invalidNodeRelMarkers = listOf(3, 6, 7)
+        val dataRel = (1..10).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val opRelationship = if (it in invalidRelMarkers) CUDOperations.delete else CUDOperations.merge
+            val opStartNode = if (it in invalidNodeRelMarkers) CUDOperations.delete else CUDOperations.merge
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = opStartNode)
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
+            val rel = CUDRelationship(op = opRelationship, properties = properties, from = start, to = end, rel_type = relType)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
+        }
+
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        // when
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(data)
+        task.put(dataRel)
+
+        // then
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("MATCH (n:Foo:Bar:Label) RETURN count(n) AS count")
+                    .columnAs<Long>("count")
+                    .next()
+            assertEquals(7L, countFooBarLabel)
+            val countRelationships = it.execute("""
+                MATCH (:Foo:Bar)-[r:$relType]->(:FooBar)
+                RETURN count(r) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").next()
+            assertEquals(5L, countRelationships)
+        }
+    }
+
 }

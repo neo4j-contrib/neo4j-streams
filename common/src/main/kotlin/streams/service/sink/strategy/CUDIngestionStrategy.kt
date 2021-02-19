@@ -11,7 +11,7 @@ import streams.utils.IngestionUtils.getNodeKeysAsString
 import streams.utils.StreamsUtils
 
 
-enum class CUDOperations { create, merge, update, delete }
+enum class CUDOperations { create, merge, update, delete, match }
 
 abstract class CUD {
     abstract val op: CUDOperations
@@ -36,7 +36,7 @@ data class CUDNode(override val op: CUDOperations,
 
 data class CUDNodeRel(val ids: Map<String, Any?> = emptyMap(),
                       val labels: List<String>,
-                      val op: CUDOperations? = null)
+                      val op: CUDOperations = CUDOperations.match)
 
 data class CUDRelationship(override val op: CUDOperations,
                            override val properties: Map<String, Any?> = emptyMap(),
@@ -68,9 +68,9 @@ class CUDIngestionStrategy: IngestionStrategy {
         @JvmStatic val TO_KEY = "to"
     }
 
-    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>, val op: CUDOperations? = null)
+    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>, val op: CUDOperations = CUDOperations.match)
 
-    private fun getNodeRelOperation(from: NodeRelMetadata) = from.op?.toString()?.toUpperCase() ?: "MATCH"
+    private fun getNodeRelOperation(from: NodeRelMetadata) = from.op.toString().toUpperCase()
 
     private fun buildNodeLookupByIds(keyword: String = "MATCH", ids: Set<String>, labels: List<String>, identifier: String = "n", field: String = ""): String {
         val fullField = if (field.isNotBlank()) "$field." else field
@@ -168,9 +168,9 @@ class CUDIngestionStrategy: IngestionStrategy {
                         try {
                             val data = toCUDEntity<CUDNode>(it)
                             when (data?.op)  {
-                                CUDOperations.delete, null -> null
                                 CUDOperations.merge -> if (data.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
-                                else -> if (data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                CUDOperations.update, CUDOperations.create -> if (data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                else -> null
                             }
                         } catch (e: Exception) {
                             null
@@ -225,9 +225,12 @@ class CUDIngestionStrategy: IngestionStrategy {
                     it.value?.let {
                         try {
                             val data = toCUDEntity<CUDRelationship>(it)
-                            when (data?.op)  {
-                                CUDOperations.delete, null -> null // TODO send to the DLQ the null
-                                else -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                            val listValidNodesRel = listOf(CUDOperations.merge, CUDOperations.create, CUDOperations.match)
+                            val isValidCUDNodesRel = data?.from?.op in listValidNodesRel && data?.to?.op in listValidNodesRel
+                            val isValidCudRel = data?.op?.let { it in listOf(CUDOperations.create, CUDOperations.merge, CUDOperations.update)} ?: false
+                            when {
+                                isValidCudRel && isValidCUDNodesRel -> if (data!!.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                else -> null // TODO send to the DLQ the null
                             }
                         } catch (e: Exception) {
                             null
