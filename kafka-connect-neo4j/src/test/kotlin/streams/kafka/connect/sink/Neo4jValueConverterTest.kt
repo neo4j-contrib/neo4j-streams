@@ -91,6 +91,12 @@ class Neo4jValueConverterTest {
         assertTrue{ int32Time is LocalTimeValue }
         assertEquals(Date.from(Instant.ofEpochMilli(123)).toInstant().atZone(utc).toLocalTime(), int32Time?.asLocalTime())
 
+        val nullField = result["nullField"]
+        assertTrue{ nullField is NullValue }
+
+        val nullFieldBytes = result["nullFieldBytes"]
+        assertTrue{ nullFieldBytes is NullValue }
+
     }
 
     @Test
@@ -103,12 +109,10 @@ class Neo4jValueConverterTest {
         assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
 
-        val number2 = BigDecimal.valueOf(Double.MIN_VALUE).pow(2)
-        val result2 = Neo4jValueConverter().convert(mapOf(null to number2))
+        val result2 = Neo4jValueConverter().convert(getItemElement(null))
         val item2 = result2["item"]
 
-        assertTrue{ item2 is StringValue }
-        assertEquals(number.toPlainString(), item?.asString())
+        assertTrue{ item2 is NullValue }
     }
 
     @Test
@@ -305,7 +309,7 @@ class Neo4jValueConverterTest {
             return mapOf("ul" to ulListMap, "p" to pListMap)
         }
 
-        fun getItemElement(number: Any): Map<String, Any> = mapOf("item" to number)
+        fun getItemElement(number: Any?): Map<String, Any?> = mapOf("item" to number)
     }
 
 }
