@@ -9,7 +9,6 @@ import org.hamcrest.Matchers
 import org.junit.Before
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.graphdb.factory.GraphDatabaseBuilder
 import org.neo4j.helpers.collection.Iterators
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -19,8 +18,10 @@ import streams.events.*
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import java.time.Duration
-import java.util.*
-import kotlin.test.*
+import java.util.UUID
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
 import streams.kafka.KafkaTestUtils.createConsumer
 import streams.serialization.JSONUtils
 import java.util.concurrent.TimeUnit
@@ -56,8 +57,6 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             assertion(records)
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
-
-    private lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
 
     @Before
     override fun setUp() {

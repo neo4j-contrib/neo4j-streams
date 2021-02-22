@@ -8,20 +8,44 @@ import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.QueryExecutionException
-import streams.events.*
+import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.events.Constraint
+import streams.events.EntityType
+import streams.events.NodeChange
+import streams.events.NodePayload
+import streams.events.OperationType
+import streams.events.RelationshipPayload
+import streams.events.StreamsConstraintType
+import streams.events.StreamsEvent
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils.createConsumer
 import streams.serialization.JSONUtils
 import java.util.UUID
 import java.util.concurrent.TimeUnit
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.test.assertNotNull
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
 class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
+
+    private fun initDbWithConfigs(configs: Map<String, String>) {
+        configs.forEach { (k, v) -> graphDatabaseBuilder.setConfig(k, v) }
+        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+    }
+
+    private fun initDbWithConfigsAndConstraints() {
+        val configsMap = mapOf("streams.source.topic.nodes.personConstraints" to "PersonConstr{*}",
+                "streams.source.topic.nodes.productConstraints" to "ProductConstr{*}",
+                "streams.source.topic.relationships.boughtConstraints" to "BOUGHT{*}",
+                "streams.source.schema.polling.interval" to "0")
+        initDbWithConfigs(configsMap)
+        db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
+        db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
+    }
 
     @Test
     fun testCreateNode() {
@@ -47,6 +71,8 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateRelationshipWithRelRouting() {
+        initDbWithConfigs(mapOf("streams.source.topic.relationships.knows" to "KNOWS{*}"))
+
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("knows"))
@@ -68,6 +94,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateNodeWithNodeRouting() {
+        initDbWithConfigs(mapOf("streams.source.topic.nodes.person" to "Person{*}"))
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("person"))
@@ -261,6 +288,12 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testMultiTopicPatternConfig() = runBlocking {
+        val configsMap = mapOf("streams.source.topic.nodes.neo4j-product" to "Product{name, code}",
+                "streams.source.topic.nodes.neo4j-color" to "Color{*}",
+                "streams.source.topic.nodes.neo4j-basket" to "Basket{*}",
+                "streams.source.topic.relationships.neo4j-isin" to "IS_IN{month,day}",
+                "streams.source.topic.relationships.neo4j-hascolor" to "HAS_COLOR{*}")
+        initDbWithConfigs(configsMap)
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         db.execute("""
             CREATE (p:Product{id: "A1", code: "X1", name: "Name X1", price: 1000})-[:IS_IN{month:4, day:4, year:2018}]->(b:Basket{name:"Basket-A", created: "20181228"}),
@@ -282,6 +315,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateNodeWithConstraints() {
+        initDbWithConfigsAndConstraints()
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("personConstraints"))
@@ -304,6 +338,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateRelationshipWithConstraints() {
+        initDbWithConfigsAndConstraints()
         db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
         db.execute("CREATE (:ProductConstr {name:'My Awesome Product', price: '100€'})").close()
         db.execute("""
@@ -355,6 +390,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testDeleteNodeWithTestDeleteTopic() {
+        val configsMap = mapOf("streams.source.topic.nodes.testdeletetopic" to "Person:Neo4j{*}",
+                "streams.source.topic.relationships.testdeletetopic" to "KNOWS{*}")
+        initDbWithConfigs(configsMap)
         val topic = "testdeletetopic"
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val kafkaConsumer = createConsumer(config)

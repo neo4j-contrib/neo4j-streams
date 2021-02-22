@@ -1,7 +1,13 @@
 package streams.integrations
 
-import org.junit.*
+import org.junit.After
+import org.junit.AfterClass
+import org.junit.Assume
+import org.junit.Before
+import org.junit.BeforeClass
+import org.junit.Rule
 import org.junit.rules.TestName
+import org.neo4j.graphdb.factory.GraphDatabaseBuilder
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
@@ -52,11 +58,7 @@ open class KafkaEventRouterBaseIT {
 
     lateinit var db: GraphDatabaseAPI
 
-    private val WITH_REL_ROUTING_METHOD_SUFFIX = "WithRelRouting"
-    private val WITH_NODE_ROUTING_METHOD_SUFFIX = "WithNodeRouting"
-    private val MULTI_NODE_PATTERN_TEST_SUFFIX = "MultiTopicPatternConfig"
-    private val WITH_CONSTRAINTS_SUFFIX = "WithConstraints"
-    private val WITH_TEST_DELETE_TOPIC = "WithTestDeleteTopic"
+    lateinit var graphDatabaseBuilder: GraphDatabaseBuilder
 
     @Rule
     @JvmField
@@ -64,41 +66,13 @@ open class KafkaEventRouterBaseIT {
 
     @Before
     open fun setUp() {
-        var graphDatabaseBuilder = TestGraphDatabaseFactory()
+        graphDatabaseBuilder = TestGraphDatabaseFactory()
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
-        if (testName.methodName.endsWith(WITH_REL_ROUTING_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.relationships.knows", "KNOWS{*}")
-        }
-        if (testName.methodName.endsWith(WITH_NODE_ROUTING_METHOD_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.person", "Person{*}")
-        }
-        if (testName.methodName.endsWith(MULTI_NODE_PATTERN_TEST_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.neo4j-product", "Product{name, code}")
-                    .setConfig("streams.source.topic.nodes.neo4j-color", "Color{*}")
-                    .setConfig("streams.source.topic.nodes.neo4j-basket", "Basket{*}")
-                    .setConfig("streams.source.topic.relationships.neo4j-isin", "IS_IN{month,day}")
-                    .setConfig("streams.source.topic.relationships.neo4j-hascolor", "HAS_COLOR{*}")
-        }
-        if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.personConstraints", "PersonConstr{*}")
-                    .setConfig("streams.source.topic.nodes.productConstraints", "ProductConstr{*}")
-                    .setConfig("streams.source.topic.relationships.boughtConstraints", "BOUGHT{*}")
-                    .setConfig("streams.source.schema.polling.interval", "0")
-        }
-        if (testName.methodName.endsWith(WITH_TEST_DELETE_TOPIC)) {
-            graphDatabaseBuilder.setConfig("streams.source.topic.nodes.testdeletetopic", "Person:Neo4j{*}")
-                    .setConfig("streams.source.topic.relationships.testdeletetopic", "KNOWS{*}")
-        }
 
         db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
-        if (testName.methodName.endsWith(WITH_CONSTRAINTS_SUFFIX)) {
-            db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
-            db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
-        }
-
     }
 
     @After
