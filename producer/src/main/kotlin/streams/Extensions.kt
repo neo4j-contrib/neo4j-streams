@@ -8,6 +8,7 @@ import org.neo4j.graphdb.schema.ConstraintDefinition
 import org.neo4j.graphdb.schema.ConstraintType
 import streams.events.*
 import streams.extensions.labelNames
+import streams.service.sink.strategy.CUDIngestionStrategy
 import streams.utils.SchemaUtils
 
 fun Node.toMap(): Map<String, Any?> {
