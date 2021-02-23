@@ -1,5 +1,6 @@
 package streams.integrations
 
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.config.TopicConfig
 import org.junit.Test
 import org.neo4j.internal.helpers.collection.Iterators
@@ -723,11 +724,13 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         assertEquals(2, secondRecordRel.count())
 
         // we check that each node/relationship has no records spread across multiple partitions
-        assertEquals(1, firstRecordNode.groupBy { it.partition() }.count())
-        assertEquals(1, secondRecordNode.groupBy { it.partition() }.count())
-        assertEquals(1, thirdRecordNode.groupBy { it.partition() }.count())
-        assertEquals(1, fourthRecordNode.groupBy { it.partition() }.count())
-        assertEquals(1, firstRecordRel.groupBy { it.partition() }.count())
-        assertEquals(1, secondRecordRel.groupBy { it.partition() }.count())
+        assertEquals(1, checkPartitionEquality(firstRecordNode))
+        assertEquals(1, checkPartitionEquality(secondRecordNode))
+        assertEquals(1, checkPartitionEquality(thirdRecordNode))
+        assertEquals(1, checkPartitionEquality(fourthRecordNode))
+        assertEquals(1, checkPartitionEquality(firstRecordRel))
+        assertEquals(1, checkPartitionEquality(secondRecordRel))
     }
+
+    private fun checkPartitionEquality(records: List<ConsumerRecord<String, ByteArray>>) = records.groupBy { it.partition() }.count()
 }
