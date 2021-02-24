@@ -194,19 +194,22 @@ class CUDIngestionStrategyTest {
     }
 
     @Test
-    fun `should delete nodes`() {
+    fun `should create nodes only with valid CUD operations`() {
         // given
-        val detachMarkers = listOf(1, 3, 8, 10)
-        val key = "key"
+        val mergeMarkers = listOf(2, 5, 7)
+        val invalidMarkers = listOf(3, 6, 9)
         val list = (1..10).map {
-            val labels = if (it % 2 == 0) listOf("Foo", "Bar") else listOf("Foo", "Bar", "Label")
-            val detach = it in detachMarkers
-            val properties = emptyMap<String, Any>()
-            val cudNode = CUDNode(op = CUDOperations.delete,
+            val labels = listOf("Foo", "Bar", "Label")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val (op, ids) = when (it) {
+                in mergeMarkers -> CUDOperations.merge to mapOf("_id" to it)
+                in invalidMarkers -> CUDOperations.match to mapOf("_id" to it)
+                else -> CUDOperations.create to emptyMap()
+            }
+            val cudNode = CUDNode(op = op,
                     labels = labels,
-                    ids = mapOf(key to it),
-                    properties = properties,
-                    detach = detach)
+                    ids = ids,
+                    properties = properties)
             StreamsSinkEntity(null, cudNode)
         }
 
@@ -219,40 +222,81 @@ class CUDIngestionStrategyTest {
         val relationshipDeleteEvents = cudQueryStrategy.deleteRelationshipEvents(list)
 
         // then
-        assertEquals(emptyList(), nodeEvents)
+        assertEquals(emptyList(), nodeDeleteEvents)
         assertEquals(emptyList(), relationshipEvents)
         assertEquals(emptyList(), relationshipDeleteEvents)
 
-        assertEquals(4, nodeDeleteEvents.size)
-        assertEquals(10, nodeDeleteEvents.map { it.events.size }.sum())
-        val deleteNodeFooBar = findEventByQuery("""
+        assertEquals(2, nodeEvents.size)
+        assertEquals(7, nodeEvents.map { it.events.size }.sum())
+        val createNodeFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
-                |DELETE n
-            """.trimMargin(), nodeDeleteEvents)
-        assertEquals(3, deleteNodeFooBar.events.size)
-        assertNodeEventsContainsKey(deleteNodeFooBar, key)
-        val deleteNodeFooBarDetach = findEventByQuery("""
+                |CREATE (n:Foo:Bar:Label)
+                |SET n = event.properties
+            """.trimMargin(),nodeEvents)
+        assertEquals(4, createNodeFooBarLabel.events.size)
+        val mergeNodeFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
-                |DETACH DELETE n
-            """.trimMargin(), nodeDeleteEvents)
-        assertEquals(2, deleteNodeFooBarDetach.events.size)
-        assertNodeEventsContainsKey(deleteNodeFooBarDetach, key)
-        val deleteNodeFooBarLabel = findEventByQuery("""
+                |MATCH (n) WHERE id(n) = event.ids._id
+                |SET n += event.properties
+            """.trimMargin(), nodeEvents)
+        assertEquals(3, mergeNodeFooBar.events.size)
+        assertNodeEventsContainsKey(mergeNodeFooBar, "_id")
+    }
+
+    @Test
+    fun `should create, merge and update relationships only with valid node operations`() {
+        // given
+        val mergeMarkers = listOf(2, 5, 7)
+        val invalidMarker = listOf(3, 4, 6, 9)
+        val key = "key"
+        val list = (1..10).map {
+            val labels = listOf("Foo", "Bar", "Label")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val op = when (it) {
+                in mergeMarkers -> CUDOperations.merge
+                else -> CUDOperations.create
+            }
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op= if (it in invalidMarker) CUDOperations.delete else CUDOperations.create)
+            val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels)
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            StreamsSinkEntity(null, rel)
+        }
+
+        // when
+        val cudQueryStrategy = CUDIngestionStrategy()
+        val nodeEvents = cudQueryStrategy.mergeNodeEvents(list)
+        val nodeDeleteEvents = cudQueryStrategy.deleteNodeEvents(list)
+
+        val relationshipEvents = cudQueryStrategy.mergeRelationshipEvents(list)
+        val relationshipDeleteEvents = cudQueryStrategy.deleteRelationshipEvents(list)
+
+        // then
+        assertEquals(emptyList(), nodeEvents)
+        assertEquals(emptyList(), nodeDeleteEvents)
+        assertEquals(emptyList(), relationshipDeleteEvents)
+
+        assertEquals(2, relationshipEvents.size)
+        assertEquals(6, relationshipEvents.map { it.events.size }.sum())
+        val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar:Label {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
-                |DELETE n
-            """.trimMargin(), nodeDeleteEvents)
-        assertEquals(3, deleteNodeFooBarLabel.events.size)
-        assertNodeEventsContainsKey(deleteNodeFooBarLabel, key)
-        val deleteNodeFooBarLabelDetach = findEventByQuery("""
+                |CREATE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:MY_REL]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(3, createRelFooBarLabel.events.size)
+        assertRelationshipEventsContainsKey(createRelFooBarLabel, key, key)
+        val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
-                |MATCH (n:Foo:Bar:Label {${key.quote()}: event.${CUDIngestionStrategy.ID_KEY}.${key.quote()}})
-                |DETACH DELETE n
-            """.trimMargin(), nodeDeleteEvents)
-        assertEquals(2, deleteNodeFooBarLabelDetach.events.size)
-        assertNodeEventsContainsKey(deleteNodeFooBarLabelDetach, key)
+                |CREATE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(3, mergeRelFooBarLabel.events.size)
+        assertRelationshipEventsContainsKey(mergeRelFooBarLabel, key, key)
     }
 
     @Test
@@ -411,6 +455,7 @@ class CUDIngestionStrategyTest {
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
@@ -420,6 +465,7 @@ class CUDIngestionStrategyTest {
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
@@ -438,6 +484,7 @@ class CUDIngestionStrategyTest {
         val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
@@ -447,6 +494,7 @@ class CUDIngestionStrategyTest {
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
@@ -502,6 +550,7 @@ class CUDIngestionStrategyTest {
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
@@ -511,6 +560,7 @@ class CUDIngestionStrategyTest {
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
@@ -529,6 +579,7 @@ class CUDIngestionStrategyTest {
         val createRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
@@ -538,6 +589,7 @@ class CUDIngestionStrategyTest {
         val mergeRelFooBarLabel = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties
@@ -553,6 +605,198 @@ class CUDIngestionStrategyTest {
             """.trimMargin(), relationshipEvents)
         assertEquals(1, updateRelFooBarLabel.events.size)
         assertRelationshipEventsContainsKey(updateRelFooBarLabel, key, key)
+    }
+
+    @Test
+    fun `should create, merge and update relationships with match op in 'from' node and merge or create in 'to' node`() {
+        // given
+        val mergeMarkers = listOf(2, 5, 7)
+        val updateMarkers = listOf(3, 6)
+        val key = "key"
+        val list = (1..10).map {
+            val labels = listOf("Foo", "Bar")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val op = when (it) {
+                in mergeMarkers -> CUDOperations.merge
+                in updateMarkers -> CUDOperations.update
+                else -> CUDOperations.create
+            }
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op = CUDOperations.match)
+            val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels, op = if (it <= 5) CUDOperations.merge else CUDOperations.create)
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            StreamsSinkEntity(null, rel)
+        }
+
+        // when
+        val cudQueryStrategy = CUDIngestionStrategy()
+        val nodeEvents = cudQueryStrategy.mergeNodeEvents(list)
+        val nodeDeleteEvents = cudQueryStrategy.deleteNodeEvents(list)
+
+        val relationshipEvents = cudQueryStrategy.mergeRelationshipEvents(list)
+        val relationshipDeleteEvents = cudQueryStrategy.deleteRelationshipEvents(list)
+
+        // then
+        assertEquals(emptyList(), nodeEvents)
+        assertEquals(emptyList(), nodeDeleteEvents)
+        assertEquals(emptyList(), relationshipDeleteEvents)
+
+        assertEquals(6, relationshipEvents.size)
+        assertEquals(10, relationshipEvents.map { it.events.size }.sum())
+        val createRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:MY_REL]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, createRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(createRelFooBar, key, key)
+        val mergeRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, mergeRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
+        val matchMergeAndMergeRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, matchMergeAndMergeRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(matchMergeAndMergeRelFooBar, key, key)
+        val matchMergeAndCreateRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |CREATE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(1, matchMergeAndCreateRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(matchMergeAndCreateRelFooBar, key, key)
+        val updateRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(1, updateRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
+        val mergeRelFooBarLabel = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |CREATE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:MY_REL]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(3, mergeRelFooBarLabel.events.size)
+        assertRelationshipEventsContainsKey(mergeRelFooBarLabel, key, key)
+    }
+
+    @Test
+    fun `should create, merge and update relationships with match op in 'to' node and merge or create in 'from' node`() {
+        // given
+        val mergeMarkers = listOf(2, 5, 7)
+        val updateMarkers = listOf(3, 6)
+        val key = "key"
+        val list = (1..10).map {
+            val labels = listOf("Foo", "Bar")
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val op = when (it) {
+                in mergeMarkers -> CUDOperations.merge
+                in updateMarkers -> CUDOperations.update
+                else -> CUDOperations.create
+            }
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op = if (it <= 5) CUDOperations.merge else CUDOperations.create)
+            val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels, CUDOperations.match)
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            StreamsSinkEntity(null, rel)
+        }
+
+        // when
+        val cudQueryStrategy = CUDIngestionStrategy()
+        val nodeEvents = cudQueryStrategy.mergeNodeEvents(list)
+        val nodeDeleteEvents = cudQueryStrategy.deleteNodeEvents(list)
+
+        val relationshipEvents = cudQueryStrategy.mergeRelationshipEvents(list)
+        val relationshipDeleteEvents = cudQueryStrategy.deleteRelationshipEvents(list)
+
+        // then
+        assertEquals(emptyList(), nodeEvents)
+        assertEquals(emptyList(), nodeDeleteEvents)
+        assertEquals(emptyList(), relationshipDeleteEvents)
+
+        assertEquals(6, relationshipEvents.size)
+        assertEquals(10, relationshipEvents.map { it.events.size }.sum())
+        val createRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:MY_REL]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, createRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(createRelFooBar, key, key)
+        val mergeRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, mergeRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(mergeRelFooBar, key, key)
+        val matchMergeAndMergeRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(2, matchMergeAndMergeRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(matchMergeAndMergeRelFooBar, key, key)
+        val matchMergeAndCreateRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |CREATE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MERGE (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(1, matchMergeAndCreateRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(matchMergeAndCreateRelFooBar, key, key)
+        val updateRelFooBar = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from)-[r:MY_REL]->(to)
+                |SET r += event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(1, updateRelFooBar.events.size)
+        assertRelationshipEventsContainsKey(updateRelFooBar, key, key)
+        val mergeRelFooBarLabel = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |CREATE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:MY_REL]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(3, mergeRelFooBarLabel.events.size)
+        assertRelationshipEventsContainsKey(mergeRelFooBarLabel, key, key)
     }
 
     @Test
@@ -690,6 +934,7 @@ class CUDIngestionStrategyTest {
         val createRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
                 |CREATE (from)-[r:MY_REL]->(to)
                 |SET r = event.properties
@@ -700,6 +945,7 @@ class CUDIngestionStrategyTest {
         val mergeRelFooBar = findEventByQuery("""
                 |${StreamsUtils.UNWIND}
                 |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
+                |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
                 |MERGE (from)-[r:MY_REL]->(to)
                 |SET r += event.properties

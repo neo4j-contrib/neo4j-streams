@@ -728,6 +728,7 @@ class Neo4jSinkTaskTest {
             assertEquals(10L, countFooBarLabel)
         }
 
+        // now, I create only start nodes
         val dataWithStartPreset = (11..20).map {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
@@ -756,6 +757,37 @@ class Neo4jSinkTaskTest {
                     .columnAs<Long>("count").next()
             assertEquals(20L, countFooBarLabel)
         }
+
+        // now, I create only end nodes
+        val dataWithEndPreset = (21..30).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
+        }
+
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("""
+                UNWIND range(21, 30) AS id
+                CREATE (:FooBar {key: id})
+            """.trimIndent()).close()
+            assertEquals(20, it.allRelationships.count())
+            assertEquals(50, it.allNodes.count())
+            it.commit()
+        }
+
+        task.put(dataWithEndPreset)
+
+        db.defaultDatabaseService().beginTx().use {
+            val countFooBarLabel = it.execute("""
+                MATCH (:Foo:Bar)-[r:$relType]->(:FooBar)
+                RETURN count(r) AS count
+            """.trimIndent())
+                    .columnAs<Long>("count").next()
+            assertEquals(30L, countFooBarLabel)
+        }
+
     }
 
     @Test

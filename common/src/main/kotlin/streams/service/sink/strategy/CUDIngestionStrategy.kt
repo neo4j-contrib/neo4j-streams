@@ -73,9 +73,9 @@ class CUDIngestionStrategy: IngestionStrategy {
 
     data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>, val op: CUDOperations = CUDOperations.match)
 
-    private fun CUDRelationship.isValidCUDRelAndNodes(): Boolean = from.op in LIST_VALID_CUD_NODE_REL && to.op in LIST_VALID_CUD_NODE_REL && op in LIST_VALID_CUD_REL
+    private fun CUDRelationship.isValidOperation(): Boolean = from.op in LIST_VALID_CUD_NODE_REL && to.op in LIST_VALID_CUD_NODE_REL && op in LIST_VALID_CUD_REL
 
-    private fun NodeRelMetadata.getNodeRelOperation() = op.toString().toUpperCase()
+    private fun NodeRelMetadata.getOperation() = op.toString().toUpperCase()
 
     private fun buildNodeLookupByIds(keyword: String = "MATCH", ids: Set<String>, labels: List<String>, identifier: String = "n", field: String = ""): String {
         val fullField = if (field.isNotBlank()) "$field." else field
@@ -95,8 +95,9 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelCreateStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(keyword = from.getNodeRelOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(keyword = to.getNodeRelOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${StreamsUtils.WITH_EVENT_FROM}
+            |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |CREATE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r = event.properties
         """.trimMargin()
@@ -110,8 +111,9 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelMergeStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(keyword = from.getNodeRelOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(keyword = to.getNodeRelOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${StreamsUtils.WITH_EVENT_FROM}
+            |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |MERGE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r += event.properties
         """.trimMargin()
@@ -231,7 +233,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                         try {
                             val data = toCUDEntity<CUDRelationship>(it)
                             when {
-                                data!!.isValidCUDRelAndNodes()  -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                data!!.isValidOperation()  -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
                                 else -> null // TODO send to the DLQ the null
                             }
                         } catch (e: Exception) {
