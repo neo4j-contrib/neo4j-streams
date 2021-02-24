@@ -11,7 +11,7 @@ KSQL is the best available method of transforming streams from one format to ano
 
 The downside to KSQL is that it may not work everywhere.  Because it's a Confluent Enterprise feature, you won't find it in Amazon MSK or other open source kafka installations.
 
-https://docs.confluent.io/current/ksql/docs/quickstart.html[KSQL Documentation can be found here.]
+{url-confluent-ksql}[KSQL Documentation can be found here.]
 
 == KStreams
 
@@ -19,7 +19,7 @@ KStreams is a Java API that allows for rich transformation of streams in any way
 
 In contrast to KSQL which is only available for Confluent Enterprise & Confluent Cloud, the KStreams API should be available with any open source kafka.
 
-https://kafka.apache.org/documentation/=streamsapi[KStreams Documentation can be found here]
+https://kafka.apache.org/documentation/#streamsapi[KStreams Documentation can be found here]
 
 
 

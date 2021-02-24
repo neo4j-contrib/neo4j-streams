@@ -34,7 +34,7 @@ streams.source.schema.polling.interval=<MILLIS, the polling interval for getting
 [NOTE]
 ====
 **To use the Kafka transactions please set `kafka.transactional.id` and `kafka.acks` properly**.
-Checkout this https://www.confluent.io/blog/transactions-apache-kafka/[blog post] for further details about transactions in Apache Kafka
+Checkout this {url-confluent-blog}/transactions-apache-kafka/[blog post] for further details about transactions in Apache Kafka
 ====
 
 See the https://kafka.apache.org/documentation/#brokerconfigs[Apache Kafka documentation] for details on these settings.

@@ -8,9 +8,9 @@ This does not address ACL confguration inside of KAFKA.
 
 Please see also the following Confluent documentations for further details on how to configure encryption and authentication with SSL:
 
-* https://docs.confluent.io/current/kafka/authentication_sasl/index.html[Authentication with SASL]
+* {url-confluent-kafka}/authentication_sasl/index.html[Authentication with SASL]
 
-* https://docs.confluent.io/current/kafka/authentication_ssl.html[Encryption and Authentication with SSL]
+* {url-confluent-kafka}/authentication_ssl.html[Encryption and Authentication with SSL]
 
 [[kafka_ssl_self_signed]]
 == Self Signed Certificates

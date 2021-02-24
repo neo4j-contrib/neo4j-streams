@@ -10,7 +10,18 @@ asciidoc:
     theme: docs
     version: 4.0.2
     copyright: Neo4j Inc.
-    common-license-page-uri: https://neo4j.com/docs/license/
     page-product: Neo4j Streams
     environment: streams.sink
     page-pagination: true
+    url-common-license-page: https://neo4j.com/docs/license/
+    url-confluent-blog: https://www.confluent.io/blog
+    url-confluent-download: https://www.confluent.io/dowload/
+    url-confluent-kafka: https://docs.confluent.io/current/kafka
+    url-confluent-cloud: https://docs.confluent.io/current/cloud
+    url-confluent-install: https://docs.confluent.io/current/installation
+    url-confluent-quickstart: https://docs.confluent.io/platform/current/quickstart
+    url-confluent-clients: https://docs.confluent.io/platform/current/clients
+    url-confluent-ksql: https://docs.confluent.io/platform/current/ksqldb/index.html
+    url-confluent-java-client: https://docs.confluent.io/clients-kafka-java/current/overview.html
+    url-confluent-hub-neo4j: https://www.confluent.io/hub/neo4j/kafka-connect-neo4j
+    url-confluent-hub-datagen: https://www.confluent.io/hub/confluentinc/kafka-connect-datagen

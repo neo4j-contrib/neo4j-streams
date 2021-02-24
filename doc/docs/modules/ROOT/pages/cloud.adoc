@@ -3,8 +3,8 @@
 
 [[confluent_cloud]]
 Configuring a connection to a Confluent Cloud instance should follow
-link:https://docs.confluent.io/current/cloud/using/config-client.html#java-client[Confluent's Java Client]
-configuration advice, and the advice in <<_kafka_settings, Kafka Settings>> section.
+link:{url-confluent-java-client}[Confluent's Java Client]
+configuration advice, and the advice in xref:quickstart.adoc#kafka-settings[Kafka settings] section.
 At a minimum, to configure this, you will need:
 
 * `BOOTSTRAP_SERVER_URL`

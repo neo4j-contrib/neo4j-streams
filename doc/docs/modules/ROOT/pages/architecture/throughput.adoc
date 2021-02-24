@@ -34,24 +34,25 @@ https://www.oreilly.com/library/view/kafka-the-definitive/9781491936153/ch04.htm
 
 Some generalities for Neo4j:
 
-* Batch size (`neo4j.batch.size`) - the number of messages to include in a single transactional batch.  
-* Max Poll Records (`kafka.max.poll.records`) - the number of records to use per transaction in Neo4j.  There is a tradeoff between memory usage and total transactional overhead.  
+* Batch size (`neo4j.batch.size`) - the number of messages to include in a single transactional batch.
+* Max Poll Records (`kafka.max.poll.records`) - the number of records to use per transaction in Neo4j.  There is a tradeoff between memory usage and total transactional overhead.
 ** Fewer larger batches is faster to import data into Neo4j overall, but requires more memory.
-** **The smaller the payload the larger the batch in general (via unwind)**.  A default to start with is 1000 and work your way up.  If you are only creating nodes via unwind you can go much higher (20k as a start).  Then go for a lower number for the relationship merges (back to 1000-5000).  
+** **The smaller the payload the larger the batch in general (via unwind)**.  A default to start with is 1000 and work your way up.  If you are only creating nodes via unwind you can go much higher (20k as a start).  Then go for a lower number for the relationship merges (back to 1000-5000).
 Each batch represents a transaction in memory, and consider that the message size * the batch size is an important factor in determining how much heap you need for your transactions.
 * Fetch bytes (`kafka.max.partition.fetch.bytes`)  The maximum amount of data per-partition the server will return. Records are fetched in batches by the consumer. If the first record batch in the first non-empty partition of the fetch is larger than this limit, the batch will still be returned to ensure that the consumer can make progress.
 
-Every  time the kafka client calls the poll() operation, it’s limited by these factors.  The first is the maximum number of bytes you can pull, so as to constrain your memory overhead.  The second is how many records you might want in a batch.  Note that at this layer you have no idea how many bytes/record.   The default for the batch size is 1mb.   So say you have 200kb records (big json files).   If you leave batch size at 1mb default, then you’ll never have more than 5 records/tx.    The max poll records constrains the other aspect.   Finally, you may wish to read into or adjust kafka.max.poll.interval.ms to constrain the amount of time spent polling in advanced scenarios.  https://docs.confluent.io/current/clients/consumer.html=group-configuration[See this documentation] for more information on that setting.
+Every  time the kafka client calls the poll() operation, it’s limited by these factors.  The first is the maximum number of bytes you can pull, so as to constrain your memory overhead.  The second is how many records you might want in a batch.  Note that at this layer you have no idea how many bytes/record.   The default for the batch size is 1mb.   So say you have 200kb records (big json files).   If you leave batch size at 1mb default, then you’ll never have more than 5 records/tx.    The max poll records constrains the other aspect.   Finally, you may wish to read into or adjust kafka.max.poll.interval.ms to constrain the amount of time spent polling in advanced scenarios.
+{url-confluent-clients}/consumer.html#group-configuration[See this documentation] for more information on that setting.
 
 A logical setting might be to set max poll records = your desired transactional batch size, set neo4j.batch.size to the same number.   In general you can leave kafka.max.partition.fetch.bytes the same, but if you need to adjust it for memory reasons, it should be equal to max poll records * number of bytes/record on average, + 10% or so.
 
-https://docs.confluent.io/current/installation/configuration/consumer-configs.html=cp-config-consumer[Important Kafka Consumer Configuration Elements & Their Explanations]
+{url-confluent-install}/configuration/consumer-configs.html[Important Kafka Consumer Configuration Elements & Their Explanations]
 
 (Use these with neo4j-streams by prepending with "kafka." in the config)
 
 == Kafka Partitioning Strategy
 
-A big factor can be how the Kafka topic is set up.   See https://www.confluent.io/blog/how-choose-number-topics-partitions-kafka-cluster/[how to choose the number of topics/partitions in a Kafka Cluster].   
+A big factor can be how the Kafka topic is set up.   See {url-confluent-blog}/how-choose-number-topics-partitions-kafka-cluster/[how to choose the number of topics/partitions in a Kafka Cluster].
 
 image::kafka-partitions.png[align="center"]
 
