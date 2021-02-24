@@ -23,23 +23,23 @@ class SchemaUtilsTest {
     @Test
     fun `getNodeKeys should select (with multiple labels) on of the constraints with lowest properties and, with same size, the first in alphabetical order`() {
         val listNodeKeys = (1..50).map {
-            val pair1 = "LabelA" to setOf("foo", "aaa")
+            val pair1 = "LabelA" to setOf("foo", "aab")
             val pair2 = "LabelB" to setOf("bar", "foo")
             val pair3 = "LabelC" to setOf("baz", "bar")
             val pair4 = "LabelB" to setOf("bar", "bez")
             val pair5 = "LabelA" to setOf("bar", "baa", "xcv")
-            val pair6 = "LabelC" to setOf("baa", "baa", "xcz")
-            val pair7 = "LabelA" to setOf("foo", "aab")
+            val pair6 = "LabelC" to setOf("aaa", "baa", "xcz")
+            val pair7 = "LabelA" to setOf("foo", "aac")
             val props = mutableListOf(pair1, pair2, pair3, pair4, pair5, pair6, pair7)
                     .shuffled()
             val constraints = props.map {
                 Constraint(label = it.first, properties = it.second, type = StreamsConstraintType.UNIQUE)
             }.shuffled()
-            getNodeKeys(props.map { it.first }.shuffled(), setOf("prop", "foo", "bar", "baz", "bez", "aaa", "xcz", "xcv").shuffled().toSet(), constraints)
+            getNodeKeys(props.map { it.first }.shuffled(), setOf("prop", "prop2", "foo", "bar", "baz", "bez", "aaa", "aab", "baa", "aac", "xcz", "xcv").shuffled().toSet(), constraints)
         }
         val setNodeKeys = listNodeKeys.toSet()
         assertEquals(1, setNodeKeys.size)
-        assertEquals(setOf("aaa", "foo"), setNodeKeys.first())
+        assertEquals(setOf("aab", "foo"), setNodeKeys.first())
     }
 
     @Test
