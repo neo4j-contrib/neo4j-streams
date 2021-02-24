@@ -226,6 +226,81 @@ class SchemaIngestionStrategyTest {
     }
 
     @Test
+    fun `should create the Schema Query Strategy for relationships with multiple UNIQUE constraints with priority of constraint with less props and first in alphabetical order`() {
+
+        (1..50).forEach {
+            // given
+            val constraintsList = listOf(
+                    Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("address")),
+                    Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("country")),
+                    Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname")),
+                    Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("profession", "another_one")),
+                    Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("code")),
+                    Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))
+            ).shuffled()
+
+            val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsList)
+            val idsStart = mutableListOf("name" to "Sherlock",
+                    "surname" to "Holmes",
+                    "country" to "UK",
+                    "profession" to "detective",
+                    "another_one" to "foo",
+                    "address" to "Baker Street")
+                    .shuffled()
+                    .toMap()
+
+            val idsEnd = mutableListOf("name" to "My Awesome Product", "code" to 17294)
+                    .shuffled()
+                    .toMap()
+            val cdcDataRelationship = StreamsTransactionEvent(
+                    meta = Meta(timestamp = System.currentTimeMillis(),
+                            username = "user",
+                            txId = 1,
+                            txEventId = 2,
+                            txEventsCount = 3,
+                            operation = OperationType.updated
+                    ),
+                    payload = RelationshipPayload(
+                            id = "2",
+                            start = RelationshipNodeChange(id = "1", labels = listOf("User Ext", "NewLabel"), ids = idsStart),
+                            end = RelationshipNodeChange(id = "2", labels = listOf("Product Ext", "NewLabelA"), ids = idsEnd),
+                            after = RelationshipChange(properties = mapOf("since" to 2014)),
+                            before = null,
+                            label = "HAS BOUGHT"
+                    ),
+                    schema = relSchema
+            )
+            val cdcQueryStrategy = SchemaIngestionStrategy()
+            val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
+
+            // when
+            val relationshipEvents = cdcQueryStrategy.mergeRelationshipEvents(txEvents)
+            val relationshipDeleteEvents = cdcQueryStrategy.deleteRelationshipEvents(txEvents)
+
+            // then
+            assertEquals(0, relationshipDeleteEvents.size)
+            assertEquals(1, relationshipEvents.size)
+            val relQuery = relationshipEvents[0].query
+            val expectedRelQuery = """
+                |${StreamsUtils.UNWIND}
+                |MERGE (start:`User Ext`{address: event.start.address})
+                |MERGE (end:`Product Ext`{code: event.end.code})
+                |MERGE (start)-[r:`HAS BOUGHT`]->(end)
+                |SET r = event.properties
+            """.trimMargin()
+            assertEquals(expectedRelQuery, relQuery.trimIndent())
+            val eventsRelList = relationshipEvents[0].events
+            assertEquals(1, eventsRelList.size)
+            val expectedRelEvents = listOf(
+                    mapOf("start" to mapOf("address" to "Baker Street"),
+                            "end" to mapOf("code" to 17294),
+                            "properties" to mapOf("since" to 2014))
+            )
+            assertEquals(expectedRelEvents, eventsRelList)
+        }
+    }
+
+    @Test
     fun `should create the Schema Query Strategy for node deletes`() {
         // given
         val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "comp@ny" to "String"),

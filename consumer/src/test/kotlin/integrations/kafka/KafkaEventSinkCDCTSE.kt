@@ -23,6 +23,7 @@ import streams.setConfig
 import streams.start
 import java.util.UUID
 import java.util.concurrent.TimeUnit
+import kotlin.test.assertEquals
 
 class KafkaEventSinkCDCTSE: KafkaEventSinkBaseTSE() {
 
@@ -172,6 +173,135 @@ class KafkaEventSinkCDCTSE: KafkaEventSinkBaseTSE() {
                 result.hasNext() && result.next() == 1L && !result.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun shouldWriteDataFromSinkWithCDCSchemaTopicWithMultipleConstraints() = runBlocking {
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.sink.topic.cdc.schema", topic)
+        db.start()
+
+        val constraintsCharacter = listOf(
+                Constraint(label = "Character", type = StreamsConstraintType.UNIQUE, properties = setOf("surname")),
+                Constraint(label = "Character", type = StreamsConstraintType.UNIQUE, properties = setOf("name")),
+                Constraint(label = "Character", type = StreamsConstraintType.UNIQUE, properties = setOf("country", "address")),
+        )
+        val constraintsWriter = listOf(
+                Constraint(label = "Writer", type = StreamsConstraintType.UNIQUE, properties = setOf("lastName")),
+                Constraint(label = "Writer", type = StreamsConstraintType.UNIQUE, properties = setOf("firstName")),
+        )
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsCharacter.plus(constraintsWriter) )
+        val nodeSchemaCharacter = Schema(properties = mapOf("name" to "String", "surname" to "String", "country" to "String", "address" to "String"), constraints = constraintsCharacter)
+        val nodeSchemaWriter = Schema(properties = mapOf("firstName" to "String", "lastName" to "String"), constraints = constraintsWriter)
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Naruto", "surname" to "Uzumaki", "country" to "Japan", "address" to "Land of Leaf"), labels = listOf("Character"))
+                ),
+                schema = nodeSchemaCharacter
+        )
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("firstName" to "Masashi", "lastName" to "Kishimoto", "address" to "Dunno"), labels = listOf("Writer"))
+                ),
+                schema = nodeSchemaWriter
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        // leverage on first ids alphabetically, that is name, so we take the 2 previously created nodes
+                        start = RelationshipNodeChange(id = "0", labels = listOf("Character"),
+                                ids = mapOf("name" to "Naruto", "surname" to "Osvaldo", "address" to "Land of Sand")),
+                        end = RelationshipNodeChange(id = "1", labels = listOf("Writer"),
+                                ids = mapOf("firstName" to "Masashi", "lastName" to "Franco")),
+                        after = RelationshipChange(properties = mapOf("since" to 1999)),
+                        before = null,
+                        label = "HAS WRITTEN"
+                ),
+                schema = relSchema
+        )
+        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataStart))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataEnd))
+        kafkaProducer.send(producerRecord).get()
+        producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataRelationship))
+        kafkaProducer.send(producerRecord).get()
+
+        Assert.assertEventually(ThrowingSupplier {
+            val query = """
+                |MATCH p = (s:Character)-[r:`HAS WRITTEN`{since: 1999}]->(e:Writer)
+                |RETURN count(p) AS count
+                |""".trimMargin()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        val cypherCountNodes = "MATCH (n) RETURN count(n) AS count"
+        var countNodes = db.execute(cypherCountNodes) { it.columnAs<Long>("count").next() }
+        assertEquals(2L, countNodes)
+
+        // another CDC data, not matching the previously created nodes
+        val cdcDataRelationshipNotMatched = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        // leverage on first ids alphabetically, that is name, so create 2 additional nodes
+                        start = RelationshipNodeChange(id = "1", labels = listOf("Character"), ids = mapOf("name" to "Invalid", "surname" to "Uzumaki")),
+                        end = RelationshipNodeChange(id = "2", labels = listOf("Writer"), ids = mapOf("firstName" to "AnotherInvalid", "surname" to "Namikaze")),
+                        after = RelationshipChange(properties = mapOf("since" to 2000)),
+                        before = null,
+                        label = "HAS WRITTEN"
+                ),
+                schema = relSchema
+        )
+
+        producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(cdcDataRelationshipNotMatched))
+        kafkaProducer.send(producerRecord).get()
+
+        Assert.assertEventually(ThrowingSupplier {
+            val query = """
+                |MATCH p = (s:Character)-[r:`HAS WRITTEN`{since:2000}]->(e:Writer)
+                |RETURN count(p) AS count
+                |""".trimMargin()
+            db.execute(query) {
+                val result = it.columnAs<Long>("count")
+                result.hasNext() && result.next() == 1L && !result.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        // create another node
+        countNodes = db.execute(cypherCountNodes) { it.columnAs<Long>("count").next() }
+        assertEquals(4L, countNodes)
     }
 
     @Test

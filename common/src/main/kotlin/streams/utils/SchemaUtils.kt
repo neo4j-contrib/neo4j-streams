@@ -13,10 +13,9 @@ object SchemaUtils {
                             && propertyKeys.containsAll(constraint.properties)
                             && labels.contains(constraint.label)
                 }
-                .minBy { it.properties.size }
+                .minWithOrNull((compareBy({ it.properties.size }, {it.properties.sorted().toString()})))
                 ?.properties
                 .orEmpty()
-//                .ifEmpty { propertyKeys }
 
     fun toStreamsTransactionEvent(streamsSinkEntity: StreamsSinkEntity,
                                   evaluation: (StreamsTransactionEvent) -> Boolean)

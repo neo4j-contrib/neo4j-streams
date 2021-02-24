@@ -372,6 +372,197 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
+    fun `should insert data into Neo4j from CDC events with schema strategy and multiple uniqueness constraints merging previous nodes`() {
+        val myTopic = UUID.randomUUID().toString()
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to myTopic)
+
+        val constraints = listOf(
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name")),
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("country", "address")),
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("surname")),
+        )
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "country" to "String", "address" to "String"),
+                constraints = constraints)
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Naruto", "surname" to "Uzumaki", "country" to "Japan", "address" to "Land of Leaf"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Minato", "surname" to "Namikaze", "country" to "Japan", "address" to "Land of Leaf"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        // leverage on first ids alphabetically, that is name, so we take the 2 previously created nodes
+                        start = RelationshipNodeChange(id = "99", labels = listOf("User"), ids = mapOf("name" to "Naruto", "surname" to "Osvaldo", "address" to "Land of Sand")),
+                        end = RelationshipNodeChange(id = "88", labels = listOf("User"), ids = mapOf("name" to "Minato", "surname" to "Franco", "address" to "Land of Fire")),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "KNOWS WHO"
+                ),
+                schema = relSchema
+        )
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(myTopic, 1, null, null, null, cdcDataStart, 42),
+                SinkRecord(myTopic, 1, null, null, null, cdcDataEnd, 43),
+                SinkRecord(myTopic, 1, null, null, null, cdcDataRelationship, 44))
+
+        task.put(input)
+
+        db.defaultDatabaseService().beginTx().use {
+            val query = """
+                |MATCH p = (s:User)-[r:`KNOWS WHO` {since: 2014}]->(e:User)
+                |RETURN count(p) as count
+                |""".trimMargin()
+            it.execute(query)
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val path = it.next()
+                        assertEquals(1, path)
+                        assertFalse { it.hasNext() }
+                    }
+
+            val labels = db.defaultDatabaseService().beginTx()
+                    .use { StreamSupport.stream(it.allLabels.spliterator(), false).map { it.name() }.collect(Collectors.toSet()) }
+            assertEquals(setOf("User"), labels)
+
+            val countUsers = db.defaultDatabaseService().beginTx().use { it.findNodes(Label.label("User")).stream().count() }
+            assertEquals(2L, countUsers)
+        }
+    }
+
+    @Test
+    fun `should insert data into Neo4j from CDC events with schema strategy and multiple uniqueness constraints`() {
+        val myTopic = UUID.randomUUID().toString()
+        val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
+                Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
+                Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
+                SinkTask.TOPICS_CONFIG to myTopic)
+
+        val constraints = listOf(
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name")),
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("surname")),
+                Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("country", "address")),
+        )
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
+        val nodeSchema = Schema(properties = mapOf("name" to "String", "surname" to "String", "country" to "String", "address" to "String"),
+                constraints = constraints)
+        val cdcDataStart = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 0,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "0",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Naruto", "surname" to "Uzumaki", "country" to "Japan", "address" to "Land of Leaf"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataEnd = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 1,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = NodePayload(id = "1",
+                        before = null,
+                        after = NodeChange(properties = mapOf("name" to "Minato", "surname" to "Namikaze", "country" to "Japan", "address" to "Land of Leaf"), labels = listOf("User"))
+                ),
+                schema = nodeSchema
+        )
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.created
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        // leverage on first ids alphabetically, that is name, so create 2 additional nodes
+                        start = RelationshipNodeChange(id = "1", labels = listOf("User"), ids = mapOf("name" to "Invalid", "surname" to "Uzumaki")),
+                        end = RelationshipNodeChange(id = "2", labels = listOf("User"), ids = mapOf("name" to "AnotherInvalid", "surname" to "Namikaze")),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "KNOWS WHO"
+                ),
+                schema = relSchema
+        )
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(
+                SinkRecord(myTopic, 1, null, null, null, cdcDataStart, 42),
+                SinkRecord(myTopic, 1, null, null, null, cdcDataEnd, 43),
+                SinkRecord(myTopic, 1, null, null, null, cdcDataRelationship, 44),
+        )
+        task.put(input)
+
+        db.defaultDatabaseService().beginTx().use {
+            val query = """
+                |MATCH p = (s:User)-[r:`KNOWS WHO` {since: 2014}]->(e:User)
+                |RETURN count(p) as count
+                |""".trimMargin()
+            it.execute(query)
+                    .columnAs<Long>("count").use {
+                        assertTrue { it.hasNext() }
+                        val path = it.next()
+                        assertEquals(1, path)
+                        assertFalse { it.hasNext() }
+                    }
+
+            val labels = db.defaultDatabaseService().beginTx()
+                    .use { StreamSupport.stream(it.allLabels.spliterator(), false).map { it.name() }.collect(Collectors.toSet()) }
+            assertEquals(setOf("User"), labels)
+
+            val countUsers = db.defaultDatabaseService().beginTx().use { it.findNodes(Label.label("User")).stream().count() }
+            assertEquals(4L, countUsers)
+        }
+    }
+
+    @Test
     fun `should delete data into Neo4j from CDC events`() {
         db.defaultDatabaseService().beginTx().use {
             it.execute("""
