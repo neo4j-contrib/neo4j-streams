@@ -158,8 +158,6 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         }
     }
 
-    private fun getProducerRecordId(event: StreamsTransactionEvent) = JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}")
-
     private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
 }

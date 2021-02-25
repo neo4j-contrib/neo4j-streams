@@ -1,5 +1,6 @@
 package streams.integrations
 
+import extension.newDatabase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.admin.AdminClient
@@ -34,7 +35,8 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     private fun initDbWithConfigs(configs: Map<String, String>) {
         configs.forEach { (k, v) -> graphDatabaseBuilder.setConfig(k, v) }
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db.shutdown()
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
     }
 
     private fun initDbWithConfigsAndConstraints() {

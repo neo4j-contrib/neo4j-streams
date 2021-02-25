@@ -1,20 +1,19 @@
 package streams.integrations
 
+import extension.newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.config.TopicConfig
 import org.hamcrest.Matchers
-import org.junit.Before
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.helpers.collection.Iterators
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.test.TestGraphDatabaseFactory
 import org.neo4j.test.assertion.Assert
-import streams.events.*
+import streams.events.Meta
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
 import java.time.Duration
@@ -58,13 +57,6 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
-    @Before
-    override fun setUp() {
-        graphDatabaseBuilder = TestGraphDatabaseFactory()
-                .newImpermanentDatabaseBuilder()
-                .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
-    }
-
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
     private fun createManyPersons() = db.execute("UNWIND range(1, 9999) AS id CREATE (:Person {name:id})")
@@ -74,7 +66,8 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
                 .setConfig("kafka.streams.log.compaction.strategy", strategy)
 
         otherConfigs?.forEach { (k, v) -> graphDatabaseBuilder.setConfig(k, v) }
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db.shutdown()
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         constraints?.forEach { db.execute(it).close() }
     }
 

@@ -1,5 +1,6 @@
 package streams.integrations
 
+import extension.newDatabase
 import org.junit.After
 import org.junit.AfterClass
 import org.junit.Assume
@@ -45,7 +46,7 @@ open class KafkaEventRouterBaseIT {
                 exists = true
             }, IllegalStateException::class.java)
             Assume.assumeTrue("Kafka container has to exist", exists)
-            Assume.assumeTrue("Kafka must be running", kafka.isRunning)
+            Assume.assumeTrue("Kafka must be running", this::kafka.isInitialized && kafka.isRunning)
         }
 
         @AfterClass @JvmStatic
@@ -70,7 +71,7 @@ open class KafkaEventRouterBaseIT {
                 .newImpermanentDatabaseBuilder()
                 .setConfig("kafka.bootstrap.servers", kafka.bootstrapServers)
 
-        db = graphDatabaseBuilder.newGraphDatabase() as GraphDatabaseAPI
+        db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
     }
