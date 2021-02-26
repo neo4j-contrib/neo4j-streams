@@ -35,6 +35,9 @@ console.log(root)
       'https://kafka.apache.org/documentation/#brokerconfigs',
       'https://kafka.apache.org/documentation/#streamsapi',
       'https://kafka.apache.org/documentation.html#compaction',
+      // ignore edit-link
+      'external-check https://github.com/neo4j-contrib/neo4j-streams/edit/',
+      'external-check neo4j-contrib/neo4j-streams/edit/',
     ]
     const skipFilter = (report) => {
       return Object.values(report).some((value) => {
