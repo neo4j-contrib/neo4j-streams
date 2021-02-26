@@ -284,7 +284,7 @@ DELETE r
 ----
 
 We can create non-existent nodes at relationship creation/merging, putting `"op": "merge"` in `"from"` and/or `"to"` field.
-By default, "op" is `match`, so it doesn't create the node if it doesn't exist.
+By default, "op" is `match`, so the node is not created if it doesn't exist.
 We can write, for example:
 
 [source,json]
