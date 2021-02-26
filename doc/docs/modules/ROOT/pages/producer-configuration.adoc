@@ -52,6 +52,8 @@ https://kafka.apache.org/documentation.html#compaction[Log Compaction] on the Ka
 Please note that delete strategy does not actually delete records, it has this name  to match the topic config `cleanup.policy=delete/compact`.
 Namely, the operations which will involve the same nodes or relationships, will have the same key.
 
+When `kafka.streams.log.compaction.strategy=compact`, for partitioning we leverage internal Kafka mechanism.
+
 xref:message-structure.adoc[See 'message structure' section to see key examples]
 
 === Multi Database Support
