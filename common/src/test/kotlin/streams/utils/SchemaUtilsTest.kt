@@ -21,16 +21,17 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should select (with multiple labels) on of the constraints with lowest properties and, with same size, the first in alphabetical order`() {
+    fun `getNodeKeys should select (with multiple labels) on of the constraints with lowest properties and, with same size, the first label in alphabetical order and, with same label name, the first sorted properties list alphabetically`() {
         val listNodeKeys = (1..50).map {
-            val pair1 = "LabelA" to setOf("foo", "aab")
+            val pair1 = "LabelX" to setOf("foo", "aab")
             val pair2 = "LabelB" to setOf("bar", "foo")
             val pair3 = "LabelC" to setOf("baz", "bar")
             val pair4 = "LabelB" to setOf("bar", "bez")
             val pair5 = "LabelA" to setOf("bar", "baa", "xcv")
             val pair6 = "LabelC" to setOf("aaa", "baa", "xcz")
             val pair7 = "LabelA" to setOf("foo", "aac")
-            val props = mutableListOf(pair1, pair2, pair3, pair4, pair5, pair6, pair7)
+            val pair8 = "LabelA" to setOf("foo", "aaa")
+            val props = mutableListOf(pair1, pair2, pair3, pair4, pair5, pair6, pair7, pair8)
                     .shuffled()
             val constraints = props.map {
                 Constraint(label = it.first, properties = it.second, type = StreamsConstraintType.UNIQUE)
@@ -39,11 +40,11 @@ class SchemaUtilsTest {
         }
         val setNodeKeys = listNodeKeys.toSet()
         assertEquals(1, setNodeKeys.size)
-        assertEquals(setOf("aab", "foo"), setNodeKeys.first())
+        assertEquals(setOf("aaa", "foo"), setNodeKeys.first())
     }
 
     @Test
-    fun `getNodeKeys should select (with one label) on of the constraints with lowest properties and, with same size, the first in alphabetical order`() {
+    fun `getNodeKeys should select (with one label) on of the constraints with lowest properties and, with same size and the same label name, the first sorted properties list alphabetically`() {
         val listNodeKeys = (1..50).map {
             val pair1 = "LabelA" to setOf("foo", "bar")
             val pair2 = "LabelA" to setOf("bar", "foo")

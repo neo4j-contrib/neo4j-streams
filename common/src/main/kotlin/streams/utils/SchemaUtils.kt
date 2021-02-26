@@ -13,7 +13,7 @@ object SchemaUtils {
                             && propertyKeys.containsAll(constraint.properties)
                             && labels.contains(constraint.label)
                 }
-                .minWithOrNull((compareBy({ it.properties.size }, {it.properties.sorted().toString()})))
+                .minWithOrNull((compareBy({ it.properties.size }, { it.label }, { it.properties.sorted().toString() })))
                 ?.properties
                 .orEmpty()
 
