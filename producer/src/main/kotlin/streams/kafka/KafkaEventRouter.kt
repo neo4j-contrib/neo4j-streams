@@ -12,6 +12,8 @@ import org.apache.kafka.common.errors.ProducerFencedException
 import org.neo4j.logging.Log
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
+import streams.asSourceRecordKey
+import streams.asSourceRecordValue
 import streams.events.StreamsEvent
 import streams.events.StreamsPluginStatus
 import streams.events.StreamsTransactionEvent
@@ -71,7 +73,7 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         }
     }
 
-    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray>, sync: Boolean = false): Map<String, Any>? {
+    private fun send(producerRecord: ProducerRecord<ByteArray?, ByteArray?>, sync: Boolean = false): Map<String, Any>? {
         if (!kafkaAdminService.isValidTopic(producerRecord.topic())) {
             // TODO add logging system here
             return null
@@ -112,12 +114,11 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         if (log.isDebugEnabled) {
             log.debug("Trying to send a transaction event with txId ${event.meta.txId} and txEventId ${event.meta.txEventId} to kafka")
         }
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(),
-                JSONUtils.writeValueAsBytes("${event.meta.txId + event.meta.txEventId}-${event.meta.txEventId}"),
-                JSONUtils.writeValueAsBytes(event))
+        val key = JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy))
+        val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
+        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
-
 
     override fun sendEventsSync(topic: String, transactionEvents: List<out StreamsEvent>, config: Map<String, Any?>): List<Map<String, Any>> {
         producer?.beginTransaction()
