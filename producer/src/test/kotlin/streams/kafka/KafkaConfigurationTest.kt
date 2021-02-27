@@ -12,7 +12,6 @@ class KafkaConfigurationTest {
         val map = mapOf("kafka.zookeeper.connect" to "zookeeper:1234",
                 "kafka.bootstrap.servers" to "kafka:5678",
                 "kafka.acks" to "10",
-                "kafka.num.partitions" to 1,
                 "kafka.retries" to 1,
                 "kafka.batch.size" to 10,
                 "kafka.buffer.memory" to 1000,
@@ -37,7 +36,6 @@ class KafkaConfigurationTest {
         assertEquals(map["kafka.zookeeper.connect"], properties["zookeeper.connect"])
         assertEquals(map["kafka.bootstrap.servers"], properties["bootstrap.servers"])
         assertEquals(map["kafka.acks"], properties["acks"])
-        assertEquals(map["kafka.num.partitions"], properties["num.partitions"])
         assertEquals(map["kafka.retries"], properties["retries"])
         assertEquals(map["kafka.batch.size"], properties["batch.size"])
         assertEquals(map["kafka.buffer.memory"], properties["buffer.memory"])

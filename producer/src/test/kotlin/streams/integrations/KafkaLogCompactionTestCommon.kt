@@ -12,16 +12,21 @@ import java.util.concurrent.TimeUnit
 
 object KafkaLogCompactionTestCommon {
 
-    private fun compactTopic(topic: String) =
-            NewTopic(topic, 1, 1).configs(mapOf(
+    private fun createTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
+        val newTopic = NewTopic(topic, numTopics, 1)
+        if (withCompact) {
+            newTopic.configs(mapOf(
                     "cleanup.policy" to "compact",
                     "segment.ms" to "10",
                     "retention.ms" to "1",
                     "min.cleanable.dirty.ratio" to "0.01"))
+        }
+        newTopic
+    }
 
-    fun createCompactTopic(topic: String, bootstrapServerMap: Map<String, Any>) {
+    fun createTopic(topic: String, bootstrapServerMap: Map<String, Any>, numTopics: Int = 1, withCompact: Boolean = true) {
         AdminClient.create(bootstrapServerMap).use {
-            val topics = listOf(compactTopic(topic))
+            val topics = listOf(createTopic(topic, numTopics, withCompact))
             it.createTopics(topics).all().get()
         }
     }

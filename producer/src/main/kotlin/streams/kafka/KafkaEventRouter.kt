@@ -2,27 +2,25 @@ package streams.kafka
 
 import org.apache.kafka.clients.producer.KafkaProducer
 import org.apache.kafka.clients.producer.ProducerRecord
-import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.KafkaException
 import org.apache.kafka.common.errors.AuthorizationException
 import org.apache.kafka.common.errors.OutOfOrderSequenceException
 import org.apache.kafka.common.errors.ProducerFencedException
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
-import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
 import streams.asSourceRecordKey
 import streams.asSourceRecordValue
+import streams.toMap
+import streams.StreamsEventRouter
 import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.utils.JSONUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.StreamsUtils
-import streams.toMap
 import java.util.Properties
 import java.util.UUID
-import java.util.concurrent.ThreadLocalRandom
 
 
 class KafkaEventRouter: StreamsEventRouter {
@@ -95,8 +93,9 @@ class KafkaEventRouter: StreamsEventRouter {
         // in the procedures we allow to define a custom message key via the configuration property key
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
+        val partition = (config["partition"])?.toString()?.toInt()
 
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
+        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
         return send(producerRecord, sync)
     }
@@ -108,7 +107,8 @@ class KafkaEventRouter: StreamsEventRouter {
         }
         val key = JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy))
         val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key, value)
+
+        val producerRecord = ProducerRecord(topic, null, System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
 
@@ -148,8 +148,6 @@ class KafkaEventRouter: StreamsEventRouter {
             producer.abortTransaction()
         }
     }
-
-    private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
 }
 

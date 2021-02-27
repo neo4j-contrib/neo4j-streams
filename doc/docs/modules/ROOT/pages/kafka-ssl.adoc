@@ -93,7 +93,6 @@ kafka.group.id=neo4j
 streams.sink.dlq=neo4j-dlq
 
 kafka.acks=all
-kafka.num.partitions=1
 kafka.retries=2
 kafka.batch.size=16384
 kafka.buffer.memory=33554432
