@@ -15,8 +15,8 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
         @JvmStatic private val UTC = ZoneId.of("UTC")
     }
 
-    override fun setValue(result: MutableMap<String, Value?>?, fieldName: String?, value: Any?) {
-        if (result != null && fieldName != null) {
+    override fun setValue(result: MutableMap<String, Value?>?, fieldName: String, value: Any?) {
+        if (result != null) {
             result[fieldName] = Values.value(value) ?: Values.NULL
         }
     }
@@ -25,43 +25,31 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
         return mutableMapOf()
     }
 
-    override fun setDecimalField(result: MutableMap<String, Value?>?, fieldName: String?, value: BigDecimal?) {
-        val doubleValue = value?.toDouble()
+    override fun setDecimalField(result: MutableMap<String, Value?>?, fieldName: String, value: BigDecimal) {
+        val doubleValue = value.toDouble()
         val fitsScale = doubleValue != Double.POSITIVE_INFINITY
                 && doubleValue != Double.NEGATIVE_INFINITY
-                && value?.compareTo(doubleValue?.let { BigDecimal.valueOf(it) }) == 0
+                && value.compareTo(doubleValue.let { BigDecimal.valueOf(it) }) == 0
         if (fitsScale) {
             setValue(result, fieldName, doubleValue)
         } else {
-            setValue(result, fieldName, value?.toPlainString())
+            setValue(result, fieldName, value.toPlainString())
         }
     }
 
-    override fun setTimestampField(result: MutableMap<String, Value?>?, fieldName: String?, value: Date?) {
-        if (value != null) {
-            val localDate = value.toInstant().atZone(UTC).toLocalDateTime()
-            setValue(result, fieldName, localDate)
-        } else {
-            setNullField(result, fieldName)
-        }
+    override fun setTimestampField(result: MutableMap<String, Value?>?, fieldName: String, value: Date) {
+        val localDate = value.toInstant().atZone(UTC).toLocalDateTime()
+        setValue(result, fieldName, localDate)
 
     }
 
-    override fun setTimeField(result: MutableMap<String, Value?>?, fieldName: String?, value: Date?) {
-        if (value != null) {
-            val time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(value.time))
-            setValue(result, fieldName, time)
-        } else {
-            setNullField(result, fieldName)
-        }
+    override fun setTimeField(result: MutableMap<String, Value?>?, fieldName: String, value: Date) {
+        val time = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(value.time))
+        setValue(result, fieldName, time)
     }
 
-    override fun setDateField(result: MutableMap<String, Value?>?, fieldName: String?, value: Date?) {
-        if (value != null) {
-            val localDate = value.toInstant().atZone(UTC).toLocalDate()
-            setValue(result, fieldName, localDate)
-        } else {
-            setNullField(result, fieldName)
-        }
+    override fun setDateField(result: MutableMap<String, Value?>?, fieldName: String, value: Date) {
+        val localDate = value.toInstant().atZone(UTC).toLocalDate()
+        setValue(result, fieldName, localDate)
     }
 }

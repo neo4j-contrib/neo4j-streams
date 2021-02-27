@@ -91,6 +91,12 @@ class Neo4jValueConverterTest {
         assertTrue{ int32Time is LocalTimeValue }
         assertEquals(Date.from(Instant.ofEpochMilli(123)).toInstant().atZone(utc).toLocalTime(), int32Time?.asLocalTime())
 
+        val nullField = result["nullField"]
+        assertTrue{ nullField is NullValue }
+
+        val nullFieldBytes = result["nullFieldBytes"]
+        assertTrue{ nullFieldBytes is NullValue }
+
     }
 
     @Test
@@ -102,6 +108,11 @@ class Neo4jValueConverterTest {
 
         assertTrue{ item is StringValue }
         assertEquals(number.toPlainString(), item?.asString())
+
+        val result2 = Neo4jValueConverter().convert(getItemElement(null))
+        val item2 = result2["item"]
+
+        assertTrue{ item2 is NullValue }
     }
 
     @Test
@@ -238,6 +249,18 @@ class Neo4jValueConverterTest {
                                 Date.from(Instant.ofEpochMilli(123)),
                                 Time.LOGICAL_NAME,
                                 null, null))
+                .field("nullField",
+                        ConnectSchema(Schema.Type.INT64,
+                                false,
+                                null,
+                                Time.LOGICAL_NAME,
+                                null, null))
+                .field("nullFieldBytes",
+                        ConnectSchema(Schema.Type.BYTES,
+                                false,
+                                null,
+                                Time.LOGICAL_NAME,
+                                null, null))
                 .build()
 
         fun getTreeStruct(): Struct? {
@@ -286,7 +309,7 @@ class Neo4jValueConverterTest {
             return mapOf("ul" to ulListMap, "p" to pListMap)
         }
 
-        fun getItemElement(number: Any): Map<String, Any> = mapOf("item" to number)
+        fun getItemElement(number: Any?): Map<String, Any?> = mapOf("item" to number)
     }
 
 }
