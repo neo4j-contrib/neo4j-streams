@@ -11,7 +11,7 @@ import streams.utils.IngestionUtils.getNodeKeysAsString
 import streams.utils.StreamsUtils
 
 
-enum class CUDOperations { create, merge, update, delete }
+enum class CUDOperations { create, merge, update, delete, match }
 
 abstract class CUD {
     abstract val op: CUDOperations
@@ -35,7 +35,9 @@ data class CUDNode(override val op: CUDOperations,
 }
 
 data class CUDNodeRel(val ids: Map<String, Any?> = emptyMap(),
-                      val labels: List<String>)
+                      val labels: List<String>,
+                      val op: CUDOperations = CUDOperations.match)
+
 data class CUDRelationship(override val op: CUDOperations,
                            override val properties: Map<String, Any?> = emptyMap(),
                            val rel_type: String,
@@ -64,9 +66,16 @@ class CUDIngestionStrategy: IngestionStrategy {
         @JvmStatic val PHYSICAL_ID_KEY = "_id"
         @JvmStatic val FROM_KEY = "from"
         @JvmStatic val TO_KEY = "to"
+
+        private val LIST_VALID_CUD_NODE_REL = listOf(CUDOperations.merge, CUDOperations.create, CUDOperations.match)
+        private val LIST_VALID_CUD_REL = listOf(CUDOperations.create, CUDOperations.merge, CUDOperations.update)
     }
 
-    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>)
+    data class NodeRelMetadata(val labels: List<String>, val ids: Set<String>, val op: CUDOperations = CUDOperations.match)
+
+    private fun CUDRelationship.isValidOperation(): Boolean = from.op in LIST_VALID_CUD_NODE_REL && to.op in LIST_VALID_CUD_NODE_REL && op in LIST_VALID_CUD_REL
+
+    private fun NodeRelMetadata.getOperation() = op.toString().toUpperCase()
 
     private fun buildNodeLookupByIds(keyword: String = "MATCH", ids: Set<String>, labels: List<String>, identifier: String = "n", field: String = ""): String {
         val fullField = if (field.isNotBlank()) "$field." else field
@@ -86,8 +95,9 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelCreateStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${StreamsUtils.WITH_EVENT_FROM}
+            |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |CREATE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r = event.properties
         """.trimMargin()
@@ -101,8 +111,9 @@ class CUDIngestionStrategy: IngestionStrategy {
     private fun buildRelMergeStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
             |${StreamsUtils.UNWIND}
-            |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
-            |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
+            |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
+            |${StreamsUtils.WITH_EVENT_FROM}
+            |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |MERGE ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
             |SET r += event.properties
         """.trimMargin()
@@ -164,9 +175,9 @@ class CUDIngestionStrategy: IngestionStrategy {
                         try {
                             val data = toCUDEntity<CUDNode>(it)
                             when (data?.op)  {
-                                CUDOperations.delete, null -> null
                                 CUDOperations.merge -> if (data.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
-                                else -> if (data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                CUDOperations.update, CUDOperations.create -> if (data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                else -> null
                             }
                         } catch (e: Exception) {
                             null
@@ -221,9 +232,9 @@ class CUDIngestionStrategy: IngestionStrategy {
                     it.value?.let {
                         try {
                             val data = toCUDEntity<CUDRelationship>(it)
-                            when (data?.op)  {
-                                CUDOperations.delete, null -> null // TODO send to the DLQ the null
-                                else -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                            when {
+                                data!!.isValidOperation()  -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                else -> null // TODO send to the DLQ the null
                             }
                         } catch (e: Exception) {
                             null
@@ -233,7 +244,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                 .groupBy({ it.op }, { it })
 
         return data.flatMap { (op, list) ->
-            list.groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type) }
+            list.groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type) }
                     .map {
                         val (from, to, rel_type) = it.key
                         val query = when (op) {

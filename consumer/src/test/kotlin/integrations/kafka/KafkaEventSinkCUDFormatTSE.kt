@@ -289,7 +289,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // when
         list.forEach {
-            var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
+            val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
             kafkaProducer.send(producerRecord).get()
         }
 
@@ -370,4 +370,144 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }
         assertEquals(ids, (6L..10L).toList())
     }
+
+    @Test
+    fun `should create nodes and relationship, if one or both nodes doesn't exist from CUD Events`() {
+        // given
+        val key = "key"
+        val topic = UUID.randomUUID().toString()
+        val relType = "MY_REL"
+        val list = (1..10).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
+            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            JSONUtils.writeValueAsBytes(rel)
+        }
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
+
+        // when
+        list.forEach {
+            val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
+            kafkaProducer.send(producerRecord).get()
+        }
+
+        // then
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            db.execute("""
+                MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
+                RETURN count(p) AS count
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        Assert.assertEventually(ThrowingSupplier {
+            val rels = db.beginTx().use {
+                it.allRelationships.stream().map { it.allProperties }.toList()
+            }
+            rels.size == 10 && rels.all { props ->
+                val id = props.getValue("id").toString().toLong()
+                val foo = props.getValue("foo").toString()
+                foo == "foo-value-$id"
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        // now, I create only start nodes
+        val listWithStartPresent = (11..20).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.create)
+            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            JSONUtils.writeValueAsBytes(rel)
+        }
+
+        db.beginTx().use {
+            db.execute("""
+                UNWIND range(11, 20) AS id
+                CREATE (:Foo:Bar {key: id})
+            """.trimIndent())
+            assertEquals(30, it.allNodes.count())
+            it.commit()
+        }
+
+        // when
+        listWithStartPresent.forEach {
+            val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
+            kafkaProducer.send(producerRecord).get()
+        }
+
+        // then
+        Assert.assertEventually(ThrowingSupplier {
+            db.execute("""
+                MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
+                RETURN count(p) AS count
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 20L && !fooBar.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        Assert.assertEventually(ThrowingSupplier {
+            val rels = db.beginTx().use {
+                it.allRelationships.stream().map { it.allProperties }.toList()
+            }
+            rels.size == 20 && rels.all { props ->
+                val id = props.getValue("id").toString().toLong()
+                val foo = props.getValue("foo").toString()
+                foo == "foo-value-$id"
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        // now, I create only end nodes
+        val listWithEndPresent = (21..30).map {
+            val properties = mapOf("foo" to "foo-value-$it", "id" to it)
+            val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.create)
+            val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
+            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            JSONUtils.writeValueAsBytes(rel)
+        }
+
+        db.beginTx().use {
+            db.execute("""
+                UNWIND range(21, 30) AS id
+                CREATE (:FooBar {key: id})
+            """.trimIndent())
+            assertEquals(50, it.allNodes.count())
+            it.commit()
+        }
+
+        // when
+        listWithEndPresent.forEach {
+            val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
+            kafkaProducer.send(producerRecord).get()
+        }
+
+        // then
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            db.execute("""
+                MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
+                RETURN count(p) AS count
+            """.trimIndent()) {
+                val fooBar = it.columnAs<Long>("count")
+                fooBar.hasNext() && fooBar.next() == 30L && !fooBar.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+        Assert.assertEventually(ThrowingSupplier {
+            val rels = db.beginTx().use {
+                it.allRelationships.stream().map { it.allProperties }.toList()
+            }
+            rels.size == 30 && rels.all { props ->
+                val id = props.getValue("id").toString().toLong()
+                val foo = props.getValue("foo").toString()
+                foo == "foo-value-$id"
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+
+    }
+
+
 }

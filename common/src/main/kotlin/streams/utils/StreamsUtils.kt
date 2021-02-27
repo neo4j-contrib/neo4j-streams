@@ -13,6 +13,8 @@ object StreamsUtils {
 
     @JvmStatic val UNWIND: String = "UNWIND \$events AS event"
 
+    @JvmStatic val WITH_EVENT_FROM: String = "WITH event, from"
+
     @JvmStatic val STREAMS_CONFIG_PREFIX = "streams."
 
     @JvmStatic val STREAMS_SINK_TOPIC_PREFIX = "sink.topic.cypher."
