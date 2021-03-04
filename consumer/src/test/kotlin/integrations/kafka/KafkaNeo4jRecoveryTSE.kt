@@ -1,39 +1,29 @@
 package integrations.kafka
 
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric
 import org.apache.commons.lang3.exception.ExceptionUtils.getRootCause
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertThrows
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.neo4j.configuration.Config
 import org.neo4j.configuration.Config.defaults
-import org.neo4j.configuration.GraphDatabaseSettings.DEFAULT_DATABASE_NAME
-import org.neo4j.configuration.GraphDatabaseSettings.fail_on_missing_files
-import org.neo4j.configuration.GraphDatabaseSettings.logical_log_rotation_threshold
-import org.neo4j.configuration.GraphDatabaseSettings.preallocate_logical_logs
+import org.neo4j.configuration.GraphDatabaseSettings.*
 import org.neo4j.dbms.DatabaseStateService
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.dbms.database.DatabaseStartAbortedException
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Label
-import org.neo4j.graphdb.Node
-import org.neo4j.graphdb.Relationship
-import org.neo4j.graphdb.RelationshipType
 import org.neo4j.graphdb.RelationshipType.withName
 import org.neo4j.graphdb.schema.IndexType
 import org.neo4j.internal.helpers.collection.Iterables.count
 import org.neo4j.internal.index.label.RelationshipTypeScanStoreSettings.enable_relationship_type_scan_store
 import org.neo4j.internal.kernel.api.IndexQuery.fulltextSearch
 import org.neo4j.internal.kernel.api.IndexQueryConstraints.unconstrained
-import org.neo4j.internal.schema.IndexDescriptor
 import org.neo4j.io.ByteUnit
 import org.neo4j.io.fs.DefaultFileSystemAbstraction
 import org.neo4j.io.layout.DatabaseLayout
@@ -41,7 +31,6 @@ import org.neo4j.io.layout.Neo4jLayout
 import org.neo4j.io.pagecache.PageCache
 import org.neo4j.io.pagecache.tracing.DefaultPageCacheTracer
 import org.neo4j.io.pagecache.tracing.cursor.PageCursorTracer.NULL
-import org.neo4j.kernel.api.KernelTransaction
 import org.neo4j.kernel.availability.CompositeDatabaseAvailabilityGuard
 import org.neo4j.kernel.database.DatabaseTracers
 import org.neo4j.kernel.database.DatabaseTracers.EMPTY
@@ -51,19 +40,16 @@ import org.neo4j.kernel.impl.coreapi.InternalTransaction
 import org.neo4j.kernel.impl.store.MetaDataStore.Position.LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP
 import org.neo4j.kernel.impl.store.MetaDataStore.getRecord
 import org.neo4j.kernel.impl.storemigration.LegacyTransactionLogsLocator
-import org.neo4j.kernel.impl.transaction.log.LogPosition
-import org.neo4j.kernel.impl.transaction.log.entry.CheckPoint
-import org.neo4j.kernel.impl.transaction.log.entry.LogEntry
-import org.neo4j.kernel.impl.transaction.log.entry.VersionAwareLogEntryReader
-import org.neo4j.kernel.impl.transaction.log.files.LogFile
 import org.neo4j.kernel.impl.transaction.log.files.LogFiles
 import org.neo4j.kernel.impl.transaction.log.files.LogFilesBuilder
+import org.neo4j.kernel.impl.transaction.log.files.TransactionLogFilesHelper.DEFAULT_NAME
 import org.neo4j.kernel.impl.transaction.tracing.DatabaseTracer
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.kernel.recovery.Recovery
 import org.neo4j.kernel.recovery.Recovery.performRecovery
+import org.neo4j.kernel.recovery.RecoveryHelpers
 import org.neo4j.kernel.recovery.RecoveryMonitor
 import org.neo4j.lock.LockTracer
 import org.neo4j.logging.AssertableLogProvider
@@ -75,10 +61,11 @@ import org.neo4j.test.extension.Inject
 import org.neo4j.test.extension.Neo4jLayoutExtension
 import org.neo4j.test.extension.pagecache.PageCacheExtension
 import streams.utils.JSONUtils
-import java.io.File
 import java.io.IOException
 import java.lang.String.valueOf
-import java.util.UUID
+import java.nio.file.DirectoryStream
+import java.nio.file.Path
+import java.util.*
 import java.util.concurrent.TimeUnit.MINUTES
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -86,6 +73,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 @PageCacheExtension
 @Neo4jLayoutExtension
 class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
+
+    var topic: String? = null
+
+    @BeforeEach
+    fun setTopic() {
+        topic = UUID.randomUUID().toString()
+    }
+
     private val TEN_KB = ByteUnit.kibiBytes(10).toInt()
 
     @Inject
@@ -101,26 +96,19 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     private val databaseLayout: DatabaseLayout? = null
     private var builder: TestDatabaseManagementServiceBuilder? = null
     private var managementService: DatabaseManagementService? = null
-    private var storageEngineFactory: StorageEngineFactory? = null
 
-    var topic: String? = null
-
-    @BeforeEach
-    fun setTopic() {
-        topic = UUID.randomUUID().toString()
-    }
-
-    private fun enableRelationshipTypeScanStore(): Boolean {
+    fun enableRelationshipTypeScanStore(): Boolean {
         return false
     }
 
     @Test
+    @Throws(Throwable::class)
     fun recoveryRequiredOnDatabaseWithoutCorrectCheckpoints() {
         val database: GraphDatabaseService = createDatabase()
         generateSomeData(database)
         managementService!!.shutdown()
         sendKafkaEvents()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         assertTrue(isRecoveryRequired(databaseLayout))
     }
 
@@ -134,20 +122,20 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     fun recoverEmptyDatabase() {
         createDatabase()
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
         sendKafkaEvents()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         assertFalse(isRecoveryRequired(databaseLayout, defaults()))
     }
 
     @Test
     fun recoverDatabaseWithNodes() {
         val database: GraphDatabaseService = createDatabase()
-        val numberOfNodes = 10L
+        val numberOfNodes = 10
         for (i in 0 until numberOfNodes) {
             createSingleNode(database)
         }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         recoverDatabase()
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
@@ -160,17 +148,17 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     @Test
     fun tracePageCacheAccessOnDatabaseRecovery() {
         val database: GraphDatabaseService = createDatabase()
-        val numberOfNodes = 10L
+        val numberOfNodes = 10
         for (i in 0 until numberOfNodes) {
             createSingleNode(database)
         }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         val pageCacheTracer = DefaultPageCacheTracer()
         val tracers = DatabaseTracers(DatabaseTracer.NULL, LockTracer.NONE, pageCacheTracer)
         recoverDatabase(tracers)
-        assertEquals(pageCacheTracer.pins(), pageCacheTracer.unpins())
-        assertEquals(pageCacheTracer.hits() + pageCacheTracer.faults(), pageCacheTracer.pins())
+        assertThat(pageCacheTracer.pins()).isEqualTo(pageCacheTracer.unpins())
+        assertThat(pageCacheTracer.hits() + pageCacheTracer.faults()).isEqualTo(pageCacheTracer.pins())
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
             recoveredDatabase.beginTx().use { tx -> assertEquals(numberOfNodes, count(tx.allNodes)) }
@@ -182,18 +170,18 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     @Test
     fun recoverDatabaseWithNodesAndRelationshipsAndRelationshipTypes() {
         val database: GraphDatabaseService = createDatabase()
-        val numberOfRelationships = 10L
+        val numberOfRelationships = 10
         val numberOfNodes = numberOfRelationships * 2
         for (i in 0 until numberOfRelationships) {
             database.beginTx().use { transaction ->
-                val start: Node = transaction.createNode()
-                val stop: Node = transaction.createNode()
+                val start = transaction.createNode()
+                val stop = transaction.createNode()
                 start.createRelationshipTo(stop, withName(valueOf(i)))
                 transaction.commit()
             }
         }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         recoverDatabase()
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
@@ -208,15 +196,14 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     @Test
-    @Throws(Throwable::class)
     fun recoverDatabaseWithProperties() {
         val database: GraphDatabaseService = createDatabase()
-        val numberOfRelationships = 10L
+        val numberOfRelationships = 10
         val numberOfNodes = numberOfRelationships * 2
         for (i in 0 until numberOfRelationships) {
             database.beginTx().use { transaction ->
-                val start: Node = transaction.createNode()
-                val stop: Node = transaction.createNode()
+                val start = transaction.createNode()
+                val stop = transaction.createNode()
                 start.setProperty("start$i", i)
                 stop.setProperty("stop$i", i)
                 start.createRelationshipTo(stop, withName(valueOf(i)))
@@ -224,7 +211,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
             }
         }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         recoverDatabase()
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
@@ -242,7 +229,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     @Test
     fun recoverDatabaseWithIndex() {
         val database: GraphDatabaseService = createDatabase()
-        val numberOfRelationships = 10L
+        val numberOfRelationships = 10
         val numberOfNodes = numberOfRelationships * 2
         val startProperty = "start"
         val stopProperty = "stop"
@@ -256,8 +243,8 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         awaitIndexesOnline(database)
         for (i in 0 until numberOfRelationships) {
             database.beginTx().use { transaction ->
-                val start: Node = transaction.createNode(startMarker)
-                val stop: Node = transaction.createNode(stopMarker)
+                val start = transaction.createNode(startMarker)
+                val stop = transaction.createNode(stopMarker)
                 start.setProperty(startProperty, i)
                 stop.setProperty(stopProperty, i)
                 start.createRelationshipTo(stop, withName(valueOf(i)))
@@ -267,7 +254,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         var numberOfPropertyKeys: Long
         database.beginTx().use { transaction -> numberOfPropertyKeys = count(transaction.allPropertyKeys) }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         recoverDatabase()
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
@@ -286,32 +273,33 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     fun recoverDatabaseWithRelationshipIndex() {
         val database: GraphDatabaseService = createDatabase()
         val numberOfRelationships = 10
-        val type = RelationshipType.withName("TYPE")
+        val type = withName("TYPE")
         val property = "prop"
         val indexName = "my index"
         database.beginTx().use { transaction ->
-            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.FULLTEXT).withName(indexName).create()
+            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.FULLTEXT)
+                .withName(indexName).create()
             transaction.commit()
         }
         awaitIndexesOnline(database)
         database.beginTx().use { transaction ->
-            val start: Node = transaction.createNode()
-            val stop: Node = transaction.createNode()
+            val start = transaction.createNode()
+            val stop = transaction.createNode()
             for (i in 0 until numberOfRelationships) {
-                val relationship: Relationship = start.createRelationshipTo(stop, type)
+                val relationship = start.createRelationshipTo(stop, type)
                 relationship.setProperty(property, "value")
             }
             transaction.commit()
         }
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         recoverDatabase()
         val recoveredDatabase = createDatabase()
         awaitIndexesOnline(recoveredDatabase)
         try {
             recoveredDatabase.beginTx().use { transaction ->
-                val ktx: KernelTransaction = (transaction as InternalTransaction).kernelTransaction()
-                val index: IndexDescriptor = ktx.schemaRead().indexGetForName(indexName)
+                val ktx = (transaction as InternalTransaction).kernelTransaction()
+                val index = ktx.schemaRead().indexGetForName(indexName)
                 var relationshipsInIndex = 0
                 ktx.cursors().allocateRelationshipIndexCursor(ktx.pageCursorTracer()).use { cursor ->
                     ktx.dataRead().relationshipIndexSeek(index, cursor, unconstrained(), fulltextSearch("*"))
@@ -332,7 +320,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         generateSomeData(database)
         managementService!!.shutdown()
         assertEquals(1, countCheckPointsInTransactionLogs())
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         assertEquals(0, countCheckPointsInTransactionLogs())
         assertTrue(isRecoveryRequired(databaseLayout))
         startStopDatabase()
@@ -349,10 +337,12 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         removeTransactionLogs()
         val restartedDb = createDatabase()
         try {
-            val dbStateService = restartedDb.dependencyResolver.resolveDependency(DatabaseStateService::class.java)
+            val dbStateService = restartedDb.dependencyResolver.resolveDependency(
+                DatabaseStateService::class.java
+            )
             val failure = dbStateService.causeOfFailure(restartedDb.databaseId())
             assertTrue(failure.isPresent)
-            assertTrue(getRootCause(failure.get()).message!!.contains("Transaction logs are missing and recovery is not possible."))
+            assertThat(getRootCause(failure.get()).message).contains("Transaction logs are missing and recovery is not possible.")
         } finally {
             managementService!!.shutdown()
         }
@@ -363,25 +353,32 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val database = createDatabase()
         generateSomeData(database)
         managementService!!.shutdown()
-        val txLogFiles: Array<File> = buildLogFiles().logFiles()
-        val databasesDirectory: File = databaseLayout!!.neo4jLayout.databasesDirectory()
+        val logFiles = buildLogFiles()
+        var txLogFiles: Array<Path> = fileSystem!!.listFiles(logFiles.logFilesDirectory(),
+            DirectoryStream.Filter { path: Path ->
+                path.fileName.toString().startsWith(DEFAULT_NAME)
+            })
+        txLogFiles += logFiles.checkpointFile.detachedCheckpointFiles
+        val databasesDirectory: Path = databaseLayout!!.neo4jLayout.databasesDirectory()
         val legacyLayout = Neo4jLayout.ofFlat(databasesDirectory).databaseLayout(databaseLayout.databaseName)
-        val logsLocator = LegacyTransactionLogsLocator(Config.defaults(), legacyLayout)
-        val transactionLogsDirectory: File = logsLocator.getTransactionLogsDirectory()
+        val logsLocator = LegacyTransactionLogsLocator(defaults(), legacyLayout)
+        val transactionLogsDirectory: Path = logsLocator.transactionLogsDirectory
         assertNotNull(txLogFiles)
         assertTrue(txLogFiles.size > 0)
         for (logFile in txLogFiles) {
-            fileSystem!!.moveToDirectory(logFile, transactionLogsDirectory)
+            fileSystem.moveToDirectory(logFile, transactionLogsDirectory)
         }
         val logProvider = AssertableLogProvider()
         builder!!.setInternalLogProvider(logProvider)
         val restartedDb = createDatabase()
         try {
-            val dbStateService = restartedDb.dependencyResolver.resolveDependency(DatabaseStateService::class.java)
+            val dbStateService = restartedDb.dependencyResolver.resolveDependency(
+                DatabaseStateService::class.java
+            )
             val failure = dbStateService.causeOfFailure(restartedDb.databaseId())
             assertTrue(failure.isPresent)
             assertThat(failure.get()).hasRootCauseMessage("Transaction logs are missing and recovery is not possible.")
-            assertThat(logProvider.serialize()).contains(txLogFiles[0].getName())
+            assertThat(logProvider.serialize()).contains(txLogFiles[0].getFileName().toString())
         } finally {
             managementService!!.shutdown()
         }
@@ -392,7 +389,15 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val database = createDatabase()
         val pageCache = getDatabasePageCache(database)
         generateSomeData(database)
-        assertEquals(-1, getRecord(pageCache, database.databaseLayout().metadataStore(), LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP, NULL))
+        assertEquals(
+            -1,
+            getRecord(
+                pageCache,
+                database.databaseLayout().metadataStore(),
+                LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP,
+                NULL
+            )
+        )
         managementService!!.shutdown()
         removeTransactionLogs()
         startStopDatabaseWithForcedRecovery()
@@ -430,9 +435,9 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val service = forcedRecoveryManagementService.database(DEFAULT_DATABASE_NAME)
         createSingleNode(service)
         forcedRecoveryManagementService.shutdown()
-        assertEquals(1, countTransactionLogFiles())
+        assertEquals(2, countTransactionLogFiles())
         assertEquals(2, countCheckPointsInTransactionLogs())
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         startStopDatabase()
         assertFalse(isRecoveryRequired(databaseLayout))
         // we will have 3 checkpoints: one from logs before recovery, second will be created as part of recovery and another on shutdown
@@ -446,14 +451,14 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
             generateSomeData(database)
         }
         managementService!!.shutdown()
-        removeHighestLogFile()
+        removeFileWithCheckpoint()
         assertEquals(4, countTransactionLogFiles())
         assertEquals(0, countCheckPointsInTransactionLogs())
         assertTrue(isRecoveryRequired(databaseLayout))
         startStopDatabase()
         assertEquals(2, countCheckPointsInTransactionLogs())
-        removeLastCheckpointRecordFromLastLogFile()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         startStopDatabase()
         assertFalse(isRecoveryRequired(databaseLayout))
         // we will have 2 checkpoints: first will be created as part of recovery and another on shutdown
@@ -468,25 +473,25 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
             generateSomeData(database)
         }
         managementService!!.shutdown()
-        removeHighestLogFile()
+        removeFileWithCheckpoint()
         assertEquals(4, countTransactionLogFiles())
         assertEquals(0, countCheckPointsInTransactionLogs())
         assertTrue(isRecoveryRequired(databaseLayout))
         startStopDatabase()
         assertEquals(2, countCheckPointsInTransactionLogs())
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         startStopDatabase()
         assertFalse(isRecoveryRequired(databaseLayout))
         // we will have 2 checkpoints here because offset in both of them will be the same
         // and 2 will be truncated instead since truncation is based on position
         // next start-stop cycle will have transaction between so we will have 3 checkpoints as expected.
         assertEquals(2, countCheckPointsInTransactionLogs())
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         builder = null // Reset log rotation threshold setting to avoid immediate rotation on `createSingleNode()`.
         val service: GraphDatabaseService = createDatabase(logThreshold * 2) // Bigger log, to avoid rotation.
         createSingleNode(service)
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         startStopDatabase()
         assertFalse(isRecoveryRequired(databaseLayout))
         assertEquals(3, countCheckPointsInTransactionLogs())
@@ -528,13 +533,13 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         generateSomeData(db)
         val layout = db.databaseLayout()
         managementService!!.shutdown()
-        removeLastCheckpointRecordFromLastLogFile()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
         assertTrue(isRecoveryRequired(layout))
         val monitors = Monitors()
         val guardExtensionFactory = GlobalGuardConsumerTestExtensionFactory()
         val recoveryMonitor = object : RecoveryMonitor {
-            private val reverseCompleted: AtomicBoolean = AtomicBoolean()
-            private val recoveryCompleted: AtomicBoolean = AtomicBoolean()
+            private val reverseCompleted = AtomicBoolean()
+            private val recoveryCompleted = AtomicBoolean()
             override fun reverseStoreRecoveryCompleted(lowestRecoveredTxId: Long) {
                 guardExtensionFactory.providedGuardConsumer!!.globalGuard.stop()
                 reverseCompleted.set(true)
@@ -554,15 +559,15 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         }
         monitors.addMonitorListener(recoveryMonitor)
         val service = builderWithRelationshipTypeScanStoreSet(layout.neo4jLayout)
-                .addExtension(guardExtensionFactory)
-                .setMonitors(monitors).build()
+            .addExtension(guardExtensionFactory)
+            .setMonitors(monitors).build()
         try {
             val database = service.database(layout.databaseName)
             assertTrue(recoveryMonitor.isReverseCompleted())
             assertFalse(recoveryMonitor.isRecoveryCompleted())
             assertFalse(guardExtensionFactory.providedGuardConsumer!!.globalGuard.isAvailable)
             assertFalse(database.isAvailable(0))
-            val e = assertThrows(Exception::class.java, database::beginTx)
+            val e: Exception = assertThrows(Exception::class.java, database::beginTx)
             assertThat(getRootCause(e)).isInstanceOf(DatabaseStartAbortedException::class.java)
         } finally {
             service.shutdown()
@@ -594,14 +599,16 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     private fun recoverDatabase(databaseTracers: DatabaseTracers) {
-        val config = Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
+        val config =
+            Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
         assertTrue(isRecoveryRequired(databaseLayout, config))
         performRecovery(fileSystem, pageCache, databaseTracers, config, databaseLayout, INSTANCE)
         assertFalse(isRecoveryRequired(databaseLayout, config))
     }
 
     private fun isRecoveryRequired(layout: DatabaseLayout?): Boolean {
-        val config = Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
+        val config =
+            Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
         return isRecoveryRequired(layout, config)
     }
 
@@ -610,48 +617,28 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     private fun countCheckPointsInTransactionLogs(): Int {
-        var checkpointCounter = 0
         val logFiles = buildLogFiles()
-        val transactionLogFile: LogFile = logFiles.logFile
-        val entryReader = VersionAwareLogEntryReader(storageEngineFactory!!.commandReaderFactory())
-        val startPosition = logFiles.extractHeader(logFiles.highestLogVersion).startPosition
-        transactionLogFile.getReader(startPosition).use { reader ->
-            var logEntry: LogEntry?
-            do {
-                logEntry = entryReader.readLogEntry(reader)
-                if (logEntry is CheckPoint) {
-                    checkpointCounter++
-                }
-            } while (logEntry != null)
-        }
-        return checkpointCounter
+        val checkpoints = logFiles.checkpointFile.reachableCheckpoints()
+        return checkpoints.size
     }
 
     private fun buildLogFiles(): LogFiles {
         return LogFilesBuilder
-                .logFilesBasedOnlyBuilder(databaseLayout!!.transactionLogsDirectory, fileSystem)
-                .withCommandReaderFactory(StorageEngineFactory.selectStorageEngine().commandReaderFactory())
-                .build()
+            .logFilesBasedOnlyBuilder(databaseLayout!!.transactionLogsDirectory, fileSystem)
+            .withCommandReaderFactory(StorageEngineFactory.selectStorageEngine().commandReaderFactory())
+            .build()
     }
 
     private fun removeTransactionLogs() {
         val logFiles = buildLogFiles()
-        val txLogFiles: Array<File> = logFiles.logFiles()
-        for (logFile in txLogFiles) {
-            fileSystem!!.deleteFile(logFile)
+        for (logFile in fileSystem!!.listFiles(logFiles.logFilesDirectory())) {
+            fileSystem.deleteFile(logFile)
         }
     }
 
-    private fun removeHighestLogFile() {
+    private fun removeFileWithCheckpoint() {
         val logFiles = buildLogFiles()
-        val highestLogVersion = logFiles.highestLogVersion
-        removeFileByVersion(logFiles, highestLogVersion)
-    }
-
-    private fun removeFileByVersion(logFiles: LogFiles, version: Long) {
-        val versionFile: File = logFiles.getLogFileForVersion(version)
-        assertNotNull(versionFile)
-        fileSystem!!.deleteFile(versionFile)
+        fileSystem!!.deleteFileOrThrow(logFiles.checkpointFile.currentFile)
     }
 
     private fun countTransactionLogFiles(): Int {
@@ -659,31 +646,11 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         return logFiles.logFiles().size
     }
 
-    private fun removeLastCheckpointRecordFromLastLogFile() {
-        var checkpointPosition: LogPosition? = null
-        val logFiles = buildLogFiles()
-        val transactionLogFile: LogFile = logFiles.logFile
-        val entryReader = VersionAwareLogEntryReader(storageEngineFactory!!.commandReaderFactory())
-        val startPosition = logFiles.extractHeader(logFiles.highestLogVersion).startPosition
-        transactionLogFile.getReader(startPosition).use { reader ->
-            var logEntry: LogEntry?
-            do {
-                logEntry = entryReader.readLogEntry(reader)
-                if (logEntry is CheckPoint) {
-                    checkpointPosition = logEntry.logPosition
-                }
-            } while (logEntry != null)
-        }
-        if (checkpointPosition != null) {
-            fileSystem!!.write(logFiles.highestLogFile).use { storeChannel -> storeChannel.truncate(checkpointPosition!!.byteOffset) }
-        }
-    }
-
     private fun generateSomeData(database: GraphDatabaseService) {
         for (i in 0..9) {
             database.beginTx().use { transaction ->
-                val node1: Node = transaction.createNode()
-                val node2: Node = transaction.createNode()
+                val node1 = transaction.createNode()
+                val node2 = transaction.createNode()
                 node1.createRelationshipTo(node2, withName("Type$i"))
                 node2.setProperty("a", randomAlphanumeric(TEN_KB))
                 transaction.commit()
@@ -698,16 +665,14 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     private fun createDatabase(logThreshold: Long): GraphDatabaseAPI {
         createBuilder(logThreshold)
         managementService = builder!!.build()
-        val database = managementService!!.database(databaseLayout!!.databaseName) as GraphDatabaseAPI
-        storageEngineFactory = database.dependencyResolver.resolveDependency(StorageEngineFactory::class.java)
-        return database
+        return managementService!!.database(databaseLayout!!.databaseName) as GraphDatabaseAPI
     }
 
     private fun createBuilder(logThreshold: Long) {
         if (builder == null) {
             builder = builderWithRelationshipTypeScanStoreSet()
-                    .setConfig(preallocate_logical_logs, false)
-                    .setConfig(logical_log_rotation_threshold, logThreshold)
+                .setConfig(preallocate_logical_logs, false)
+                .setConfig(logical_log_rotation_threshold, logThreshold)
         }
     }
 
@@ -718,8 +683,8 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
 
     private fun forcedRecoveryManagement(): DatabaseManagementService {
         return builderWithRelationshipTypeScanStoreSet()
-                .setConfig(fail_on_missing_files, false)
-                .build()
+            .setConfig(fail_on_missing_files, false)
+            .build()
     }
 
     private fun builderWithRelationshipTypeScanStoreSet(): TestDatabaseManagementServiceBuilder {
@@ -728,19 +693,23 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
 
     private fun builderWithRelationshipTypeScanStoreSet(neo4jLayout: Neo4jLayout?): TestDatabaseManagementServiceBuilder {
         return TestDatabaseManagementServiceBuilder(neo4jLayout)
-                .setConfig(enable_relationship_type_scan_store, enableRelationshipTypeScanStore())
+            .setConfig(enable_relationship_type_scan_store, enableRelationshipTypeScanStore())
     }
 
     private fun getDatabasePageCache(databaseAPI: GraphDatabaseAPI): PageCache {
         return databaseAPI.dependencyResolver.resolveDependency(PageCache::class.java)
     }
 
-    @Throws(IOException::class)
     private fun verifyRecoveryTimestampPresent(databaseAPI: GraphDatabaseAPI) {
         val restartedDatabase = createDatabase()
         try {
             val restartedCache = getDatabasePageCache(restartedDatabase)
-            val record = getRecord(restartedCache, databaseAPI.databaseLayout().metadataStore(), LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP, NULL)
+            val record = getRecord(
+                restartedCache,
+                databaseAPI.databaseLayout().metadataStore(),
+                LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP,
+                NULL
+            )
             assertThat(record).isGreaterThan(0L)
         } finally {
             managementService!!.shutdown()
@@ -751,7 +720,8 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         fun globalGuard(): CompositeDatabaseAvailabilityGuard
     }
 
-    private class GlobalGuardConsumerTestExtensionFactory constructor() : ExtensionFactory<Dependencies>("globalGuardConsumer") {
+    private class GlobalGuardConsumerTestExtensionFactory internal constructor() :
+        ExtensionFactory<Dependencies>("globalGuardConsumer") {
         var providedGuardConsumer: GlobalGuardConsumer? = null
             private set
 
@@ -761,7 +731,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         }
     }
 
-    private class GlobalGuardConsumer constructor(dependencies: Dependencies) : LifecycleAdapter() {
+    private class GlobalGuardConsumer internal constructor(dependencies: Dependencies) : LifecycleAdapter() {
         val globalGuard: CompositeDatabaseAvailabilityGuard
 
         init {
