@@ -13,6 +13,9 @@ object SchemaUtils {
                             && propertyKeys.containsAll(constraint.properties)
                             && labels.contains(constraint.label)
                 }
+                // we order first by properties.size, then by label name and finally by properties name alphabetically
+                // with properties.sorted() we ensure that ("foo", "bar") and ("bar", "foo") are no different
+                // with toString() we force it.properties to have the natural sort order, that is alphabetically
                 .minWithOrNull((compareBy({ it.properties.size }, { it.label }, { it.properties.sorted().toString() })))
                 ?.properties
                 .orEmpty()
