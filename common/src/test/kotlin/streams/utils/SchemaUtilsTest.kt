@@ -34,18 +34,18 @@ class SchemaUtilsTest {
         val pair6 = "LabelC" to setOf("aaa", "baa", "xcz")
         val pair7 = "LabelA" to setOf("foo", "aac")
         val pair8 = "LabelA" to setOf("foo", "aab")
-        val props = mutableListOf(pair1, pair2, pair3, pair4, pair5, pair6, pair7, pair8)
+        val props = listOf(pair1, pair2, pair3, pair4, pair5, pair6, pair7, pair8)
 
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
         val constraints = props.map {
             Constraint(label = it.first, properties = it.second, type = StreamsConstraintType.UNIQUE)
         }.shuffled()
-        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
 
         val propertyKeys = setOf("prop", "prop2", "foo", "bar", "baz", "bez", "aaa", "aab", "baa", "aac", "xcz", "xcv")
-        val actualKey = getNodeKeys(props.map { it.first }, propertyKeys, constraints)
-        val expectedKey = setOf("aab", "foo")
+        val actualKeys = getNodeKeys(props.map { it.first }, propertyKeys, constraints)
+        val expectedKeys = setOf("aab", "foo")
 
-        assertEquals(expectedKey, actualKey)
+        assertEquals(expectedKeys, actualKeys)
     }
 
     @Test
@@ -57,18 +57,18 @@ class SchemaUtilsTest {
         val pair2 = "LabelA" to setOf("bar", "foo")
         val pair3 = "LabelA" to setOf("baz", "bar")
         val pair4 = "LabelA" to setOf("bar", "bez")
-        val props = mutableListOf(pair1, pair2, pair3, pair4)
+        val props = listOf(pair1, pair2, pair3, pair4)
 
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
         val constraints = props.map {
             Constraint(label = it.first, properties = it.second, type = StreamsConstraintType.UNIQUE)
         }.shuffled()
-        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
 
         val propertyKeys = setOf("prop", "foo", "bar", "baz", "bez")
-        val actualKey =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints)
-        val expectedKey = setOf("bar", "baz")
+        val actualKeys =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints)
+        val expectedKeys = setOf("bar", "baz")
 
-        assertEquals(expectedKey, actualKey)
+        assertEquals(expectedKeys, actualKeys)
     }
 
     @Test

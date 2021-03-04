@@ -232,6 +232,7 @@ class SchemaIngestionStrategyTest {
         // with the same size, we take the first sorted properties list alphabetically
 
         // given
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
         val constraintsList = listOf(
                 Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("address")),
                 Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("country")),
@@ -240,7 +241,6 @@ class SchemaIngestionStrategyTest {
                 Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("code")),
                 Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))
         ).shuffled()
-        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
 
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsList)
         val idsStart = mapOf("name" to "Sherlock",
@@ -305,6 +305,7 @@ class SchemaIngestionStrategyTest {
         // finally, with same label name, we take the first sorted properties list alphabetically
 
         // given
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
         val constraintsList = listOf(
                 Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("address")),
                 Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("country")),
@@ -314,7 +315,6 @@ class SchemaIngestionStrategyTest {
                 Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("code")),
                 Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))
         ).shuffled()
-        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
 
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsList)
         val idsStart = mapOf("name" to "Sherlock",
