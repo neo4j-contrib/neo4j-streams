@@ -176,7 +176,7 @@ class KafkaEventSinkCDCTSE: KafkaEventSinkBaseTSE() {
     }
 
     @Test
-    fun shouldWriteDataFromSinkWithCDCSchemaTopicWithMultipleConstraintsAndMultipleLabelNames() = runBlocking {
+    fun writeDataFromSinkWithCDCSchemaTopicMultipleConstraintsAndLabels() = runBlocking {
         val topic = UUID.randomUUID().toString()
         db.setConfig("streams.sink.topic.cdc.schema", topic)
         db.start()

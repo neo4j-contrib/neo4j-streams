@@ -372,7 +372,7 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    fun `should insert data into Neo4j from CDC events with schema strategy, multiple uniqueness constraints and multiple label names merging previous nodes`() {
+    fun `should insert data into Neo4j from CDC events with schema strategy, multiple constraints and labels`() {
         val myTopic = UUID.randomUUID().toString()
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
@@ -510,7 +510,7 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    fun `should insert data into Neo4j from CDC events with schema strategy and multiple uniqueness constraints merging previous nodes`() {
+    fun `should insert data into Neo4j from CDC events with schema strategy and multiple unique constraints merging previous nodes`() {
         val myTopic = UUID.randomUUID().toString()
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,

@@ -21,7 +21,10 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should select (with multiple labels) on of the constraints with lowest properties and, with same size, the first label in alphabetical order and, with same label name, the first sorted properties list alphabetically`() {
+    fun `getNodeKeys should return the key sorted properly`() {
+        // the method getNodeKeys should select (with multiple labels) the constraint with lowest properties
+        // with the same size, we take the first label in alphabetical order
+        // finally, with same label name, we take the first sorted properties list alphabetically
         val listNodeKeys = (1..50).map {
             val pair1 = "LabelX" to setOf("foo", "aab")
             val pair2 = "LabelB" to setOf("bar", "foo")
@@ -44,7 +47,10 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should select (with one label) on of the constraints with lowest properties and, with same size and the same label name, the first sorted properties list alphabetically`() {
+    fun `getNodeKeys should return the key sorted properly (with one label)`() {
+        // the method getNodeKeys should select the constraint with lowest properties
+        // with the same size, we take the first sorted properties list alphabetically
+
         val listNodeKeys = (1..50).map {
             val pair1 = "LabelA" to setOf("foo", "bar")
             val pair2 = "LabelA" to setOf("bar", "foo")

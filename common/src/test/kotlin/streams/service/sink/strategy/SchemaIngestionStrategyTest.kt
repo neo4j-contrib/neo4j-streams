@@ -227,7 +227,9 @@ class SchemaIngestionStrategyTest {
     }
 
     @Test
-    fun `should create the Schema Query Strategy for relationships with multiple UNIQUE constraints with priority of constraint with less props and first sorted properties list alphabetically`() {
+    fun `should create the Schema Query Strategy for relationships with multiple unique constraints`() {
+        // the Schema Query Strategy leverage the first constraint with lowest properties
+        // with the same size, we take the first sorted properties list alphabetically
 
         (1..50).forEach {
             // given
@@ -302,7 +304,10 @@ class SchemaIngestionStrategyTest {
     }
 
     @Test
-    fun `should create the Schema Query Strategy for relationships with multiple UNIQUE constraints with priority of constraint with less props, first label alphabetically and first sorted properties list alphabetically`() {
+    fun `should create the Schema Query Strategy for relationships with multiple unique constraints and labels`() {
+        // the Schema Query Strategy leverage the first constraint with lowest properties
+        // with the same size, we take the first label in alphabetical order
+        // finally, with same label name, we take the first sorted properties list alphabetically
 
         (1..50).forEach {
             // given
