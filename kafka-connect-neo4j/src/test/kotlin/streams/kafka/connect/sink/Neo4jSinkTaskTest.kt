@@ -652,7 +652,7 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    fun `should insert data into Neo4j from CDC events with schema strategy and multiple uniqueness constraints`() {
+    fun `should insert data into Neo4j from CDC events with schema strategy and multiple unique constraints`() {
         val myTopic = UUID.randomUUID().toString()
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
