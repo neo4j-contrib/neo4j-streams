@@ -220,7 +220,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         assertEquals(1, recordsThree.count())
         val mapRel: Map<String, Any> = JSONUtils.readValue(recordsThree.first().key())
 
-        keyStart = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Other", "Person"))
+        keyStart = mapOf("ids" to mapOf("address" to "Baker Street"), "labels" to listOf("Other", "Person"))
         assertEquals(keyStart, mapRel["start"])
         assertEquals(keyEnd, mapRel["end"])
         assertEquals(relType, mapRel["label"])
@@ -251,18 +251,19 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         db.execute("CREATE (:Person:Neo4j {name:'Sherlock', surname: 'Holmes', address: 'Baker Street'})")
         val records = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, records.count())
-        var keyNode = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person", "Neo4j"))
+        var keyNode = mapOf("ids" to mapOf("surname" to "Holmes"), "labels" to listOf("Person", "Neo4j"))
         assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(records.first().key()))
 
         db.execute("MATCH (p:Person {name:'Sherlock'}) SET p.name='Foo'")
         val recordsTwo = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsTwo.count())
-        keyNode = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf("Person", "Neo4j"))
+        keyNode = mapOf("ids" to mapOf("surname" to "Holmes"), "labels" to listOf("Person", "Neo4j"))
         assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsTwo.first().key()))
 
         db.execute("MATCH (p:Person {name:'Foo'}) SET p.surname='Bar'")
         val recordsThree = kafkaConsumer.poll(Duration.ofSeconds(10))
         assertEquals(1, recordsThree.count())
+        keyNode = mapOf("ids" to mapOf("surname" to "Bar"), "labels" to listOf("Person", "Neo4j"))
         assertEquals(keyNode, JSONUtils.readValue<Map<*, *>>(recordsThree.first().key()))
 
         db.execute("MATCH (p:Person {name:'Foo'}) DETACH DELETE p")
