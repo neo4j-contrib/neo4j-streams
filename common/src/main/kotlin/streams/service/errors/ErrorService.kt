@@ -15,15 +15,16 @@ data class ErrorData(val originalTopic: String,
                      val partition: String,
                      val offset: String,
                      val executingClass: Class<*>?,
+                     val databaseName: String?,
                      val exception: Exception?) {
 
     constructor(originalTopic: String, timestamp: Long?, key: Any?, value: Any?,
-                partition: Int, offset: Long, executingClass: Class<*>?, exception: Exception?) :
-            this(originalTopic, timestamp ?: RecordBatch.NO_TIMESTAMP, toByteArray(key), toByteArray(value), partition.toString(),offset.toString(), executingClass, exception)
+                partition: Int, offset: Long, executingClass: Class<*>?, databaseName: String?, exception: Exception?) :
+            this(originalTopic, timestamp ?: RecordBatch.NO_TIMESTAMP, toByteArray(key), toByteArray(value), partition.toString(),offset.toString(), executingClass, databaseName, exception)
 
     companion object {
 
-        fun from(consumerRecord: ConsumerRecord<out Any, out Any>, exception: Exception?, executingClass: Class<*>?): ErrorData {
+        fun from(consumerRecord: ConsumerRecord<out Any, out Any>, exception: Exception?, executingClass: Class<*>?, databaseName: String?): ErrorData {
             return ErrorData(offset = consumerRecord.offset().toString(),
                     originalTopic = consumerRecord.topic(),
                     partition = consumerRecord.partition().toString(),
@@ -31,7 +32,8 @@ data class ErrorData(val originalTopic: String,
                     exception = exception,
                     executingClass = executingClass,
                     key = toByteArray(consumerRecord.key()),
-                    value = toByteArray(consumerRecord.value()))
+                    value = toByteArray(consumerRecord.value()),
+                    databaseName = databaseName)
         }
 
         fun toByteArray(v:Any?) = try {

@@ -15,7 +15,12 @@ import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.common.errors.WakeupException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import streams.*
+import streams.StreamsEventConsumer
+import streams.StreamsEventConsumerFactory
+import streams.StreamsEventSink
+import streams.StreamsEventSinkQueryExecution
+import streams.StreamsSinkConfiguration
+import streams.StreamsTopicService
 import streams.config.StreamsConfig
 import streams.events.StreamsPluginStatus
 import streams.extensions.isDefaultDb
@@ -55,12 +60,13 @@ class KafkaEventSink(private val config: Map<String, String>,
     override fun getEventConsumerFactory(): StreamsEventConsumerFactory {
         return object: StreamsEventConsumerFactory() {
             override fun createStreamsEventConsumer(config: Map<String, String>, log: Log, topics: Set<Any>): StreamsEventConsumer {
-                val kafkaConfig = KafkaSinkConfiguration.from(config, db.databaseName(), db.isDefaultDb())
+                val dbName = db.databaseName()
+                val kafkaConfig = KafkaSinkConfiguration.from(config, dbName, db.isDefaultDb())
                 val topics1 = topics as Set<String>
                 return if (kafkaConfig.enableAutoCommit) {
-                    KafkaAutoCommitEventConsumer(kafkaConfig, log, topics1)
+                    KafkaAutoCommitEventConsumer(kafkaConfig, log, topics1, dbName)
                 } else {
-                    KafkaManualCommitEventConsumer(kafkaConfig, log, topics1)
+                    KafkaManualCommitEventConsumer(kafkaConfig, log, topics1, dbName)
                 }
             }
         }

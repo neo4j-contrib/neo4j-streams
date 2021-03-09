@@ -49,7 +49,8 @@ abstract class KafkaEventConsumer(config: KafkaSinkConfiguration,
 
 open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfiguration,
                                         private val log: Log,
-                                        val topics: Set<String>): KafkaEventConsumer(config, log, topics) {
+                                        val topics: Set<String>,
+                                        private val dbName: String): KafkaEventConsumer(config, log, topics) {
 
     private val errorService: ErrorService = KafkaErrorService(config.asProperties(),
         ErrorService.ErrorConfig.from(config.streamsSinkConfiguration.errorConfig),
@@ -93,7 +94,7 @@ open class KafkaAutoCommitEventConsumer(private val config: KafkaSinkConfigurati
         try {
             action(topic, topicRecords.map { it.toStreamsSinkEntity() })
         } catch (e: Exception) {
-            errorService.report(topicRecords.map { ErrorData.from(it, e, this::class.java) })
+            errorService.report(topicRecords.map { ErrorData.from(it, e, this::class.java, dbName) })
         }
     }
 

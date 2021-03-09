@@ -17,6 +17,7 @@ import org.neo4j.harness.junit.rule.Neo4jRule
 import streams.events.*
 import streams.utils.JSONUtils
 import streams.service.errors.ErrorService
+import streams.service.errors.ProcessingError
 import streams.service.sink.strategy.CUDNode
 import streams.service.sink.strategy.CUDNodeRel
 import streams.service.sink.strategy.CUDOperations
@@ -28,6 +29,7 @@ import java.util.stream.StreamSupport
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+import kotlin.test.fail
 
 
 class Neo4jSinkTaskTest {
@@ -1224,6 +1226,54 @@ class Neo4jSinkTaskTest {
             """.trimIndent())
                     .columnAs<Long>("count").next()
             assertEquals(5L, countRelationships)
+        }
+    }
+
+    @Test
+    fun `should fail data insertion with ProcessingError`() {
+        // given
+        val topic = UUID.randomUUID().toString()
+
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_RELATIONSHIP_PREFIX}$topic"] = "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DATABASE] = "notExistent"
+
+        val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
+                "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        val input = listOf(SinkRecord(topic, 1, null, null, null, data, 42))
+
+        try {
+            task.put(input)
+            fail("It should fail with ProcessingError")
+        } catch (e: ProcessingError) {
+            val errorData = e.errorDatas.first()
+            assertTrue(errorData.databaseName == "notExistent"
+                    && errorData.exception!!.javaClass.name == "org.neo4j.driver.exceptions.FatalDiscoveryException")
+        }
+
+        props[Neo4jSinkConnectorConfig.DATABASE] = "neo4j"
+        val taskNotValid = Neo4jSinkTask()
+        taskNotValid.initialize(mock(SinkTaskContext::class.java))
+        taskNotValid.start(props)
+
+        val dataNotValid = mapOf("sourceId" to null, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
+                "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
+        val inputNotValid = listOf(SinkRecord(topic, 1, null, null, null, dataNotValid, 43))
+
+        try {
+            taskNotValid.put(inputNotValid)
+            fail("It should fail with ProcessingError")
+        } catch (e: ProcessingError) {
+            val errorData = e.errorDatas.first()
+            assertTrue(errorData.databaseName == "neo4j"
+                    && errorData.exception!!.javaClass.name == "org.neo4j.driver.exceptions.ClientException")
         }
     }
 
