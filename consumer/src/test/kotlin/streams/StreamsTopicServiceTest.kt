@@ -12,22 +12,15 @@ import kotlin.test.assertEquals
 
 class StreamsTopicServiceTest {
 
-    private lateinit var db: DbmsRule
     private lateinit var streamsTopicService: StreamsTopicService
     private lateinit var kafkaConfig: KafkaSinkConfiguration
 
     @Before
     fun setUp() {
-        db = ImpermanentDbmsRule().start()
         kafkaConfig = KafkaSinkConfiguration(streamsSinkConfiguration = StreamsSinkConfiguration(topics = Topics(cypherTopics = mapOf("shouldWriteCypherQuery" to "MERGE (n:Label {id: event.id})\n" +
                 "    ON CREATE SET n += event.properties"))))
         streamsTopicService = StreamsTopicService()
         streamsTopicService.set(TopicType.CYPHER, kafkaConfig.streamsSinkConfiguration.topics.cypherTopics)
-    }
-
-    @After
-    fun tearDown() {
-        db.shutdownSilently()
     }
 
     private fun assertProperty(entry: Map.Entry<String, String>) {

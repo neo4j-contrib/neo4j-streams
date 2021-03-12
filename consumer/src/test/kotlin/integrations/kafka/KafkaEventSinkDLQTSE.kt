@@ -37,7 +37,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                 valueDeserializer = ByteArrayDeserializer::class.java.name,
                 topics = *arrayOf(dlqTopic))
 
-        dlqConsumer.let {
+        dlqConsumer.use {
             Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
                 val query = """
                 MATCH (c:Customer)
@@ -54,7 +54,6 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                             && headers["__streams.errors.exception.class.name"] == "org.neo4j.graphdb.QueryExecutionException"
                 }
             }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-            it.close()
         }
     }
 
@@ -80,7 +79,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                 keyDeserializer = ByteArrayDeserializer::class.java.name,
                 valueDeserializer = ByteArrayDeserializer::class.java.name,
                 topics = *arrayOf(dlqTopic))
-        dlqConsumer.let {
+        dlqConsumer.use {
             Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
                 val query = """
                 MATCH (c:Customer)
@@ -96,7 +95,6 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                             && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
                 }
             }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-            it.close()
         }
     }
 

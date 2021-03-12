@@ -3,17 +3,24 @@ package streams.mocks
 import org.apache.kafka.clients.producer.RecordMetadata
 import org.apache.kafka.common.TopicPartition
 import org.mockito.Mockito
+import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.internal.GraphDatabaseAPI
+import org.neo4j.logging.Log
+import org.neo4j.logging.NullLog
 import org.neo4j.logging.internal.LogService
 import org.neo4j.logging.internal.NullLogService
 import streams.StreamsEventRouter
+import streams.StreamsEventRouterConfiguration
 import streams.config.StreamsConfig
 import streams.events.StreamsEvent
 import streams.events.StreamsTransactionEvent
 import streams.toMap
 
-class MockStreamsEventRouter(logService: LogService = NullLogService.getInstance(),
-                             config: StreamsConfig = Mockito.mock(StreamsConfig::class.java),
-                             dbName: String = ""): StreamsEventRouter(logService, config, dbName) {
+class MockStreamsEventRouter(config: Map<String, String> = emptyMap(),
+                             db: GraphDatabaseService = Mockito.mock(GraphDatabaseAPI::class.java),
+                             log: Log = NullLog.getInstance()): StreamsEventRouter(config, db, log) {
+
+    override val eventRouterConfiguration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration()
 
     private fun fakeRecordMetadata(topic: String) = RecordMetadata(
             TopicPartition(topic, 0),

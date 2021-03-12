@@ -22,5 +22,5 @@ abstract class StreamsEventConsumer(log: Log, topics: Set<Any>) {
 
 
 abstract class StreamsEventConsumerFactory {
-    abstract fun createStreamsEventConsumer(config: StreamsConfig, log: Log, topics: Set<Any>): StreamsEventConsumer
+    abstract fun createStreamsEventConsumer(config: Map<String, String>, log: Log, topics: Set<Any>): StreamsEventConsumer
 }

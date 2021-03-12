@@ -39,12 +39,10 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
     }
 
     companion object {
-        fun from(cfg: StreamsConfig, dbName: String, invalidTopics: List<String> = emptyList()): StreamsSinkConfiguration {
+        fun from(configMap: Map<String, String>, dbName: String, invalidTopics: List<String> = emptyList(), isDefaultDb: Boolean): StreamsSinkConfiguration {
             val default = StreamsSinkConfiguration()
 
-            val configMap = cfg.config
             var topics = Topics.from(map = configMap, dbName = dbName, invalidTopics = invalidTopics)
-            val isDefaultDb = cfg.isDefaultDb(dbName)
             if (isDefaultDb) {
                 topics += Topics.from(map = configMap, invalidTopics = invalidTopics)
             }
@@ -58,8 +56,8 @@ data class StreamsSinkConfiguration(val enabled: Boolean = StreamsConfig.SINK_EN
                     .mapKeys { it.key.substring("streams.sink.".length) }
 
 
-            return default.copy(enabled = cfg.isSinkEnabled(dbName),
-                    proceduresEnabled = cfg.hasProceduresEnabled(dbName),
+            return default.copy(enabled = StreamsConfig.isSinkEnabled(configMap, dbName),
+                    proceduresEnabled = StreamsConfig.hasProceduresEnabled(configMap, dbName),
                     topics = topics,
                     errorConfig = errorHandler,
                     checkApocTimeout = configMap.getOrDefault(StreamsConfig.CHECK_APOC_TIMEOUT,

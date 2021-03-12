@@ -1,15 +1,6 @@
 package streams
 
-import org.junit.Before
 import org.junit.Test
-import org.mockito.Mockito
-import org.neo4j.dbms.api.DatabaseManagementService
-import org.neo4j.graphdb.ResourceIterator
-import org.neo4j.graphdb.Result
-import org.neo4j.graphdb.Transaction
-import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.logging.NullLog
-import streams.config.StreamsConfig
 import streams.service.TopicType
 import streams.service.TopicValidationException
 import kotlin.test.assertEquals
@@ -18,24 +9,7 @@ import kotlin.test.assertTrue
 
 class StreamsSinkConfigurationTest {
 
-    lateinit var streamsConfig: StreamsConfig
-    val defalutDbName = "neo4j"
-
-    @Before
-    fun setUp() {
-        val dbms = Mockito.mock(DatabaseManagementService::class.java)
-        val db = Mockito.mock(GraphDatabaseAPI::class.java)
-        val tx = Mockito.mock(Transaction::class.java)
-        val result = Mockito.mock(Result::class.java)
-        val resource = Mockito.mock(ResourceIterator::class.java) as ResourceIterator<String>
-        Mockito.`when`(dbms.database(Mockito.anyString())).thenReturn(db)
-        Mockito.`when`(db.beginTx()).thenReturn(tx)
-        Mockito.`when`(tx.execute(Mockito.anyString())).thenReturn(result)
-        Mockito.`when`(result.columnAs<String>(Mockito.anyString())).thenReturn(resource)
-        Mockito.`when`(resource.hasNext()).thenReturn(true)
-        Mockito.`when`(resource.next()).thenReturn(defalutDbName)
-        streamsConfig = StreamsConfig(NullLog.getInstance(), dbms)
-    }
+    private val defaultDbName = "neo4j"
 
     @Test
     fun `should manage only topics for default db`() {
@@ -48,8 +22,7 @@ class StreamsSinkConfigurationTest {
         val config = mapOf(topicKey to topicValue,
                 topicKeyNeo to topicValueNeo,
                 topicKeyFoo to topicValueFoo)
-        streamsConfig.config.putAll(config)
-        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        val streamsSinkConf = StreamsSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
         val cypherTopics = streamsSinkConf.topics.asMap()[TopicType.CYPHER] as Map<String, String>
         assertEquals(mapOf("myTopic" to topicValue, "myTopicNeo" to topicValueNeo), cypherTopics)
     }
@@ -65,8 +38,7 @@ class StreamsSinkConfigurationTest {
         val config = mapOf(topicKey to topicValue,
                 topicKeyNeo to topicValueNeo,
                 topicKeyFoo to topicValueFoo)
-        streamsConfig.config.putAll(config)
-        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, "foo")
+        val streamsSinkConf = StreamsSinkConfiguration.from(config, "foo", isDefaultDb = false)
         val cypherTopics = streamsSinkConf.topics.asMap()[TopicType.CYPHER] as Map<String, String>
         assertEquals(mapOf("myTopicFoo" to topicValueFoo), cypherTopics)
     }
@@ -100,8 +72,7 @@ class StreamsSinkConfigurationTest {
                 "streams.cluster.only" to clusterOnly,
                 "streams.sink.poll.interval" to pollIntervall,
                 "streams.check.writeable.instance.interval" to writeableInstanceInterval)
-        streamsConfig.config.putAll(config)
-        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        val streamsSinkConf = StreamsSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
         testFromConf(streamsSinkConf, topic, topicValue)
         assertFalse { streamsSinkConf.enabled }
         assertTrue { streamsSinkConf.clusterOnly }
@@ -123,8 +94,7 @@ class StreamsSinkConfigurationTest {
                 topicKey to topicValue,
                 "streams.sink.enabled" to "false",
                 "streams.sink.enabled.to.nonLowerCaseDb" to "true")
-        streamsConfig.config.putAll(config)
-        val streamsSinkConf = StreamsSinkConfiguration.from(streamsConfig, "nonlowercasedb")
+        val streamsSinkConf = StreamsSinkConfiguration.from(config, "nonlowercasedb", isDefaultDb = false)
         assertFalse { streamsSinkConf.enabled }
         assertEquals(topicValue, streamsSinkConf.topics.cypherTopics[topic])
     }
@@ -138,8 +108,7 @@ class StreamsSinkConfigurationTest {
                 "streams.sink.topic.pattern.node.nodePatternTopic" to "User{!userId,name,surname,address.city}",
                 "streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to topic)
-        streamsConfig.config.putAll(config)
-        StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        StreamsSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
     }
 
     @Test(expected = TopicValidationException::class)
@@ -148,8 +117,7 @@ class StreamsSinkConfigurationTest {
         val config = mapOf("streams.sink.enabled" to "false",
                 "streams.sink.topic.cdc.sourceId" to topic,
                 "streams.sink.topic.cdc.schema" to topic)
-        streamsConfig.config.putAll(config)
-        StreamsSinkConfiguration.from(streamsConfig, defalutDbName)
+        StreamsSinkConfiguration.from(config, defaultDbName, isDefaultDb = true)
     }
 
     companion object {

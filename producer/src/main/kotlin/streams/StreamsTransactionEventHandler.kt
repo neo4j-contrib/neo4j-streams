@@ -4,35 +4,40 @@ import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Transaction
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.graphdb.event.TransactionData
 import org.neo4j.graphdb.event.TransactionEventListener
-import streams.events.Constraint
-import streams.events.EntityType
-import streams.events.NodeChangeBuilder
-import streams.events.NodePayload
-import streams.events.NodePayloadBuilder
-import streams.events.OperationType
-import streams.events.Payload
-import streams.events.PreviousTransactionData
-import streams.events.PreviousTransactionDataBuilder
-import streams.events.RelationshipChangeBuilder
-import streams.events.RelationshipPayload
-import streams.events.RelationshipPayloadBuilder
-import streams.events.Schema
-import streams.events.SchemaBuilder
-import streams.events.StreamsEventMetaBuilder
-import streams.events.StreamsTransactionEvent
-import streams.events.StreamsTransactionEventBuilder
+import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.events.*
 import streams.extensions.labelNames
+import streams.extensions.registerTransactionEventListener
+import streams.extensions.unregisterTransactionEventListener
 import streams.utils.SchemaUtils.getNodeKeys
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 
 class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
-                                     private val streamsConstraintsService: StreamsConstraintsService,
-                                     private val configuration: StreamsEventRouterConfiguration)
+                                     private val db: GraphDatabaseAPI,
+                                     private val streamsConstraintsService: StreamsConstraintsService)
     : TransactionEventListener<PreviousTransactionData> {
+
+    private val status = AtomicReference(StreamsPluginStatus.UNKNOWN)
+
+    fun start() {
+        db.registerTransactionEventListener(this)
+        status.set(StreamsPluginStatus.RUNNING)
+    }
+
+    fun stop() {
+        db.unregisterTransactionEventListener(this)
+        status.set(StreamsPluginStatus.STOPPED)
+    }
+
+    fun status() = status.get()
+
+    private val configuration = router.eventRouterConfiguration
 
     private val nodeRoutingLabels = configuration.nodeRouting
             .flatMap { it.labels }

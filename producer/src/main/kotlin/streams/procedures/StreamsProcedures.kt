@@ -2,6 +2,7 @@ package streams.procedures
 
 import kotlinx.coroutines.runBlocking
 import org.neo4j.graphdb.GraphDatabaseService
+import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.procedure.Context
 import org.neo4j.procedure.Description
@@ -10,14 +11,16 @@ import org.neo4j.procedure.Name
 import org.neo4j.procedure.Procedure
 import streams.StreamsEventRouter
 import streams.StreamsEventRouterConfiguration
+import streams.StreamsTransactionEventHandler
 import streams.events.StreamsEventBuilder
+import streams.utils.StreamsUtils
 import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Stream
 
 data class StreamPublishResult(@JvmField val value: Map<String, Any>)
 
 data class StreamsEventSinkStoreEntry(val eventRouter: StreamsEventRouter,
-                                      val eventRouterConfiguration: StreamsEventRouterConfiguration)
+                                      val txHandler: StreamsTransactionEventHandler)
 class StreamsProcedures {
 
     @JvmField @Context
@@ -57,7 +60,7 @@ class StreamsProcedures {
     }
 
     private fun checkEnabled() {
-        if (!getStreamsEventSinkStoreEntry().eventRouterConfiguration.proceduresEnabled) {
+        if (!getStreamsEventSinkStoreEntry().eventRouter.eventRouterConfiguration.proceduresEnabled) {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
@@ -81,10 +84,12 @@ class StreamsProcedures {
     private fun buildStreamEvent(topic: String, payload: Any) = StreamsEventBuilder()
             .withPayload(payload)
             .withNodeRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                    .eventRouter
                     .eventRouterConfiguration
                     .nodeRouting
                     .firstOrNull { it.topic == topic })
             .withRelationshipRoutingConfiguration(getStreamsEventSinkStoreEntry()
+                    .eventRouter
                     .eventRouterConfiguration
                     .relRouting
                     .firstOrNull { it.topic == topic })
@@ -97,11 +102,16 @@ class StreamsProcedures {
 
         private val streamsEventRouterStore = ConcurrentHashMap<String, StreamsEventSinkStoreEntry>()
 
-        fun register(databaseName: String,
-                     evtRouter: StreamsEventRouter,
-                     evtConf: StreamsEventRouterConfiguration) = runBlocking {
-            streamsEventRouterStore[databaseName] = StreamsEventSinkStoreEntry(evtRouter, evtConf)
+        fun register(
+            db: GraphDatabaseAPI,
+            evtRouter: StreamsEventRouter,
+            txHandler: StreamsTransactionEventHandler
+        ) {
+            streamsEventRouterStore[StreamsUtils.getName(db)] = StreamsEventSinkStoreEntry(evtRouter, txHandler)
+        }
+
+        fun unregister(db: GraphDatabaseAPI) {
+            streamsEventRouterStore.remove(StreamsUtils.getName(db))
         }
     }
-
 }

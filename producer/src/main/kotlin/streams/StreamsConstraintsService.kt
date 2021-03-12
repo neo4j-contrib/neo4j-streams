@@ -1,14 +1,22 @@
 package streams
 
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import org.neo4j.graphdb.DatabaseShutdownException
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.RelationshipType
+import org.neo4j.graphdb.TransactionFailureException
 import streams.events.Constraint
 import streams.utils.StreamsUtils
 import java.io.Closeable
-import java.util.*
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 
 class StreamsConstraintsService(private val db: GraphDatabaseService, private val poolInterval: Long): Closeable {
@@ -46,7 +54,7 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
                                             .toSet()
                                 }
                     }
-                }, DatabaseShutdownException::class.java)
+                }, DatabaseShutdownException::class.java, TransactionFailureException::class.java)
                 delay(poolInterval)
             }
         }

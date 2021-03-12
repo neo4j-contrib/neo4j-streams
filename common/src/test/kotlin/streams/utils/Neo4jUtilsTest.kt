@@ -3,7 +3,6 @@ package streams.utils
 import org.junit.ClassRule
 import org.junit.Test
 import org.neo4j.test.rule.ImpermanentDbmsRule
-import streams.StreamsEventSinkAvailabilityListener
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
@@ -16,7 +15,6 @@ class Neo4jUtilsTest {
 
     @Test
     fun shouldCheckIfIsWriteableInstance() {
-        StreamsEventSinkAvailabilityListener.setAvailable(db, true)
         val isWriteableInstance = Neo4jUtils.isWriteableInstance(db)
         assertTrue { isWriteableInstance }
     }

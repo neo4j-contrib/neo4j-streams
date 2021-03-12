@@ -7,6 +7,7 @@ import org.junit.BeforeClass
 import org.junit.runner.RunWith
 import org.junit.runners.Suite
 import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.containers.Network
 import streams.MavenUtils
 import streams.utils.StreamsUtils
 
@@ -49,6 +50,7 @@ class KafkaEventSinkSuiteIT {
         fun setUpContainer() {
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
+                    .withNetwork(Network.newNetwork())
                 schemaRegistry = SchemaRegistryContainer(confluentPlatformVersion)
                         .withKafka(kafka)
                 kafka.start()

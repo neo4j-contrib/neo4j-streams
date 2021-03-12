@@ -19,7 +19,9 @@ import streams.StreamsEventSink
 import streams.StreamsSinkConfiguration
 import streams.config.StreamsConfig
 import streams.events.StreamsPluginStatus
+import streams.extensions.isDefaultDb
 import streams.utils.Neo4jUtils
+import streams.utils.StreamsUtils
 import java.util.concurrent.ArrayBlockingQueue
 import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
@@ -51,8 +53,9 @@ class StreamsSinkProcedures {
             Stream.empty<StreamResult>()
         } else {
             val properties = config?.mapValues { it.value.toString() } ?: emptyMap()
-            val configuration = getStreamsEventSink()
-                    .getEventSinkConfigMapper().convert(config = properties)
+            val configuration = getStreamsEventSink(db!!)!!
+                .getEventSinkConfigMapper()
+                .convert(config = properties)
 
             readData(topic, config ?: emptyMap(), configuration)
         }
@@ -63,7 +66,7 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                getStreamsEventSink().start()
+                getStreamsEventSink(db!!)?.start()
                 sinkStatus()
             } catch (e: Exception) {
                 log?.error("Cannot start the Sink because of the following exception", e)
@@ -78,7 +81,7 @@ class StreamsSinkProcedures {
         checkEnabled()
         return checkLeader {
             try {
-                getStreamsEventSink()?.stop()
+                getStreamsEventSink(db!!)?.stop()
                 sinkStatus()
             } catch (e: Exception) {
                 log?.error("Cannot stopped the Sink because of the following exception", e)
@@ -99,11 +102,15 @@ class StreamsSinkProcedures {
     }
 
     @Procedure("streams.sink.config")
+    @Deprecated("Please use streams.configuration.get")
     fun sinkConfig(): Stream<KeyValueResult> {
         checkEnabled()
         return checkLeader {
             StreamsSinkConfiguration
-                    .from(StreamsConfig.getInstance()!!, db!!.databaseName())
+                    .from(configMap = StreamsConfig.getInstance(db!! as GraphDatabaseAPI)
+                        .getConfiguration().mapValues { it.value.toString() },
+                        dbName = db!!.databaseName(),
+                        isDefaultDb = db!!.isDefaultDb())
                     .asMap()
                     .entries.stream()
                     .map { KeyValueResult(it.key, it.value) }
@@ -113,8 +120,8 @@ class StreamsSinkProcedures {
     @Procedure("streams.sink.status")
     fun sinkStatus(): Stream<KeyValueResult> {
         checkEnabled()
-        return checkLeader {
-            val value = (getStreamsEventSink().status() ?: StreamsPluginStatus.UNKNOWN).toString()
+        return run {
+            val value = (getStreamsEventSink(db!!)?.status() ?: StreamsPluginStatus.UNKNOWN).toString()
             Stream.of(KeyValueResult("status", value))
         }
     }
@@ -157,17 +164,16 @@ class StreamsSinkProcedures {
     }
 
     private fun createConsumer(consumerConfig: Map<String, String>, topic: String): StreamsEventConsumer = runBlocking {
-        val copy = StreamsConfig.getInstance().copy()
-        copy.config.clear()
-        copy.config.putAll(consumerConfig)
-        getStreamsEventSink().getEventConsumerFactory()
+        val copy = StreamsConfig.getInstance(db!! as GraphDatabaseAPI).getConfiguration()
+            .mapValues { it.value.toString() }
+            .toMutableMap()
+        copy.putAll(consumerConfig)
+        getStreamsEventSink(db!!)!!.getEventConsumerFactory()
                 .createStreamsEventConsumer(copy, log!!, setOf(topic))
     }
 
-    private fun getStreamsEventSink() = streamsEventSinkStore[db!!.databaseName()]!!
-
     private fun checkEnabled() {
-        if (!StreamsConfig.getInstance().hasProceduresEnabled(db?.databaseName() ?: ""))  {
+        if (!StreamsConfig.getInstance(db!! as GraphDatabaseAPI).hasProceduresEnabled(db?.databaseName() ?: ""))  {
             throw RuntimeException("In order to use the procedure you must set streams.procedures.enabled=true")
         }
     }
@@ -176,8 +182,16 @@ class StreamsSinkProcedures {
 
         private val streamsEventSinkStore = ConcurrentHashMap<String, StreamsEventSink>()
 
-        fun registerStreamsEventSink(databaseName: String, streamsEventSink: StreamsEventSink) {
-            streamsEventSinkStore[databaseName] = streamsEventSink
+        private fun getStreamsEventSink(db: GraphDatabaseService) = streamsEventSinkStore[StreamsUtils.getName(db)]
+
+        fun registerStreamsEventSink(db: GraphDatabaseAPI, streamsEventSink: StreamsEventSink) {
+            streamsEventSinkStore[StreamsUtils.getName(db)] = streamsEventSink
         }
+
+        fun unregisterStreamsEventSink(db: GraphDatabaseAPI) = streamsEventSinkStore.remove(StreamsUtils.getName(db))
+
+        fun hasStatus(db: GraphDatabaseAPI, status: StreamsPluginStatus) = getStreamsEventSink(db)?.status() == status
+
+        fun isRegistered(db: GraphDatabaseAPI) = getStreamsEventSink(db) != null
     }
 }
