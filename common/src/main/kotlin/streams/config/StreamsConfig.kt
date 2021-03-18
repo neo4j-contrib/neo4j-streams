@@ -15,6 +15,7 @@ import streams.extensions.databaseManagementService
 import streams.extensions.getDefaultDbName
 import streams.extensions.isAvailable
 import streams.utils.Neo4jUtils
+import streams.utils.ProcedureUtils
 import streams.utils.StreamsUtils
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
@@ -117,7 +118,7 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
                     log.warn("${getInstanceWaitTimeout()} ms have passed and the instance is not online, the Streams plugin will not started")
                     return@runBlocking
                 }
-                if (Neo4jUtils.isCluster(dbms, log)) {
+                if (ProcedureUtils.isCluster(dbms)) {
                     log.info("We're in cluster instance waiting for the ${StreamsUtils.LEADER}s to be elected in each database")
                     // in case is a cluster we wait for the correct cluster formation => LEADER elected
                     Neo4jUtils.waitForTheLeaders(dbms, log) { configStart() }

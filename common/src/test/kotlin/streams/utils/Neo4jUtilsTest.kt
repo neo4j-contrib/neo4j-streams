@@ -20,12 +20,6 @@ class Neo4jUtilsTest {
     }
 
     @Test
-    fun shouldCheckIfIsACluster() {
-        val isEnterprise = Neo4jUtils.isCluster(db)
-        assertFalse { isEnterprise }
-    }
-
-    @Test
     fun `should not have APOC`() {
         assertFalse { Neo4jUtils.hasApoc(db) }
     }

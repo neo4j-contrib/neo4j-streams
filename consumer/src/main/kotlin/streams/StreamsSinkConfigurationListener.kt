@@ -19,6 +19,7 @@ import streams.procedures.StreamsSinkProcedures
 import streams.utils.ConsumerUtils
 import streams.utils.KafkaValidationUtils
 import streams.utils.Neo4jUtils
+import streams.utils.ProcedureUtils
 import streams.utils.StreamsUtils
 
 class StreamsSinkConfigurationListener(private val db: GraphDatabaseAPI,
@@ -119,7 +120,7 @@ class StreamsSinkConfigurationListener(private val db: GraphDatabaseAPI,
         try {
             if (streamsSinkConfiguration.enabled) {
                 log.info("[Sink] The Streams Sink module is starting")
-                if (Neo4jUtils.isCluster(db, log)) {
+                if (ProcedureUtils.isCluster(db)) {
                     initSinkModule(streamsSinkConfiguration)
                 } else {
                     runInASingleInstance(streamsSinkConfiguration)
