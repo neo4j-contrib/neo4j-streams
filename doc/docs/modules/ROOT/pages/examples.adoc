@@ -12,7 +12,7 @@ should be used just for test purposes and is not suitable for production scenari
 
 === Download and Install Confluent Platform
 
-* Download link:https://www.confluent.io/download/[Confluent Platform] and then choose the desired format `.tar.gz` or `.zip`.
+* Download {url-confluent-download}[Confluent Platform] and then choose the desired format `.tar.gz` or `.zip`.
 * Decompress the file in your desired folder
 * Add the install location of the Confluent `bin` directory to your PATH environment variable.
 
