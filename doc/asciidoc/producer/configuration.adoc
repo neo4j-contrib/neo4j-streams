@@ -3,7 +3,6 @@
 kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 kafka.acks=1
-kafka.num.partitions=1
 kafka.retries=2
 kafka.batch.size=16384
 kafka.buffer.memory=33554432
