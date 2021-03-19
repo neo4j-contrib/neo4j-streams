@@ -15,7 +15,7 @@ asciidoc:
     page-pagination: true
     url-common-license-page: https://neo4j.com/docs/license/
     url-confluent-blog: https://www.confluent.io/blog
-    url-confluent-download: https://www.confluent.io/dowload/
+    url-confluent-download: https://www.confluent.io/get-started/
     url-confluent-kafka: https://docs.confluent.io/current/kafka
     url-confluent-cloud: https://docs.confluent.io/current/cloud
     url-confluent-install: https://docs.confluent.io/current/installation
