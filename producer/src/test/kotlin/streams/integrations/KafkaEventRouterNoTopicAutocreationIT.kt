@@ -11,6 +11,7 @@ import org.junit.BeforeClass
 import org.junit.Test
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.containers.Network
 import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.KafkaTestUtils
@@ -44,6 +45,7 @@ class KafkaEventRouterNoTopicAutocreationIT {
             var exists = false
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
+                    .withNetwork(Network.newNetwork())
                 kafka.withEnv("KAFKA_AUTO_CREATE_TOPICS_ENABLE", "false")
                 kafka.start()
                 exists = true

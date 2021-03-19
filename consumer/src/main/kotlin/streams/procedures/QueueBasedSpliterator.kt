@@ -1,7 +1,6 @@
 package streams.procedures
 
 import org.neo4j.graphdb.NotInTransactionException
-import org.neo4j.graphdb.TransactionGuardException
 import org.neo4j.graphdb.TransactionTerminatedException
 import org.neo4j.procedure.TerminationGuard
 import java.util.Spliterator
@@ -37,7 +36,7 @@ class QueueBasedSpliterator<T> constructor(private val queue: BlockingQueue<T>,
             false
         } catch (e: Exception) {
             when (e) {
-                is TransactionGuardException, is TransactionTerminatedException, is NotInTransactionException -> true
+                is TransactionTerminatedException, is NotInTransactionException -> true
                 else -> throw e
             }
         }
