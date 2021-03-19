@@ -14,10 +14,12 @@ object SchemaUtils {
                             && propertyKeys.containsAll(constraint.properties)
                             && labels.contains(constraint.label)
                 }
-                .minBy { it.properties.size }
+                // we order first by properties.size, then by label name and finally by properties name alphabetically
+                // with properties.sorted() we ensure that ("foo", "bar") and ("bar", "foo") are no different
+                // with toString() we force it.properties to have the natural sort order, that is alphabetically
+                .minWith((compareBy({ it.properties.size }, { it.label }, { it.properties.sorted().toString() })))
                 ?.properties
                 .orEmpty()
-//                .ifEmpty { propertyKeys }
 
     fun toStreamsTransactionEvent(streamsSinkEntity: StreamsSinkEntity,
                                   evaluation: (StreamsTransactionEvent) -> Boolean)

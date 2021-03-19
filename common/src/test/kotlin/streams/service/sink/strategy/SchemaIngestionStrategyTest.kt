@@ -4,7 +4,9 @@ import org.junit.Test
 import streams.events.*
 import streams.serialization.JSONUtils
 import streams.service.StreamsSinkEntity
+import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class SchemaIngestionStrategyTest {
 
@@ -220,6 +222,159 @@ class SchemaIngestionStrategyTest {
         val expectedRelEvents = listOf(
                 mapOf("start" to mapOf("name" to "Michael", "surname" to "Hunger"),
                         "end" to mapOf("name" to "My Awesome Product"),
+                        "properties" to mapOf("since" to 2014))
+        )
+        assertEquals(expectedRelEvents, eventsRelList)
+    }
+    @Test
+    fun `should create the Schema Query Strategy for relationships with multiple unique constraints`() {
+        // the Schema Query Strategy leverage the first constraint with lowest properties
+        // with the same size, we take the first sorted properties list alphabetically
+
+        // given
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
+        val constraintsList = listOf(
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("address")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("country")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("profession", "another_one")),
+                Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("code")),
+                Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))
+        ).shuffled()
+
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsList)
+        val idsStart = mapOf("name" to "Sherlock",
+                "surname" to "Holmes",
+                "country" to "UK",
+                "profession" to "detective",
+                "another_one" to "foo",
+                "address" to "Baker Street")
+        val idsEnd = mapOf("name" to "My Awesome Product", "code" to 17294)
+
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.updated
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "1", labels = listOf("User Ext", "NewLabel"), ids = idsStart),
+                        end = RelationshipNodeChange(id = "2", labels = listOf("Product Ext", "NewLabelA"), ids = idsEnd),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "HAS BOUGHT"
+                ),
+                schema = relSchema
+        )
+        val cdcQueryStrategy = SchemaIngestionStrategy()
+        val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
+
+        // when
+        val relationshipEvents = cdcQueryStrategy.mergeRelationshipEvents(txEvents)
+        val relationshipDeleteEvents = cdcQueryStrategy.deleteRelationshipEvents(txEvents)
+
+        // then
+        assertEquals(0, relationshipDeleteEvents.size)
+        assertEquals(1, relationshipEvents.size)
+        val relQuery = relationshipEvents[0].query
+        val expectedRelQuery = """
+            |${StreamsUtils.UNWIND}
+            |MERGE (start:`User Ext`{address: event.start.address})
+            |MERGE (end:`Product Ext`{code: event.end.code})
+            |MERGE (start)-[r:`HAS BOUGHT`]->(end)
+            |SET r = event.properties
+        """.trimMargin()
+        assertEquals(expectedRelQuery, relQuery.trimIndent())
+        val eventsRelList = relationshipEvents[0].events
+        assertEquals(1, eventsRelList.size)
+        val expectedRelEvents = listOf(
+                mapOf("start" to mapOf("address" to "Baker Street"),
+                        "end" to mapOf("code" to 17294),
+                        "properties" to mapOf("since" to 2014))
+        )
+        assertEquals(expectedRelEvents, eventsRelList)
+    }
+
+    @Test
+    fun `should create the Schema Query Strategy for relationships with multiple unique constraints and labels`() {
+        // the Schema Query Strategy leverage the first constraint with lowest properties
+        // with the same size, we take the first label in alphabetical order
+        // finally, with same label name, we take the first sorted properties list alphabetically
+
+        // given
+        // we shuffle the constraints to ensure that the result doesn't depend from the ordering
+        val constraintsList = listOf(
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("address")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("country")),
+                Constraint(label = "User AAA", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("another_two")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name", "surname")),
+                Constraint(label = "User Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("profession", "another_one")),
+                Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("code")),
+                Constraint(label = "Product Ext", type = StreamsConstraintType.UNIQUE, properties = linkedSetOf("name"))
+        ).shuffled()
+
+        val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraintsList)
+        val idsStart = mapOf("name" to "Sherlock",
+                "surname" to "Holmes",
+                "country" to "UK",
+                "profession" to "detective",
+                "another_one" to "foo",
+                "address" to "Baker Street",
+                "another_two" to "Dunno")
+        val idsEnd = mapOf("name" to "My Awesome Product", "code" to 17294)
+
+        val cdcDataRelationship = StreamsTransactionEvent(
+                meta = Meta(timestamp = System.currentTimeMillis(),
+                        username = "user",
+                        txId = 1,
+                        txEventId = 2,
+                        txEventsCount = 3,
+                        operation = OperationType.updated
+                ),
+                payload = RelationshipPayload(
+                        id = "2",
+                        start = RelationshipNodeChange(id = "1", labels = listOf("User Ext", "User AAA", "NewLabel"), ids = idsStart),
+                        end = RelationshipNodeChange(id = "2", labels = listOf("Product Ext", "NewLabelA"), ids = idsEnd),
+                        after = RelationshipChange(properties = mapOf("since" to 2014)),
+                        before = null,
+                        label = "HAS BOUGHT"
+                ),
+                schema = relSchema
+        )
+        val cdcQueryStrategy = SchemaIngestionStrategy()
+        val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
+
+        // when
+        val relationshipEvents = cdcQueryStrategy.mergeRelationshipEvents(txEvents)
+        val relationshipDeleteEvents = cdcQueryStrategy.deleteRelationshipEvents(txEvents)
+
+        // then
+        assertEquals(0, relationshipDeleteEvents.size)
+        assertEquals(1, relationshipEvents.size)
+        val relQuery = relationshipEvents[0].query
+        val expectedRelQueryOne = """
+            |${StreamsUtils.UNWIND}
+            |MERGE (start:`User AAA`:`User Ext`{another_two: event.start.another_two})
+            |MERGE (end:`Product Ext`{code: event.end.code})
+            |MERGE (start)-[r:`HAS BOUGHT`]->(end)
+            |SET r = event.properties
+        """.trimMargin()
+        val expectedRelQueryTwo = """
+            |${StreamsUtils.UNWIND}
+            |MERGE (start:`User Ext`:`User AAA`{another_two: event.start.another_two})
+            |MERGE (end:`Product Ext`{code: event.end.code})
+            |MERGE (start)-[r:`HAS BOUGHT`]->(end)
+            |SET r = event.properties
+        """.trimMargin()
+        assertTrue { listOf(expectedRelQueryOne, expectedRelQueryTwo).contains(relQuery.trimIndent()) }
+        val eventsRelList = relationshipEvents[0].events
+        assertEquals(1, eventsRelList.size)
+        val expectedRelEvents = listOf(
+                mapOf("start" to mapOf("another_two" to "Dunno"),
+                        "end" to mapOf("code" to 17294),
                         "properties" to mapOf("since" to 2014))
         )
         assertEquals(expectedRelEvents, eventsRelList)
