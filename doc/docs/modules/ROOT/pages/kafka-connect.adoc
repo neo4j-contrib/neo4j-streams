@@ -221,7 +221,7 @@ Following an example:
 {
   "name": "Neo4jSinkConnector",
   "config": {
-    "database": "<database_name>",
+    "neo4j.database": "<database_name>",
     "topics": "topic",
     "connector.class": "streams.kafka.connect.sink.Neo4jSinkConnector",
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
