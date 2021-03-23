@@ -72,7 +72,7 @@ class KafkaErrorService(private val producer: Producer<ByteArray, ByteArray>?, p
         prefix("partition") to errorData.partition.toByteArray(),
         prefix("offset") to errorData.offset.toByteArray())
 
-        if (errorData.databaseName != null) {
+        if (!errorData.databaseName.isNullOrBlank()) {
             headers[prefix("databaseName")] = errorData.databaseName.toByteArray()
         }
 
