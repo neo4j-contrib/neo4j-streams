@@ -208,7 +208,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withProperties(it.allProperties)
                             .build()
 
-                    val isKeyStrategyFirst = it.getKeyStrategy(configuration)
+                    val isKeyStrategyFirst = it.isRelKeyStrategyFirst(configuration)
 
                     val startLabels = it.startNode.labelNames()
                     val startNodeConstraints = filterNodeConstraintCache(startLabels)
@@ -258,7 +258,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                         it.endNode.propertyKeys
                     }
 
-                    val isKeyStrategyFirst = it.getKeyStrategy(configuration)
+                    val isKeyStrategyFirst = it.isRelKeyStrategyFirst(configuration)
 
                     val startNodeConstraints = filterNodeConstraintCache(startNodeLabels)
                     val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints, isKeyStrategyFirst)

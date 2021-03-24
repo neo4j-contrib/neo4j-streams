@@ -6,7 +6,7 @@ import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
 import streams.StreamsEventRouterConfiguration
 import streams.extensions.labelNames
-import streams.getKeyStrategy
+import streams.isRelKeyStrategyFirst
 import streams.utils.SchemaUtils.getNodeKeys
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
@@ -115,7 +115,7 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { startLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val keyStrategyFirst = it.getKeyStrategy(configuration)
+                    val keyStrategyFirst = it.isRelKeyStrategyFirst(configuration)
                     val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, keyStrategyFirst)
                             .toTypedArray()
 
