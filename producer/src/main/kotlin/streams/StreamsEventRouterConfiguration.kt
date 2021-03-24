@@ -3,7 +3,7 @@ package streams
 import org.apache.commons.lang3.StringUtils
 import org.neo4j.logging.Log
 import streams.events.EntityType
-import streams.utils.StreamsUtils
+import streams.events.RelKeyStrategy
 
 
 private inline fun <reified T> filterMap(config: Map<String, String>, routingPrefix: String, routingSuffix: String? = null, log: Log? = null): List<T> {
@@ -19,7 +19,7 @@ private inline fun <reified T> filterMap(config: Map<String, String>, routingPre
 
                 val keyStrategy = routingSuffix?.let { suffix ->
                     config.entries.firstOrNull { it.key.startsWith(entryKey) && it.key.endsWith(suffix) }?.value
-                } ?: StreamsUtils.RelKeyStrategy.DEFAULT.toString().toLowerCase()
+                } ?: RelKeyStrategy.DEFAULT.toString().toLowerCase()
 
                 RoutingConfigurationFactory.getRoutingConfiguration(entryKey.replace(routingPrefix, StringUtils.EMPTY), it.value, entityType, keyStrategy, log) as List<T>
             }

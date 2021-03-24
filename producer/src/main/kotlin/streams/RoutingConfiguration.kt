@@ -6,8 +6,6 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.logging.Log
 import streams.events.*
-import streams.utils.StreamsUtils
-import streams.utils.StreamsUtils.RelKeyStrategy.DEFAULT
 
 
 private val PATTERN_REG: Regex = "^(\\w+\\s*(?::\\s*(?:[\\w|\\*]+)\\s*)*)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
@@ -155,7 +153,7 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
 }
 
 data class RelationshipRoutingConfiguration(val name: String = "",
-                                            val relKeyStrategy: StreamsUtils.RelKeyStrategy = DEFAULT,
+                                            val relKeyStrategy: RelKeyStrategy = RelKeyStrategy.DEFAULT,
                                             override val topic: String = "neo4j",
                                             override val all: Boolean = true,
                                             override val include: List<String> = emptyList(),
@@ -172,7 +170,7 @@ data class RelationshipRoutingConfiguration(val name: String = "",
     }
 
     companion object {
-        fun parse(topic: String, pattern: String, keyStrategyString: String = DEFAULT.toString(), log: Log? = null): List<RelationshipRoutingConfiguration> {
+        fun parse(topic: String, pattern: String, keyStrategyString: String = RelKeyStrategy.DEFAULT.toString(), log: Log? = null): List<RelationshipRoutingConfiguration> {
             Topic.validate(topic)
             if (pattern == PATTERN_WILDCARD) {
                 return listOf(RelationshipRoutingConfiguration(topic = topic))
@@ -189,10 +187,10 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                     val properties = RoutingProperties.from(matcher)
 
                     val keyStrategy = try {
-                        StreamsUtils.RelKeyStrategy.valueOf(keyStrategyString.toUpperCase())
+                        RelKeyStrategy.valueOf(keyStrategyString.toUpperCase())
                     } catch (e: IllegalArgumentException) {
-                        log?.warn("Invalid key strategy setting, switching to default value ${DEFAULT.toString().toLowerCase()}")
-                        DEFAULT
+                        log?.warn("Invalid key strategy setting, switching to default value ${RelKeyStrategy.DEFAULT.toString().toLowerCase()}")
+                        RelKeyStrategy.DEFAULT
                     }
 
                     RelationshipRoutingConfiguration(name = labels.first(), topic = topic, all = properties.all,
@@ -240,7 +238,7 @@ data class RelationshipRoutingConfiguration(val name: String = "",
 
 
 object RoutingConfigurationFactory {
-    fun getRoutingConfiguration(topic: String, line: String, entityType: EntityType, keyStrategy: String = DEFAULT.toString(), log: Log? = null): List<RoutingConfiguration> {
+    fun getRoutingConfiguration(topic: String, line: String, entityType: EntityType, keyStrategy: String = RelKeyStrategy.DEFAULT.toString(), log: Log? = null): List<RoutingConfiguration> {
         return when (entityType) {
             EntityType.node -> NodeRoutingConfiguration.parse(topic, line)
             EntityType.relationship -> RelationshipRoutingConfiguration.parse(topic, line, keyStrategy, log)

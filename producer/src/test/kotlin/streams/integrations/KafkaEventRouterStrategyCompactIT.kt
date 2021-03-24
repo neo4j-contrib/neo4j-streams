@@ -18,12 +18,11 @@ import streams.events.Constraint
 import streams.events.Meta
 import streams.events.NodePayload
 import streams.events.OperationType
+import streams.events.RelKeyStrategy
 import streams.events.RelationshipPayload
 import streams.events.StreamsConstraintType
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
-import streams.utils.StreamsUtils.RelKeyStrategy.DEFAULT
-import streams.utils.StreamsUtils.RelKeyStrategy.ALL
 import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -349,8 +348,8 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
                 "streams.source.topic.relationships.$topicWithoutStrategy" to "$defaultProp{*}",
-                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to ALL.toString().toLowerCase(),
-                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to DEFAULT.toString().toLowerCase())
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.ALL.toString().toLowerCase(),
+                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.DEFAULT.toString().toLowerCase())
 
         val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",

@@ -8,7 +8,6 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.events.*
 import streams.extensions.labelNames
 import streams.utils.SchemaUtils.getNodeKeys
-import streams.utils.StreamsUtils.RelKeyStrategy.DEFAULT
 import java.net.InetAddress
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicReference
@@ -211,7 +210,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withProperties(it.allProperties)
                             .build()
 
-                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), DEFAULT)
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
 
                     val startLabels = it.startNode.labelNames()
                     val startNodeConstraints = filterNodeConstraintCache(startLabels)
@@ -261,7 +260,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                         it.endNode.propertyKeys
                     }
 
-                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), DEFAULT)
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
 
                     val startNodeConstraints = filterNodeConstraintCache(startNodeLabels)
                     val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints, relKeyStrategy)

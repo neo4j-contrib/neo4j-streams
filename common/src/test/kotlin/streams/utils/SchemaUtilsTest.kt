@@ -2,9 +2,9 @@ package streams.utils
 
 import org.junit.Test
 import streams.events.Constraint
+import streams.events.RelKeyStrategy
 import streams.events.StreamsConstraintType
 import streams.utils.SchemaUtils.getNodeKeys
-import streams.utils.StreamsUtils.RelKeyStrategy.ALL
 import kotlin.test.assertEquals
 
 class SchemaUtilsTest {
@@ -17,7 +17,7 @@ class SchemaUtilsTest {
         val constraints = props.map {
             Constraint(label = it.key, properties = it.value, type = StreamsConstraintType.UNIQUE)
         }
-        val keys = getNodeKeys(props.keys.toList(), setOf("prop", "foo", "bar", "fooBar"), constraints, ALL)
+        val keys = getNodeKeys(props.keys.toList(), setOf("prop", "foo", "bar", "fooBar"), constraints, RelKeyStrategy.ALL)
         assertEquals(setOf("bar", "foo", "fooBar"), keys)
     }
 
@@ -79,7 +79,7 @@ class SchemaUtilsTest {
         }.shuffled()
 
         val propertyKeys = setOf("prop", "prop2", "foo", "bar", "baz", "bez", "aaa", "aab", "baa", "aac", "xcz", "xcv")
-        val actualKeys = getNodeKeys(props.map { it.first }, propertyKeys, constraints, ALL)
+        val actualKeys = getNodeKeys(props.map { it.first }, propertyKeys, constraints, RelKeyStrategy.ALL)
         val expectedKeys = setOf("aaa", "aab", "aac", "baa", "bar", "baz", "bez", "foo", "xcv", "xcz")
 
         assertEquals(expectedKeys, actualKeys)
@@ -123,7 +123,7 @@ class SchemaUtilsTest {
         }.shuffled()
 
         val propertyKeys = setOf("prop", "foo", "bar", "baz", "bez")
-        val actualKeys =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints, ALL)
+        val actualKeys =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints, RelKeyStrategy.ALL)
         val expectedKeys = setOf("bar", "baz", "bez", "foo")
 
         assertEquals(expectedKeys, actualKeys)

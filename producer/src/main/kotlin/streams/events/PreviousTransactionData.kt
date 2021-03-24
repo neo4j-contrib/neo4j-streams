@@ -6,7 +6,6 @@ import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
 import streams.extensions.labelNames
 import streams.utils.SchemaUtils.getNodeKeys
-import streams.utils.StreamsUtils
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
                                    val nodeLabels: Map<Long, List<String>>,
@@ -43,7 +42,7 @@ class PreviousTransactionDataBuilder {
     private var updatedRels : Set<Relationship> = emptySet()
     private var relCreatedPayload: Map<String, RelationshipPayload> = emptyMap()
     private var relDeletedPayload: Map<String, RelationshipPayload> = emptyMap()
-    private var relRoutingTypesAndStrategies: Map<String, StreamsUtils.RelKeyStrategy> = emptyMap()
+    private var relRoutingTypesAndStrategies: Map<String, RelKeyStrategy> = emptyMap()
 
     private lateinit var nodeConstraints: Map<String, Set<Constraint>>
     private lateinit var relConstraints: Map<String, Set<Constraint>>
@@ -114,7 +113,7 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { startLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), StreamsUtils.RelKeyStrategy.DEFAULT)
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
 
                     val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, relKeyStrategy)
                             .toTypedArray()
@@ -225,7 +224,7 @@ class PreviousTransactionDataBuilder {
         return this
     }
 
-    fun withRelRoutingTypesAndStrategies(relRoutingTypesAndStrategies: Map<String, StreamsUtils.RelKeyStrategy>): PreviousTransactionDataBuilder {
+    fun withRelRoutingTypesAndStrategies(relRoutingTypesAndStrategies: Map<String, RelKeyStrategy>): PreviousTransactionDataBuilder {
         this.relRoutingTypesAndStrategies = relRoutingTypesAndStrategies
         return this
     }

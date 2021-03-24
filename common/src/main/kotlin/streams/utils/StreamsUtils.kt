@@ -6,8 +6,6 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 
 object StreamsUtils {
 
-    enum class RelKeyStrategy { DEFAULT, ALL }
-
     const val UNWIND: String = "UNWIND {events} AS event"
 
     const val STREAMS_CONFIG_PREFIX = "streams."
