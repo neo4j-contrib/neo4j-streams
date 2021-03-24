@@ -294,7 +294,7 @@ class KafkaEventRouterEnterpriseTSE {
             val nullRecords = it.filter { it.value() == null }
             val relRecord: Map<String, Any>? = nullRecords.firstOrNull()?.let { JSONUtils.readValue(it.key()) }
             val nodeRecordActual: Map<String, Any>? = nullRecords.lastOrNull()?.let { JSONUtils.readValue(it.key()) }
-            it.count() == 500
+            it.count() >= 500
                     && nullRecords.count() == 2
                     && relRecord == mapOf("start" to mapStartExpected, "end" to mapEndExpected, "label" to keyRel)
                     && nodeRecordExpected == nodeRecordActual

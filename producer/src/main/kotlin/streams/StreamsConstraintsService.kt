@@ -54,7 +54,7 @@ class StreamsConstraintsService(private val db: GraphDatabaseService, private va
                                             .toSet()
                                 }
                     }
-                }, DatabaseShutdownException::class.java, TransactionFailureException::class.java)
+                }, DatabaseShutdownException::class.java, TransactionFailureException::class.java, IllegalStateException::class.java)
                 delay(poolInterval)
             }
         }

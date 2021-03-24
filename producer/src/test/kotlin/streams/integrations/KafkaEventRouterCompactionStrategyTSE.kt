@@ -21,7 +21,6 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
     private fun createProducerRecordKeyForDeleteStrategy(meta: Meta) = "${meta.txId + meta.txEventId}-${meta.txEventId}"
 
     private fun initDbWithLogStrategy(strategy: String, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
-
         db.setConfig("streams.source.schema.polling.interval", "0")
                 .setConfig("kafka.streams.log.compaction.strategy", strategy)
 
@@ -44,24 +43,21 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         val keyRecord = "test"
         // we sent 5 messages, 3 of them with the same key, so we expect that
         // with the log compaction activated we expect to have just one message with the key equal to 'test'
-        db.execute("CALL streams.publish('$topic', 'Compaction 0', {key: 'Baz'})")
-        db.execute("CALL streams.publish('$topic', 'Compaction 1', {key: '$keyRecord'})")
-        db.execute("CALL streams.publish('$topic', 'Compaction 2', {key: '$keyRecord'})")
-        db.execute("CALL streams.publish('$topic', 'Compaction 3', {key: 'Foo'})")
-        db.execute("CALL streams.publish('$topic', 'Compaction 4', {key: '$keyRecord'})")
+        db.execute("CALL streams.publish.sync('$topic', 'Compaction 0', {key: 'Baz'})")
+        db.execute("CALL streams.publish.sync('$topic', 'Compaction 1', {key: '$keyRecord'})")
+        db.execute("CALL streams.publish.sync('$topic', 'Compaction 2', {key: '$keyRecord'})")
+        db.execute("CALL streams.publish.sync('$topic', 'Compaction 3', {key: 'Foo'})")
+        db.execute("CALL streams.publish.sync('$topic', 'Compaction 4', {key: '$keyRecord'})")
 
         // to activate the log compaction process we publish dummy messages
         // and waiting for messages population in topic
-        db.execute("UNWIND range(1,999) as id CALL streams.publish('$topic', id, {key: id}) RETURN null") {
-            assertEquals(999, Iterators.count(it))
-        }
+        db.execute("UNWIND range(1,999) as id CALL streams.publish.sync('$topic', id, {key: id})")
 
         // check if there is only one record with key 'test' and payload 'Compaction 4'
         assertTopicFilled(kafkaConsumer, true) {
-            val compactedRecord = it.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
-            it.count() == 500 &&
-                    compactedRecord.count() == 1 &&
-                    JSONUtils.readValue<Map<*,*>>(compactedRecord.first().value())["payload"] == "Compaction 4"
+            val compactedRecord = it.find { JSONUtils.readValue<String>(it.key()) == keyRecord }
+            it.count() >= 500 &&
+                    compactedRecord?.let { JSONUtils.readValue<Map<*,*>>(it.value())["payload"] } == "Compaction 4"
         }
     }
 
@@ -90,12 +86,11 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         // to activate the log compaction process we create dummy messages and waiting for messages population
         createManyPersons()
         assertTopicFilled(kafkaConsumer, true) {
-            val nullRecords = it.filter { it.value() == null }
+            val nullRecord = it.find { it.value() == null }
             val start = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
             val end = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf("Person"))
-            it.count() == 500
-                    && nullRecords.count() == 1
-                    && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to start, "end" to end, "label" to keyRel)
+            it.count() >= 500
+                    && nullRecord?.let { JSONUtils.readValue<Map<*,*>>(it.key()) } == mapOf("start" to start, "end" to end, "label" to keyRel)
         }
     }
 
@@ -128,10 +123,9 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
 
         // we check that there is only one tombstone record
         assertTopicFilled(kafkaConsumer, true) {
-            val nullRecords = it.filter { it.value() == null }
-            it.count() == 500
-                    && nullRecords.count() == 1
-                    && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to "0", "end" to "1", "label" to relType)
+            val nullRecord = it.find { it.value() == null }
+            it.count() >= 500
+                    && nullRecord?.let { JSONUtils.readValue<Map<*,*>>(it.key()) } == mapOf("start" to "0", "end" to "1", "label" to relType)
         }
     }
 
@@ -153,10 +147,9 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
 
         createManyPersons()
         assertTopicFilled(kafkaConsumer, true) {
-            val nullRecords = it.filter { it.value() == null }
-            it.count() == 500
-                    && nullRecords.count() == 1
-                    && JSONUtils.readValue<String>(nullRecords.first().key()) == "1"
+            val nullRecords = it.find { it.value() == null }
+            it.count() >= 500
+                    && nullRecords?.let { JSONUtils.readValue<String>(it.key()) } == "1"
         }
     }
 
@@ -179,11 +172,10 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
 
         createManyPersons()
         assertTopicFilled(kafkaConsumer, true) {
-            val nullRecords = it.filter { it.value() == null }
+            val nullRecords = it.find { it.value() == null }
             val keyRecordExpected = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person"))
-            it.count() == 500
-                    && nullRecords.count() == 1
-                    && keyRecordExpected == JSONUtils.readValue<Map<*,*>>(nullRecords.first().key())
+            it.count() >= 500
+                    && keyRecordExpected == nullRecords?.let { JSONUtils.readValue<Map<*,*>>(it.key()) }
         }
     }
 
