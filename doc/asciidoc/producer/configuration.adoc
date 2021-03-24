@@ -17,6 +17,7 @@ kafka.streams.log.compaction.strategy=delete
 
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
+streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=<all/first, default=first>
 streams.source.enabled=<true/false, default=true>
 streams.source.schema.polling.interval=<MILLIS, the polling interval for getting the schema information>
 ----
