@@ -38,8 +38,6 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
             .flatMap { it.labels }
     private val relRoutingTypesAndStrategies = configuration.relRouting
             .map { it.name to it.relKeyStrategy }.toMap()
-//    private val relRoutingTypes = configuration.relRouting
-//            .map { it.name }
 
     private val nodeAll = configuration.nodeRouting.any { it.labels.isEmpty() }
     private val relAll = configuration.relRouting.any { it.name.isNullOrBlank() }

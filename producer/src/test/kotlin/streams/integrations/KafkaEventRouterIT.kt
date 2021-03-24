@@ -194,8 +194,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
         val topicWithStrategyFirst = UUID.randomUUID().toString()
         val topicWithoutStrategy = UUID.randomUUID().toString()
 
-        val configs = mapOf(//"streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
-                "streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
+        val configs = mapOf("streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
                 "streams.source.topic.nodes.$productTopic" to "$labelEnd{*}",
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
