@@ -10,6 +10,7 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
+import streams.RelKeyStrategy
 import streams.events.Constraint
 import streams.events.EntityType
 import streams.events.NodeChange
@@ -39,14 +40,12 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
         db = graphDatabaseBuilder.newDatabase() as GraphDatabaseAPI
     }
 
-    private fun initDbWithConfigsAndConstraints() {
-        val configsMap = mapOf("streams.source.topic.nodes.personConstraints" to "PersonConstr{*}",
-                "streams.source.topic.nodes.productConstraints" to "ProductConstr{*}",
-                "streams.source.topic.relationships.boughtConstraints" to "BOUGHT{*}",
-                "streams.source.schema.polling.interval" to "0")
-        initDbWithConfigs(configsMap)
-        db.execute("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE").close()
-        db.execute("CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE").close()
+    private fun initDbWithConfigsAndConstraints(configs: Map<String, String>, constraints: List<String>) {
+
+        graphDatabaseBuilder.setConfig("streams.source.schema.polling.interval", "0")
+        initDbWithConfigs(configs)
+        constraints.forEach { db.execute(it).close() }
+
     }
 
     @Test
@@ -72,6 +71,341 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
     }
 
     @Test
+    fun testWithSingleTopicAndMultipleKeyStrategiesAndLabels() {
+        val allTopic = UUID.randomUUID().toString()
+
+        val allPropsRelType = "BOUGHT"
+
+        val labelStart = "PersonConstr"
+        val anotherLabelStart = "SubjectConstr"
+        val labelEnd = "ProductConstr"
+
+        val configs = mapOf("streams.source.topic.nodes.$allTopic" to "$labelStart{*}",
+                "streams.source.topic.nodes.$allTopic" to "$labelStart:$anotherLabelStart:$labelEnd{*}",
+                "streams.source.topic.relationships.$allTopic" to "$allPropsRelType{*}",
+                "streams.source.topic.relationships.$allTopic.key_strategy" to RelKeyStrategy.all.toString())
+
+        val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$anotherLabelStart) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$anotherLabelStart) ASSERT p.another IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$labelEnd) ASSERT p.name IS UNIQUE")
+
+        initDbWithConfigsAndConstraints(configs, constraints)
+
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf(allTopic))
+
+            db.execute("CREATE (:$labelStart:$anotherLabelStart {name:'Foo', surname: 'Bar', address: 'Earth', another: 'Alpha'})").close()
+            db.execute("CREATE (:$labelEnd {name:'One', price: '100€'})").close()
+            db.execute("""
+                |MATCH (p:$labelStart {name:'Foo'})
+                |MATCH (pp:$labelEnd {name:'One'})
+                |MERGE (p)-[:$allPropsRelType]->(pp)
+            """.trimMargin())
+
+            val records = consumer.poll(20000)
+            assertEquals(3, records.count())
+
+
+            val setConstraints = setOf(
+                    Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE),
+                    Constraint(anotherLabelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                    Constraint(anotherLabelStart, setOf("another"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)
+            )
+            assertTrue(records.all {
+                val value = JSONUtils.asStreamsTransactionEvent(it.value())
+                val key = JSONUtils.readValue<Any>(it.key())
+                when (val payload = value.payload) {
+                    is NodePayload -> {
+                        val (properties, operation, schema) = Triple(payload.after!!.properties!!, value.meta.operation, value.schema)
+                        when (payload.after!!.labels!!.toSet()) {
+                            setOf(labelStart, anotherLabelStart) -> properties == mapOf("address" to "Earth", "another" to "Alpha", "name" to "Foo", "surname" to "Bar")
+                                    && operation == OperationType.created
+                                    && schema.properties == mapOf("address" to "String", "another" to "String", "name" to "String", "surname" to "String")
+                                    && schema.constraints.toSet() == setOf(Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE),
+                                    Constraint(anotherLabelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                                    Constraint(anotherLabelStart, setOf("another"), StreamsConstraintType.UNIQUE))
+
+                            setOf(labelEnd) -> properties == mapOf("name" to "One", "price" to "100€")
+                                    && operation == OperationType.created
+                                    && value.schema.properties == mapOf("name" to "String", "price" to "String")
+                                    && value.schema.constraints.toSet() == setOf(Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE))
+
+                            else -> {
+                                false
+                            }
+                        }
+                    }
+
+                    is RelationshipPayload -> {
+                        val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+
+                        start.ids == mapOf("another" to "Alpha", "name" to "Foo", "surname" to "Bar")
+                                    && end.ids == mapOf("name" to "One")
+                                    && setConstraints == setConstraints
+                                    && key is String
+                                    && commonRelAssertions(value)
+                    }
+                    else -> false
+                }
+            })
+
+            db.execute("MATCH (p)-[rel:$allPropsRelType]->(pp) DELETE rel")
+
+            val deletedRecords = consumer.poll(20000)
+            assertEquals(1, deletedRecords.count())
+            val record = deletedRecords.first()
+            val key = JSONUtils.readValue<Any>(record.key())
+            val value = JSONUtils.asStreamsTransactionEvent(deletedRecords.first().value())
+            val payload = value.payload as RelationshipPayload
+            val (start, end, constraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+            assertTrue {
+                start.ids == mapOf("another" to "Alpha", "name" to "Foo", "surname" to "Bar")
+                        && end.ids == mapOf("name" to "One")
+                        && constraints == setConstraints
+                        && key is String
+                        && value.payload.before!!.properties!!.isNullOrEmpty()
+                        && value.payload.after == null
+                        && value.schema.properties == emptyMap<String, String>()
+                        && value.meta.operation == OperationType.deleted
+            }
+
+        }
+    }
+
+    @Test
+    fun testWithMultipleKeyStrategies() {
+
+        val allProps = "BOUGHT"
+        val oneProp = "ONE_PROP"
+        val defaultProp = "DEFAULT"
+
+        val labelStart = "PersonConstr"
+        val labelEnd = "ProductConstr"
+
+        val personTopic = UUID.randomUUID().toString()
+        val productTopic = UUID.randomUUID().toString()
+        val topicWithStrategyAll = UUID.randomUUID().toString()
+        val topicWithStrategyFirst = UUID.randomUUID().toString()
+        val topicWithoutStrategy = UUID.randomUUID().toString()
+
+        val configs = mapOf("streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
+                "streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
+                "streams.source.topic.nodes.$productTopic" to "$labelEnd{*}",
+                "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
+                "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
+                "streams.source.topic.relationships.$topicWithoutStrategy" to "$defaultProp{*}",
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.all.toString(),
+                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.first.toString())
+
+        val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:$labelEnd) ASSERT p.name IS UNIQUE")
+
+        initDbWithConfigsAndConstraints(configs, constraints)
+
+        val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
+        createConsumer(config).use { consumer ->
+            consumer.subscribe(listOf(
+                    personTopic, productTopic, topicWithStrategyAll, topicWithStrategyFirst, topicWithoutStrategy
+            ))
+
+            db.execute("CREATE (:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})").close()
+            db.execute("CREATE (:$labelEnd {name:'One', price: '100€'})").close()
+            db.execute("""
+                |MATCH (p:$labelStart {name:'Foo'})
+                |MATCH (pp:$labelEnd {name:'One'})
+                |MERGE (p)-[:$allProps]->(pp)
+            """.trimMargin()).close()
+            db.execute("""
+                |MATCH (p:$labelStart {name:'Foo'})
+                |MATCH (pp:$labelEnd {name:'One'})
+                |MERGE (p)-[:$oneProp]->(pp)
+            """.trimMargin()).close()
+            db.execute("""
+                |MATCH (p:$labelStart {name:'Foo'})
+                |MATCH (pp:$labelEnd {name:'One'})
+                |MERGE (p)-[:$defaultProp]->(pp)
+            """.trimMargin()).close()
+
+            val recordsEntitiesCreated = consumer.poll(20000)
+            assertEquals(5, recordsEntitiesCreated.count())
+
+            val expectedSetConstraints = setOf(
+                    Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)
+            )
+            val expectedPropsAllKeyStrategy = mapOf("name" to "Foo", "surname" to "Bar")
+            val expectedPropsFirstKeyStrategy = mapOf("name" to "Foo")
+            val expectedEndProps = mapOf("name" to "One")
+
+            assertTrue(recordsEntitiesCreated.all {
+                val value = JSONUtils.asStreamsTransactionEvent(it.value())
+                val key = JSONUtils.readValue<Any>(it.key())
+                when (val payload = value.payload) {
+                    is NodePayload -> {
+                        val (properties, operation, schema) = Triple(payload.after!!.properties!!, value.meta.operation, value.schema)
+                        when (payload.after!!.labels!!) {
+                            listOf(labelStart) -> properties == mapOf("address" to "Earth", "name" to "Foo", "surname" to "Bar")
+                                    && operation == OperationType.created
+                                    && schema.properties == mapOf("address" to "String", "name" to "String", "surname" to "String")
+                                    && schema.constraints.toSet() == setOf(Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE))
+                                    && key is String
+
+                            listOf(labelEnd) -> properties == mapOf("name" to "One", "price" to "100€")
+                                    && operation == OperationType.created
+                                    && value.schema.properties == mapOf("name" to "String", "price" to "String")
+                                    && value.schema.constraints.toSet() == setOf(Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE))
+                                    && key is String
+
+                            else -> {
+                                false
+                            }
+                        }
+                    }
+                    is RelationshipPayload -> {
+                        val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+                        when (payload.label) {
+                            allProps -> start.ids == expectedPropsAllKeyStrategy
+                                    && end.ids == expectedEndProps
+                                    && setConstraints == expectedSetConstraints
+                                    && key is String
+                                    && commonRelAssertions(value)
+
+                            oneProp -> start.ids == expectedPropsFirstKeyStrategy
+                                    && end.ids == expectedEndProps
+                                    && setConstraints == expectedSetConstraints
+                                    && key is String
+                                    && commonRelAssertions(value)
+
+                            defaultProp -> start.ids == expectedPropsFirstKeyStrategy
+                                    && end.ids == expectedEndProps
+                                    && setConstraints == expectedSetConstraints
+                                    && key is String
+                                    && commonRelAssertions(value)
+
+                            else -> false
+                        }
+                    }
+                    else -> false
+                }
+            })
+
+            db.execute("MATCH (p)-[rel:$allProps]->(pp) SET rel.type = 'update'").close()
+            val updatedRecordsAll = consumer.poll(10000)
+            assertEquals(1, updatedRecordsAll.count())
+            val updatedAll = updatedRecordsAll.first()
+            val keyUpdateAll = JSONUtils.readValue<Any>(updatedAll.key())
+            val valueUpdateAll = JSONUtils.asStreamsTransactionEvent(updatedRecordsAll.first().value())
+            val payloadUpdateAll = valueUpdateAll.payload as RelationshipPayload
+            val (startUpdateAll, endUpdateAll, setConstraintsUpdateAll) = Triple(payloadUpdateAll.start, payloadUpdateAll.end, valueUpdateAll.schema.constraints.toSet())
+
+            assertTrue {
+                startUpdateAll.ids == mapOf("name" to "Foo", "surname" to "Bar")
+                        && endUpdateAll.ids == mapOf("name" to "One")
+                        && setConstraintsUpdateAll == setConstraintsUpdateAll
+                        && keyUpdateAll is String
+                        && commonRelAssertionsUpdate(valueUpdateAll)
+            }
+
+            db.execute("MATCH (p)-[rel:$oneProp]->(pp) SET rel.type = 'update'").close()
+            val updatedRecordsOne = consumer.poll(10000)
+            assertEquals(1, updatedRecordsOne.count())
+            val updatedOne = updatedRecordsOne.first()
+            val keyUpdateOne = JSONUtils.readValue<Any>(updatedOne.key())
+            val valueUpdateOne = JSONUtils.asStreamsTransactionEvent(updatedRecordsOne.first().value())
+            val payloadUpdateOne = valueUpdateOne.payload as RelationshipPayload
+            val (startUpdateOne, endUpdateOne, setConstraintsUpdateOne) = Triple(payloadUpdateOne.start, payloadUpdateOne.end, valueUpdateOne.schema.constraints.toSet())
+
+            assertTrue {
+                startUpdateOne.ids == expectedPropsFirstKeyStrategy
+                        && endUpdateOne.ids == expectedEndProps
+                        && setConstraintsUpdateOne == setConstraintsUpdateAll
+                        && keyUpdateOne is String
+                        && commonRelAssertionsUpdate(valueUpdateOne)
+            }
+
+            db.execute("MATCH (p)-[rel:$defaultProp]->(pp) SET rel.type = 'update'").close()
+            Thread.sleep(30000)
+            val updatedRecords = consumer.poll(20000)
+            assertEquals(1, updatedRecords.count())
+
+            val updated = updatedRecords.first()
+            val keyUpdate = JSONUtils.readValue<Any>(updated.key())
+            val valueUpdate = JSONUtils.asStreamsTransactionEvent(updatedRecords.first().value())
+            val payloadUpdate = valueUpdate.payload as RelationshipPayload
+            val (startUpdate, endUpdate, setConstraintsUpdate) = Triple(payloadUpdate.start, payloadUpdate.end, valueUpdate.schema.constraints.toSet())
+
+            assertTrue {
+                startUpdate.ids == expectedPropsFirstKeyStrategy
+                        && endUpdate.ids == expectedEndProps
+                        && setConstraintsUpdate == setConstraintsUpdate
+                        && keyUpdate is String
+                        && commonRelAssertionsUpdate(valueUpdate)
+            }
+
+            db.execute("MATCH (p)-[rel:$allProps]->(pp) DELETE rel")
+
+            val deletedRecordsAll = consumer.poll(10000)
+            assertEquals(1, deletedRecordsAll.count())
+            val recordAll = deletedRecordsAll.first()
+            val keyAll = JSONUtils.readValue<Any>(recordAll.key())
+            val valueAll = JSONUtils.asStreamsTransactionEvent(deletedRecordsAll.first().value())
+            val payloadAll = valueAll.payload as RelationshipPayload
+            val (startAll, endAll, setConstraintsAll) = Triple(payloadAll.start, payloadAll.end, valueAll.schema.constraints.toSet())
+            assertTrue {
+                startAll.ids == expectedPropsAllKeyStrategy
+                        && endAll.ids == expectedEndProps
+                        && setConstraintsAll == expectedSetConstraints
+                        && keyAll is String
+                        && commonRelAssertionsDelete(valueAll)
+            }
+
+            db.execute("MATCH (p)-[rel:$oneProp]->(pp) DELETE rel")
+
+            val deletedRecordsOne = consumer.poll(10000)
+            assertEquals(1, deletedRecordsOne.count())
+            val recordOne = deletedRecordsOne.first()
+            val keyOne = JSONUtils.readValue<Any>(recordOne.key())
+            val valueOne = JSONUtils.asStreamsTransactionEvent(deletedRecordsOne.first().value())
+            val payloadOne = valueOne.payload as RelationshipPayload
+            val (startOne, endOne, setConstraintsOne) = Triple(payloadOne.start, payloadOne.end, valueOne.schema.constraints.toSet())
+            assertTrue {
+                startOne.ids == expectedPropsFirstKeyStrategy
+                        && endOne.ids == expectedEndProps
+                        && setConstraintsOne == expectedSetConstraints
+                        && keyOne is String
+                        && commonRelAssertionsDelete(valueOne)
+            }
+
+            db.execute("MATCH (p)-[rel:$defaultProp]->(pp) DELETE rel")
+
+            val deletedRecords = consumer.poll(10000)
+            assertEquals(1, deletedRecords.count())
+
+            val record = deletedRecords.first()
+            val key = JSONUtils.readValue<Any>(record.key())
+            val value = JSONUtils.asStreamsTransactionEvent(deletedRecords.first().value())
+            val payload = value.payload as RelationshipPayload
+            val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+            assertTrue {
+                start.ids == expectedPropsFirstKeyStrategy
+                        && end.ids == expectedEndProps
+                        && setConstraints == setConstraints
+                        && key is String
+                        && commonRelAssertionsDelete(value)
+            }
+        }
+    }
+
+    @Test
     fun testCreateRelationshipWithRelRouting() {
         initDbWithConfigs(mapOf("streams.source.topic.relationships.knows" to "KNOWS{*}"))
 
@@ -83,7 +417,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
         assertEquals(1, records.count())
         assertEquals(true, records.all {
             JSONUtils.asStreamsTransactionEvent(it.value()).let {
-                var payload = it.payload as RelationshipPayload
+                val payload = it.payload as RelationshipPayload
                 val properties = payload.after!!.properties!!
                 payload.type == EntityType.relationship && payload.label == "KNOWS"
                         && properties["since"] == 2014
@@ -317,7 +651,12 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateNodeWithConstraints() {
-        initDbWithConfigsAndConstraints()
+        val configs = mapOf("streams.source.topic.nodes.personConstraints" to "PersonConstr{*}",
+                "streams.source.topic.nodes.productConstraints" to "ProductConstr{*}",
+                "streams.source.topic.relationships.boughtConstraints" to "BOUGHT{*}")
+        val constraints = listOf("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE")
+        initDbWithConfigsAndConstraints(configs, constraints)
         val config = KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)
         val consumer = createConsumer(config)
         consumer.subscribe(listOf("personConstraints"))
@@ -340,7 +679,12 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
 
     @Test
     fun testCreateRelationshipWithConstraints() {
-        initDbWithConfigsAndConstraints()
+        val configs = mapOf("streams.source.topic.nodes.personConstraints" to "PersonConstr{*}",
+                "streams.source.topic.nodes.productConstraints" to "ProductConstr{*}",
+                "streams.source.topic.relationships.boughtConstraints" to "BOUGHT{*}")
+        val constraints = listOf("CREATE CONSTRAINT ON (p:PersonConstr) ASSERT p.name IS UNIQUE",
+                "CREATE CONSTRAINT ON (p:ProductConstr) ASSERT p.name IS UNIQUE")
+        initDbWithConfigsAndConstraints(configs, constraints)
         db.execute("CREATE (:PersonConstr {name:'Andrea'})").close()
         db.execute("CREATE (:ProductConstr {name:'My Awesome Product', price: '100€'})").close()
         db.execute("""

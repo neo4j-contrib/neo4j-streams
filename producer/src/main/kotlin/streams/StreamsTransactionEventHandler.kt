@@ -208,14 +208,16 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                             .withProperties(it.allProperties)
                             .build()
 
+                    val isKeyStrategyFirst = it.getKeyStrategy(configuration)
+
                     val startLabels = it.startNode.labelNames()
                     val startNodeConstraints = filterNodeConstraintCache(startLabels)
-                    val startKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints)
+                    val startKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, isKeyStrategyFirst)
                             .toTypedArray()
 
                     val endLabels = it.endNode.labelNames()
                     val endNodeConstraints = filterNodeConstraintCache(endLabels)
-                    val endKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints)
+                    val endKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, isKeyStrategyFirst)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
@@ -256,11 +258,13 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                         it.endNode.propertyKeys
                     }
 
+                    val isKeyStrategyFirst = it.getKeyStrategy(configuration)
+
                     val startNodeConstraints = filterNodeConstraintCache(startNodeLabels)
-                    val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints)
+                    val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints, isKeyStrategyFirst)
 
                     val endNodeConstraints = filterNodeConstraintCache(endNodeLabels)
-                    val endKeys = getNodeKeys(endNodeLabels, endPropertyKeys.toSet(), endNodeConstraints)
+                    val endKeys = getNodeKeys(endNodeLabels, endPropertyKeys.toSet(), endNodeConstraints, isKeyStrategyFirst)
 
                     val startProperties = if (isStartNodeDeleted) {
                         val payload = builder.nodeDeletedPayload(it.startNode.id)!!
@@ -293,6 +297,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         return builder.withRelProperties(txd.assignedRelationshipProperties(), removedRelsProperties)
                 .withRelCreatedPayloads(createdRelPayload)
                 .withRelDeletedPayloads(deletedRelPayload)
+                .withConfiguration(configuration)
     }
 
     override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?) {}

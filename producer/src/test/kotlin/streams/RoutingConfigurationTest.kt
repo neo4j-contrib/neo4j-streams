@@ -142,6 +142,23 @@ class RoutingConfigurationTest {
     }
 
     @Test
+    fun shouldCreateRelKeyStrategyConfiguration() {
+        val expectedTopic = "topic123"
+        val expectedStrategy = RelKeyStrategy.all.toString()
+        val relKeyStrategy = RelKeyStrategyConfiguration.parse(expectedTopic, expectedStrategy)
+        assertEquals(expectedTopic, relKeyStrategy.topic)
+        assertEquals(expectedStrategy, relKeyStrategy.strategy.toString())
+    }
+
+    @Test
+    fun shouldSwitchRelKeyStrategyConfigurationToDefaultIfInvalidValue() {
+        val expectedTopic = "topic123"
+        val relKeyStrategy = RelKeyStrategyConfiguration.parse(expectedTopic, "Franco")
+        assertEquals(expectedTopic, relKeyStrategy.topic)
+        assertEquals(RelKeyStrategy.first.toString(), relKeyStrategy.strategy.toString())
+    }
+
+    @Test
     fun shouldFilterAndRouteNodeEvents() {
         // TODO add more tests like a Label removed
         // Given
@@ -232,7 +249,7 @@ class RoutingConfigurationTest {
         routingConf.addAll(RoutingConfigurationFactory.getRoutingConfiguration("topic2", "KNOWS{prop1, prop2}", EntityType.relationship) as List<RelationshipRoutingConfiguration>)
         routingConf.addAll(RoutingConfigurationFactory.getRoutingConfiguration("topic3", "KNOWS{*}", EntityType.relationship) as List<RelationshipRoutingConfiguration>)
         routingConf.addAll(RoutingConfigurationFactory.getRoutingConfiguration("topic4", "KNOWS{-prop1}", EntityType.relationship) as List<RelationshipRoutingConfiguration>)
-        var expectedTopics = setOf("topic3", "topic4", "topic2")
+        val expectedTopics = setOf("topic3", "topic4", "topic2")
 
         //When
         val events = RelationshipRoutingConfiguration.prepareEvent(

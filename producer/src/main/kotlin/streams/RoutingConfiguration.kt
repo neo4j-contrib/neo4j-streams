@@ -4,6 +4,7 @@ import org.apache.kafka.common.internals.Topic
 import org.neo4j.graphdb.Entity
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
+import org.neo4j.logging.Log
 import streams.events.*
 
 
@@ -222,6 +223,20 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                         it.topic to newStreamsEvent
                     }
                     .associateBy({ it.first }, { it.second })
+        }
+    }
+}
+
+data class RelKeyStrategyConfiguration(val topic: String = "neo4j", val strategy: RelKeyStrategy= RelKeyStrategy.first) {
+    companion object {
+        fun parse(topic: String, keyStrategyString: String, log: Log? = null): RelKeyStrategyConfiguration {
+            val keyStrategy = try {
+                RelKeyStrategy.valueOf(keyStrategyString)
+            } catch (e: IllegalArgumentException) {
+                log?.warn("Invalid key strategy setting, switching to default value ${RelKeyStrategy.first}")
+                RelKeyStrategy.first
+            }
+            return RelKeyStrategyConfiguration(topic, keyStrategy)
         }
     }
 }

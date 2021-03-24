@@ -27,7 +27,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 
 class KafkaEventRouter(private val config: Map<String, String>, private val log: Log): StreamsEventRouter(config, log) {
-    override val eventRouterConfiguration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(config)
+    override val eventRouterConfiguration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(config, log)
 
     private val mutex = Mutex()
 

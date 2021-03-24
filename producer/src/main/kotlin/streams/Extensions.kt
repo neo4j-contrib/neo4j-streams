@@ -80,3 +80,10 @@ private fun relationshipAsMessageKey(payload: RelationshipPayload) = mapOf(
         "label" to payload.label)
 
 fun isStrategyCompact(strategy: String) = strategy == TopicConfig.CLEANUP_POLICY_COMPACT
+
+fun Relationship.getKeyStrategy(configuration: StreamsEventRouterConfiguration) = configuration.relKeyStrategies.firstOrNull { strategy ->
+        configuration.relRouting.any { routing ->
+            routing.topic == strategy.topic && routing.name == type.name()
+        }
+    } ?.let { it.strategy == RelKeyStrategy.first }
+    ?: true

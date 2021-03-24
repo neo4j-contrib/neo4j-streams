@@ -4,7 +4,9 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
+import streams.StreamsEventRouterConfiguration
 import streams.extensions.labelNames
+import streams.getKeyStrategy
 import streams.utils.SchemaUtils.getNodeKeys
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
@@ -42,6 +44,7 @@ class PreviousTransactionDataBuilder {
     private var updatedRels : Set<Relationship> = emptySet()
     private var relCreatedPayload: Map<String, RelationshipPayload> = emptyMap()
     private var relDeletedPayload: Map<String, RelationshipPayload> = emptyMap()
+    private var configuration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration()
 
     private lateinit var nodeConstraints: Map<String, Set<Constraint>>
     private lateinit var relConstraints: Map<String, Set<Constraint>>
@@ -112,7 +115,8 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { startLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints)
+                    val keyStrategyFirst = it.getKeyStrategy(configuration)
+                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, keyStrategyFirst)
                             .toTypedArray()
 
 
@@ -122,7 +126,7 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { endLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints)
+                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, keyStrategyFirst)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
@@ -218,6 +222,11 @@ class PreviousTransactionDataBuilder {
 
     fun withNodeDeletedPayloads(deletedPayload: Map<String, NodePayload>): PreviousTransactionDataBuilder {
         this.nodeDeletedPayload = deletedPayload
+        return this
+    }
+
+    fun withConfiguration(configuration: StreamsEventRouterConfiguration): PreviousTransactionDataBuilder {
+        this.configuration = configuration
         return this
     }
 

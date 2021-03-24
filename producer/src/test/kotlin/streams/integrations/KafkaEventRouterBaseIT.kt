@@ -13,6 +13,8 @@ import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.events.OperationType
+import streams.events.StreamsTransactionEvent
 import streams.procedures.StreamsProcedures
 import streams.utils.StreamsUtils
 
@@ -55,6 +57,22 @@ open class KafkaEventRouterBaseIT {
                 kafka.stop()
             }, UninitializedPropertyAccessException::class.java)
         }
+
+        // common methods
+        fun commonRelAssertions(value: StreamsTransactionEvent) = value.payload.before == null
+                && value.payload.after!!.properties!!.isNullOrEmpty()
+                && value.schema.properties == emptyMap<String, String>()
+                && value.meta.operation == OperationType.created
+
+        fun commonRelAssertionsUpdate(value: StreamsTransactionEvent) = value.payload.before!!.properties!!.isNullOrEmpty()
+                && value.payload.after!!.properties == mapOf("type" to "update")
+                && value.schema.properties == mapOf("type" to "String")
+                && value.meta.operation == OperationType.updated
+
+        fun commonRelAssertionsDelete(value: StreamsTransactionEvent) = value.payload.before!!.properties == mapOf("type" to "update")
+                && value.payload.after == null
+                && value.schema.properties == mapOf("type" to "String")
+                && value.meta.operation == OperationType.deleted
     }
 
     lateinit var db: GraphDatabaseAPI
