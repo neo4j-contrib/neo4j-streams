@@ -10,7 +10,6 @@ import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import streams.RelKeyStrategy
 import streams.events.Constraint
 import streams.events.EntityType
 import streams.events.NodeChange
@@ -22,6 +21,8 @@ import streams.events.StreamsEvent
 import streams.kafka.KafkaConfiguration
 import streams.kafka.KafkaTestUtils.createConsumer
 import streams.serialization.JSONUtils
+import streams.utils.StreamsUtils.RelKeyStrategy.DEFAULT
+import streams.utils.StreamsUtils.RelKeyStrategy.ALL
 import java.util.UUID
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertFalse
@@ -83,7 +84,7 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
         val configs = mapOf("streams.source.topic.nodes.$allTopic" to "$labelStart{*}",
                 "streams.source.topic.nodes.$allTopic" to "$labelStart:$anotherLabelStart:$labelEnd{*}",
                 "streams.source.topic.relationships.$allTopic" to "$allPropsRelType{*}",
-                "streams.source.topic.relationships.$allTopic.key_strategy" to RelKeyStrategy.all.toString())
+                "streams.source.topic.relationships.$allTopic.key_strategy" to ALL.toString().toLowerCase())
 
         val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",
@@ -146,10 +147,10 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
                         val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
 
                         start.ids == mapOf("another" to "Alpha", "name" to "Foo", "surname" to "Bar")
-                                    && end.ids == mapOf("name" to "One")
-                                    && setConstraints == setConstraints
-                                    && key is String
-                                    && commonRelAssertions(value)
+                                && end.ids == mapOf("name" to "One")
+                                && setConstraints == setConstraints
+                                && key is String
+                                && commonRelAssertions(value)
                     }
                     else -> false
                 }
@@ -194,14 +195,14 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
         val topicWithStrategyFirst = UUID.randomUUID().toString()
         val topicWithoutStrategy = UUID.randomUUID().toString()
 
-        val configs = mapOf("streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
+        val configs = mapOf(//"streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
                 "streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
                 "streams.source.topic.nodes.$productTopic" to "$labelEnd{*}",
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
                 "streams.source.topic.relationships.$topicWithoutStrategy" to "$defaultProp{*}",
-                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.all.toString(),
-                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.first.toString())
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to ALL.toString().toLowerCase(),
+                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to DEFAULT.toString().toLowerCase())
 
         val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",

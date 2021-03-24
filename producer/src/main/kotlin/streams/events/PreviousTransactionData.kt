@@ -4,10 +4,9 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.graphdb.event.LabelEntry
 import org.neo4j.graphdb.event.PropertyEntry
-import streams.StreamsEventRouterConfiguration
 import streams.extensions.labelNames
-import streams.isRelKeyStrategyFirst
 import streams.utils.SchemaUtils.getNodeKeys
+import streams.utils.StreamsUtils
 
 data class PreviousNodeTransactionData(val nodeProperties: Map<Long, Map<String, Any>>,
                                    val nodeLabels: Map<Long, List<String>>,
@@ -44,7 +43,7 @@ class PreviousTransactionDataBuilder {
     private var updatedRels : Set<Relationship> = emptySet()
     private var relCreatedPayload: Map<String, RelationshipPayload> = emptyMap()
     private var relDeletedPayload: Map<String, RelationshipPayload> = emptyMap()
-    private var configuration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration()
+    private var relRoutingTypesAndStrategies: Map<String, StreamsUtils.RelKeyStrategy> = emptyMap()
 
     private lateinit var nodeConstraints: Map<String, Set<Constraint>>
     private lateinit var relConstraints: Map<String, Set<Constraint>>
@@ -115,8 +114,9 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { startLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val keyStrategyFirst = it.isRelKeyStrategyFirst(configuration)
-                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, keyStrategyFirst)
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), StreamsUtils.RelKeyStrategy.DEFAULT)
+
+                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
 
@@ -126,7 +126,7 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { endLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, keyStrategyFirst)
+                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
@@ -225,8 +225,8 @@ class PreviousTransactionDataBuilder {
         return this
     }
 
-    fun withConfiguration(configuration: StreamsEventRouterConfiguration): PreviousTransactionDataBuilder {
-        this.configuration = configuration
+    fun withRelRoutingTypesAndStrategies(relRoutingTypesAndStrategies: Map<String, StreamsUtils.RelKeyStrategy>): PreviousTransactionDataBuilder {
+        this.relRoutingTypesAndStrategies = relRoutingTypesAndStrategies
         return this
     }
 

@@ -1,5 +1,6 @@
-With `streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=first` (default value),
-when I produce a message for relationships, only the first of the associated node constraints will be returned.
+With `streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=default`,
+when I produce a message for relationships, only one of the associated node constraints will be returned,
+based on the following rule.
 
 If there are multiple constraints, we sort by the number of the properties associated to the constraint,
 then by label name (alphabetically) and finally by properties name (alphabetically).

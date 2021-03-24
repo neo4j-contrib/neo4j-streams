@@ -14,7 +14,6 @@ import org.neo4j.helpers.collection.Iterators
 import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
-import streams.RelKeyStrategy
 import streams.events.Constraint
 import streams.events.Meta
 import streams.events.NodePayload
@@ -23,6 +22,8 @@ import streams.events.RelationshipPayload
 import streams.events.StreamsConstraintType
 import streams.kafka.KafkaConfiguration
 import streams.procedures.StreamsProcedures
+import streams.utils.StreamsUtils.RelKeyStrategy.DEFAULT
+import streams.utils.StreamsUtils.RelKeyStrategy.ALL
 import java.time.Duration
 import java.util.UUID
 import kotlin.test.assertEquals
@@ -109,9 +110,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             // check if there is only one record with key 'test' and payload 'Compaction 4'
             assertTopicFilled(consumer) {
                 val compactedRecord = it.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
-                it.count() == 500 &&
-                        compactedRecord.count() == 1 &&
-                        JSONUtils.readValue<Map<*,*>>(compactedRecord.first().value())["payload"] == "Compaction 4"
+                compactedRecord.count() == 1 && JSONUtils.readValue<Map<*,*>>(compactedRecord.first().value())["payload"] == "Compaction 4"
             }
         }
     }
@@ -145,8 +144,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                 val nullRecords = it.filter { it.value() == null }
                 val start = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf("Person"))
                 val end = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf("Person"))
-                it.count() == 500
-                        && nullRecords.count() == 1
+                nullRecords.count() == 1
                         && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to start, "end" to end, "label" to keyRel)
             }
         }
@@ -186,8 +184,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                 val nullRecords = it.filter { it.value() == null }
                 val keyStartRecord = JSONUtils.readValue<String>(it.first().key())
                 val keyEndRecord = it.elementAtOrNull(1)?.let { JSONUtils.readValue<String>(it.key()) }
-                it.count() == 500
-                        && nullRecords.count() == 1
+                nullRecords.count() == 1
                         && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to keyStartRecord, "end" to keyEndRecord, "label" to relType)
             }
         }
@@ -214,8 +211,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             assertTopicFilled(consumer) {
                 val nullRecords = it.filter { it.value() == null }
                 val keyRecordExpected = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person"))
-                it.count() == 500
-                        && nullRecords.count() == 1
+                nullRecords.count() == 1
                         && keyRecordExpected == JSONUtils.readValue<Map<*,*>>(nullRecords.first().key())
             }
         }
@@ -353,8 +349,8 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
                 "streams.source.topic.relationships.$topicWithoutStrategy" to "$defaultProp{*}",
-                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.all.toString(),
-                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.first.toString())
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to ALL.toString().toLowerCase(),
+                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to DEFAULT.toString().toLowerCase())
 
         val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",

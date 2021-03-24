@@ -4,19 +4,20 @@ import org.junit.Test
 import streams.events.Constraint
 import streams.events.StreamsConstraintType
 import streams.utils.SchemaUtils.getNodeKeys
+import streams.utils.StreamsUtils.RelKeyStrategy.ALL
 import kotlin.test.assertEquals
 
 class SchemaUtilsTest {
 
     @Test
-    fun `getNodeKeys should select all the constraint with lowest properties when keyStrategyFirst false`() {
+    fun `getNodeKeys should select all the constraint with lowest properties when RelKeyStrategy is ALL`() {
         val props = mapOf("LabelA" to setOf("foo", "bar"),
                 "LabelB" to setOf("foo", "bar", "fooBar"),
                 "LabelC" to setOf("foo"))
         val constraints = props.map {
             Constraint(label = it.key, properties = it.value, type = StreamsConstraintType.UNIQUE)
         }
-        val keys = getNodeKeys(props.keys.toList(), setOf("prop", "foo", "bar", "fooBar"), constraints, false)
+        val keys = getNodeKeys(props.keys.toList(), setOf("prop", "foo", "bar", "fooBar"), constraints, ALL)
         assertEquals(setOf("bar", "foo", "fooBar"), keys)
     }
 
@@ -60,7 +61,7 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should return all keys sorted properly when keyStrategyFirst false`() {
+    fun `getNodeKeys should return all keys sorted properly when RelKeyStrategy is ALL`() {
 
         val pair1 = "LabelX" to setOf("foo", "aaa")
         val pair2 = "LabelB" to setOf("bar", "foo")
@@ -78,7 +79,7 @@ class SchemaUtilsTest {
         }.shuffled()
 
         val propertyKeys = setOf("prop", "prop2", "foo", "bar", "baz", "bez", "aaa", "aab", "baa", "aac", "xcz", "xcv")
-        val actualKeys = getNodeKeys(props.map { it.first }, propertyKeys, constraints, false)
+        val actualKeys = getNodeKeys(props.map { it.first }, propertyKeys, constraints, ALL)
         val expectedKeys = setOf("aaa", "aab", "aac", "baa", "bar", "baz", "bez", "foo", "xcv", "xcz")
 
         assertEquals(expectedKeys, actualKeys)
@@ -108,7 +109,7 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should return all keys sorted properly when keyStrategyFirst false (with one label)`() {
+    fun `getNodeKeys should return all keys sorted properly when RelKeyStrategy is ALL (with one label)`() {
 
         val pair1 = "LabelA" to setOf("foo", "bar")
         val pair2 = "LabelA" to setOf("bar", "foo")
@@ -122,7 +123,7 @@ class SchemaUtilsTest {
         }.shuffled()
 
         val propertyKeys = setOf("prop", "foo", "bar", "baz", "bez")
-        val actualKeys =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints, false)
+        val actualKeys =  getNodeKeys(listOf("LabelA"), propertyKeys, constraints, ALL)
         val expectedKeys = setOf("bar", "baz", "bez", "foo")
 
         assertEquals(expectedKeys, actualKeys)

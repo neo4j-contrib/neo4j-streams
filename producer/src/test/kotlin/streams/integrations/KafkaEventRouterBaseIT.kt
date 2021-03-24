@@ -59,20 +59,20 @@ open class KafkaEventRouterBaseIT {
         }
 
         // common methods
-        fun commonRelAssertions(value: StreamsTransactionEvent) = value.payload.before == null
-                && value.payload.after!!.properties!!.isNullOrEmpty()
+        fun commonRelAssertions(value: StreamsTransactionEvent) = value.meta.operation == OperationType.created
+                && value.payload.before == null
+                && value.payload.after?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
                 && value.schema.properties == emptyMap<String, String>()
-                && value.meta.operation == OperationType.created
 
-        fun commonRelAssertionsUpdate(value: StreamsTransactionEvent) = value.payload.before!!.properties!!.isNullOrEmpty()
-                && value.payload.after!!.properties == mapOf("type" to "update")
+        fun commonRelAssertionsUpdate(value: StreamsTransactionEvent) = value.meta.operation == OperationType.updated
+                && value.payload.before?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                && value.payload.after?.let { it.properties == mapOf("type" to "update") } ?: false
                 && value.schema.properties == mapOf("type" to "String")
-                && value.meta.operation == OperationType.updated
 
-        fun commonRelAssertionsDelete(value: StreamsTransactionEvent) = value.payload.before!!.properties == mapOf("type" to "update")
+        fun commonRelAssertionsDelete(value: StreamsTransactionEvent) = value.meta.operation == OperationType.deleted
+                && value.payload.before?.let { it.properties == mapOf("type" to "update") } ?: false
                 && value.payload.after == null
                 && value.schema.properties == mapOf("type" to "String")
-                && value.meta.operation == OperationType.deleted
     }
 
     lateinit var db: GraphDatabaseAPI
