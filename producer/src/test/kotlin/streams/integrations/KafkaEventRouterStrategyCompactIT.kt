@@ -368,6 +368,21 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                     personTopic, productTopic, topicWithStrategyAll, topicWithStrategyFirst, topicWithoutStrategy
             ))
 
+            // expected common values
+            val expectedSetConstraints = setOf(
+                    Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE),
+                    Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)
+            )
+            val expectedPropsAllKeyStrategy = mapOf("name" to "Foo", "surname" to "Bar")
+            val expectedPropsFirstKeyStrategy = mapOf("name" to "Foo")
+            val expectedEndProps = mapOf("name" to "One")
+
+            val expectedStartKey = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf(labelStart))
+            val expectedStartKeyStrategyAll = mapOf("ids" to mapOf("name" to "Foo", "surname" to "Bar"), "labels" to listOf(labelStart))
+            val expectedEndKey = mapOf("ids" to mapOf("name" to "One"), "labels" to listOf(labelEnd))
+
+            // we create multiple nodes and relationships
             db.execute("CREATE (:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})").close()
             db.execute("CREATE (:$labelEnd {name:'One', price: '100€'})").close()
             db.execute("""
@@ -388,19 +403,6 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
 
             val recordsEntitiesCreated = consumer.poll(20000)
             assertEquals(5, recordsEntitiesCreated.count())
-
-            val expectedSetConstraints = setOf(
-                    Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
-                    Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE),
-                    Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)
-            )
-            val expectedPropsAllKeyStrategy = mapOf("name" to "Foo", "surname" to "Bar")
-            val expectedPropsFirstKeyStrategy = mapOf("name" to "Foo")
-            val expectedEndProps = mapOf("name" to "One")
-
-            val expectedStartKey = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf(labelStart))
-            val expectedStartKeyStrategyAll = mapOf("ids" to mapOf("name" to "Foo", "surname" to "Bar"), "labels" to listOf(labelStart))
-            val expectedEndKey = mapOf("ids" to mapOf("name" to "One"), "labels" to listOf(labelEnd))
 
             assertTrue(recordsEntitiesCreated.all {
                 val value = JSONUtils.asStreamsTransactionEvent(it.value())
@@ -461,6 +463,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                 }
             })
 
+            // we update relationships
             db.execute("MATCH (p)-[rel:$allProps]->(pp) SET rel.type = 'update'").close()
             val updatedRecordsAll = consumer.poll(10000)
             assertEquals(1, updatedRecordsAll.count())
@@ -500,10 +503,8 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             }
 
             db.execute("MATCH (p)-[rel:$defaultProp]->(pp) SET rel.type = 'update'").close()
-            Thread.sleep(30000)
             val updatedRecords = consumer.poll(20000)
             assertEquals(1, updatedRecords.count())
-
             val updated = updatedRecords.first()
             val keyUpdate = JSONUtils.readValue<Map<String, Any>>(updated.key())
             val valueUpdate = JSONUtils.asStreamsTransactionEvent(updatedRecords.first().value())
@@ -520,13 +521,14 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
                         && commonRelAssertionsUpdate(valueUpdate)
             }
 
+            // we delete relationships
             db.execute("MATCH (p)-[rel:$allProps]->(pp) DELETE rel")
-
             val deletedRecordsAll = consumer.poll(10000)
             assertEquals(1, deletedRecordsAll.count())
             val recordAll = deletedRecordsAll.first()
             val keyDeleteAll = JSONUtils.readValue<Map<String, Any>>(recordAll.key())
             val valueDeleteAll = deletedRecordsAll.first().value()
+
             assertTrue {
                 keyDeleteAll["start"] == expectedStartKeyStrategyAll
                         && keyDeleteAll["end"] == expectedEndKey
@@ -535,12 +537,12 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             }
 
             db.execute("MATCH (p)-[rel:$oneProp]->(pp) DELETE rel")
-
             val deletedRecordsOne = consumer.poll(10000)
             assertEquals(1, deletedRecordsOne.count())
             val recordOne = deletedRecordsOne.first()
             val keyDeleteOne = JSONUtils.readValue<Map<String, Any>>(recordOne.key())
             val valueDeleteOne = deletedRecordsOne.first().value()
+
             assertTrue {
                 keyDeleteOne["start"] == expectedStartKey
                         && keyDeleteOne["end"] == expectedEndKey
@@ -549,13 +551,12 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             }
 
             db.execute("MATCH (p)-[rel:$defaultProp]->(pp) DELETE rel")
-
             val deletedRecords = consumer.poll(10000)
             assertEquals(1, deletedRecords.count())
-
             val record = deletedRecords.first()
             val keyDelete = JSONUtils.readValue<Map<String, Any>>(record.key())
             val valueDelete = deletedRecords.first().value()
+
             assertTrue {
                 keyDelete["start"] == expectedStartKey
                         && keyDelete["end"] == expectedEndKey
