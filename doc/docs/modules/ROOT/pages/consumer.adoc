@@ -190,6 +190,9 @@ Every published record in the `Dead Letter Queue` contains the original record `
 
 | <prefix>exception.stacktrace"
 | The exception stack trace
+
+| <prefix>databaseName"
+| The database name
 |===
 
 [[neo4j_streams_supported_deserializers]]

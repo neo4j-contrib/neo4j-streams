@@ -28,7 +28,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
         db.start()
         val data = mapOf("id" to null, "name" to "Andrea", "surname" to "Santurbano")
 
-        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
+        val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), JSONUtils.writeValueAsBytes(data))
         kafkaProducer.send(producerRecord).get()
         val dlqConsumer = KafkaTestUtils.createConsumer<ByteArray, ByteArray>(
                 bootstrapServers = KafkaEventSinkSuiteIT.kafka.bootstrapServers,
@@ -50,8 +50,9 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                 val value = if (record != null) JSONUtils.readValue<Any>(record.value()!!) else emptyMap<String, Any>()
                 db.execute(query) {
                     val result = it.columnAs<Long>("count")
-                    !records.isEmpty && headers.size == 7 && value == data && result.hasNext() && result.next() == 0L && !result.hasNext()
+                    !records.isEmpty && headers.size == 8 && value == data && result.hasNext() && result.next() == 0L && !result.hasNext()
                             && headers["__streams.errors.exception.class.name"] == "org.neo4j.graphdb.QueryExecutionException"
+                            && headers["__streams.errors.databaseName"] == "neo4j"
                 }
             }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         }
@@ -70,7 +71,7 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
 
         val data = """{id: 1, "name": "Andrea", "surname": "Santurbano"}"""
 
-        var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(),
+        val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(),
                 data.toByteArray())
         kafkaProducer.send(producerRecord).get()
         val dlqConsumer = KafkaTestUtils.createConsumer<ByteArray, ByteArray>(
@@ -91,8 +92,9 @@ class KafkaEventSinkDLQTSE : KafkaEventSinkBaseTSE() {
                     val record = if (records.isEmpty) null else records.records(dlqTopic).iterator().next()
                     val headers = record?.headers()?.map { it.key() to String(it.value()) }?.toMap().orEmpty()
                     val value = if (record != null) String(record.value()) else emptyMap<String, Any>()
-                    !records.isEmpty && headers.size == 7 && data == value && count.hasNext() && count.next() == 0L && !count.hasNext()
+                    !records.isEmpty && headers.size == 8 && data == value && count.hasNext() && count.next() == 0L && !count.hasNext()
                             && headers["__streams.errors.exception.class.name"] == "com.fasterxml.jackson.core.JsonParseException"
+                            && headers["__streams.errors.databaseName"] == "neo4j"
                 }
             }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         }

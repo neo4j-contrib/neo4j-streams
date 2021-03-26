@@ -59,6 +59,7 @@ class KafkaErrorServiceTest {
         val exception = RuntimeException("Test")
         val key = "KEY"
         val value = "VALUE"
+        val databaseName = "myDb"
         return ErrorData(
                 offset = offset,
                 originalTopic = originalTopic,
@@ -67,7 +68,8 @@ class KafkaErrorServiceTest {
                 exception = exception,
                 executingClass = KafkaErrorServiceTest::class.java,
                 key = key.toByteArray(),
-                value = value.toByteArray()
+                value = value.toByteArray(),
+                databaseName = databaseName
         )
     }
 

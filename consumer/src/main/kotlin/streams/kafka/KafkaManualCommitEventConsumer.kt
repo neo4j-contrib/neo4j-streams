@@ -13,7 +13,8 @@ import java.time.Duration
 
 class KafkaManualCommitEventConsumer(config: KafkaSinkConfiguration,
                                      private val log: Log,
-                                     topics: Set<String>): KafkaAutoCommitEventConsumer(config, log, topics) {
+                                     topics: Set<String>,
+                                     dbName: String): KafkaAutoCommitEventConsumer(config, log, topics, dbName) {
 
     private val asyncCommit = config.streamsAsyncCommit
 
