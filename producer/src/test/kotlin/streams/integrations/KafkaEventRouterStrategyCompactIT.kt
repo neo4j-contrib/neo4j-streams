@@ -271,62 +271,6 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
     }
 
     @Test
-    fun `test relationship with multiple constraint, compaction strategy compact and key strategy all`() {
-
-        val relType = "MY_SUPER_REL"
-        val topic = listOf(UUID.randomUUID().toString(), UUID.randomUUID().toString(), UUID.randomUUID().toString())
-        val sourceTopics = mapOf("streams.source.topic.nodes.${topic[0]}" to "Person{*}",
-                "streams.source.topic.relationships.${topic[1]}" to "$relType{*}",
-                "streams.source.topic.relationships.${topic[1]}.key_strategy" to "all",
-                "streams.source.topic.nodes.${topic[2]}" to "Product{*}"
-        )
-        val queries = listOf("CREATE CONSTRAINT ON (p:Product) ASSERT p.code IS UNIQUE",
-                "CREATE CONSTRAINT ON (p:Other) ASSERT p.address IS UNIQUE",
-                "CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE"
-        )
-        initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
-            consumer.subscribe(topic)
-
-            db.execute("CREATE (:Person:Other {name: 'Sherlock', surname: 'Holmes', address: 'Baker Street'})")
-            val records = consumer.poll(Duration.ofSeconds(10))
-            assertEquals(1, records.count())
-            var keyStart = mapOf("ids" to mapOf("address" to "Baker Street"), "labels" to listOf("Other", "Person"))
-            assertEquals(keyStart, JSONUtils.readValue(records.first().key()))
-
-            db.execute("CREATE (p:Product {code:'1367', name: 'Notebook'})")
-            val recordsTwo = consumer.poll(Duration.ofSeconds(10))
-            assertEquals(1, recordsTwo.count())
-            val keyEnd = mapOf("ids" to mapOf("code" to "1367"), "labels" to listOf("Product"))
-            assertEquals(keyEnd, JSONUtils.readValue(recordsTwo.first().key()))
-
-            // we create a relationship with start and end node with constraint
-            db.execute("MATCH (pe:Person:Other {name:'Sherlock'}), (pr:Product {name:'Notebook'}) MERGE (pe)-[:$relType]->(pr)")
-            val recordsThree = consumer.poll(Duration.ofSeconds(10))
-            assertEquals(1, recordsThree.count())
-            val mapRel: Map<String, Any> = JSONUtils.readValue(recordsThree.first().key())
-
-            keyStart = mapOf("ids" to mapOf("address" to "Baker Street", "name" to "Sherlock"), "labels" to listOf("Other", "Person"))
-            assertEquals(keyStart, mapRel["start"])
-            assertEquals(keyEnd, mapRel["end"])
-            assertEquals(relType, mapRel["label"])
-
-            // we update the relationship
-            db.execute("MATCH (:Person:Other {name:'Sherlock'})-[rel:$relType]->(:Product {name:'Notebook'}) SET rel.price = '100'")
-            val recordsFour = consumer.poll(Duration.ofSeconds(10))
-            assertEquals(1, recordsFour.count())
-            assertEquals(mapRel, JSONUtils.readValue(recordsThree.first().key()))
-
-            // we delete the relationship
-            db.execute("MATCH (:Person:Other {name:'Sherlock'})-[rel:$relType]->(:Product {name:'Notebook'}) DELETE rel")
-            val recordsFive = consumer.poll(Duration.ofSeconds(10))
-            assertEquals(1, recordsFive.count())
-            assertEquals(mapRel, JSONUtils.readValue(recordsFive.first().key()))
-            assertNull(recordsFive.first().value())
-        }
-    }
-
-    @Test
     fun `test relationship with multiple constraint, compaction strategy compact and multiple key strategies`() {
 
         val allProps = "BOUGHT"
@@ -343,7 +287,6 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
         val topicWithoutStrategy = UUID.randomUUID().toString()
 
         val configs = mapOf("streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
-                "streams.source.topic.nodes.$personTopic" to "$labelStart{*}",
                 "streams.source.topic.nodes.$productTopic" to "$labelEnd{*}",
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",

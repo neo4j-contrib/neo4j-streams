@@ -25,8 +25,8 @@ object SchemaUtils {
                                     ?.properties
                                     .orEmpty()
                         }
-                        // with 'ALL' strategy we get all properties sorted alphabetically
-                        RelKeyStrategy.ALL -> it.flatMap { it.properties }.toSortedSet()
+                        // with 'ALL' strategy we get a set with all properties
+                        RelKeyStrategy.ALL -> it.flatMap { it.properties }.toSet()
                     }
                 }
 

@@ -10,18 +10,6 @@ import kotlin.test.assertEquals
 class SchemaUtilsTest {
 
     @Test
-    fun `getNodeKeys should select all the constraint with lowest properties when RelKeyStrategy is ALL`() {
-        val props = mapOf("LabelA" to setOf("foo", "bar"),
-                "LabelB" to setOf("foo", "bar", "fooBar"),
-                "LabelC" to setOf("foo"))
-        val constraints = props.map {
-            Constraint(label = it.key, properties = it.value, type = StreamsConstraintType.UNIQUE)
-        }
-        val keys = getNodeKeys(props.keys.toList(), setOf("prop", "foo", "bar", "fooBar"), constraints, RelKeyStrategy.ALL)
-        assertEquals(setOf("bar", "foo", "fooBar"), keys)
-    }
-
-    @Test
     fun `getNodeKeys should select the constraint with lowest properties`() {
         val props = mapOf("LabelA" to setOf("foo", "bar"),
                 "LabelB" to setOf("foo", "bar", "fooBar"),
@@ -61,7 +49,7 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should return all keys sorted properly when RelKeyStrategy is ALL`() {
+    fun `getNodeKeys should return all keys when RelKeyStrategy is ALL`() {
 
         val pair1 = "LabelX" to setOf("foo", "aaa")
         val pair2 = "LabelB" to setOf("bar", "foo")
@@ -109,7 +97,7 @@ class SchemaUtilsTest {
     }
 
     @Test
-    fun `getNodeKeys should return all keys sorted properly when RelKeyStrategy is ALL (with one label)`() {
+    fun `getNodeKeys should return all keys when RelKeyStrategy is ALL (with one label)`() {
 
         val pair1 = "LabelA" to setOf("foo", "bar")
         val pair2 = "LabelA" to setOf("bar", "foo")
