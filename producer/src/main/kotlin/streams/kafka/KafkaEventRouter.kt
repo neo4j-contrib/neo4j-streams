@@ -34,7 +34,7 @@ class KafkaEventRouter(private val config: Map<String, String>,
                        private val log: Log): StreamsEventRouter(config, db, log) {
 
     override val eventRouterConfiguration: StreamsEventRouterConfiguration = StreamsEventRouterConfiguration
-        .from(config, db.databaseName(), db.isDefaultDb())
+        .from(config, db.databaseName(), db.isDefaultDb(), log)
 
 
     private val mutex = Mutex()

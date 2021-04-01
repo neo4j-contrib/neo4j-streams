@@ -29,6 +29,11 @@ include::message-structure.adoc[]
 
 include::producer-patterns.adoc[]
 
+=== Relationship key strategy
+
+include::key-strategy.adoc[]
+
+
 == Transaction Event Handler
 
 The transaction event handler is the core of the Stream Producer and allows to stream database changes.

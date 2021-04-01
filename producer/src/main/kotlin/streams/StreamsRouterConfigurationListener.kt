@@ -54,7 +54,7 @@ class StreamsRouterConfigurationListener(private val db: GraphDatabaseAPI,
             // i.e. the Schema Registry
             val config = KafkaConfiguration.create(configMap).excludeSinkProps()
             val lastConfig = lastConfig?.excludeSinkProps()
-            val streamsConfig = StreamsEventRouterConfiguration.from(configMap, db.databaseName(), isDefaultDb = db.isDefaultDb())
+            val streamsConfig = StreamsEventRouterConfiguration.from(configMap, db.databaseName(), isDefaultDb = db.isDefaultDb(), log)
             config != lastConfig || streamsConfig != streamsEventRouterConfiguration
         }
         else -> true
@@ -80,7 +80,7 @@ class StreamsRouterConfigurationListener(private val db: GraphDatabaseAPI,
 
     private fun start(configMap: Map<String, String>) {
         lastConfig = KafkaConfiguration.create(configMap)
-        streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configMap, db.databaseName(), isDefaultDb = db.isDefaultDb())
+        streamsEventRouterConfiguration = StreamsEventRouterConfiguration.from(configMap, db.databaseName(), isDefaultDb = db.isDefaultDb(), log)
         streamsEventRouter = StreamsEventRouterFactory.getStreamsEventRouter(configMap, db, log)
         streamsConstraintsService = StreamsConstraintsService(db, streamsEventRouterConfiguration!!.schemaPollingInterval)
         if (streamsEventRouterConfiguration?.enabled == true || streamsEventRouterConfiguration?.proceduresEnabled == true) {
