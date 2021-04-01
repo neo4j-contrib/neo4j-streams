@@ -122,9 +122,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             assertEquals(properties, mapOf("address" to "Earth", "name" to "Foo", "surname" to "Bar"))
             assertEquals(operation, OperationType.created)
             assertEquals(schema.properties, mapOf("address" to "String", "name" to "String", "surname" to "String"))
-            val actualConstraintSet = setOf(Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
+            val expectedSetConstraintNode = setOf(Constraint(labelStart, setOf("name"), StreamsConstraintType.UNIQUE),
                     Constraint(labelStart, setOf("surname"), StreamsConstraintType.UNIQUE))
-            assertEquals(schema.constraints.toSet(), actualConstraintSet)
+            assertEquals(expectedSetConstraintNode, schema.constraints.toSet())
         }
 
         createConsumer(config).use { consumer ->
@@ -139,8 +139,8 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val (properties, operation, schema) = Triple(payload.after!!.properties!!, value.meta.operation, value.schema)
             assertEquals(properties, mapOf("name" to "One", "price" to "100€"))
             assertEquals(operation, OperationType.created)
-            assertEquals(schema.properties, mapOf("name" to "String", "price" to "String"))
-            assertEquals(schema.constraints.toSet(), setOf(Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)))
+            assertEquals(mapOf("name" to "String", "price" to "String"), schema.properties)
+            assertEquals(setOf(Constraint(labelEnd, setOf("name"), StreamsConstraintType.UNIQUE)), schema.constraints.toSet())
         }
 
         // we test key_strategy=all with create/update/delete relationship
@@ -171,8 +171,8 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueUpdate = JSONUtils.asStreamsTransactionEvent(updatedRecords.first().value())
             val payloadUpdate = valueUpdate.payload as RelationshipPayload
             val (startUpdate, endUpdate, setConstraintsUpdate) = Triple(payloadUpdate.start, payloadUpdate.end, valueUpdate.schema.constraints.toSet())
-            assertEquals(startUpdate.ids, mapOf("name" to "Foo", "surname" to "Bar"))
-            assertEquals(endUpdate.ids, mapOf("name" to "One"))
+            assertEquals(expectedPropsAllKeyStrategy, startUpdate.ids)
+            assertEquals(expectedEndProps, endUpdate.ids)
             assertEquals(setConstraintsUpdate, setConstraintsUpdate)
             assertTrue(commonRelAssertionsUpdate(valueUpdate))
 
@@ -184,9 +184,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueDelete = JSONUtils.asStreamsTransactionEvent(deletedRecords.first().value())
             val payloadDelete = valueDelete.payload as RelationshipPayload
             val (startDelete, endDelete, setConstraintsDelete) = Triple(payloadDelete.start, payloadDelete.end, valueDelete.schema.constraints.toSet())
-            assertEquals(startDelete.ids, expectedPropsAllKeyStrategy)
-            assertEquals(endDelete.ids, expectedEndProps)
-            assertEquals(setConstraintsDelete, expectedSetConstraints)
+            assertEquals(expectedPropsAllKeyStrategy, startDelete.ids)
+            assertEquals(expectedEndProps, endDelete.ids)
+            assertEquals(expectedSetConstraints, setConstraintsDelete)
             assertTrue(commonRelAssertionsDelete(valueDelete))
         }
 
@@ -205,9 +205,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val value = JSONUtils.asStreamsTransactionEvent(record.value())
             val payload = value.payload as RelationshipPayload
             val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
-            assertEquals(start.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(end.ids, expectedEndProps)
-            assertEquals(setConstraints, expectedSetConstraints)
+            assertEquals(expectedPropsDefaultKeyStrategy, start.ids)
+            assertEquals(expectedEndProps, end.ids)
+            assertEquals(expectedSetConstraints, setConstraints)
             assertTrue(commonRelAssertions(value))
 
             db.execute("MATCH (p)-[rel:$keyStrategyDefault]->(pp) SET rel.type = 'update'").close()
@@ -218,9 +218,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueUpdate = JSONUtils.asStreamsTransactionEvent(updatedRecords.first().value())
             val payloadUpdate = valueUpdate.payload as RelationshipPayload
             val (startUpdate, endUpdate, setConstraintsUpdate) = Triple(payloadUpdate.start, payloadUpdate.end, valueUpdate.schema.constraints.toSet())
-            assertEquals(startUpdate.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(endUpdate.ids, expectedEndProps)
-            assertEquals(setConstraintsUpdate, setConstraintsUpdate)
+            assertEquals(expectedPropsDefaultKeyStrategy, startUpdate.ids)
+            assertEquals(expectedEndProps, endUpdate.ids)
+            assertEquals(expectedSetConstraints, setConstraintsUpdate)
             assertTrue(commonRelAssertionsUpdate(valueUpdate))
 
             db.execute("MATCH (p)-[rel:$keyStrategyDefault]->(pp) DELETE rel").close()
@@ -231,9 +231,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueDelete = JSONUtils.asStreamsTransactionEvent(deletedRecords.first().value())
             val payloadDelete = valueDelete.payload as RelationshipPayload
             val (startDelete, endDelete, setConstraintsDelete) = Triple(payloadDelete.start, payloadDelete.end, valueDelete.schema.constraints.toSet())
-            assertEquals(startDelete.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(endDelete.ids, expectedEndProps)
-            assertEquals(setConstraintsDelete, expectedSetConstraints)
+            assertEquals(expectedPropsDefaultKeyStrategy, startDelete.ids)
+            assertEquals(expectedEndProps, endDelete.ids)
+            assertEquals(expectedSetConstraints, setConstraintsDelete)
             assertTrue(commonRelAssertionsDelete(valueDelete))
         }
 
@@ -252,9 +252,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val value = JSONUtils.asStreamsTransactionEvent(record.value())
             val payload = value.payload as RelationshipPayload
             val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
-            assertEquals(start.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(end.ids, expectedEndProps)
-            assertEquals(setConstraints, expectedSetConstraints)
+            assertEquals(expectedPropsDefaultKeyStrategy, start.ids)
+            assertEquals(expectedEndProps, end.ids)
+            assertEquals(expectedSetConstraints, setConstraints)
             assertTrue(commonRelAssertions(value))
 
             db.execute("MATCH (p)-[rel:$noKeyStrategy]->(pp) SET rel.type = 'update'").close()
@@ -265,9 +265,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueUpdate = JSONUtils.asStreamsTransactionEvent(updatedRecords.first().value())
             val payloadUpdate = valueUpdate.payload as RelationshipPayload
             val (startUpdate, endUpdate, setConstraintsUpdate) = Triple(payloadUpdate.start, payloadUpdate.end, valueUpdate.schema.constraints.toSet())
-            assertEquals(startUpdate.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(endUpdate.ids, expectedEndProps)
-            assertEquals(setConstraintsUpdate, setConstraintsUpdate)
+            assertEquals(expectedPropsDefaultKeyStrategy, startUpdate.ids)
+            assertEquals(expectedEndProps, endUpdate.ids)
+            assertEquals(expectedSetConstraints, setConstraintsUpdate)
             assertTrue(commonRelAssertionsUpdate(valueUpdate))
 
             db.execute("MATCH (p)-[rel:$noKeyStrategy]->(pp) DELETE rel")
@@ -278,9 +278,9 @@ class KafkaEventRouterIT: KafkaEventRouterBaseIT() {
             val valueDelete = JSONUtils.asStreamsTransactionEvent(deletedRecords.first().value())
             val payloadDelete = valueDelete.payload as RelationshipPayload
             val (startDelete, endDelete, setConstraintsDelete) = Triple(payloadDelete.start, payloadDelete.end, valueDelete.schema.constraints.toSet())
-            assertEquals(startDelete.ids, expectedPropsDefaultKeyStrategy)
-            assertEquals(endDelete.ids, expectedEndProps)
-            assertEquals(setConstraintsDelete, expectedSetConstraints)
+            assertEquals(expectedPropsDefaultKeyStrategy, startDelete.ids)
+            assertEquals(expectedEndProps, endDelete.ids)
+            assertEquals(expectedSetConstraints, setConstraintsDelete)
             assertTrue(commonRelAssertionsDelete(valueDelete))
         }
     }
