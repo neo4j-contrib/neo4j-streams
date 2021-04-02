@@ -3,6 +3,7 @@ package streams.integrations
 import extension.newDatabase
 import org.apache.kafka.clients.admin.AdminClient
 import org.apache.kafka.clients.admin.NewTopic
+import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.consumer.ConsumerRecords
 import org.apache.kafka.clients.consumer.KafkaConsumer
 import org.apache.kafka.common.config.TopicConfig
@@ -26,7 +27,7 @@ import streams.serialization.JSONUtils
 import java.util.concurrent.TimeUnit
 
 @Suppress("DEPRECATION")
-class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
+class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
 
     private fun compactTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
         val newTopic = NewTopic(topic, numTopics, 1)
@@ -40,7 +41,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
         newTopic
     }
 
-    private fun createCompactTopic(topic: String, numTopics: Int = 1, withCompact: Boolean = true) {
+    private fun createTopic(topic: String, numTopics: Int = 1, withCompact: Boolean = true) {
         AdminClient.create(mapOf("bootstrap.servers" to kafka.bootstrapServers)).use {
             val topics = listOf(compactTopic(topic, numTopics, withCompact))
             it.createTopics(topics).all().get()
@@ -75,7 +76,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
     fun `compact message with streams publish`() {
         val topic = UUID.randomUUID().toString()
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT)
-        createCompactTopic(topic)
+        createTopic(topic)
         db.dependencyResolver.resolveDependency(Procedures::class.java)
                 .registerProcedure(StreamsProcedures::class.java, true)
 
@@ -117,7 +118,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
                 "streams.source.topic.relationships.$topic" to "KNOWS{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        createCompactTopic(topic)
+        createTopic(topic)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topic))
 
@@ -153,7 +154,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
                 "streams.source.topic.relationships.$topic" to "$relType{*}")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics)
-        createCompactTopic(topic)
+        createTopic(topic)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topic))
 
@@ -191,7 +192,7 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
         val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}")
         val queries = listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE")
         initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
-        createCompactTopic(topic)
+        createTopic(topic)
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topic))
 
@@ -663,4 +664,131 @@ class KafkaEventRouterLogCompactionIT: KafkaEventRouterBaseIT() {
             assertEquals(createProducerRecordKeyForDeleteStrategy(meta), JSONUtils.readValue(record.key()))
         }
     }
+
+    @Test
+    fun `same nodes and entities in same partitions with strategy compact and without constraints`() {
+
+        // db without constraints
+        createTopicAndEntitiesAndAssertPartition(false)
+    }
+
+    @Test
+    fun `same nodes and entities in same partitions with strategy compact and with constraints`() {
+
+        val personLabel = "Person"
+        val otherLabel = "Other"
+
+        val expectedKeyPippo = mapOf("ids" to mapOf("name" to "Pippo"), "labels" to listOf(personLabel))
+        val expectedKeyPluto = mapOf("ids" to mapOf("name" to "Pluto"), "labels" to listOf(personLabel, otherLabel))
+        val expectedKeyFoo = mapOf("ids" to mapOf("name" to "Foo"), "labels" to listOf(personLabel))
+        val expectedKeyBar = mapOf("ids" to mapOf("name" to "Bar"), "labels" to listOf(personLabel, otherLabel))
+
+        // db with unique constraint
+        createTopicAndEntitiesAndAssertPartition(true, expectedKeyPippo, expectedKeyPluto, expectedKeyFoo, expectedKeyBar)
+    }
+
+    // we create a topic with kafka.streams.log.compaction.strategy=compact
+    // after that, we create and update some nodes and relationships
+    // finally, we check that each node/relationship has no records spread across multiple partitions but only in a single partition
+    private fun createTopicAndEntitiesAndAssertPartition(withConstraints: Boolean,
+                                                         firstKey: Any? = null,
+                                                         secondKey: Any? = null,
+                                                         thirdKey: Any? = null,
+                                                         fourthKey: Any? = null) {
+        val relType = "KNOWS"
+
+        // we create a topic with strategy compact
+        val topic = UUID.randomUUID().toString()
+        val sourceTopics = mapOf("streams.source.topic.nodes.$topic" to "Person{*}",
+                "streams.source.topic.relationships.$topic" to "$relType{*}",
+                "kafka.num.partitions" to "10"
+        )
+        // we optionally create a constraint for Person.name property
+        val queries = if(withConstraints) listOf("CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE") else null
+
+        initDbWithLogStrategy(TopicConfig.CLEANUP_POLICY_COMPACT, sourceTopics, queries)
+        createTopic(topic, 10, false)
+
+        createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
+            consumer.subscribe(listOf(topic))
+
+            // we create some nodes and rels
+            val idPippo = db.execute("CREATE (n:Person {name:'Pippo', surname: 'Pippo_1'}) RETURN id(n) as id").columnAs<Long>("id").next()
+            val idPluto = db.execute("CREATE (n:Person:Other {name:'Pluto', surname: 'Pluto_1'}) RETURN id(n) as id").columnAs<Long>("id").next()
+            val idFoo = db.execute("CREATE (n:Person {name:'Foo'}) RETURN id(n) as id").columnAs<Long>("id").next()
+            val idBar = db.execute("CREATE (n:Person:Other {name:'Bar'}) RETURN id(n) as id").columnAs<Long>("id").next()
+
+            db.execute("CREATE (n:Person:Other {name:'Paperino', surname: 'Paperino_1'})").close()
+            db.execute("CREATE (:Person {name:'Baz'})").close()
+            db.execute("CREATE (:Person {name:'Baa'})").close()
+            db.execute("CREATE (:Person {name:'One'})").close()
+            db.execute("CREATE (:Person {name:'Two'})").close()
+            db.execute("CREATE (:Person {name:'Three'})").close()
+            db.execute("""
+                |MATCH (pippo:Person {name:'Pippo'})
+                |MATCH (pluto:Person {name:'Pluto'})
+                |MERGE (pippo)-[:KNOWS]->(pluto)
+            """.trimMargin()).close()
+            db.execute("""
+                |MATCH (foo:Person {name:'Foo'})
+                |MATCH (bar:Person {name:'Bar'})
+                |MERGE (foo)-[:KNOWS]->(bar)
+            """.trimMargin()).close()
+            db.execute("""
+                |MATCH (one:Person {name:'One'})
+                |MATCH (two:Person {name:'Two'})
+                |MERGE (one)-[:KNOWS]->(two)
+            """.trimMargin()).close()
+
+            // we update 4 nodes and 2 rels
+            db.execute("MATCH (p:Person {name:'Pippo'}) SET p.surname = 'Pippo_update'").close()
+            db.execute("MATCH (p:Person {name:'Pippo'}) SET p.address = 'Rome'").close()
+
+            db.execute("MATCH (p:Person {name:'Pluto'}) SET p.surname = 'Pluto_update'").close()
+            db.execute("MATCH (p:Person {name:'Pluto'}) SET p.address = 'London'").close()
+
+            db.execute("MATCH (p:Person {name:'Foo'}) SET p.surname = 'Foo_update'").close()
+            db.execute("MATCH (p:Person {name:'Foo'}) SET p.address = 'Rome'").close()
+
+            db.execute("MATCH (p:Person {name:'Bar'}) SET p.surname = 'Bar_update'").close()
+            db.execute("MATCH (p:Person {name:'Bar'}) SET p.address = 'Tokyo'").close()
+
+            db.execute("MATCH (:Person {name:'Foo'})-[rel:KNOWS]->(:Person {name:'Bar'}) SET rel.since = 1999").close()
+            db.execute("MATCH (:Person {name:'Pippo'})-[rel:KNOWS]->(:Person {name:'Pluto'}) SET rel.since = 2019").close()
+
+            val records = consumer.poll(30000)
+
+            assertEquals(23, records.count())
+
+            val firstExpectedKey = firstKey ?: idPippo.toString()
+            val secondExpectedKey = secondKey ?: idPluto.toString()
+            val thirdExpectedKey = thirdKey ?: idFoo.toString()
+            val fourthExpectedKey = fourthKey ?: idBar.toString()
+            // we take the records for each node
+            val firstRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == firstExpectedKey }
+            val secondRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == secondExpectedKey }
+            val thirdRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == thirdExpectedKey }
+            val fourthRecordNode = records.filter { JSONUtils.readValue<Any>(it.key()) == fourthExpectedKey }
+            val firstRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to thirdExpectedKey, "end" to fourthExpectedKey, "label" to relType) }
+            val secondRecordRel = records.filter { JSONUtils.readValue<Any>(it.key()) == mapOf("start" to firstExpectedKey, "end" to secondExpectedKey, "label" to relType) }
+
+            // we check that all queries produced record
+            assertEquals(3, firstRecordNode.count())
+            assertEquals(3, secondRecordNode.count())
+            assertEquals(3, thirdRecordNode.count())
+            assertEquals(3, fourthRecordNode.count())
+            assertEquals(2, firstRecordRel.count())
+            assertEquals(2, secondRecordRel.count())
+
+            // we check that each node/relationship has no records spread across multiple partitions
+            assertEquals(1, checkPartitionEquality(firstRecordNode))
+            assertEquals(1, checkPartitionEquality(secondRecordNode))
+            assertEquals(1, checkPartitionEquality(thirdRecordNode))
+            assertEquals(1, checkPartitionEquality(fourthRecordNode))
+            assertEquals(1, checkPartitionEquality(firstRecordRel))
+            assertEquals(1, checkPartitionEquality(secondRecordRel))
+        }
+    }
+
+    private fun checkPartitionEquality(records: List<ConsumerRecord<String, ByteArray>>) = records.groupBy { it.partition() }.count()
 }

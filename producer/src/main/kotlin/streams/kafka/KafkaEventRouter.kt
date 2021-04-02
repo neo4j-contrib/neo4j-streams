@@ -104,7 +104,8 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         // in the procedures we allow to define a custom message key via the configuration property key
         // in order to have the backwards compatibility we define as default value the old key
         val key = config.getOrDefault("key", UUID.randomUUID().toString())
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
+        val partition = (config["partition"])?.toString()?.toInt()
+        val producerRecord = ProducerRecord(topic, partition, System.currentTimeMillis(), key?.let { JSONUtils.writeValueAsBytes(it) },
                 JSONUtils.writeValueAsBytes(event))
         return send(producerRecord, sync)
     }
@@ -116,7 +117,7 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         }
         val key = JSONUtils.writeValueAsBytes(event.asSourceRecordKey(kafkaConfig.streamsLogCompactionStrategy))
         val value = event.asSourceRecordValue(kafkaConfig.streamsLogCompactionStrategy)?.let { JSONUtils.writeValueAsBytes(it) }
-        val producerRecord = ProducerRecord(topic, getPartition(config), System.currentTimeMillis(), key, value)
+        val producerRecord = ProducerRecord(topic, null, System.currentTimeMillis(), key, value)
         send(producerRecord)
     }
 
@@ -135,7 +136,6 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
         try {
             producer?.beginTransaction()
             transactionEvents.forEach {
-                val partition = ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)
                 if (it is StreamsTransactionEvent) {
                     sendEvent(topic, it, config)
                 } else {
@@ -157,8 +157,6 @@ class KafkaEventRouter(private val config: Map<String, String>, private val log:
             producer?.abortTransaction()
         }
     }
-
-    private fun getPartition(config: Map<String, Any?>) = config.getOrDefault("partition", ThreadLocalRandom.current().nextInt(kafkaConfig.numPartitions)).toString().toInt()
 
 }
 
