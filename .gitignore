@@ -33,3 +33,5 @@ Thumbs.db
 .cache-main
 .cache-tests
 bin
+doc/node
+doc/node_modules
