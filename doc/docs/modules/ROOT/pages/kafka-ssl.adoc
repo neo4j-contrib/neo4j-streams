@@ -195,5 +195,83 @@ kafka.sasl.mechanism=PLAIN
 
 For more information, please consult the official Confluent documentation at the following links:
 
-* https://docs.confluent.io/2.0.0/kafka/sasl.html#authentication-using-sasl
-* https://docs.confluent.io/2.0.0/kafka/sasl.html#configuring-kafka-clients
+* https://docs.confluent.io/platform/current/kafka/authentication_sasl/index.html
+
+== Authorization with ACL's
+
+To configure use with ACLs, the following configuration properties are required:
+
+[source, properties]
+----
+kafka.authorizer.class.name=kafka.security.authorizer.AclAuthorizer
+kafka.zookeeper.set.acl=true
+----
+
+[NOTE]
+* `kafka.security.authorizer.AclAuthorizer` (the default Kafka authorizer implementation), was introduced in Apache Kafka 2.4/Confluent Platform 5.4.0. If you are running a previous version, then use SimpleAclAuthorizer (`kafka.security.auth.SimpleAclAuthorizer`). If you are using the Confluent platform, you can use also the LDAP authorizer (please refer to the official Confluent documentation for further details: https://docs.confluent.io/platform/current/security/ldap-authorizer/quickstart.html)
+* Please consider that `zookeeper.set.acl` is **false** by default
+
+From the official Kafka documentation you can find that if a resource has no associated ACLs, then no one is allowed to access that resource except super users.
+If this is the case in your Kafka cluster, then you have also to add the following:
+
+[source, properties]
+----
+kafka.allow.everyone.if.no.acl.found=true
+----
+
+[NOTE]
+Be very careful on using the above property because, as the property name implies, it will allow access to everyone if no acl were found
+
+If super users are specified, then include also:
+
+[source,properties]
+----
+kafka.super.users=...
+----
+
+Moreover, if you change the default user name (principal) mapping rule then you have to add also the following properties:
+
+* If you used SSL encryption, then:
+
++
+[source, properties]
+----
+kafka.ssl.principal.mapping.rules=...
+----
+
+* If you used SASL encryption (probably so, if you have Kerberos environment), then:
+
++
+[source, properties]
+----
+kafka.sasl.kerberos.principal.to.local.rules=...
+----
+
+Furthermore, if you want to ensure that also the brokers communicates with each other using Kerberos,
+you have to specify the following property, which is anyway not required for the ACLs purposes:
+
+[source, properties]
+----
+kafka.security.inter.broker.protocol=SASL_SSL
+----
+
+[NOTE]
+The last property is `PLAIN` by default
+
+To make the plugin work properly, the following operations must be authorized for Topic and Cluster resource types:
+
+* **Write**, when you want to use the plugin as a Source
+* **Read**, when you want to use the plugin as a Sink
+* **DescribeConfigs** and **Describe**, because the plugin uses the following 2 Kafka AdminClient API:
+    ** listTopics
+    ** describeCluster
+
+To use streams procedures, the same operations must be authorized (read or write) depending on which of the procedures you wish to use. The permissions required by the procedures and the source/sink operations are the same.
+
+For further details on how to setup and define ACLs on Kafka, please refer to official Confluent Kafka documentation:
+
+* https://docs.confluent.io/platform/current/kafka/authorization.html#kafka-authorization
+
+[NOTE]
+This section applies only to the Neo4j Streams plugin and not to the Kafka Connect plugin. This because it's Kafka Connect plugin that takes care about the authorizations.
+The only special case for the Kafka Connect plugin is when you use the DLQ. If so, you have to define the **Write** authorization the DLQ producer needs.
