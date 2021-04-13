@@ -30,7 +30,6 @@ services:
       NEO4J_dbms_logs_debug_level: DEBUG
       NEO4J_apoc_import_file_enabled: "true"
       NEO4J_kafka_auto_offset_reset: "latest"
-      NEO4J_kafka_zookeeper_connect: zookeeper-1:22181,zookeeper-2:32181,zookeeper-3:42181
       NEO4J_kafka_bootstrap_servers: broker-1:29092,broker-2:39092,broker-3:49092
       NEO4J_kafka_group_id: "neo4j"
       NEO4J_kafka_client_id: "neo4j"
@@ -65,7 +64,6 @@ services:
       NEO4J_dbms_logs_debug_level: DEBUG
       NEO4J_apoc_import_file_enabled: "true"
       NEO4J_kafka_auto_offset_reset: "latest"
-      NEO4J_kafka_zookeeper_connect: zookeeper-1:22181,zookeeper-2:32181,zookeeper-3:42181
       NEO4J_kafka_bootstrap_servers: broker-1:29092,broker-2:39092,broker-3:49092
       NEO4J_kafka_group_id: "neo4j"
       NEO4J_kafka_client_id: "neo4j"
@@ -98,7 +96,6 @@ services:
       NEO4J_dbms_connector_https_listen__address: :6479
       NEO4J_dbms_connector_bolt_listen__address: :7689
       NEO4J_dbms_logs_debug_level: DEBUG
-      NEO4J_kafka_zookeeper_connect: zookeeper-1:22181,zookeeper-2:32181,zookeeper-3:42181
       NEO4J_kafka_bootstrap_servers: broker-1:29092,broker-2:39092,broker-3:49092
       NEO4J_kafka_group_id: "neo4j"
       NEO4J_kafka_client_id: "neo4j"
@@ -131,7 +128,6 @@ services:
       NEO4J_dbms_connector_https_listen__address: :6480
       NEO4J_dbms_connector_bolt_listen__address: :7690
       NEO4J_dbms_logs_debug_level: DEBUG
-      NEO4J_kafka_zookeeper_connect: zookeeper-1:22181,zookeeper-2:32181,zookeeper-3:42181
       NEO4J_kafka_bootstrap_servers: broker-1:29092,broker-2:39092,broker-3:49092
       NEO4J_kafka_group_id: "neo4j"
       NEO4J_kafka_client_id: "neo4j"

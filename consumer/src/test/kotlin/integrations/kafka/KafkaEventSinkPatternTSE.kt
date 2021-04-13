@@ -138,7 +138,6 @@ class KafkaEventSinkPatternTSE : KafkaEventSinkBaseTSE() {
 
         val kafkaProperties = Properties()
         kafkaProperties[ProducerConfig.BOOTSTRAP_SERVERS_CONFIG] = KafkaEventSinkSuiteIT.kafka.bootstrapServers
-        kafkaProperties["zookeeper.connect"] = KafkaEventSinkSuiteIT. kafka.envMap["KAFKA_ZOOKEEPER_CONNECT"] ?: "localhost:2181"
         kafkaProperties["group.id"] = "neo4j"
         kafkaProperties[ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java
         kafkaProperties[ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG] = ByteArraySerializer::class.java

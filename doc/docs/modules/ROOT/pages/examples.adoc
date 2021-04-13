@@ -61,7 +61,6 @@ control-center is [UP]
 .neo4j.conf
 [source, properties]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
 kafka.group.id=neo4j
@@ -207,7 +206,6 @@ services:
     hostname: schema_registry
     container_name: schema_registry
     depends_on:
-      - zookeeper
       - broker
     ports:
       - "8081:8081"
@@ -241,7 +239,6 @@ services:
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-      CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
       CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=DEBUG,org.I0Itec.zkclient=DEBUG,org.reflections=ERROR
     command:

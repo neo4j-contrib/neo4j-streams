@@ -106,9 +106,6 @@ You'll have this following output (it's related to *your* configuration 😄)
 |"streams.sink.errors.log.enable"
 |"true"
 
-|"kafka.zookeeper.connect"
-|"zookeeper:2181"
-
 |===
 
 ==== `streams.configuration.set`
@@ -195,9 +192,6 @@ You'll have this following output (it's related to *your* configuration 😄)
 |"streams.sink.errors.log.enable"
 |"true"
 
-|"kafka.zookeeper.connect"
-|"zookeeper:2181"
-
 |===
 
 ==== `streams.configuration.remove`
@@ -252,7 +246,7 @@ So given the following procedure call:
 
 [source,cypher]
 ----
-CALL streams.configuration.remove([`kafka.zookeeper.connect`], {save: false}) YIELD name, value
+CALL streams.configuration.remove([`kafka.acks`], {save: false}) YIELD name, value
 RETURN name, value
 ----
 

@@ -5,7 +5,6 @@ You can set the following configuration values in your `neo4j.conf`, here are th
 .neo4j.conf (with default values)
 [source]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 kafka.acks=1
 kafka.retries=2
@@ -169,7 +168,6 @@ So you add the following configuration:
 
 [source]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 streams.source.enabled=true
 streams.sink.enabled=false
@@ -190,7 +188,6 @@ database you are interested of:
 
 [source]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 streams.source.enabled=false
 streams.sink.enabled=false

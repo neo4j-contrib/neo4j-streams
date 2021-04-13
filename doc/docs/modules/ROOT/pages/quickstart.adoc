@@ -69,7 +69,6 @@ If you are running locally or against a standalone machine, configure `neo4j.con
 .neo4j.conf
 [source,ini]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 ----
 
@@ -85,7 +84,6 @@ Configuring neo4j-streams comes in three different parts, depending on your need
 .neo4j.conf
 [source,ini]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 ----
 
@@ -152,7 +150,6 @@ similar to the following:
 2020-03-25 20:13:50.606+0000 WARN  Unrecognized setting. No declared setting with name: kafka.max.partition.fetch.bytes
 2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.log.include.messages
 2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.auto.offset.reset
-2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.zookeeper.connect
 2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.bootstrap.servers
 2020-03-25 20:13:50.608+0000 WARN  Unrecognized setting. No declared setting with name: kafka.max.poll.records
 2020-03-25 20:13:50.609+0000 WARN  Unrecognized setting. No declared setting with name: streams.sink.errors.log.enable
@@ -197,7 +194,6 @@ docker-compose up -d
 When the process is terminated you have all the modules up and running:
 
 * Neo4j
-* Zookeeper
 * Kafka Broker
 * Schema Registry
 * Kafka Connect

@@ -9,8 +9,7 @@ class KafkaConfigurationTest {
 
     @Test
     fun shouldCreateConfiguration() {
-        val map = mapOf("kafka.zookeeper.connect" to "zookeeper:1234",
-                "kafka.bootstrap.servers" to "kafka:5678",
+        val map = mapOf("kafka.bootstrap.servers" to "kafka:5678",
                 "kafka.acks" to "10",
                 "kafka.retries" to 1,
                 "kafka.batch.size" to 10,
@@ -33,7 +32,6 @@ class KafkaConfigurationTest {
 
         val properties = kafkaConfig.asProperties()
 
-        assertEquals(map["kafka.zookeeper.connect"], properties["zookeeper.connect"])
         assertEquals(map["kafka.bootstrap.servers"], properties["bootstrap.servers"])
         assertEquals(map["kafka.acks"], properties["acks"])
         assertEquals(map["kafka.retries"], properties["retries"])

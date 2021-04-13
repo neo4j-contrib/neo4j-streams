@@ -240,11 +240,6 @@ If not specified it inherits the underlying `kafka.enable.auto.commit` value
 |Boolean (default `true`)
 |In case of `autoCommit` is set to `false` you can decide if you want to commit the data.
 
-|`zookeeper`
-|String
-|The comma separated string of Zookeeper nodes url.
-If not specified it inherits the underlying `kafka.zookeeper.connect` value
-
 |`broker`
 |String
 |The comma separated string of Kafka nodes url.

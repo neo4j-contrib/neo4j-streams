@@ -6,7 +6,6 @@ services:
     hostname: neo4j-producer
     container_name: neo4j-producer
     depends_on:
-      - zookeeper
       - broker
     ports:
       - "8474:7474"
@@ -15,7 +14,6 @@ services:
       - $HOME/app/neo4j-streams/neo4j-community-3.4.7-producer/data:/data
       - $HOME/app/neo4j-streams/neo4j-community-3.4.7-producer/plugins:/plugins
     environment:
-      NEO4J_kafka_zookeeper_connect: zookeeper:2181
       NEO4J_kafka_bootstrap_servers: broker:9092
       NEO4J_AUTH: neo4j/producer
       NEO4J_dbms_memory_heap_max__size: 8G
@@ -36,7 +34,6 @@ services:
       - $HOME/app/neo4j-streams/neo4j-community-3.4.7-consumer/data:/data
       - $HOME/app/neo4j-streams/neo4j-community-3.4.7-consumer/plugins:/plugins
     environment:
-      NEO4J_kafka_zookeeper_connect: zookeeper:2181
       NEO4J_kafka_bootstrap_servers: broker:9092
       NEO4J_AUTH: neo4j/consumer
       NEO4J_dbms_memory_heap_max__size: 2G
