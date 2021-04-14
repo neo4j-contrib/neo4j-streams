@@ -15,7 +15,6 @@ services:
       NEO4J_AUTH: neo4j/streams
       NEO4J_dbms_logs_debug_level: DEBUG
       # KAFKA related configuration
-      NEO4J_kafka_zookeeper_connect: zookeeper:12181
       NEO4J_kafka_bootstrap_servers: kafka:19092
       NEO4J_streams_source_topic_nodes_neo4j: Person{*}
       NEO4J_streams_source_topic_relationships_neo4j: KNOWS{*}
