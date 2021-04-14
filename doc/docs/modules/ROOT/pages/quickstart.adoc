@@ -194,6 +194,7 @@ docker-compose up -d
 When the process is terminated you have all the modules up and running:
 
 * Neo4j
+* Zookeeper
 * Kafka Broker
 * Schema Registry
 * Kafka Connect

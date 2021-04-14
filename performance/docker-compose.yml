@@ -6,6 +6,7 @@ services:
     hostname: neo4j-producer
     container_name: neo4j-producer
     depends_on:
+      - zookeeper
       - broker
     ports:
       - "8474:7474"
