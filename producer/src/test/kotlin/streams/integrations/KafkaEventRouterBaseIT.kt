@@ -17,6 +17,7 @@ import streams.events.OperationType
 import streams.events.StreamsTransactionEvent
 import streams.procedures.StreamsProcedures
 import streams.utils.StreamsUtils
+import java.lang.IllegalArgumentException
 
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
@@ -59,20 +60,18 @@ open class KafkaEventRouterBaseIT {
         }
 
         // common methods
-        fun commonRelAssertions(value: StreamsTransactionEvent) = value.meta.operation == OperationType.created
-                && value.payload.before == null
-                && value.payload.after?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
-                && value.schema.properties == emptyMap<String, String>()
-
-        fun commonRelAssertionsUpdate(value: StreamsTransactionEvent) = value.meta.operation == OperationType.updated
-                && value.payload.before?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
-                && value.payload.after?.let { it.properties == mapOf("type" to "update") } ?: false
-                && value.schema.properties == mapOf("type" to "String")
-
-        fun commonRelAssertionsDelete(value: StreamsTransactionEvent) = value.meta.operation == OperationType.deleted
-                && value.payload.before?.let { it.properties == mapOf("type" to "update") } ?: false
-                && value.payload.after == null
-                && value.schema.properties == mapOf("type" to "String")
+        fun isValidRelationship(event: StreamsTransactionEvent, type: OperationType) = when (type) {
+            OperationType.created -> event.payload.before == null
+                    && event.payload.after?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.schema.properties == emptyMap<String, String>()
+            OperationType.updated -> event.payload.before?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.payload.after?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.schema.properties == mapOf("type" to "String")
+            OperationType.deleted -> event.payload.before?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.payload.after == null
+                    && event.schema.properties == mapOf("type" to "String")
+            else -> throw IllegalArgumentException("Unsupported OperationType")
+        }
     }
 
     lateinit var db: GraphDatabaseAPI

@@ -16,6 +16,7 @@ import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.assertion.Assert
 import streams.events.Constraint
 import streams.events.Meta
+import streams.events.OperationType
 import streams.events.RelKeyStrategy
 import streams.events.RelationshipPayload
 import streams.events.StreamsConstraintType
@@ -310,35 +311,26 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
         val expectedEndKey = mapOf("ids" to mapOf("name" to "One"), "labels" to listOf(labelEnd))
 
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
-            consumer.subscribe(listOf(personTopic, productTopic))
-            consumer.subscribe(listOf(personTopic, productTopic))
-            db.execute("CREATE (:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})")
-            db.execute("CREATE (:$labelEnd {name:'One', price: '100€'})")
-            val records = consumer.poll(5000)
-            assertEquals(2, records.count())
-        }
-
-        createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topicWithStrategyAll))
             db.execute("""
-                    |MATCH (p:$labelStart {name:'Foo'})
-                    |MATCH (pp:$labelEnd {name:'One'})
+                    |MERGE (p:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})
+                    |MERGE (pp:$labelEnd {name:'One', price: '100€'})
                     |MERGE (p)-[:$allProps]->(pp)
                 """.trimMargin())
             val records = consumer.poll(Duration.ofSeconds(5))
             assertEquals(1, records.count())
             val record = records.first()
-            val value = JSONUtils.asStreamsTransactionEvent(record.value())
+            val valueCreate = JSONUtils.asStreamsTransactionEvent(record.value())
             val key = JSONUtils.readValue<Map<String, Any>>(record.key())
-            val payload = value.payload as RelationshipPayload
-            val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+            val payload = valueCreate.payload as RelationshipPayload
+            val (start, end, setConstraints) = Triple(payload.start, payload.end, valueCreate.schema.constraints.toSet())
             assertEquals(expectedPropsAllKeyStrategy, start.ids)
             assertEquals(expectedEndProps, end.ids)
             assertEquals(expectedSetConstraints, setConstraints)
             assertEquals(expectedStartKeyStrategyAll, key["start"])
             assertEquals(expectedEndKey, key["end"])
             assertEquals(allProps, key["label"])
-            assertTrue(commonRelAssertions(value))
+            assertTrue(isValidRelationship(valueCreate, OperationType.created))
 
             db.execute("MATCH (p)-[rel:$allProps]->(pp) SET rel.type = 'update'")
             val updatedRecords = consumer.poll(Duration.ofSeconds(5))
@@ -354,7 +346,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             assertEquals(expectedStartKeyStrategyAll, keyUpdate["start"])
             assertEquals(expectedEndKey, keyUpdate["end"])
             assertEquals(allProps, keyUpdate["label"])
-            assertTrue(commonRelAssertionsUpdate(valueUpdate))
+            assertTrue(isValidRelationship(valueUpdate, OperationType.updated))
 
             db.execute("MATCH (p)-[rel:$allProps]->(pp) DELETE rel")
             val deletedRecordsAll = consumer.poll(Duration.ofSeconds(5))
@@ -371,24 +363,24 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topicWithStrategyFirst))
             db.execute("""
-                    |MATCH (p:$labelStart {name:'Foo'})
-                    |MATCH (pp:$labelEnd {name:'One'})
+                    |MERGE (p:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})
+                    |MERGE (pp:$labelEnd {name:'One', price: '100€'})
                     |MERGE (p)-[:$oneProp]->(pp)
                 """.trimMargin())
             val records = consumer.poll(Duration.ofSeconds(5))
             assertEquals(1, records.count())
             val record = records.first()
-            val value = JSONUtils.asStreamsTransactionEvent(record.value())
+            val valueCreate = JSONUtils.asStreamsTransactionEvent(record.value())
             val key = JSONUtils.readValue<Map<String, Any>>(record.key())
-            val payload = value.payload as RelationshipPayload
-            val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+            val payload = valueCreate.payload as RelationshipPayload
+            val (start, end, setConstraints) = Triple(payload.start, payload.end, valueCreate.schema.constraints.toSet())
             assertEquals(expectedPropsDefaultKeyStrategy, start.ids)
             assertEquals(expectedEndProps, end.ids)
             assertEquals(expectedSetConstraints, setConstraints)
             assertEquals(expectedStartKey, key["start"])
             assertEquals(expectedEndKey, key["end"])
             assertEquals(oneProp, key["label"])
-            assertTrue(commonRelAssertions(value))
+            assertTrue(isValidRelationship(valueCreate, OperationType.created))
 
             db.execute("MATCH (p)-[rel:$oneProp]->(pp) SET rel.type = 'update'")
             val updatedRecords = consumer.poll(Duration.ofSeconds(5))
@@ -404,7 +396,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             assertEquals(expectedStartKey, keyUpdate["start"])
             assertEquals(expectedEndKey, keyUpdate["end"])
             assertEquals(oneProp, keyUpdate["label"])
-            assertTrue(commonRelAssertionsUpdate(valueUpdate))
+            assertTrue(isValidRelationship(valueUpdate, OperationType.updated))
 
             db.execute("MATCH (p)-[rel:$oneProp]->(pp) DELETE rel")
             val deletedRecordsOne = consumer.poll(Duration.ofSeconds(5))
@@ -421,24 +413,24 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
         createConsumer(KafkaConfiguration(bootstrapServers = kafka.bootstrapServers)).use { consumer ->
             consumer.subscribe(listOf(topicWithoutStrategy))
             db.execute("""
-                    |MATCH (p:$labelStart {name:'Foo'})
-                    |MATCH (pp:$labelEnd {name:'One'})
+                    |MERGE (p:$labelStart {name:'Foo', surname: 'Bar', address: 'Earth'})
+                    |MERGE (pp:$labelEnd {name:'One', price: '100€'})
                     |MERGE (p)-[:$defaultProp]->(pp)
                 """.trimMargin())
             val records = consumer.poll(5000)
             assertEquals(1, records.count())
             val record = records.first()
-            val value = JSONUtils.asStreamsTransactionEvent(record.value())
+            val valueCreate = JSONUtils.asStreamsTransactionEvent(record.value())
             val key = JSONUtils.readValue<Map<String, Any>>(record.key())
-            val payload = value.payload as RelationshipPayload
-            val (start, end, setConstraints) = Triple(payload.start, payload.end, value.schema.constraints.toSet())
+            val payload = valueCreate.payload as RelationshipPayload
+            val (start, end, setConstraints) = Triple(payload.start, payload.end, valueCreate.schema.constraints.toSet())
             assertEquals(expectedPropsDefaultKeyStrategy, start.ids)
             assertEquals(expectedEndProps, end.ids)
             assertEquals(expectedSetConstraints, setConstraints)
             assertEquals(expectedStartKey, key["start"])
             assertEquals(expectedEndKey, key["end"])
             assertEquals(defaultProp, key["label"])
-            assertTrue(commonRelAssertions(value))
+            assertTrue(isValidRelationship(valueCreate, OperationType.created))
 
             db.execute("MATCH (p)-[rel:$defaultProp]->(pp) SET rel.type = 'update'")
             val updatedRecords = consumer.poll(20000)
@@ -454,7 +446,7 @@ class KafkaEventRouterStrategyCompactIT: KafkaEventRouterBaseIT() {
             assertEquals(expectedStartKey, keyUpdate["start"])
             assertEquals(expectedEndKey, keyUpdate["end"])
             assertEquals(defaultProp, keyUpdate["label"])
-            assertTrue(commonRelAssertionsUpdate(valueUpdate))
+            assertTrue(isValidRelationship(valueUpdate, OperationType.updated))
 
             db.execute("MATCH (p)-[rel:$defaultProp]->(pp) DELETE rel")
             val deletedRecords = consumer.poll(10000)
