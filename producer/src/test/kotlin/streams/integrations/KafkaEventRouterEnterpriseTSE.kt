@@ -20,7 +20,7 @@ import streams.events.OperationType
 import streams.events.RelKeyStrategy
 import streams.events.RelationshipPayload
 import streams.events.StreamsConstraintType
-import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
+import streams.integrations.KafkaEventRouterTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import java.time.Duration
@@ -67,7 +67,7 @@ class KafkaEventRouterEnterpriseTSE {
                 neo4j.withWaitStrategy(LogMessageWaitStrategy()
                     .withRegEx(".*\\[(${DB_NAME_NAMES.joinToString("|")}|neo4j)] \\[Source\\] Streams Source module initialised\n")
                     .withTimes(DB_NAME_NAMES.size + 1)
-                    .withStartupTimeout(Duration.ofMinutes(15)))
+                    .withStartupTimeout(Duration.ofMinutes(10)))
                 DB_NAME_NAMES.forEach {
                     neo4j.withNeo4jConfig("streams.source.enabled.from.$it", "true")
                 } // we enable the source plugin only for the instances

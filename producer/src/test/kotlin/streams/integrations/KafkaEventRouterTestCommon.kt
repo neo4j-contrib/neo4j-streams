@@ -14,7 +14,7 @@ import streams.start
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-object KafkaLogCompactionTestCommon {
+object KafkaEventRouterTestCommon {
 
     private fun createTopic(topic: String, numTopics: Int, withCompact: Boolean) = run {
         val newTopic = NewTopic(topic, numTopics, 1)
@@ -49,7 +49,7 @@ object KafkaLogCompactionTestCommon {
         }, Matchers.equalTo(true), timeout, TimeUnit.SECONDS)
     }
 
-    fun initDbWithLogStrategy(strategy: String, db: DbmsRule, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
+    fun initDbWithLogStrategy(db: DbmsRule, strategy: String, otherConfigs: Map<String, String>? = null, constraints: List<String>? = null) {
 
         db.setConfig("streams.source.schema.polling.interval", "0")
                 .setConfig("kafka.streams.log.compaction.strategy", strategy)
