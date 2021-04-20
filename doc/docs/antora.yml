@@ -25,3 +25,5 @@ asciidoc:
     url-confluent-java-client: https://docs.confluent.io/clients-kafka-java/current/overview.html
     url-confluent-hub-neo4j: https://www.confluent.io/hub/neo4j/kafka-connect-neo4j
     url-confluent-hub-datagen: https://www.confluent.io/hub/confluentinc/kafka-connect-datagen
+    page-type: APOC Manual
+    page-canonical-root: /labs
