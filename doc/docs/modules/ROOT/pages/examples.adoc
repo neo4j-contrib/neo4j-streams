@@ -206,6 +206,7 @@ services:
     hostname: schema_registry
     container_name: schema_registry
     depends_on:
+      - zookeeper
       - broker
     ports:
       - "8081:8081"
