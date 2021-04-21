@@ -56,7 +56,8 @@ class KafkaSinkConfigurationTest {
                 "kafka.streams.async.commit" to "true",
                 "kafka.key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "kafka.value.deserializer" to KafkaAvroDeserializer::class.java.name)
-        val expectedMap = mapOf("auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to group,
+        val expectedMap = mapOf("bootstrap.servers" to bootstrap,
+                "auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to group,
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
                 "streams.async.commit" to "true",
@@ -102,7 +103,8 @@ class KafkaSinkConfigurationTest {
                 "kafka.streams.async.commit" to asyncCommit,
                 "kafka.key.deserializer" to ByteArrayDeserializer::class.java.name,
                 "kafka.value.deserializer" to KafkaAvroDeserializer::class.java.name)
-        val expectedMap = mapOf("auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to "$group-$dbName",
+        val expectedMap = mapOf("bootstrap.servers" to bootstrap,
+                "auto.offset.reset" to autoOffsetReset, "enable.auto.commit" to autoCommit, "group.id" to "$group-$dbName",
                 ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
                 ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to ByteArrayDeserializer::class.java.toString(),
                 "key.deserializer" to ByteArrayDeserializer::class.java.name,
