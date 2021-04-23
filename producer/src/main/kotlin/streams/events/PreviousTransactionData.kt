@@ -42,6 +42,7 @@ class PreviousTransactionDataBuilder {
     private var updatedRels : Set<Relationship> = emptySet()
     private var relCreatedPayload: Map<String, RelationshipPayload> = emptyMap()
     private var relDeletedPayload: Map<String, RelationshipPayload> = emptyMap()
+    private var relRoutingTypesAndStrategies: Map<String, RelKeyStrategy> = emptyMap()
 
     private lateinit var nodeConstraints: Map<String, Set<Constraint>>
     private lateinit var relConstraints: Map<String, Set<Constraint>>
@@ -112,7 +113,9 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { startLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints)
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
+
+                    val startNodeKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
 
@@ -122,7 +125,7 @@ class PreviousTransactionDataBuilder {
                                 .filterKeys { endLabels.contains(it) }
                                 .flatMap { it.value }
                     }
-                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints)
+                    val endNodeKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
@@ -218,6 +221,11 @@ class PreviousTransactionDataBuilder {
 
     fun withNodeDeletedPayloads(deletedPayload: Map<String, NodePayload>): PreviousTransactionDataBuilder {
         this.nodeDeletedPayload = deletedPayload
+        return this
+    }
+
+    fun withRelRoutingTypesAndStrategies(relRoutingTypesAndStrategies: Map<String, RelKeyStrategy>): PreviousTransactionDataBuilder {
+        this.relRoutingTypesAndStrategies = relRoutingTypesAndStrategies
         return this
     }
 

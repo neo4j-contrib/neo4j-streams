@@ -36,8 +36,8 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
 
     private val nodeRoutingLabels = configuration.nodeRouting
             .flatMap { it.labels }
-    private val relRoutingTypes = configuration.relRouting
-            .map { it.name }
+    private val relRoutingTypesAndStrategies = configuration.relRouting
+            .map { it.name to it.relKeyStrategy }.toMap()
 
     private val nodeAll = configuration.nodeRouting.any { it.labels.isEmpty() }
     private val relAll = configuration.relRouting.any { it.name.isNullOrBlank() }
@@ -181,7 +181,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
     private fun buildRelationshipChanges(txd: TransactionData, builder: PreviousTransactionDataBuilder, nodeConstraints: Map<String, Set<Constraint>>): PreviousTransactionDataBuilder{
         // returns a Map<Boolean, List<Relationship>> where the K is true if the node has been deleted
         val removeRelProps = allOrFiltered(txd.removedRelationshipProperties(), relAll)
-                { relRoutingTypes.contains(it.entity().type.name()) }
+                { relRoutingTypesAndStrategies.containsKey(it.entity().type.name()) }
                 .map { txd.deletedRelationships().contains(it.entity()) to it }
                 .groupBy({ it.first }, { it.second })
                 .toMap()
@@ -202,20 +202,22 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         }
 
         val createdRelPayload = allOrFiltered(txd.createdRelationships(), relAll)
-                { relRoutingTypes.contains(it.type.name()) }
+                { relRoutingTypesAndStrategies.containsKey(it.type.name()) }
                 .map {
                     val afterRel = RelationshipChangeBuilder()
                             .withProperties(it.allProperties)
                             .build()
 
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
+
                     val startLabels = it.startNode.labelNames()
                     val startNodeConstraints = filterNodeConstraintCache(startLabels)
-                    val startKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints)
+                    val startKeys = getNodeKeys(startLabels, it.startNode.propertyKeys.toSet(), startNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
                     val endLabels = it.endNode.labelNames()
                     val endNodeConstraints = filterNodeConstraintCache(endLabels)
-                    val endKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints)
+                    val endKeys = getNodeKeys(endLabels, it.endNode.propertyKeys.toSet(), endNodeConstraints, relKeyStrategy)
                             .toTypedArray()
 
                     val payload = RelationshipPayloadBuilder()
@@ -231,7 +233,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                 .toMap()
 
         val deletedRelPayload = allOrFiltered(txd.deletedRelationships(), relAll)
-                { relRoutingTypes.contains(it.type.name()) }
+                { relRoutingTypesAndStrategies.contains(it.type.name()) }
                 .map {
                     val beforeRel = RelationshipChangeBuilder()
                             .withProperties(deletedRelProperties.getOrDefault(it.id, emptyMap()))
@@ -256,11 +258,13 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
                         it.endNode.propertyKeys
                     }
 
+                    val relKeyStrategy = relRoutingTypesAndStrategies.getOrDefault(it.type.name(), RelKeyStrategy.DEFAULT)
+
                     val startNodeConstraints = filterNodeConstraintCache(startNodeLabels)
-                    val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints)
+                    val startKeys = getNodeKeys(startNodeLabels, startPropertyKeys.toSet(), startNodeConstraints, relKeyStrategy)
 
                     val endNodeConstraints = filterNodeConstraintCache(endNodeLabels)
-                    val endKeys = getNodeKeys(endNodeLabels, endPropertyKeys.toSet(), endNodeConstraints)
+                    val endKeys = getNodeKeys(endNodeLabels, endPropertyKeys.toSet(), endNodeConstraints, relKeyStrategy)
 
                     val startProperties = if (isStartNodeDeleted) {
                         val payload = builder.nodeDeletedPayload(it.startNode.id)!!
@@ -293,6 +297,7 @@ class StreamsTransactionEventHandler(private val router: StreamsEventRouter,
         return builder.withRelProperties(txd.assignedRelationshipProperties(), removedRelsProperties)
                 .withRelCreatedPayloads(createdRelPayload)
                 .withRelDeletedPayloads(deletedRelPayload)
+                .withRelRoutingTypesAndStrategies(relRoutingTypesAndStrategies)
     }
 
     override fun afterRollback(p0: TransactionData?, p1: PreviousTransactionData?) {}

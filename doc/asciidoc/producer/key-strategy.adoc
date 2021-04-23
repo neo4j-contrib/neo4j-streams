@@ -1,0 +1,60 @@
+With `streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=default`,
+when I produce a message for relationships, only one of the associated node constraints will be returned,
+based on the following rule.
+
+If there are multiple constraints, we sort by the number of the properties associated to the constraint,
+then by label name (alphabetically) and finally by properties name (alphabetically).
+
+Finally, we take the properties of the first one.
+
+So, if we have a start node with labels `Person` and `Other`,
+and we create 2 constraints like these:
+
+[source, cypher]
+----
+CREATE CONSTRAINT ON (p:Other) ASSERT p.zxc IS UNIQUE;
+CREATE CONSTRAINT ON (p:Person) ASSERT p.name IS UNIQUE;
+----
+
+the `start.ids` field produced, will be:
+[source,json]
+----
+{"zxc": "FooBar"}
+----
+
+because properties size is the same (that is 1), but first label by name is `Other`.
+
+Otherwise, with:
+
+[source, cypher]
+----
+CREATE CONSTRAINT ON (p:Other) ASSERT p.zxc IS UNIQUE;
+CREATE CONSTRAINT ON (p:Other) ASSERT p.name IS UNIQUE;
+----
+
+the `start.ids` field produced, will be:
+[source,json]
+----
+{"name": "Sherlock"}
+----
+
+because of `name` property name compared to `zxc`.
+
+
+Otherwise with `streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=all`,
+any property participating in a unique constraint will be produced.
+So, with a start node with labels `Person`, `Other`, `Another` and with these constraints:
+
+[source, cypher]
+----
+CREATE CONSTRAINT ON (p:Another) ASSERT p.zxc IS UNIQUE;
+CREATE CONSTRAINT ON (p:Other) ASSERT p.name IS UNIQUE;
+CREATE CONSTRAINT ON (p:Person) ASSERT p.surname IS UNIQUE;
+----
+
+the `start.ids` field produced, will be:
+[source,json]
+----
+{ "name": "Sherlock", "surname": "Holmes", "zxc": "FooBar"}
+----
+

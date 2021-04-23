@@ -1,5 +1,5 @@
 
-== Message structure
+=== Message structure
 
 The message key structure depends on `kafka.streams.log.compaction.strategy`.
 
@@ -112,3 +112,11 @@ We obtain this key:
 ----
 {"start": "0", "end": "1", "label": "BUYS"}
 ----
+
+[NOTE]
+====
+In case of relationships with multiple constraints on start or end node,
+the `ids` fields depend on `streams.source.topic.relationships.<TOPIC_NAME>.key_strategy` config.
+
+xref:key-strategy.adoc[See 'key-strategy' section to more details]
+====

@@ -13,8 +13,11 @@ import org.neo4j.kernel.impl.proc.Procedures
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.test.TestGraphDatabaseFactory
 import org.testcontainers.containers.KafkaContainer
+import streams.events.OperationType
+import streams.events.StreamsTransactionEvent
 import streams.procedures.StreamsProcedures
 import streams.utils.StreamsUtils
+import java.lang.IllegalArgumentException
 
 
 @Suppress("UNCHECKED_CAST", "DEPRECATION")
@@ -54,6 +57,20 @@ open class KafkaEventRouterBaseIT {
             StreamsUtils.ignoreExceptions({
                 kafka.stop()
             }, UninitializedPropertyAccessException::class.java)
+        }
+
+        // common methods
+        fun isValidRelationship(event: StreamsTransactionEvent, type: OperationType) = when (type) {
+            OperationType.created -> event.payload.before == null
+                    && event.payload.after?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.schema.properties == emptyMap<String, String>()
+            OperationType.updated -> event.payload.before?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.payload.after?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.schema.properties == mapOf("type" to "String")
+            OperationType.deleted -> event.payload.before?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.payload.after == null
+                    && event.schema.properties == mapOf("type" to "String")
+            else -> throw IllegalArgumentException("Unsupported OperationType")
         }
     }
 

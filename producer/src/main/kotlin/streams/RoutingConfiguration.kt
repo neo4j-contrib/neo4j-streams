@@ -4,6 +4,7 @@ import org.apache.kafka.common.internals.Topic
 import org.neo4j.graphdb.Entity
 import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
+import org.neo4j.logging.Log
 import streams.events.*
 
 
@@ -152,6 +153,7 @@ data class NodeRoutingConfiguration(val labels: List<String> = emptyList(),
 }
 
 data class RelationshipRoutingConfiguration(val name: String = "",
+                                            val relKeyStrategy: RelKeyStrategy = RelKeyStrategy.DEFAULT,
                                             override val topic: String = "neo4j",
                                             override val all: Boolean = true,
                                             override val include: List<String> = emptyList(),
@@ -168,7 +170,7 @@ data class RelationshipRoutingConfiguration(val name: String = "",
     }
 
     companion object {
-        fun parse(topic: String, pattern: String): List<RelationshipRoutingConfiguration> {
+        fun parse(topic: String, pattern: String, keyStrategyString: String = RelKeyStrategy.DEFAULT.toString(), log: Log? = null): List<RelationshipRoutingConfiguration> {
             Topic.validate(topic)
             if (pattern == PATTERN_WILDCARD) {
                 return listOf(RelationshipRoutingConfiguration(topic = topic))
@@ -183,8 +185,16 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                         throw IllegalArgumentException("The pattern $pattern for topic $topic is invalid")
                     }
                     val properties = RoutingProperties.from(matcher)
+
+                    val keyStrategy = try {
+                        RelKeyStrategy.valueOf(keyStrategyString.toUpperCase())
+                    } catch (e: IllegalArgumentException) {
+                        log?.warn("Invalid key strategy setting, switching to default value ${RelKeyStrategy.DEFAULT.toString().toLowerCase()}")
+                        RelKeyStrategy.DEFAULT
+                    }
+
                     RelationshipRoutingConfiguration(name = labels.first(), topic = topic, all = properties.all,
-                            include = properties.include, exclude = properties.exclude)
+                            include = properties.include, exclude = properties.exclude, relKeyStrategy= keyStrategy)
                 }
             }
         }
@@ -226,11 +236,12 @@ data class RelationshipRoutingConfiguration(val name: String = "",
     }
 }
 
+
 object RoutingConfigurationFactory {
-    fun getRoutingConfiguration(topic: String, line: String, entityType: EntityType): List<RoutingConfiguration> {
+    fun getRoutingConfiguration(topic: String, line: String, entityType: EntityType, keyStrategy: String = RelKeyStrategy.DEFAULT.toString(), log: Log? = null): List<RoutingConfiguration> {
         return when (entityType) {
             EntityType.node -> NodeRoutingConfiguration.parse(topic, line)
-            EntityType.relationship -> RelationshipRoutingConfiguration.parse(topic, line)
+            EntityType.relationship -> RelationshipRoutingConfiguration.parse(topic, line, keyStrategy, log)
         }
     }
 }
