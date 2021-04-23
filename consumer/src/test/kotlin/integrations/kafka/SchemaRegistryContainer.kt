@@ -4,7 +4,6 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.KafkaContainer.KAFKA_PORT
-import org.testcontainers.containers.KafkaContainer.ZOOKEEPER_PORT
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.SocatContainer
 import java.util.stream.Stream

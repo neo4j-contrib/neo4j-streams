@@ -48,7 +48,6 @@ class KafkaEventSink(private val config: Map<String, String>,
         dbName = db.databaseName(), isDefaultDb = db.isDefaultDb())
 
     override val mappingKeys = mapOf(
-            "zookeeper" to "kafka.zookeeper.connect",
             "broker" to "kafka.${ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG}",
             "from" to "kafka.${ConsumerConfig.AUTO_OFFSET_RESET_CONFIG}",
             "autoCommit" to "kafka.${ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG}",

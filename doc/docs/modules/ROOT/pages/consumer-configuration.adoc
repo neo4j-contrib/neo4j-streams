@@ -5,7 +5,6 @@ You can set the following Kafka configuration values in your `neo4j.conf`, here 
 .neo4j.conf
 [source,subs="verbatim,attributes"]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
 kafka.group.id=neo4j

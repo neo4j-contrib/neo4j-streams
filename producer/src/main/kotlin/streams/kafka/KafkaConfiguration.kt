@@ -17,8 +17,7 @@ enum class LogStrategy { delete, compact }
 
 private val configPrefix = "kafka."
 
-data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
-                              val bootstrapServers: String = "localhost:9092",
+data class KafkaConfiguration(val bootstrapServers: String = "localhost:9092",
                               val acks: String = "1",
                               val retries: Int = 2,
                               val batchSize: Int = 16384,
@@ -43,8 +42,7 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
             val keys = JSONUtils.asMap(default).keys.map { it.toPointCase() }
             val extraProperties = config.filterKeys { !keys.contains(it) }
 
-            return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
-                    bootstrapServers = config.getOrDefault("bootstrap.servers", default.bootstrapServers),
+            return default.copy(bootstrapServers = config.getOrDefault("bootstrap.servers", default.bootstrapServers),
                     acks = config.getOrDefault("acks", default.acks),
                     retries = config.getInt("retries", default.retries),
                     batchSize = config.getInt("batch.size", default.batchSize),
@@ -69,7 +67,6 @@ data class KafkaConfiguration(val zookeeperConnect: String = "localhost:2181",
         }
 
         private fun validate(config: KafkaConfiguration, rawConfig: Map<String, String>, log: Log? = null) {
-            validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
             validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
             try {
                 LogStrategy.valueOf(config.streamsLogCompactionStrategy)

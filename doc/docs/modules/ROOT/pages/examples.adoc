@@ -61,7 +61,6 @@ control-center is [UP]
 .neo4j.conf
 [source, properties]
 ----
-kafka.zookeeper.connect=localhost:2181
 kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
 kafka.group.id=neo4j

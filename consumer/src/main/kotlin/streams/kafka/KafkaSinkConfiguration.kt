@@ -30,8 +30,7 @@ private fun validateDeserializers(config: KafkaSinkConfiguration) {
     }
 }
 
-data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181",
-                                  val bootstrapServers: String = "localhost:9092",
+data class KafkaSinkConfiguration(val bootstrapServers: String = "localhost:9092",
                                   val keyDeserializer: String = "org.apache.kafka.common.serialization.ByteArrayDeserializer",
                                   val valueDeserializer: String = "org.apache.kafka.common.serialization.ByteArrayDeserializer",
                                   val groupId: String = "neo4j",
@@ -67,8 +66,7 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
             val streamsSinkConfiguration = StreamsSinkConfiguration.from(configMap = cfg, dbName = dbName, isDefaultDb = isDefaultDb)
 
 
-            return default.copy(zookeeperConnect = config.getOrDefault("zookeeper.connect",default.zookeeperConnect),
-                    keyDeserializer = config.getOrDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, default.keyDeserializer),
+            return default.copy(keyDeserializer = config.getOrDefault(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, default.keyDeserializer),
                     valueDeserializer = config.getOrDefault(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, default.valueDeserializer),
                     bootstrapServers = config.getOrDefault(CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, default.bootstrapServers),
                     autoOffsetReset = config.getOrDefault(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, default.autoOffsetReset),
@@ -81,7 +79,6 @@ data class KafkaSinkConfiguration(val zookeeperConnect: String = "localhost:2181
         }
 
         private fun validate(config: KafkaSinkConfiguration) {
-            validateConnection(config.zookeeperConnect, "zookeeper.connect", false)
             validateConnection(config.bootstrapServers, CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG, false)
             val schemaRegistryUrlKey = "schema.registry.url"
             if (config.extraProperties.containsKey(schemaRegistryUrlKey)) {
