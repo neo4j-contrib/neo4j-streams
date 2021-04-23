@@ -110,6 +110,27 @@ dbms.jvm.additional=-Djavax.net.debug=ssl:handshake
 
 This line `*dbms.jvm.additional=-Djavax.net.debug=ssl:handshake*` is optional but does help for debugging SSL issues.
 
+[NOTE]
+====
+When configuring a secure connection between Neo4j and Kafka, and using SASL protocol in particular, pay attention to
+use the following properties:
+
+[source, properties]
+----
+kafka.security.protocol=SASL_SSL
+sasl.mechanism=GSSAPI
+----
+
+and *not* the following, which has to be used on server side and not client side:
+
+[source, properties]
+----
+security.inter.broker.protocol=SASL_SSL
+sasl.mechanism.inter.broker.protocol=GSSAPI
+----
+
+====
+
 === Testing
 
 After starting Kafka and Neo4j, you can test by creating a Person node in Neo4j and then query the topic as follows:
@@ -130,3 +151,124 @@ ssl.truststore.location=/home/kafka/security/kafka.client.truststore.jks
 ssl.truststore.password=neo4jpassword
 ssl.endpoint.identification.algorithm=
 ----
+
+=== Authentication with SASL
+
+You can configure JAAS by providing a JAAS configuration file. To do this, connect to your Kafka server and modify the
+`config/server.properties` file. This configuration worked in general, but other configurations without the EXTERNAL
+and INTERNAL settings should works as well.
+
+This configuration, for example, is for Kafka on AWS but should work for other configurations.
+
+[source, properties]
+----
+listeners=EXTERNAL://0.0.0.0:9092,INTERNAL://0.0.0.0:9093,CLIENT://0.0.0.0:9094
+listener.security.protocol.map=EXTERNAL:SASL_PLAINTEXT,INTERNAL:PLAINTEXT,CLIENT:SASL_PLAINTEXT
+
+advertised.listeners=EXTERNAL://18.188.84.xxx:9092,INTERNAL://172.31.43.xxx:9093,CLIENT://18.188.84.xxx:9094
+
+zookeeper.connect=18.188.84.xxx:2181
+
+sasl.mechanism.inter.broker.protocol=PLAIN
+sasl.enabled.mechanisms=PLAIN
+inter.broker.listener.name=INTERNAL
+----
+
+On the Neo4j side the following is required. Please consider that in this case, we are connecting to the public
+AWS IP address.
+
+. Copy the contents of `~/kafka/conf/kafka_jaas.conf` on your Kafka server and save it to a file on your Neo4j server
+(i.e ~/conf/kafka_client_jaas.conf)
+
+. In *neo4j.conf*, add the following:
+
++
+[source, properties]
+----
+dbms.jvm.additional=-Djava.security.auth.login.config=/Users/davidfauth/neo4j-enterprise-4.0.4_kafka/conf/kafka_client_jaas.conf
+kafka.security.protocol=SASL_PLAINTEXT
+kafka.sasl.mechanism=PLAIN
+----
+
+For more information, please consult the official Confluent documentation at the following links:
+
+* https://docs.confluent.io/platform/current/kafka/authentication_sasl/index.html
+
+=== Authorization with ACL's
+
+To configure use with ACLs, the following configuration properties are required:
+
+[source, properties]
+----
+kafka.authorizer.class.name=kafka.security.authorizer.AclAuthorizer
+kafka.zookeeper.set.acl=true
+----
+
+[NOTE]
+* `kafka.security.authorizer.AclAuthorizer` (the default Kafka authorizer implementation), was introduced in Apache Kafka 2.4/Confluent Platform 5.4.0. If you are running a previous version, then use SimpleAclAuthorizer (`kafka.security.auth.SimpleAclAuthorizer`). If you are using the Confluent platform, you can use also the LDAP authorizer (please refer to the official Confluent documentation for further details: https://docs.confluent.io/platform/current/security/ldap-authorizer/quickstart.html)
+* Please consider that `zookeeper.set.acl` is **false** by default
+
+From the official Kafka documentation you can find that if a resource has no associated ACLs, then no one is allowed to access that resource except super users.
+If this is the case in your Kafka cluster, then you have also to add the following:
+
+[source, properties]
+----
+kafka.allow.everyone.if.no.acl.found=true
+----
+
+[NOTE]
+Be very careful on using the above property because, as the property name implies, it will allow access to everyone if no acl were found
+
+If super users are specified, then include also:
+
+[source,properties]
+----
+kafka.super.users=...
+----
+
+Moreover, if you change the default user name (principal) mapping rule then you have to add also the following properties:
+
+* If you used SSL encryption, then:
+
++
+[source, properties]
+----
+kafka.ssl.principal.mapping.rules=...
+----
+
+* If you used SASL encryption (probably so, if you have Kerberos environment), then:
+
++
+[source, properties]
+----
+kafka.sasl.kerberos.principal.to.local.rules=...
+----
+
+Furthermore, if you want to ensure that also the brokers communicates with each other using Kerberos,
+you have to specify the following property, which is anyway not required for the ACLs purposes:
+
+[source, properties]
+----
+kafka.security.inter.broker.protocol=SASL_SSL
+----
+
+[NOTE]
+The last property is `PLAIN` by default
+
+To make the plugin work properly, the following operations must be authorized for Topic and Cluster resource types:
+
+* **Write**, when you want to use the plugin as a Source
+* **Read**, when you want to use the plugin as a Sink
+* **DescribeConfigs** and **Describe**, because the plugin uses the following 2 Kafka AdminClient API:
+    ** listTopics
+    ** describeCluster
+
+To use streams procedures, the same operations must be authorized (read or write) depending on which of the procedures you wish to use. The permissions required by the procedures and the source/sink operations are the same.
+
+For further details on how to setup and define ACLs on Kafka, please refer to official Confluent Kafka documentation:
+
+* https://docs.confluent.io/platform/current/kafka/authorization.html#kafka-authorization
+
+[NOTE]
+This section applies only to the Neo4j Streams plugin and not to the Kafka Connect plugin. This because it's Kafka Connect plugin that takes care about the authorizations.
+The only special case for the Kafka Connect plugin is when you use the DLQ. If so, you have to define the **Write** authorization the DLQ producer needs.
