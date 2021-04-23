@@ -46,6 +46,8 @@ data class RelationshipPayload(override val id: String,
 
 enum class StreamsConstraintType { UNIQUE, NODE_PROPERTY_EXISTS, RELATIONSHIP_PROPERTY_EXISTS }
 
+enum class RelKeyStrategy { DEFAULT, ALL }
+
 data class Constraint(val label: String?,
                       val properties: Set<String>,
                       val type: StreamsConstraintType)

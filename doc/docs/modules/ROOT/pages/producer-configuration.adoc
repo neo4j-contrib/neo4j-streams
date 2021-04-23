@@ -21,8 +21,10 @@ kafka.streams.log.compaction.strategy=delete
 
 streams.source.topic.nodes.<TOPIC_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>=<PATTERN>
+streams.source.topic.relationships.<TOPIC_NAME>.key_strategy=<default/all>
 streams.source.topic.nodes.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
+streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>.key_strategy=<default/all>
 streams.source.enabled=<true/false, default=true>
 streams.source.enabled.from.<DB_NAME>=<true/false, default=true>
 streams.procedures.enabled.from.<DB_NAME>=<true/false, default=true>
@@ -67,6 +69,7 @@ Following the list of new properties that allows to support multi-tenancy:
 ----
 streams.source.topic.nodes.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
 streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>=<PATTERN>
+streams.source.topic.relationships.<TOPIC_NAME>.from.<DB_NAME>.key_strategy=<PATTERN>
 streams.source.enabled.from.<DB_NAME>=<true/false, default=true>
 ----
 

@@ -8,6 +8,8 @@ import org.junit.BeforeClass
 import org.neo4j.test.rule.DbmsRule
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import streams.KafkaTestUtils
+import streams.events.OperationType
+import streams.events.StreamsTransactionEvent
 import streams.setConfig
 
 open class KafkaEventRouterBaseTSE { // TSE (Test Suit Element)
@@ -31,6 +33,20 @@ open class KafkaEventRouterBaseTSE { // TSE (Test Suit Element)
             if (!startedFromSuite) {
                 KafkaEventRouterSuiteIT.tearDownContainer()
             }
+        }
+
+        // common methods
+        fun isValidRelationship(event: StreamsTransactionEvent, type: OperationType) = when (type) {
+            OperationType.created -> event.payload.before == null
+                    && event.payload.after?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.schema.properties == emptyMap<String, String>()
+            OperationType.updated -> event.payload.before?.let { it.properties?.let { it.isNullOrEmpty() } } ?: false
+                    && event.payload.after?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.schema.properties == mapOf("type" to "String")
+            OperationType.deleted -> event.payload.before?.let { it.properties == mapOf("type" to "update") } ?: false
+                    && event.payload.after == null
+                    && event.schema.properties == mapOf("type" to "String")
+            else -> throw IllegalArgumentException("Unsupported OperationType")
         }
     }
 

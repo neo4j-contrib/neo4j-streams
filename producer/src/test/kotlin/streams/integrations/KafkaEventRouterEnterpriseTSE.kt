@@ -13,11 +13,14 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy
 import streams.Assert
 import streams.KafkaTestUtils
 import streams.Neo4jContainerExtension
+import streams.events.Constraint
 import streams.events.EntityType
 import streams.events.NodeChange
 import streams.events.OperationType
+import streams.events.RelKeyStrategy
 import streams.events.RelationshipPayload
-import streams.integrations.KafkaLogCompactionTestCommon.assertTopicFilled
+import streams.events.StreamsConstraintType
+import streams.integrations.KafkaEventRouterTestCommon.assertTopicFilled
 import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import java.time.Duration
@@ -31,15 +34,23 @@ class KafkaEventRouterEnterpriseTSE {
         const val DB_TEST_REL_WITH_COMPACT = "alpha"
         const val DB_TEST_NODE_WITH_COMPACT = "beta"
         const val DB_TOMBSTONE_WITH_COMPACT = "gamma"
+        const val DB_STRATEGY_ALL = "all"
+        const val DB_STRATEGY_DEFAULT = "default"
+        const val DB_BOTH_STRATEGY = "both"
 
         const val TOPIC_PERSON_AND_BUYS_IN_DB_TEST_REL = "one"
         const val TOPIC_PRODUCT_IN_DB_TEST_REL = "two"
         const val TOPIC_IN_DB_TEST_NODE = "three"
         const val TOPIC_WITH_TOMBSTONE = "four"
+        const val TOPIC_STRATEGY_DEFAULT = "six"
+        const val TOPIC_STRATEGY_ALL = "seven"
 
         lateinit var kafkaConsumer: KafkaConsumer<String, ByteArray>
         private var startedFromSuite = true
-        val DB_NAME_NAMES = listOf("foo", "bar", "deletedb", DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT)
+        val DB_NAME_NAMES = listOf("foo", "bar", "deletedb",
+                DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT,
+                DB_STRATEGY_ALL, DB_BOTH_STRATEGY, DB_STRATEGY_DEFAULT
+        )
 
         @JvmStatic
         val neo4j = Neo4jContainerExtension().withLogging()
@@ -76,7 +87,16 @@ class KafkaEventRouterEnterpriseTSE {
                         .withNeo4jConfig("streams.source.topic.nodes.$TOPIC_IN_DB_TEST_NODE.from.$DB_TEST_NODE_WITH_COMPACT", "Person{*}")
                         .withNeo4jConfig("streams.source.topic.nodes.$TOPIC_WITH_TOMBSTONE.from.$DB_TOMBSTONE_WITH_COMPACT", "Person{*}")
                         .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_WITH_TOMBSTONE.from.$DB_TOMBSTONE_WITH_COMPACT", "KNOWS{*}")
-                neo4j.withDatabases("foo", "bar", "baz", "deletedb", DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT)
+
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_ALL.from.$DB_STRATEGY_ALL", "ALPHA{*}")
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_ALL.from.$DB_STRATEGY_ALL.key_strategy", RelKeyStrategy.ALL.toString().toLowerCase())
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_DEFAULT.from.$DB_STRATEGY_DEFAULT", "ALPHA{*}")
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_DEFAULT.from.$DB_STRATEGY_DEFAULT.key_strategy", RelKeyStrategy.DEFAULT.toString().toLowerCase())
+
+                neo4j.withDatabases("foo", "bar", "baz", "deletedb",
+                        DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT,
+                        DB_STRATEGY_ALL, DB_STRATEGY_DEFAULT, DB_BOTH_STRATEGY
+                )
                         .withNeo4jConfig("dbms.logs.debug.level", "DEBUG")
                 neo4j.start()
                 Assume.assumeTrue("Neo4j must be running", neo4j.isRunning)
@@ -339,6 +359,92 @@ class KafkaEventRouterEnterpriseTSE {
         runQueryInDb("MATCH (:Person:Other {name:'Sherlock'})-[rel:BUYS]->(:Product {name:'Notebook'}) DELETE rel", DB_TEST_REL_WITH_COMPACT)
         assertTopicFilled(kafkaConsumer) { it.count() == 1
                 && JSONUtils.readValue<Map<*, *>>(it.first().key()) == mapRel
+        }
+    }
+
+    @Test
+    fun `relationship with multiple key strategies and dbs 2`() {
+        val labelStart = "Product"
+        val firstLabelEnd = "Person"
+        val secondLabelEnd = "Other"
+        val queries = listOf("CREATE CONSTRAINT productOne ON (p:$labelStart) ASSERT (p.code, p.price) IS NODE KEY",
+                "CREATE CONSTRAINT productTwo ON (p:$labelStart) ASSERT (p.type, p.name) IS NODE KEY",
+                "CREATE CONSTRAINT person ON (p:$firstLabelEnd) ASSERT (p.name, p.surname) IS NODE KEY",
+                "CREATE CONSTRAINT other ON (p:$secondLabelEnd) ASSERT (p.address, p.city) IS NODE KEY")
+        createConstraintAndAssert(queries, DB_STRATEGY_ALL, 4)
+        createConstraintAndAssert(queries, DB_STRATEGY_DEFAULT, 4)
+
+        val expectedSetConstraints = setOf(
+                Constraint(labelStart, setOf("code", "price"), StreamsConstraintType.UNIQUE),
+                Constraint(labelStart, setOf("name", "type"), StreamsConstraintType.UNIQUE),
+                Constraint(firstLabelEnd, setOf("name", "surname"), StreamsConstraintType.UNIQUE),
+                Constraint(secondLabelEnd, setOf("address", "city"), StreamsConstraintType.UNIQUE))
+
+        // when
+        val kafkaConsumerAll = KafkaTestUtils
+                .createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+        val kafkaConsumerDefault = KafkaTestUtils
+                .createConsumer<String, ByteArray>(bootstrapServers = KafkaEventRouterSuiteIT.kafka.bootstrapServers)
+
+        val queryStartNode = "CREATE (p:$labelStart {code:'1367', name: 'Notebook', price: '199', type: 'PC', other: 'Foo'})"
+        val queryEndNode = "CREATE (p:$firstLabelEnd:$secondLabelEnd {name: 'Sherlock', surname:'Holmes', address: 'Baker Street', city: 'London', other: 'Baz'})"
+        val queryRelationship = """
+                    |MATCH (p:$labelStart {name:'Notebook'})
+                    |MATCH (pp:$firstLabelEnd:$secondLabelEnd {name:'Sherlock'})
+                    |MERGE (p)-[:ALPHA]->(pp)
+                """.trimMargin()
+
+        val expectedListStartLabels = listOf(labelStart)
+        val expectedListEndLabels = listOf(firstLabelEnd, secondLabelEnd)
+
+        kafkaConsumerAll.use {
+            it.subscribe(listOf(TOPIC_STRATEGY_ALL))
+            runQueryInDb(queryStartNode, DB_STRATEGY_ALL)
+            runQueryInDb(queryEndNode, DB_STRATEGY_ALL)
+            runQueryInDb(queryRelationship, DB_STRATEGY_ALL)
+            val records = it.poll(Duration.ofSeconds(10))
+            assertEquals(1, records.count())
+            val record = records.first()
+            val key = JSONUtils.readValue<Map<*, *>>(record.key())
+            val expectedStartProps = mapOf("name" to "Notebook", "code" to "1367", "type" to "PC", "price" to "199")
+            val expectedEndProps = mapOf("name" to "Sherlock", "address" to "Baker Street", "city" to "London", "surname" to "Holmes")
+            assertEquals(mapOf("ids" to expectedStartProps, "labels" to expectedListStartLabels), key["start"])
+            assertEquals(mapOf("ids" to expectedEndProps, "labels" to expectedListEndLabels), key["end"])
+            assertEquals("ALPHA", key["label"])
+            val value = JSONUtils.asStreamsTransactionEvent(record.value())
+            assertEquals(expectedSetConstraints, value.schema.constraints.toSet())
+            val payload = JSONUtils.asStreamsTransactionEvent(record.value()).payload as RelationshipPayload
+            val start = payload.start
+            assertEquals(expectedListStartLabels, start.labels)
+            assertEquals(expectedStartProps, start.ids)
+            val end = payload.end
+            assertEquals(expectedListEndLabels, end.labels)
+            assertEquals(expectedEndProps, end.ids)
+        }
+
+        kafkaConsumerDefault.use {
+            it.subscribe(listOf(TOPIC_STRATEGY_DEFAULT))
+            runQueryInDb(queryStartNode, DB_STRATEGY_DEFAULT)
+            runQueryInDb(queryEndNode, DB_STRATEGY_DEFAULT)
+            runQueryInDb(queryRelationship, DB_STRATEGY_DEFAULT)
+            val records = it.poll(Duration.ofSeconds(10))
+            assertEquals(1, records.count())
+            val record = records.first()
+            val key = JSONUtils.readValue<Map<*, *>>(record.key())
+            val expectedStartProps = mapOf("code" to "1367",  "price" to "199")
+            val expectedEndProps = mapOf("address" to "Baker Street", "city" to "London")
+            assertEquals(mapOf("ids" to expectedStartProps, "labels" to expectedListStartLabels), key["start"])
+            assertEquals(mapOf("ids" to expectedEndProps, "labels" to expectedListEndLabels), key["end"])
+            assertEquals("ALPHA", key["label"])
+            val value = JSONUtils.asStreamsTransactionEvent(record.value())
+            assertEquals(expectedSetConstraints, value.schema.constraints.toSet())
+            val payload = JSONUtils.asStreamsTransactionEvent(record.value()).payload as RelationshipPayload
+            val start = payload.start
+            assertEquals(listOf("Product"), start.labels)
+            assertEquals(expectedStartProps, start.ids)
+            val end = payload.end
+            assertEquals(expectedListEndLabels, end.labels)
+            assertEquals(expectedEndProps, end.ids)
         }
     }
 
