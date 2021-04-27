@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>3.5.12</version>
+    <version>3.5.13</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -23,7 +23,7 @@
 
     <modules>
         <module>common</module>
-        <module>kafka-connect-neo4j</module>
+<!--        <module>kafka-connect-neo4j</module>-->
         <module>producer</module>
         <module>consumer</module>
         <module>doc</module>

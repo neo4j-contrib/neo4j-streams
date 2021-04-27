@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-consumer</artifactId>
-    <version>3.5.12</version>
+    <version>3.5.13</version>
     <name>Neo4j Streams - Consumer</name>
     <description>Neo4j Streams - Kafka Consumer</description>
     <packaging>jar</packaging>
@@ -14,7 +14,7 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>3.5.12</version>
+        <version>3.5.13</version>
     </parent>
 
     <repositories>
@@ -35,7 +35,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>3.5.12</version>
+            <version>3.5.13</version>
         </dependency>
         <dependency>
             <groupId>org.apache.avro</groupId>
