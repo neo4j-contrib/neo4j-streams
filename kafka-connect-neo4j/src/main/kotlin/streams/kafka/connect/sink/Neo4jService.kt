@@ -102,7 +102,6 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     }
 
     override fun write(query: String, events: Collection<Any>) {
-        println("events ${events.size}")
         val data = mapOf<String, Any>("events" to events)
         driver.session(sessionConfig).use { session ->
             try {
@@ -114,7 +113,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                         session.writeTransaction({
                             val summary = it.run(query, data).consume()
                             if (log.isDebugEnabled) {
-                                println("Successfully executed query: `$query`. Summary: $summary")
+                                log.debug("Successfully executed query: `$query`. Summary: $summary")
                             }
                         }, transactionConfig)
                     }
@@ -129,24 +128,6 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 throw e
             }
         }
-//        runBlocking { delay(10000) }
-
-//        driver.session(sessionConfig).use { session ->
-//            try {
-//                session.writeTransaction({
-//                    kotlin.io.println("mo sto qua2 ${this@Neo4jService.transactionConfig.timeout().toMillis()}")
-//                    val summary = it.run(query, data).consume()
-////                            println("run2 $result")
-////                            val summary = result!!.consume()
-//                    if (log.isDebugEnabled) {
-//                        kotlin.io.println("Successfully executed query: `$query`. Summary: $summary")
-//                    }
-//                    kotlin.io.println("e invece mo sto qua2")
-//                }, transactionConfig)
-//            } catch (e: Exception) {
-//                kotlin.io.println("eccetto 2 $e")
-//            }
-//        }
     }
 
     fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) {
@@ -165,7 +146,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                     records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
                 }
 
-        // timeout starts with writeTransaction()
+        // timeout starts in writeTransaction()
         jobs.awaitAll()
         jobs.mapNotNull { it.errors() }
     }

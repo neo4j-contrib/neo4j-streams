@@ -1284,7 +1284,7 @@ class Neo4jSinkTaskTest {
     }
     
     @Test
-    fun `should stop the query and fails with low timeout and vice versa`() {
+    fun `should stop the query and fails with small timeout and vice versa`() {
         val myTopic = "foo"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
@@ -1308,7 +1308,7 @@ class Neo4jSinkTaskTest {
         assertFailsWithTimeout(props, input, batchSize * numBatches)
         countFooPersonEntities(0)
 
-        // test without timeout
+        // test with large timeout
         props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 30000.toString()
         val taskValidParallelFalse = Neo4jSinkTask()
         taskValidParallelFalse.initialize(mock(SinkTaskContext::class.java))
