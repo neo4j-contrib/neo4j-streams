@@ -81,7 +81,5 @@ class CoroutineUtilsTest {
             assertEquals(expectedException, e.message)
             assertEquals(1, count)
         }
-
-
     }
 }
