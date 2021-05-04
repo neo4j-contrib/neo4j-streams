@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
@@ -12,9 +14,11 @@ import org.neo4j.driver.Config
 import org.neo4j.driver.Driver
 import org.neo4j.driver.GraphDatabase
 import org.neo4j.driver.SessionConfig
+import org.neo4j.driver.TransactionConfig
 import org.neo4j.driver.exceptions.ClientException
 import org.neo4j.driver.exceptions.TransientException
 import org.neo4j.driver.net.ServerAddress
+import org.neo4j.kernel.api.exceptions.Status
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.extensions.awaitAll
@@ -23,6 +27,7 @@ import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.StreamsSinkEntity
 import streams.service.StreamsSinkService
 import streams.utils.retryForException
+import java.time.Duration
 import java.util.concurrent.TimeUnit
 import kotlin.streams.toList
 
@@ -34,6 +39,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
 
     private val driver: Driver
     private val sessionConfig: SessionConfig
+    private val transactionConfig: TransactionConfig
 
     init {
         val configBuilder = Config.builder()
@@ -80,6 +86,15 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
             sessionConfigBuilder.withDatabase(config.database)
         }
         this.sessionConfig = sessionConfigBuilder.build()
+        
+        val batchTimeout = this.config.batchTimeout
+        this.transactionConfig = if (batchTimeout > 0) {
+            TransactionConfig.builder()
+                    .withTimeout(Duration.ofMillis(batchTimeout))
+                    .build()
+        } else {
+            TransactionConfig.empty()
+        }
     }
 
     fun close() {
@@ -87,21 +102,46 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     }
 
     override fun write(query: String, events: Collection<Any>) {
+        println("events ${events.size}")
         val data = mapOf<String, Any>("events" to events)
         driver.session(sessionConfig).use { session ->
             try {
-                runBlocking {
-                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-                            retries = config.retryMaxAttempts, delayTime = 0) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                        session.writeTransaction {
+//                runBlocking {
+//                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+//                            retries = 5, delayTime = 0, listOf(Status.Transaction.TransactionTimedOut.code().description())) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+
+                
+                
+                        println("provo a fare cose $transactionConfig")
+//                        var result: org.neo4j.driver.Result? = null
+//                        println("run $result")
+                        
+//                        session.beginTransaction(transactionConfig).use { 
+//                            val summary = it.run(query, data).consume()
+//                            println("Successfully executed query: `$query`. Summary: $summary")
+//                            it.commit()
+//                        }
+                        
+//                    try {
+                        session.writeTransaction({
+                            println("mo sto qua ${this@Neo4jService.transactionConfig.timeout().toMillis()}")
+                            println("mo sto quaa $query")
                             val summary = it.run(query, data).consume()
+//                            println("run2 $result") pom.xml
+//                            val summary = result!!.consume()
                             if (log.isDebugEnabled) {
-                                log.debug("Successfully executed query: `$query`. Summary: $summary")
+                                println("Successfully executed query: `$query`. Summary: $summary")
                             }
-                        }
-                    }
-                }
+                            println("e invece mo sto qua")
+                        }, transactionConfig)
+//                    } catch (e: Exception) {
+//                        println("eccetto $e")
+//                    }
+                    
+//                    }
+//                }
             } catch (e: Exception) {
+                println("errorone + $e")
                 if (log.isDebugEnabled) {
                     val subList = events.stream()
                             .limit(5.coerceAtMost(events.size).toLong())
@@ -111,6 +151,24 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                 throw e
             }
         }
+//        runBlocking { delay(10000) }
+
+//        driver.session(sessionConfig).use { session ->
+//            try {
+//                session.writeTransaction({
+//                    kotlin.io.println("mo sto qua2 ${this@Neo4jService.transactionConfig.timeout().toMillis()}")
+//                    val summary = it.run(query, data).consume()
+////                            println("run2 $result")
+////                            val summary = result!!.consume()
+//                    if (log.isDebugEnabled) {
+//                        kotlin.io.println("Successfully executed query: `$query`. Summary: $summary")
+//                    }
+//                    kotlin.io.println("e invece mo sto qua2")
+//                }, transactionConfig)
+//            } catch (e: Exception) {
+//                kotlin.io.println("eccetto 2 $e")
+//            }
+//        }
     }
 
     fun writeData(data: Map<String, List<List<StreamsSinkEntity>>>) {
@@ -129,7 +187,8 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
                     records.map { async(Dispatchers.IO) { writeForTopic(topic, it) } }
                 }
 
-        jobs.awaitAll(config.batchTimeout)
+        // timeout starts with writeTransaction()
+        jobs.awaitAll()
         jobs.mapNotNull { it.errors() }
     }
     

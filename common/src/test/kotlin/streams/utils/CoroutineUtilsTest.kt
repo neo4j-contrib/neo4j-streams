@@ -60,4 +60,6 @@ class CoroutineUtilsTest {
         assertTrue { isIOException }
         assertEquals(1, iteration)
     }
+    
+    // todo - aggiungere test........ should not retry if ...
 }

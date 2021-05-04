@@ -169,7 +169,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val TOPIC_CUD = "neo4j.topic.cud"
 
         const val CONNECTION_POOL_MAX_SIZE_DEFAULT = 100
-        val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
+        val BATCH_TIMEOUT_DEFAULT = TimeUnit.SECONDS.toMillis(0L)
         const val BATCH_SIZE_DEFAULT = 1000
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
@@ -298,7 +298,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .importance(ConfigDef.Importance.LOW)
                             .defaultValue(BATCH_TIMEOUT_DEFAULT)
                             .group(ConfigGroup.BATCH)
-                            .validator(ConfigDef.Range.atLeast(1)).build())
+                            .validator(ConfigDef.Range.atLeast(0)).build())
                     .define(ConfigKeyBuilder
                             .of(RETRY_BACKOFF_MSECS, ConfigDef.Type.LONG)
                             .documentation(PropertiesUtil.getProperty(RETRY_BACKOFF_MSECS))

@@ -1276,5 +1276,84 @@ class Neo4jSinkTaskTest {
                     && errorData.exception!!.javaClass.name == "org.neo4j.driver.exceptions.ClientException")
         }
     }
+    
+    @Test
+    fun `test TODO name`() {
+        val myTopic = "foo"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$myTopic"] = "CREATE (n:Person {name: event.name})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = true.toString()
+        val batchSize = 500000
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = batchSize.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 3.toString()
+        props[SinkTask.TOPICS_CONFIG] = myTopic
+
+        val numBatches = 4
+        val input = (1..batchSize * numBatches).map {
+            SinkRecord(myTopic, 1, null, null, null, mapOf("name" to it.toString()), it.toLong())
+        }
+        
+//        try {
+//            val taskInvalidParallelTrue = Neo4jSinkTask()
+//            taskInvalidParallelTrue.initialize(mock(SinkTaskContext::class.java))
+//            taskInvalidParallelTrue.start(props)
+//            taskInvalidParallelTrue.put(input)
+//            fail("Should fail because of TimeoutException")
+//        } catch (e: ProcessingError) {
+////            val errors = e.errorDatas
+////            assertEquals(numBatches, errors.size)
+////            assertTrue(errors.all { 
+////            val exception = it.exception!!
+////            exception.javaClass.name == ConnectException::class.qualifiedName
+////                    && exception.message!!.contains("Timed out waiting for $timeout ms")
+////            })
+//        }
+        countFooPersonEntities(0)
+
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = false.toString()
+        try {
+            val taskInvalidParallelFalse = Neo4jSinkTask()
+            taskInvalidParallelFalse.initialize(mock(SinkTaskContext::class.java))
+            taskInvalidParallelFalse.start(props)
+            taskInvalidParallelFalse.put(input)
+            fail("Should fail because of TimeoutException")
+        } catch (e: ProcessingError) {
+//            val errors = e.errorDatas
+//            assertEquals(numBatches, errors.size)
+//            println("sono in timeout + $errors")
+//            println("sono in timeout + ${Instant.now().epochSecond}")
+//            assertTrue(errors.all {
+//                val exception = it.exception!!
+//                exception.javaClass.name == ConnectException::class.qualifiedName
+////                    && exception.message!!.contains("Timed out waiting for $timeout ms")
+//            })
+        }
+        countFooPersonEntities(0)
+
+
+        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 30000.toString()
+        val taskValidParallelFalse = Neo4jSinkTask()
+        taskValidParallelFalse.initialize(mock(SinkTaskContext::class.java))
+        taskValidParallelFalse.start(props)
+        taskValidParallelFalse.put(input)         
+        countFooPersonEntities(batchSize * numBatches)
+
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = false.toString()
+        val taskValidParallelTrue = Neo4jSinkTask()
+        taskValidParallelTrue.initialize(mock(SinkTaskContext::class.java))
+        taskValidParallelTrue.start(props)
+        taskValidParallelTrue.put(input)         
+        countFooPersonEntities(batchSize * numBatches * 2)
+        
+    }
+
+    private fun countFooPersonEntities(expected: Int) {
+        db.defaultDatabaseService().beginTx().use {
+            val personCount = it.execute("MATCH (p:Person) RETURN count(p) as count").columnAs<Long>("count").next()
+            assertEquals(expected, personCount.toInt())
+        }
+    }
 
 }
