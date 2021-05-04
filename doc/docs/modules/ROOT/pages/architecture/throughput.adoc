@@ -17,9 +17,11 @@ And so a critical factor is how many items are in the "events" array, per-transa
 
 * Heap sizing affects how big transactions coming from Kafka can be without starving other queries that are running
 * Page cache sizing affects how much data is hot and has a major impact on the cypher queries that neo4j-streams runs.
-* `neo4j.batch.parallelize` affects whether batches can be run in parallel.  This is a potential massive benefit for throughput - but comes with a sharp edge that ordering cannot be guaranteed if you parallelize, and there is risk of locking errors.    **This setting only applies to the kafka connect worker**.
-* `neo4j.batch.size` affects how many records get run in a Neo4j batch.
-* `neo4j.batch.timeout.msecs` affects how long batches are given to execute.
+* `neo4j.batch.parallelize` affects whether batches can be run in parallel.  This is a potential massive benefit for throughput - but comes with a sharp edge that ordering cannot be guaranteed if you parallelize, and there is risk of locking errors. (`*`)
+* `neo4j.batch.size` affects how many records get run in a Neo4j batch. (`*`)
+* `neo4j.batch.timeout.msecs` affects how long batches are given to execute. (`*`)
+
+**The settings with `*` only applies to the kafka connect worker**.
 
 == Bolt Protocol overhead & Latency
 

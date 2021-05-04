@@ -106,42 +106,20 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
         val data = mapOf<String, Any>("events" to events)
         driver.session(sessionConfig).use { session ->
             try {
-//                runBlocking {
-//                    retryForException<Unit>(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-//                            retries = 5, delayTime = 0, listOf(Status.Transaction.TransactionTimedOut.code().description())) { // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                runBlocking {
+                    retryForException(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
+                            retries = config.retryMaxAttempts, delayTime = 0, // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
+                            listOf(Status.Transaction.TransactionTimedOut.code().description())) { 
 
-                
-                
-                        println("provo a fare cose $transactionConfig")
-//                        var result: org.neo4j.driver.Result? = null
-//                        println("run $result")
-                        
-//                        session.beginTransaction(transactionConfig).use { 
-//                            val summary = it.run(query, data).consume()
-//                            println("Successfully executed query: `$query`. Summary: $summary")
-//                            it.commit()
-//                        }
-                        
-//                    try {
                         session.writeTransaction({
-                            println("mo sto qua ${this@Neo4jService.transactionConfig.timeout().toMillis()}")
-                            println("mo sto quaa $query")
                             val summary = it.run(query, data).consume()
-//                            println("run2 $result") pom.xml
-//                            val summary = result!!.consume()
                             if (log.isDebugEnabled) {
                                 println("Successfully executed query: `$query`. Summary: $summary")
                             }
-                            println("e invece mo sto qua")
                         }, transactionConfig)
-//                    } catch (e: Exception) {
-//                        println("eccetto $e")
-//                    }
-                    
-//                    }
-//                }
+                    }
+                }
             } catch (e: Exception) {
-                println("errorone + $e")
                 if (log.isDebugEnabled) {
                     val subList = events.stream()
                             .limit(5.coerceAtMost(events.size).toLong())

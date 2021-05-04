@@ -206,7 +206,7 @@ include::cud-file-format.adoc[]
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
 in order to support this feature, in order to support this feature with Kafka Connect plugin, creating the Sink
-instance we have to add the `database` property, which tells the Connector the database to use as default. If you
+instance we have to add the `neo4j.database` property, which tells the Connector the database to use as default. If you
 don't specify that property, the default database `neo4j` will be used.
 
 [NOTE]
@@ -303,7 +303,6 @@ Following a summary of all the configuration parameters you can use for the Kafk
 | Mandatory
 | Note
 
-| database | <DATABASE_NAME> | false | Specify a database name only if you want to use a non-default database. Default value is 'neo4j'
 | topics | <topicA,topicB> | true | A list of comma-separated topics
 | connector.class | streams.kafka.connect.sink.Neo4jSinkConnector | true |
 | key.converter | org.apache.kafka.connect.storage.StringConverter | false | Converter class for key Connect data
@@ -321,10 +320,25 @@ Following a summary of all the configuration parameters you can use for the Kafk
 | errors.deadletterqueue.context.headers.enable | false/true | false | enrich messages with metadata headers like exception, timestamp, org. topic, org.part, default:false
 | errors.deadletterqueue.context.headers.prefix | prefix-text | false | common prefix for header entries, e.g. `"__streams.errors."` , default: not set
 | errors.deadletterqueue.topic.replication.factor | 3/1 | false | replication factor, need to set to 1 for single partition, default:3
+| neo4j.database | "bolt://neo4j:7687" | true | Specify a database name only if you want to use a non-default database. Default value is 'neo4j'
 | neo4j.server.uri | "bolt://neo4j:7687" | true | Neo4j Server URI
 | neo4j.authentication.basic.username | your_neo4j_user | true | Neo4j username
 | neo4j.authentication.basic.password | your_neo4j_password | true | Neo4j password
+| neo4j.authentication.basic.realm | your_neo4j_auth_realm | false | The authentication realm
+| neo4j.authentication.kerberos.ticket | your_kerberos_ticket | false | The Kerberos ticket
+| neo4j.authentication.type | NONE/BASIC/KERBEROS | false | The authentication type (default: 'BASIC')
+| neo4j.batch.size | Integer | false | The max number of events processed by the Cypher query (default: 1000)
+| neo4j.batch.timeout.msecs | Integer | false | The execution timeout for the cypher query (default: 30000)
+| neo4j.batch.parallelize | boolean | false | If enabled messages are processed concurrently in the sink. Non concurrent execution supports in-order processing, e.g. for CDC
+| neo4j.connection.max.lifetime.msecs | Long | false | The max Neo4j connection lifetime (default: 1 hour)
+| neo4j.connection.acquisition.timeout.msecs | Long | false | The max Neo4j acquisition timeout (default 1 hour)
+| neo4j.connection.liveness.check.timeout.msecs | Long | false | The max Neo4j liveness check timeout (default 1 hour)
+| neo4j.connection.max.pool.size | Int | false | The max pool size (default: 100)
 | neo4j.encryption.enabled | true/false | false |
+| neo4j.encryption.enabled | TRUST_ALL_CERTIFICATES/TRUST_CUSTOM_CA_SIGNED_CERTIFICATES/TRUST_SYSTEM_CA_SIGNED_CERTIFICATES | false | The Neo4j trust strategy (default: TRUST_ALL_CERTIFICATES)
+| neo4j.encryption.ca.certificate.path | your_certificate_path | false | The path of the certificate
+| neo4j.retry.backoff.msecs | Long | false | The time in milliseconds to wait following a transient error before a retry attempt is made (default: 30000).
+| neo4j.retry.max.attemps | Long | false | The maximum number of times to retry on transient errors (except for TimeoutException) before failing the task (default: 5).
 | neo4j.topic.cdc.sourceId | <list of topics separated by semicolon> | false |
 | neo4j.topic.cdc.sourceId.labelName | <the label attached to the node> | false | default value is *SourceEvent*
 | neo4j.topic.cdc.sourceId.idName | <the id name given to the CDC id field> | false | default value is *sourceId*
