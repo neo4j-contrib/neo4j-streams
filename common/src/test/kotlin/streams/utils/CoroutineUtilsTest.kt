@@ -3,6 +3,7 @@ package streams.utils
 import kotlinx.coroutines.runBlocking
 import org.junit.Test
 import java.io.IOException
+import java.lang.ClassCastException
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
