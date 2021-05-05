@@ -5,7 +5,6 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.ObsoleteCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
@@ -18,10 +17,8 @@ import org.neo4j.driver.TransactionConfig
 import org.neo4j.driver.exceptions.ClientException
 import org.neo4j.driver.exceptions.TransientException
 import org.neo4j.driver.net.ServerAddress
-import org.neo4j.kernel.api.exceptions.Status
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
-import streams.extensions.awaitAll
 import streams.extensions.errors
 import streams.kafka.connect.utils.PropertiesUtil
 import streams.service.StreamsSinkEntity
@@ -107,8 +104,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
             try {
                 runBlocking {
                     retryForException(exceptions = arrayOf(ClientException::class.java, TransientException::class.java),
-                            retries = config.retryMaxAttempts, delayTime = 0, // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
-                            listOf(Status.Transaction.TransactionTimedOut.code().description())) { 
+                            retries = config.retryMaxAttempts, delayTime = 0) {  // we use the delayTime = 0, because we delegate the retryBackoff to the Neo4j Java Driver
 
                         session.writeTransaction({
                             val summary = it.run(query, data).consume()

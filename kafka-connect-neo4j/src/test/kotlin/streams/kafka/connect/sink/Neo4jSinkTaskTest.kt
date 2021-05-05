@@ -1291,21 +1291,20 @@ class Neo4jSinkTaskTest {
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$myTopic"] = "CREATE (n:Person {name: event.name})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = true.toString()
-        val batchSize = 300000
+        val batchSize = 500000
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = batchSize.toString()
-        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 2.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 1.toString()
         props[SinkTask.TOPICS_CONFIG] = myTopic
-        val numBatches = 3
-        val input = (1..batchSize * numBatches).map {
+        val input = (1..batchSize).map {
             SinkRecord(myTopic, 1, null, null, null, mapOf("name" to it.toString()), it.toLong())
         }
         // test timeout with parallel=true
-        assertFailsWithTimeout(props, input, batchSize * numBatches)
+        assertFailsWithTimeout(props, input, batchSize)
         countFooPersonEntities(0)
 
         // test timeout with parallel=false
         props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = false.toString()
-        assertFailsWithTimeout(props, input, batchSize * numBatches)
+        assertFailsWithTimeout(props, input, batchSize)
         countFooPersonEntities(0)
 
         // test with large timeout
@@ -1314,14 +1313,14 @@ class Neo4jSinkTaskTest {
         taskValidParallelFalse.initialize(mock(SinkTaskContext::class.java))
         taskValidParallelFalse.start(props)
         taskValidParallelFalse.put(input)         
-        countFooPersonEntities(batchSize * numBatches)
+        countFooPersonEntities(batchSize)
 
         props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = true.toString()
         val taskValidParallelTrue = Neo4jSinkTask()
         taskValidParallelTrue.initialize(mock(SinkTaskContext::class.java))
         taskValidParallelTrue.start(props)
         taskValidParallelTrue.put(input)         
-        countFooPersonEntities(batchSize * numBatches * 2)
+        countFooPersonEntities(batchSize * 2)
     }
 
     private fun assertFailsWithTimeout(props: MutableMap<String, String>, input: List<SinkRecord>, expectedDataErrorSize: Int) {
