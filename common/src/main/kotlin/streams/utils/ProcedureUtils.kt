@@ -3,6 +3,7 @@ package streams.utils
 import org.neo4j.collection.RawIterator
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.exceptions.UnsatisfiedDependencyException
+import org.neo4j.kernel.impl.factory.DbmsInfo
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
@@ -51,12 +52,7 @@ object ProcedureUtils {
         return executeOrFallback(execute, fallback)
     }
 
-    fun isCluster(db: GraphDatabaseAPI): Boolean = try {
-        db.dependencyResolver.resolveDependency(raftMachineClass)
-        true
-    } catch (e: UnsatisfiedDependencyException) {
-        false
-    }
+    fun isCluster(db: GraphDatabaseAPI): Boolean = db.dbmsInfo() == DbmsInfo.CORE || db.dbmsInfo() == DbmsInfo.READ_REPLICA
 
     fun isCluster(dbms: DatabaseManagementService): Boolean = dbms.listDatabases()
         .firstOrNull { it != StreamsUtils.SYSTEM_DATABASE_NAME }
