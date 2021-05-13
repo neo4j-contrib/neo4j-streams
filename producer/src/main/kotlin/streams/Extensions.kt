@@ -15,7 +15,7 @@ fun Node.toMap(): Map<String, Any?> {
 }
 
 fun Relationship.toMap(): Map<String, Any?> {
-    return mapOf("id" to id.toString(), "properties" to allProperties, "label" to type,
+    return mapOf("id" to id.toString(), "properties" to allProperties, "label" to type.name(),
             "start" to startNode.toMap(),
             "end" to endNode.toMap(),
             "type" to EntityType.relationship)
