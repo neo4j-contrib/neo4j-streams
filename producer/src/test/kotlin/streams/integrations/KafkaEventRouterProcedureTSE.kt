@@ -122,7 +122,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
                 "CALL streams.publish.sync('neo4j', n) \n" +
                 "YIELD value \n" +
                 "RETURN value") {
-            publishSyncAssertions(it)
+            assertSyncResult(it)
         }
 
         val records = kafkaConsumer.poll(5000)
@@ -137,7 +137,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         setUpProcedureTests()
         val message = "Hello World"
         db.execute("CALL streams.publish.sync('neo4j', '$message')") {
-            publishSyncAssertions(it)
+            assertSyncResult(it)
         }
 
         val records = kafkaConsumer.poll(5000)
@@ -160,7 +160,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             MATCH (:Foo)-[r:KNOWS]->(:Bar)
             |CALL streams.publish.sync('neo4j', r)
             |YIELD value RETURN value""".trimMargin()) {
-            publishSyncAssertions(it)
+            assertSyncResult(it)
         }
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
@@ -190,7 +190,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
 
         val message = "Hello World"
         db.execute("MATCH (n:Foo {id: 1}) CALL streams.publish.sync('neo4j', '$message', {key: n.foo}) YIELD value RETURN value") { 
-            publishSyncAssertions(it)
+            assertSyncResult(it)
         }
 
         val records = kafkaConsumer.poll(5000)
@@ -217,7 +217,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
             val keyRecord = "test"
             val partitionRecord = 1
             db.execute("CALL streams.publish.sync('$topic', '$message', {key: '$keyRecord', partition: $partitionRecord })") {
-                publishSyncAssertions(it)
+                assertSyncResult(it)
             }
 
             val records = kafkaConsumer.poll(5000)
@@ -287,7 +287,7 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
         kafkaConsumer.subscribe(listOf("neo4j"))
     }
 
-    private fun publishSyncAssertions(it: Result) {
+    private fun assertSyncResult(it: Result) {
         assertTrue { it.hasNext() }
         val resultMap = (it.next())["value"] as Map<String, Any>
         assertNotNull(resultMap["offset"])
