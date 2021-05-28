@@ -1,11 +1,9 @@
 package streams.utils
 
-import org.neo4j.collection.RawIterator
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.exceptions.UnsatisfiedDependencyException
 import org.neo4j.kernel.impl.factory.DbmsInfo
 import org.neo4j.kernel.internal.GraphDatabaseAPI
-import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
 import streams.extensions.execute
 import java.lang.invoke.MethodHandles
@@ -14,14 +12,14 @@ import java.lang.invoke.MethodType
 
 object ProcedureUtils {
     @JvmStatic
-    private val raftMachineClass: Class<*>? = try {
-        Class.forName("com.neo4j.causalclustering.core.consensus.RaftMachine")
+    private val coreMetadata: Class<*>? = try {
+        Class.forName("com.neo4j.causalclustering.core.consensus.CoreMetaData")
     } catch (e: ClassNotFoundException) {
         null
     }
 
     @JvmStatic
-    private val isLeaderMethodHandle = raftMachineClass?.let {
+    private val isLeaderMethodHandle = coreMetadata?.let {
         val lookup = MethodHandles.lookup()
         lookup.findVirtual(it, "isLeader", MethodType.methodType(Boolean::class.java))
             .asType(MethodType.methodType(Boolean::class.java, Any::class.java))
@@ -39,9 +37,9 @@ object ProcedureUtils {
             ) { it.columnAs<String>("role").next() }
         }
         val execute = {
-            raftMachineClass?.let {
+            coreMetadata?.let {
                 try {
-                    val raftMachine: Any = db.dependencyResolver.resolveDependency(raftMachineClass)
+                    val raftMachine: Any = db.dependencyResolver.resolveDependency(coreMetadata)
                     val isLeader = isLeaderMethodHandle!!.invokeExact(raftMachine) as Boolean
                     if (isLeader) "LEADER" else "FOLLOWER"
                 } catch (e: UnsatisfiedDependencyException) {
