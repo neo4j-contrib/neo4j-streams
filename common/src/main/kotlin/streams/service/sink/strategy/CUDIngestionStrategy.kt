@@ -233,7 +233,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                         try {
                             val data = toCUDEntity<CUDRelationship>(it)
                             when {
-                                data!!.isValidOperation()  -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isNotEmpty()) data else null // TODO send to the DLQ the null
+                                data!!.isValidOperation()  -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty()) data else null // TODO send to the DLQ the null
                                 else -> null // TODO send to the DLQ the null
                             }
                         } catch (e: Exception) {
@@ -264,7 +264,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                         try {
                             val data = toCUDEntity<CUDRelationship>(it)
                             when (data?.op)  {
-                                CUDOperations.delete -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty() && data.properties.isEmpty()) data else null // TODO send to the DLQ the null
+                                CUDOperations.delete -> if (data.from.ids.isNotEmpty() && data.to.ids.isNotEmpty()) data else null // TODO send to the DLQ the null
                                 else -> null // TODO send to the DLQ the null
                             }
                         } catch (e: Exception) {

@@ -513,6 +513,47 @@ class CUDIngestionStrategyTest {
     }
 
     @Test
+    fun `should create and delete relationship also without properties field`() {
+        val key = "key"
+        val startNode = "SourceNode"
+        val endNode = "TargetNode"
+        val relType = "MY_REL"
+        val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
+        val end = CUDNodeRel(ids = mapOf(key to 2), labels = listOf(endNode))
+        val list = listOf(CUDOperations.create, CUDOperations.delete).map {
+            val rel = CUDRelationship(op = it, from = start, to = end, rel_type = relType)
+            StreamsSinkEntity(null, rel)
+        }
+
+        // when
+        val cudQueryStrategy = CUDIngestionStrategy()
+        val relationshipEvents = cudQueryStrategy.mergeRelationshipEvents(list)
+        val relationshipDeleteEvents = cudQueryStrategy.deleteRelationshipEvents(list)
+
+        assertEquals(1, relationshipEvents.size)
+        assertEquals(1, relationshipEvents.map { it.events.size }.sum())
+        val createRel = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:$startNode {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |${StreamsUtils.WITH_EVENT_FROM}
+                |MATCH (to:$endNode {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |CREATE (from)-[r:$relType]->(to)
+                |SET r = event.properties
+            """.trimMargin(), relationshipEvents)
+        assertEquals(1, createRel.events.size)
+
+        assertEquals(1, relationshipDeleteEvents.size)
+        val deleteRel = findEventByQuery("""
+                |${StreamsUtils.UNWIND}
+                |MATCH (from:$startNode {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (to:$endNode {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
+                |MATCH (from)-[r:$relType]->(to)
+                |DELETE r
+            """.trimMargin(), relationshipDeleteEvents)
+        assertEquals(1, deleteRel.events.size)
+    }
+
+    @Test
     fun `should create, merge and update relationships with merge op in 'from' and 'to' node`() {
         // given
         val mergeMarkers = listOf(2, 5, 7)

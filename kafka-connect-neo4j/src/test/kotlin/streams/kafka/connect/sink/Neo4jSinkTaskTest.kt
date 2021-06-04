@@ -982,6 +982,56 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
+    fun `should create and delete relationship from CUD event without properties field`() {
+        val relType = "MY_REL"
+        val key = "key"
+        val startNode = "SourceNode"
+        val endNode = "TargetNode"
+        val topic = UUID.randomUUID().toString()
+
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("CREATE (:$startNode {key: 1}) CREATE (:$endNode {key: 1})").close()
+            it.commit()
+        }
+        
+        val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
+        val end = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(endNode))
+        val relMerge = CUDRelationship(op = CUDOperations.merge, from = start, to = end, rel_type = relType)
+        val sinkRecordMerge = SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(relMerge), 0L)
+
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[SinkTask.TOPICS_CONFIG] = topic
+
+        val task = Neo4jSinkTask()
+        task.initialize(mock(SinkTaskContext::class.java))
+        task.start(props)
+        task.put(listOf(sinkRecordMerge))
+
+        val queryCount = "MATCH p = (:$startNode)-[:$relType]->(:$endNode) RETURN count(p) AS count"
+        
+        db.defaultDatabaseService().beginTx().use {
+            val countRels = it.execute(queryCount)
+                .columnAs<Long>("count")
+                .next()
+            assertEquals(1L, countRels)
+        }
+
+        val relDelete = CUDRelationship(op = CUDOperations.delete, from = start, to = end, rel_type = relType)
+        val sinkRecordDelete = SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(relDelete), 1L)
+        task.put(listOf(sinkRecordDelete))
+
+        db.defaultDatabaseService().beginTx().use {
+            val countRels = it.execute(queryCount)
+                .columnAs<Long>("count")
+                .next()
+            assertEquals(0L, countRels)
+        }
+    }
+
+    @Test
     fun `should ingest node data from CUD Events`() {
         // given
         val mergeMarkers = listOf(2, 5, 7)
