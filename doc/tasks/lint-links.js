@@ -38,6 +38,8 @@ console.log(root)
       // ignore edit-link
       'external-check https://github.com/neo4j-contrib/neo4j-streams/edit/',
       'external-check neo4j-contrib/neo4j-streams/edit/',
+      // graphgist
+      'load graphgist',
     ]
     const skipFilter = (report) => {
       return Object.values(report).some((value) => {
