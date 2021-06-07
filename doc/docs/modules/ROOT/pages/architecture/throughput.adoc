@@ -23,6 +23,7 @@ And so a critical factor is how many items are in the "events" array, per-transa
 
 **The settings with `*` only applies to the kafka connect worker**.
 
+
 == Bolt Protocol overhead & Latency
 
 * When using the Kafka connect worker (not the plugin) - the code makes a regular connection to Neo4j using the bolt protocol
