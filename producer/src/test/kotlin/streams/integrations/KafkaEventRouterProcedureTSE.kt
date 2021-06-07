@@ -152,7 +152,6 @@ class KafkaEventRouterProcedureTSE : KafkaEventRouterBaseTSE() {
     fun testProcedureWithRelationship() {
         setUpProcedureTests()
         db.execute("CREATE (:Foo {one: 'two'})-[:KNOWS {alpha: 'beta'}]->(:Bar {three: 'four'})")
-
         val recordsCreation = kafkaConsumer.poll(5000)
         assertEquals(3, recordsCreation.count())
 
