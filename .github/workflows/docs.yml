@@ -2,9 +2,13 @@ name: Docs
 
 on:
   push:
+    paths:
+      - 'doc/*'
     branches:
       - '4.0'
   pull_request:
+    paths:
+      - 'doc/*'
     branches:
       - '*'
 
