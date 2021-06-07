@@ -25,5 +25,6 @@ jobs:
         working-directory: 'doc'
       - run: npm run lint
         working-directory: 'doc'
-      - run: npm run lint:links
-        working-directory: 'doc'
+      # REMIND: lint:links task is unreliable, enable again when we found a solution
+      #- run: npm run lint:links
+      #  working-directory: 'doc'
