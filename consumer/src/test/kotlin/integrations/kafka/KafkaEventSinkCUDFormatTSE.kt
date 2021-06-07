@@ -240,7 +240,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // when
         list.forEach {
-            var producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
+            val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), it)
             kafkaProducer.send(producerRecord).get()
         }
 
@@ -262,6 +262,57 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                 val id = props.getValue("id").toString().toLong()
                 val foo = props.getValue("foo").toString()
                 foo == "foo-value-$id"
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should ingest relationship data from CUD Events without properties field`() {
+
+        val relType = "MY_REL"
+        val key = "key"
+        val startNode = "SourceNode"
+        val endNode = "TargetNode"
+        
+        val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
+        val end = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(endNode))
+        val relMerge = CUDRelationship(op = CUDOperations.merge, from = start, to = end, rel_type = relType)
+        val relMergeAsBytes = JSONUtils.writeValueAsBytes(relMerge)
+
+        val topic = UUID.randomUUID().toString()
+        db.setConfig("streams.sink.topic.cud", topic)
+        db.start()
+        db.beginTx().use {
+            db.execute("""
+                CREATE (:$startNode {key: 1})
+                CREATE (:$endNode {key: 1})
+            """.trimIndent())
+            assertEquals(2, it.allNodes.count())
+            it.commit()
+        }
+
+        val producerRecord = ProducerRecord(topic, UUID.randomUUID().toString(), relMergeAsBytes)
+        kafkaProducer.send(producerRecord).get()
+
+        val query = "MATCH p = (:$startNode)-[:$relType]->(:$endNode) RETURN count(p) AS count"
+        
+        Assert.assertEventually(ThrowingSupplier {
+            db.execute(query) {
+                val count = it.columnAs<Long>("count")
+                count.hasNext() && count.next() == 1L && !count.hasNext()
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        
+        val relDelete = CUDRelationship(op = CUDOperations.delete, from = start, to = end, rel_type = relType)
+        val relDeleteAsBytes = JSONUtils.writeValueAsBytes(relDelete)
+
+        val producerRecordDelete = ProducerRecord(topic, UUID.randomUUID().toString(), relDeleteAsBytes)
+        kafkaProducer.send(producerRecordDelete).get()
+        
+        Assert.assertEventually(ThrowingSupplier {
+            db.execute(query) {
+                val count = it.columnAs<Long>("count")
+                count.hasNext() && count.next() == 0L && !count.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
