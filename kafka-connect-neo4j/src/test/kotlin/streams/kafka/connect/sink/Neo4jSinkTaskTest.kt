@@ -7,6 +7,7 @@ import org.apache.kafka.connect.data.Timestamp
 import org.apache.kafka.connect.sink.SinkRecord
 import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
+import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -37,6 +38,11 @@ class Neo4jSinkTaskTest {
     @Rule @JvmField val db = Neo4jRule()
             .withDisabledServer()
             .withConfig(GraphDatabaseSettings.auth_enabled, false)
+
+    @After
+    fun after() {
+        cleanAll()
+    }
 
     private val PERSON_SCHEMA = SchemaBuilder.struct().name("com.example.Person")
             .field("firstName", Schema.STRING_SCHEMA)
@@ -1274,6 +1280,73 @@ class Neo4jSinkTaskTest {
             val errorData = e.errorDatas.first()
             assertTrue(errorData.databaseName == "neo4j"
                     && errorData.exception!!.javaClass.name == "org.neo4j.driver.exceptions.ClientException")
+        }
+    }
+    
+    @Test
+    fun `should stop the query and fails with small timeout and vice versa`() {
+        val myTopic = "foo"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$myTopic"] = "CREATE (n:Person {name: event.name})"
+        props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = true.toString()
+        val batchSize = 500000
+        props[Neo4jSinkConnectorConfig.BATCH_SIZE] = batchSize.toString()
+        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 1.toString()
+        props[SinkTask.TOPICS_CONFIG] = myTopic
+        val input = (1..batchSize).map {
+            SinkRecord(myTopic, 1, null, null, null, mapOf("name" to it.toString()), it.toLong())
+        }
+        // test timeout with parallel=true
+        assertFailsWithTimeout(props, input, batchSize)
+        countFooPersonEntities(0)
+
+        // test timeout with parallel=false
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = false.toString()
+        assertFailsWithTimeout(props, input, batchSize)
+        countFooPersonEntities(0)
+
+        // test with large timeout
+        props[Neo4jSinkConnectorConfig.BATCH_TIMEOUT_MSECS] = 30000.toString()
+        val taskValidParallelFalse = Neo4jSinkTask()
+        taskValidParallelFalse.initialize(mock(SinkTaskContext::class.java))
+        taskValidParallelFalse.start(props)
+        taskValidParallelFalse.put(input)         
+        countFooPersonEntities(batchSize)
+
+        props[Neo4jSinkConnectorConfig.BATCH_PARALLELIZE] = true.toString()
+        val taskValidParallelTrue = Neo4jSinkTask()
+        taskValidParallelTrue.initialize(mock(SinkTaskContext::class.java))
+        taskValidParallelTrue.start(props)
+        taskValidParallelTrue.put(input)         
+        countFooPersonEntities(batchSize * 2)
+    }
+
+    private fun assertFailsWithTimeout(props: MutableMap<String, String>, input: List<SinkRecord>, expectedDataErrorSize: Int) {
+        try {
+            val taskInvalid = Neo4jSinkTask()
+            taskInvalid.initialize(mock(SinkTaskContext::class.java))
+            taskInvalid.start(props)
+            taskInvalid.put(input)
+            fail("Should fail because of TimeoutException")
+        } catch (e: ProcessingError) {
+            val errors = e.errorDatas
+            assertEquals(expectedDataErrorSize, errors.size)
+        }
+    }
+
+    private fun countFooPersonEntities(expected: Int) {
+        db.defaultDatabaseService().beginTx().use {
+            val personCount = it.execute("MATCH (p:Person) RETURN count(p) as count").columnAs<Long>("count").next()
+            assertEquals(expected, personCount.toInt())
+        }
+    }
+    
+    private fun cleanAll() {
+        db.defaultDatabaseService().beginTx().use {
+            it.execute("MATCH (n) DETACH DELETE n")
+            it.commit()
         }
     }
 
