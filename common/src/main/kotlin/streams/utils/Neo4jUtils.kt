@@ -8,7 +8,6 @@ import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
-import org.neo4j.logging.internal.LogService
 import streams.extensions.execute
 import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
@@ -26,7 +25,7 @@ object Neo4jUtils {
                 return false
             }
 
-            return availableAction() && getMemberRole(db).equals(StreamsUtils.LEADER, ignoreCase = true)
+            return availableAction() && ProcedureUtils.clusterMemberRole(db).equals(StreamsUtils.LEADER, ignoreCase = true)
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return availableAction()
@@ -44,36 +43,7 @@ object Neo4jUtils {
         false
     }
 
-    fun getLogService(db: GraphDatabaseAPI): LogService = db.dependencyResolver
-            .resolveDependency(LogService::class.java)
-
-    fun isCluster(db: GraphDatabaseAPI, log: Log? = null): Boolean {
-        try {
-            return db.execute("CALL dbms.cluster.overview()") {
-                if (it.hasNext()) {
-                    if (log?.isDebugEnabled == true) {
-                        log?.debug(it.resultAsString())
-                    }
-                }
-                true
-            }
-        } catch (e: QueryExecutionException) {
-            if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
-                return false
-            }
-            throw e
-        }
-    }
-
-    fun isCluster(dbms: DatabaseManagementService, log: Log? = null): Boolean = dbms.listDatabases()
-        .firstOrNull { it != StreamsUtils.SYSTEM_DATABASE_NAME }
-        ?.let { dbms.database(it) as GraphDatabaseAPI }
-        ?.let { isCluster(it, log) } ?: false
-
-    private fun getMemberRole(db: GraphDatabaseAPI) = db.execute("CALL dbms.cluster.role(\$database)",
-            mapOf("database" to db.databaseName())) { it.columnAs<String>("role").next() }
-
-    fun clusterHasLeader(db: GraphDatabaseAPI): Boolean = try {
+    private fun clusterHasLeader(db: GraphDatabaseAPI): Boolean = try {
         db.execute("""
                 |CALL dbms.cluster.overview() YIELD databases
                 |RETURN databases[${'$'}database] AS role
@@ -96,34 +66,6 @@ object Neo4jUtils {
         action()
     } else {
         null
-    }
-
-    fun executeInLeader(db: GraphDatabaseAPI,
-                        log: Log,
-                        timeout: Long = 120000,
-                        availableAction: () -> Boolean,
-                        action: () -> Unit) {
-        GlobalScope.launch(Dispatchers.IO) {
-            val start = System.currentTimeMillis()
-            val delay: Long = 2000
-            while (!clusterHasLeader(db) && System.currentTimeMillis() - start < timeout) {
-                log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
-                delay(delay)
-            }
-            executeInWriteableInstance(db, availableAction, action)
-        }
-    }
-
-    fun waitForTheLeader(db: GraphDatabaseAPI, log: Log, timeout: Long = 120000, action: () -> Unit) {
-        GlobalScope.launch(Dispatchers.IO) {
-            val start = System.currentTimeMillis()
-            val delay: Long = 2000
-            while (!clusterHasLeader(db) && System.currentTimeMillis() - start < timeout) {
-                log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
-                delay(delay)
-            }
-            action()
-        }
     }
 
     fun isClusterCorrectlyFormed(dbms: DatabaseManagementService) = dbms.listDatabases()

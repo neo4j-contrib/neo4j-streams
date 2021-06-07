@@ -27,6 +27,7 @@ import streams.extensions.isDefaultDb
 import streams.utils.ConsumerUtils
 import streams.utils.KafkaValidationUtils.getInvalidTopicsError
 import streams.utils.Neo4jUtils
+import streams.utils.ProcedureUtils
 import streams.utils.StreamsUtils
 
 
@@ -72,7 +73,7 @@ class KafkaEventSink(private val config: Map<String, String>,
     }
 
     override fun start() = runBlocking { // TODO move to the abstract class
-        if (streamsConfig.clusterOnly && !Neo4jUtils.isCluster(db)) {
+        if (streamsConfig.clusterOnly && !ProcedureUtils.isCluster(db)) {
             if (log.isDebugEnabled) {
                 log.info("""
                         |Cannot init the Kafka Sink module as is forced to work only in a cluster env, 
