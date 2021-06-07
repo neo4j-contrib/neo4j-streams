@@ -9,6 +9,7 @@ import org.neo4j.kernel.lifecycle.Lifecycle
 import org.neo4j.kernel.lifecycle.LifecycleAdapter
 import org.neo4j.logging.internal.LogService
 import streams.extensions.isSystemDb
+import java.util.concurrent.atomic.AtomicReference
 
 class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Dependencies>(ExtensionType.DATABASE,"Streams.Producer") {
     override fun newInstance(context: ExtensionContext, dependencies: Dependencies): Lifecycle {
@@ -26,26 +27,27 @@ class StreamsExtensionFactory : ExtensionFactory<StreamsExtensionFactory.Depende
 }
 
 class StreamsEventRouterLifecycle(private val availabilityGuard: AvailabilityGuard,
-                                  db: GraphDatabaseAPI,
-                                  log: LogService): LifecycleAdapter() {
+                                  private val db: GraphDatabaseAPI,
+                                  private val log: LogService): LifecycleAdapter() {
 
     private val streamsLog = log.getUserLog(StreamsEventRouterLifecycle::class.java)
 
-    private val streamsEventRouterAvailabilityListener: StreamsEventRouterAvailabilityListener? = if (db.isSystemDb()) {
+    private val availabilityListener: AtomicReference<StreamsEventRouterAvailabilityListener> = AtomicReference(null)
+
+    private fun createStreamsEventRouterAvailabilityListener() = if (db.isSystemDb()) {
         null
     } else {
         StreamsEventRouterAvailabilityListener(db, log)
     }
 
     override fun start() {
-        streamsEventRouterAvailabilityListener?.also {
-            availabilityGuard.addListener(it)
-        }
+        availabilityListener.updateAndGet { it ?: createStreamsEventRouterAvailabilityListener() }
+                ?.let { availabilityGuard.addListener(it) }
     }
 
     override fun stop() {
         try {
-            streamsEventRouterAvailabilityListener?.also {
+            availabilityListener.getAndSet(null)?.let {
                 it.shutdown()
                 availabilityGuard.removeListener(it)
             }
