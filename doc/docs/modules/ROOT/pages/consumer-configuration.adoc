@@ -18,7 +18,7 @@ kafka.value.deserializer=org.apache.kafka.common.serialization.ByteArrayDeserial
 {environment}.topic.cud=<LIST_OF_TOPICS_SEPARATED_BY_SEMICOLON>
 {environment}.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
 {environment}.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-{environment}.enabled=<true/false, default=true>
+{environment}.enabled=<true/false, default=false>
 
 streams.check.apoc.timeout=<ms to await for APOC being loaded, default -1 skip the wait>
 streams.check.apoc.interval=<ms interval awaiting for APOC being loaded, default 1000>
@@ -84,8 +84,13 @@ streams.sink.topic.cdc.sourceId.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOL
 streams.sink.topic.cdc.schema.to.<DB_NAME>=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.pattern.node.<TOPIC_NAME>.to.<DB_NAME>=<NODE_EXTRACTION_PATTERN>
 streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.<DB_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-streams.sink.enabled.to.<DB_NAME>=<true/false, default=true>
+streams.sink.enabled.to.<DB_NAME>=<true/false, default=false>
 ----
+
+[NOTE]
+====
+Please note the `streams.sink.enabled.to.<DB_NAME>` property. It is `false` by default because of the Sink module is disabled as well by default. In case the Sink module is enabled (`streams.sink.enabled=true`), then it will be enabled for every databases. So if you want to enable/disable the Sink module just for one or more databases you have to specify the `streams.sink.enabled.to.<DB_NAME>` property for each database.
+====
 
 This means that for each db instance you can specify if:
 
@@ -101,7 +106,7 @@ streams.sink.topic.cdc.sourceId.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.cdc.schema.to.foo=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.pattern.node.<TOPIC_NAME>.to.foo=<NODE_EXTRACTION_PATTERN>
 streams.sink.topic.pattern.relationship.<TOPIC_NAME>.to.foo=<RELATIONSHIP_EXTRACTION_PATTERN>
-streams.sink.enabled.to.foo=<true/false, default=true>
+streams.sink.enabled.to.foo=<true/false, default=false>
 ----
 
 The old properties:
@@ -113,7 +118,7 @@ streams.sink.topic.cdc.sourceId=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.cdc.schema=<LIST_OF_TOPICS_SEPARATE_BY_SEMICOLON>
 streams.sink.topic.pattern.node.<TOPIC_NAME>=<NODE_EXTRACTION_PATTERN>
 streams.sink.topic.pattern.relationship.<TOPIC_NAME>=<RELATIONSHIP_EXTRACTION_PATTERN>
-streams.sink.enabled=<true/false, default=true>
+streams.sink.enabled=<true/false, default=false>
 ----
 
 are still valid and they refer to Neo4j's default db instance, which is usually called `neo4j`, but can be controlled by
@@ -132,7 +137,7 @@ for non-default db instances, in case of the specific configuration params is no
 
 [source]
 ----
-streams.sink.enabled=<true/false, default=true>
+streams.sink.enabled=<true/false, default=false>
 ----
 
 This means that if you have Neo4j with 3 db instances:
