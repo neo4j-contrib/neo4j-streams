@@ -16,7 +16,7 @@
 // ** xref::producer.adoc#source-patterns[Patterns]
 // ** xref::producer.adoc#_transaction_event_handler[Transaction Event Handler]
 
-* xref::consumer.adoc[Sink: Neo4j -> Kafka]
+* xref::consumer.adoc[Sink: Kafka -> Neo4j]
 // ** xref::consumer.adoc#neo4j_streams_sink_howitworks[How it works]
 // ** xref::consumer.adoc#_sink_ingestion_strategies[Sink ingestion strategies]
 // ** xref::consumer.adoc#neo4j_streams_dlq[How deal with bad data]
