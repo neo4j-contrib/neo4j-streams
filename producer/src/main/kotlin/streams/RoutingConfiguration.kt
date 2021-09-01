@@ -8,7 +8,7 @@ import org.neo4j.logging.Log
 import streams.events.*
 
 
-private val PATTERN_REG: Regex = "^(\\w+\\s*(?::\\s*(?:[\\w|\\*]+)\\s*)*)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
+private val PATTERN_REG: Regex = "^([\\w-]+\\s*(?::\\s*(?:[\\w-|\\*]+)\\s*)*)\\s*(?:\\{\\s*(-?[\\w-|\\*]+\\s*(?:,\\s*-?[\\w-|\\*]+\\s*)*)\\})?\$".toRegex()
 private val PATTERN_COLON_REG = "\\s*:\\s*".toRegex()
 private val PATTERN_COMMA = "\\s*,\\s*".toRegex()
 private const val PATTERN_WILDCARD = "*"
