@@ -157,12 +157,12 @@ class RoutingConfigurationTest {
         assertTrue { routing[0].include.isEmpty() }
         assertTrue { routing[0].exclude.isEmpty() }
 
-        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic4", "KNOWS;LOVES{p1, p2}", EntityType.relationship) as List<RelationshipRoutingConfiguration>
+        routing = RoutingConfigurationFactory.getRoutingConfiguration("topic4", "BELONGS-TO;LOVES{p1, p2}", EntityType.relationship) as List<RelationshipRoutingConfiguration>
         assertEquals(2, routing.size)
         assertEquals("topic4", routing[0].topic)
         assertEquals(RelKeyStrategy.DEFAULT, routing[0].relKeyStrategy)
         assertTrue { routing[0].all }
-        assertEquals("KNOWS",routing[0].name)
+        assertEquals("BELONGS-TO",routing[0].name)
         assertTrue { routing[0].include.isEmpty() }
         assertTrue { routing[0].exclude.isEmpty() }
         assertEquals("topic4", routing[1].topic)
