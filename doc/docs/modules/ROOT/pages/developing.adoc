@@ -32,7 +32,7 @@ mvn clean install
 Open a terminal window and be sure to be in the root of the project, then execute the following steps:
 
 1. `cd doc`
-2. `npm run build:docs`
+2. `npm run build`
 3. `npm start`
 4. Browse to \http://localhost:8000/
 

@@ -54,10 +54,16 @@ Following a compatibility table between Neo4j and Neo4j Streams plugin:
 |Neo4j
 |Neo4j Streams
 
+|4.3.x
+|4.0.8
+|4.2.x
+|4.0.8
 |4.1.x
 |4.0.6
 |4.0.x
 |4.0.3
+|3.5.29 - 3.5.21
+|3.5.13
 |3.5.26 - 3.5.21
 |3.5.12
 |3.5.20 - 3.5.18
@@ -67,3 +73,7 @@ Following a compatibility table between Neo4j and Neo4j Streams plugin:
 |3.4.x
 |3.4.4
 |===
+
+[NOTE]
+Please note that the new Neo4j Streams versions are backward compatible with the previous Neo4j versions.
+For example Neo4j Streams 3.5.12 is compatible with Neo4j 3.5.17.
