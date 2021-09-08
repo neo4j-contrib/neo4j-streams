@@ -12,6 +12,7 @@ import org.neo4j.driver.AuthTokens
 import org.neo4j.driver.Config
 import org.neo4j.driver.Driver
 import org.neo4j.driver.GraphDatabase
+import org.neo4j.driver.Logging
 import org.neo4j.driver.SessionConfig
 import org.neo4j.driver.TransactionConfig
 import org.neo4j.driver.exceptions.ClientException
@@ -39,7 +40,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     private val transactionConfig: TransactionConfig
 
     init {
-        val configBuilder = Config.builder()
+        val configBuilder = Config.builder().withLogging(Logging.slf4j())
         configBuilder.withUserAgent("neo4j-kafka-connect-sink/${PropertiesUtil.getVersion()}")
 
         if (!this.config.hasSecuredURI()) {
