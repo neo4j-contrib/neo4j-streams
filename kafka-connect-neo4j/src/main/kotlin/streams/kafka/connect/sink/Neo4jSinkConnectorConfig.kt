@@ -37,6 +37,7 @@ object ConfigGroup {
 }
 
 class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), originals) {
+
     val encryptionEnabled: Boolean
     val encryptionTrustStrategy: Config.TrustStrategy.Strategy
     var encryptionCACertificateFile: File? = null
@@ -68,6 +69,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
     val sourceIdStrategyConfig: SourceIdIngestionStrategyConfig
 
     val kafkaBrokerProperties: Map<String, Any?>
+
+    val neo4jDriverLogLevel: String
 
     init {
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -109,6 +112,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                 .filterKeys { it.toString().startsWith(kafkaPrefix) }
                 .mapKeys { it.key.toString().substring(kafkaPrefix.length) }
         validateAllTopics(originals)
+
+        neo4jDriverLogLevel = getString(DRIVER_LOG_LEVEL)
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
@@ -170,10 +175,19 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
 
+        const val DRIVER_LOG_LEVEL = "neo4j.driver.log.level"
+
         val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
         fun config(): ConfigDef {
             return ConfigDef()
+                    .define(ConfigKeyBuilder
+                            .of(DRIVER_LOG_LEVEL, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(DRIVER_LOG_LEVEL))
+                            .importance(ConfigDef.Importance.LOW)
+                            .defaultValue("INFO")
+                            .group(ConfigGroup.ERROR_REPORTING)
+                            .build())
                     .define(ConfigKeyBuilder
                             .of(AUTHENTICATION_TYPE, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(AUTHENTICATION_TYPE))

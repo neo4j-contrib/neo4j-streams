@@ -5,6 +5,7 @@ import kotlinx.coroutines.channels.ticker
 import kotlinx.coroutines.selects.whileSelect
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.errors.ConnectException
+import org.neo4j.driver.internal.logging.JULogging
 import org.neo4j.driver.v1.AuthTokens
 import org.neo4j.driver.v1.Config
 import org.neo4j.driver.v1.Driver
@@ -26,6 +27,7 @@ import streams.utils.retryForException
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.logging.Level
 
 
 class Neo4jService(private val config: Neo4jSinkConnectorConfig):
@@ -37,7 +39,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     private val driver: Driver
 
     init {
-        val configBuilder = Config.build()
+        val configBuilder = Config.build().withLogging(JULogging(Level.parse(this.config.neo4jDriverLogLevel)))
         if (this.config.encryptionEnabled) {
             configBuilder.withEncryption()
             val trustStrategy: Config.TrustStrategy = when (this.config.encryptionTrustStrategy) {

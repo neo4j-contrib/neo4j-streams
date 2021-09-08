@@ -86,6 +86,7 @@ class Neo4jSinkTaskTest {
     @Test
     fun `test array of struct`() {
         val firstTopic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = """
@@ -103,6 +104,7 @@ class Neo4jSinkTaskTest {
         """.trimIndent()
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic"
 
         val task = Neo4jSinkTask()
@@ -129,12 +131,14 @@ class Neo4jSinkTaskTest {
     fun `should insert data into Neo4j`() {
         val firstTopic = "neotopic"
         val secondTopic = "foo"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[Neo4jSinkConnectorConfig.BATCH_SIZE] = 2.toString()
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
 
         val struct= Struct(PERSON_SCHEMA)
@@ -172,10 +176,12 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should insert data into Neo4j from CDC events`() {
         val firstTopic = "neotopic"
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to firstTopic)
+                SinkTask.TOPICS_CONFIG to firstTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -255,10 +261,12 @@ class Neo4jSinkTaskTest {
             it.success()
         }
         val firstTopic = "neotopic"
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to firstTopic)
+                SinkTask.TOPICS_CONFIG to firstTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -318,10 +326,12 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should insert data into Neo4j from CDC events with schema strategy`() {
         val firstTopic = "neotopic"
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to firstTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to firstTopic)
+                SinkTask.TOPICS_CONFIG to firstTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val constraints = listOf(Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name", "surname")))
         val relSchema = Schema(properties = mapOf("since" to "Long"), constraints = constraints)
@@ -402,10 +412,12 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should insert data into Neo4j from CDC events with schema strategy, multiple constraints and labels`() {
         val myTopic = UUID.randomUUID().toString()
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to myTopic)
+                SinkTask.TOPICS_CONFIG to myTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val constraintsCharacter = listOf(
                 Constraint(label = "Character", type = StreamsConstraintType.UNIQUE, properties = setOf("surname")),
@@ -542,10 +554,12 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should insert data into Neo4j from CDC events with schema strategy and multiple unique constraints merging previous nodes`() {
         val myTopic = UUID.randomUUID().toString()
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to myTopic)
+                SinkTask.TOPICS_CONFIG to myTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val constraints = listOf(
                 Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name")),
@@ -684,10 +698,12 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should insert data into Neo4j from CDC events with schema strategy and multiple unique constraints`() {
         val myTopic = UUID.randomUUID().toString()
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SCHEMA to myTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to myTopic)
+                SinkTask.TOPICS_CONFIG to myTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val constraints = listOf(
                 Constraint(label = "User", type = StreamsConstraintType.UNIQUE, properties = setOf("name")),
@@ -789,10 +805,12 @@ class Neo4jSinkTaskTest {
             it.success()
         }
         val firstTopic = "neotopic"
+        val logLevel = "INFO"
         val props = mapOf(Neo4jSinkConnectorConfig.SERVER_URI to db.boltURI().toString(),
                 Neo4jSinkConnectorConfig.TOPIC_CDC_SOURCE_ID to firstTopic,
                 Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE to AuthenticationType.NONE.toString(),
-                SinkTask.TOPICS_CONFIG to firstTopic)
+                SinkTask.TOPICS_CONFIG to firstTopic,
+                Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL to logLevel)
 
         val cdcDataStart = StreamsTransactionEvent(meta = Meta(timestamp = System.currentTimeMillis(),
                 username = "user",
@@ -830,11 +848,13 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should not insert data into Neo4j`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val struct= Struct(PLACE_SCHEMA)
                 .put("name", "San Mateo (CA)")
@@ -854,6 +874,7 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should report but not fail parsing data`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
@@ -861,6 +882,7 @@ class Neo4jSinkTaskTest {
         props[SinkTask.TOPICS_CONFIG] = topic
         props[ErrorService.ErrorConfig.TOLERANCE] = "all"
         props[ErrorService.ErrorConfig.LOG] = true.toString()
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
@@ -875,6 +897,7 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should report but not fail invalid schema`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
@@ -882,6 +905,7 @@ class Neo4jSinkTaskTest {
         props[ErrorService.ErrorConfig.TOLERANCE] = "all"
         props[ErrorService.ErrorConfig.LOG] = true.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
@@ -896,6 +920,7 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should fail running invalid cypher`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = " No Valid Cypher "
@@ -903,6 +928,7 @@ class Neo4jSinkTaskTest {
         props[SinkTask.TOPICS_CONFIG] = topic
         props[ErrorService.ErrorConfig.TOLERANCE] = "all"
         props[ErrorService.ErrorConfig.LOG] = true.toString()
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val task = Neo4jSinkTask()
         task.initialize(mock(SinkTaskContext::class.java))
@@ -917,11 +943,13 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should work with node pattern topic`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}$topic"] = "User{!userId,name,surname,address.city}"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val data = mapOf("userId" to 1, "name" to "Andrea", "surname" to "Santurbano",
                 "address" to mapOf("city" to "Venice", "CAP" to "30100"))
@@ -945,11 +973,13 @@ class Neo4jSinkTaskTest {
     @Test
     fun `should work with relationship pattern topic`() {
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_RELATIONSHIP_PREFIX}$topic"] = "(:User{!sourceId,sourceName,sourceSurname})-[:KNOWS]->(:User{!targetId,targetName,targetSurname})"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val data = mapOf("sourceId" to 1, "sourceName" to "Andrea", "sourceSurname" to "Santurbano",
                 "targetId" to 1, "targetName" to "Michael", "targetSurname" to "Hunger", "since" to 2014)
@@ -986,11 +1016,13 @@ class Neo4jSinkTaskTest {
         }
         assertEquals(1L, count)
         val topic = "neotopic"
+        val logLevel = "INFO"
         val props = mutableMapOf<String, String>()
         props[Neo4jSinkConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}$topic"] = "User{!userId,name,surname,address.city}"
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         val data = mapOf("userId" to 1)
 
@@ -1016,6 +1048,7 @@ class Neo4jSinkTaskTest {
         val mergeMarkers = listOf(2, 5, 7)
         val key = "key"
         val topic = UUID.randomUUID().toString()
+        val logLevel = "INFO"
         val data = (1..10).map {
             val labels = if (it % 2 == 0) listOf("Foo", "Bar") else listOf("Foo", "Bar", "Label")
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
@@ -1034,6 +1067,7 @@ class Neo4jSinkTaskTest {
         props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
 
         // when
         val task = Neo4jSinkTask()
@@ -1059,6 +1093,7 @@ class Neo4jSinkTaskTest {
         // given
         val key = "key"
         val topic = UUID.randomUUID().toString()
+        val logLevel = "INFO"
         val rel_type = "MY_REL"
         val data = (1..10).map {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
@@ -1072,6 +1107,7 @@ class Neo4jSinkTaskTest {
         props[Neo4jSinkConnectorConfig.TOPIC_CUD] = topic
         props[Neo4jSinkConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[SinkTask.TOPICS_CONFIG] = topic
+        props[Neo4jSinkConnectorConfig.DRIVER_LOG_LEVEL] = "$logLevel"
         db.graph().beginTx().use {
             db.graph().execute("""
                 UNWIND range(1, 10) AS id
