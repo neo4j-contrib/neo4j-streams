@@ -1,24 +1,25 @@
-= Kafka Connect Plugin
+= Kafka Connect Neo4j Connector
 :environment: neo4j
 :id: neo4j
 
 ifdef::env-docs[]
 [abstract]
 --
-This chapter describes Kafka Connect plugins in the Neo4j Streams Library.
+This chapter describes Kafka Connect Neo4j Connector in the Neo4j Streams Library.
 --
 endif::env-docs[]
 
 image::ROOT:neo4j-loves-confluent.png[title="Neo4j Loves Confluent", align="center"]
 
-Kafka Connect, an open source component of Apache Kafka, is a framework for connecting Kafka with external systems such as databases, key-value stores, search indexes, and file systems.
+Kafka Connect, an open source component of Apache Kafka, is a framework for connecting Kafka with external systems such
+as databases, key-value stores, search indexes, and file systems.
 
-The Neo4j Streams project provides a Kafka Connect plugin that can be installed into the Confluent Platform enabling:
+The Neo4j Streams project provides a Kafka Connect Neo4j Connector that can be installed into the Confluent Platform enabling:
 
 - Ingest data from Kafka topics directly into Neo4j via templated Cypher queries;
 - Stream Neo4j queries.
 
-[#kafka_connect_plugin_install]
+[#kafka_connect_neo4j_connector_install]
 == Plugin installation
 
 You can choose your preferred way in order to install the plugin
@@ -80,7 +81,7 @@ Inside the directory `<neo4j-streams>/kafka-connect-neo4j/target/component/packa
 [#kafka-connect-source-instance]
 == Create the Source Instance
 
-In this chapter we'll discuss about how the Source instance works
+In this chapter we'll discuss how the Source instance works
 
 You can create a new Source instance with this REST call:
 
@@ -111,6 +112,11 @@ topic will have the following structure:
 parameters
 
 === How the Source module pushes the data to the defined Kafka topic
+
+[NOTE]
+Timestamps aren’t necessarily unique. As a result, this mode can’t guarantee that all updated data will be delivered.
+For example, if two rows share the same timestamp, and only one has been pushed to the kafka topic before a failure,
+the second update will be missed when the system recovers.
 
 We use the query provided in the `neo4j.source.query` field by polling the database every value is into the
 `neo4j.streaming.poll.interval.msecs` field.
@@ -265,7 +271,7 @@ include::cud-file-format.adoc[]
 === Multi Database Support
 
 Neo4j 4.0 Enterprise has https://neo4j.com/docs/operations-manual/4.0/manage-databases/[multi-tenancy support],
-in order to support this feature, in order to support this feature with Kafka Connect plugin, creating the Sink
+in order to support this feature; in order to support this feature with Kafka Connect Neo4j Connector, creating the Sink
 instance we have to add the `neo4j.database` property, which tells the Connector the database to use as default. If you
 don't specify that property, the default database `neo4j` will be used.
 
@@ -314,7 +320,7 @@ Following an example:
 [#kafka_connect_error_handling]
 == How deal with bad data
 
-In Kafka Connect plugin, in the creation phase of the Sink instance, in addition to the properties
+In Kafka Connect Neo4j Connector, in the creation phase of the Sink instance, in addition to the properties
 described in the xref:consumer.adoc#dlq-table[Dead Letter Queue configuration parameters table], you need to define kafka broker connection properties:
 
 |===
@@ -354,7 +360,7 @@ include::config-override-policy.adoc[]
 [#kafka-connect-configuration-summary]
 == Configuration Summary
 
-Following a summary of all the configuration parameters you can use for the Kafka Connect plugin:
+Following a summary of all the configuration parameters you can use for the Kafka Connect Neo4j Connector:
 
 .Kafka Connect Common configuration parameters (shared between Source and Sink)
 [%width="100%",cols="m,m,m,a", opts=header]
@@ -463,5 +469,5 @@ For further information about Kafka Connect properties, please checkout the foll
 For further details about error handling properties refers to <<kafka_connect_error_handling, How deal with bad data>> section
 ====
 
-Kafka Connect plugin supports also the secured Neo4j URI schemes.
+Kafka Connect Neo4j Connector supports also the secured Neo4j URI schemes.
 Please see the Neo4j official documentation for detailed information: https://neo4j.com/docs/driver-manual/current/client-applications/#driver-configuration-examples

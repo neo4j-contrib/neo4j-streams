@@ -5,12 +5,107 @@
 ifdef::env-docs[]
 [abstract]
 --
-Get started fast for common scenarios, using Neo4j Streams plugin or Kafka Connect plugin
+Get started fast for common scenarios, using Neo4j Streams plugin or Kafka Connect Neo4j Connector
 --
 endif::env-docs[]
 
+[[kafka_connect_neo4j_connector_quickstart]]
+== Kafka Connect Neo4j Connector
+
+=== Install the Connector
+
+Download and install the plugin via Confluent Hub client. See the chapter xref:kafka-connect.adoc[Kafka Connect Neo4j Connector] for more details.
+
+=== Run with Docker
+
+Inside the directory `/neo4j-kafka-connect-neo4j-<version>/doc/docker` you'll find a compose file that allows you to start the whole testing environment.
+
+.docker-compose.yml
+[source,yaml]
+----
+include::ROOT:partial$docker-data/quickstart-kafka-connect-docker-compose.yml[]
+----
+
+Just go inside that folder from the terminal and run the following command:
+
+[source,bash]
+----
+docker-compose up -d
+----
+
+When the process is terminated you have all the modules up and running:
+
+* Neo4j
+* Zookeeper
+* Kafka Broker
+* Schema Registry
+* Kafka Connect
+* Kafka Control Center
+
+Now you can access your Neo4j instance under: \http://localhost:7474, log in with `neo4j` as username and
+`connect` as password (see the docker-compose file to change it).
+
+=== Configure SINK instance
+
+On the Kafka Connect side only one thing is missing, namely create the SINK instance. So let's do the following REST call:
+
+[source,shell]
+----
+curl -X POST http://localhost:8083/connectors \
+  -H 'Content-Type:application/json' \
+  -H 'Accept:application/json' \
+  -d @contrib.sink.avro.neo4j.json
+----
+
+In this case, we are configuring the SINK instance to consume and deliver data in AVRO format.
+Now you can access your Confluent Control Center instance under: \http://localhost:9021/clusters,
+and check the created `my-topic` as specified into the `contrib.sink.avro.neo4j.json`.
+
+.contrib.sink.avro.neo4j.json
+[source,json]
+----
+include::ROOT:partial$docker-data/quickstart-contrib.sink.avro.neo4j.json[]
+----
+
+The property `neo4j.topic.cypher.my-topic` defines each message that will be consumed by the SINK on
+the Kafka Connect side, will cause the execution of the specified cypher query on the Neo4j side.
+
+=== Configure SOURCE instance
+
+On the Kafka Connect side only one thing is missing, namely create the SOURCE instance. So let's do the following REST call:
+
+[source,shell]
+----
+curl -X POST http://localhost:8083/connectors \
+  -H 'Content-Type:application/json' \
+  -H 'Accept:application/json' \
+  -d @contrib.source.avro.neo4j.json
+----
+
+This will create a Kafka Connect Source instance that will send `AVRO` message over the topic named `my-topic`.
+
+
+.contrib.source.avro.neo4j.json
+[source,json]
+----
+include::ROOT:partial$docker-data/quickstart-contrib.source.avro.neo4j.json[]
+----
+
+The property `topic` defines where each message will be pushed, the message structure
+is related is given by `RETURN` cause of the Cypher statement defined into the `neo4j.source.query` property.
+So given the JSON above the structure of the message will be the following:
+
+[source,json]
+----
+{"name": <name>, "timestamp": <timestamp>}
+----
+
 [[neo4j_streams_plugin_quickstart]]
 == Neo4j Streams Plugin
+
+[NOTE]
+The Neo4j Streams Plugin running inside the Neo4j database is deprecated and will not be supported after version 4.2 of Neo4j.
+We recommend users not to adopt this plugin for new implementations, and to consider migrating to the use of the Kafka Connect Neo4j Connector as a replacement
 
 Any configuration option that starts with `streams.` controls how the plugin itself behaves. For a full
 list of options available, see the documentation subsections on the xref:producer.adoc[source] and xref:consumer.adoc#neo4j_streams_sink[sink].
@@ -166,64 +261,3 @@ similar to the following:
 *These are not errors*. They comes from the new Neo4j 4 Configuration System, which warns that it doesn't recognize those
 properties. Despite these warnings the plugin will work properly.
 ====
-
-[[kafka_connect_plugin_quickstart]]
-== Kafka Connect Plugin
-
-=== Install the Plugin
-
-Download and install the plugin via Confluent Hub client. See the chapter xref:kafka-connect.adoc[Kafka Connect Plugin] for more details.
-
-=== Run with Docker
-
-Inside the directory `/neo4j-kafka-connect-neo4j-<version>/doc/docker` you'll find a compose file that allows you to start the whole testing environment.
-
-.docker-compose.yml
-[source,yaml]
-----
-include::ROOT:partial$docker-data/quickstart-kafka-connect-docker-compose.yml[]
-----
-
-Just go inside that folder from the terminal and run the following command:
-
-[source,bash]
-----
-docker-compose up -d
-----
-
-When the process is terminated you have all the modules up and running:
-
-* Neo4j
-* Zookeeper
-* Kafka Broker
-* Schema Registry
-* Kafka Connect
-* Kafka Control Center
-
-Now you can access your Neo4j instance under: \http://localhost:7474, log in with `neo4j` as username and
-`connect` as password (see the docker-compose file to change it).
-
-=== Configure SINK instance
-
-On the Kafka Connect side only one thing is missing, namely create the SINK instance. So let's do the following REST call:
-
-[source,shell]
-----
-curl -X POST http://localhost:8083/connectors \
-  -H 'Content-Type:application/json' \
-  -H 'Accept:application/json' \
-  -d @contrib.sink.avro.neo4j.json
-----
-
-In this case, we are configuring the SINK instance to consume and deliver data in AVRO format.
-Now you can access your Confluent Control Center instance under: \http://localhost:9021/clusters,
-and check the created `my-topic` as specified into the `contrib.sink.avro.neo4j.json`.
-
-.contrib.sink.avro.neo4j.json
-[source,json]
-----
-include::ROOT:partial$docker-data/quickstart-contrib.sink.avro.neo4j.json[]
-----
-
-The property `neo4j.topic.cypher.my-topic` defines each message that will be consumed by the SINK on
-the Kafka Connect side, will cause the execution of the specified cypher query on the Neo4j side.

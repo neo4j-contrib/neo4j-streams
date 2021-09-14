@@ -5,7 +5,7 @@
 ifdef::env-docs[]
 [abstract]
 --
-This chapter provides an introduction to the Neo4j Streams Library and Kafka Connect plugin.
+This chapter provides an introduction to the Neo4j Streams Library and Kafka Connect Neo4j Connector.
 --
 endif::env-docs[]
 
@@ -38,10 +38,10 @@ just one at a time has to be used.**
 As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
 to Kafka.
 
-// [[kafka_connect_plugin_overview]]
-== Kafka Connect Plugin
+// [[kafka_connect_neo4j_connector_overview]]
+== Kafka Connect Neo4j Connector
 
-As a **Kafka Connect plugin**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
+As a **Kafka Connect Neo4j Connector**, neo4j-streams is deployed separately from the Neo4j database.  At this time,
 the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support
 change data capture (CDC) coming _from_ Neo4j.
 

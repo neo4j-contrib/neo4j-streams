@@ -2,11 +2,11 @@
 
 * xref::overview.adoc[Project overview]
 // ** xref::overview.adoc#neo4j_streams_plugin_overview[Neo4j Streams plugin]
-// ** xref::overview.adoc#kafka_connect_plugin_overview[Kafka Connect plugin]
+// ** xref::overview.adoc#kafka_connect_neo4j_connector_overview[Kafka Connect Neo4j Connector]
 
 * xref::quickstart.adoc[Quick Start]
 // ** xref::quickstart.adoc#neo4j_streams_plugin_quickstart[Neo4j Streams plugin]
-// ** xref::quickstart.adoc#kafka_connect_plugin_quickstart[Kafka Connect plugin]
+// ** xref::quickstart.adoc#kafka_connect_neo4j_connector_quickstart[Kafka Connect Neo4j Connector]
 
 * xref::configuration.adoc[The Configuration System]
 // ** xref::configuration.adoc#neo4j_configuration_system[Configuration System overview]
@@ -28,8 +28,8 @@
 // ** xref::procedures.adoc#_streams_publish[streams.publish]
 // ** xref::procedures.adoc#_streams_consume[streams.consume]
 
-* xref::kafka-connect.adoc[Kafka Connect Plugin]
-// ** xref::kafka-connect.adoc#kafka_connect_plugin_install[Plugin installation]
+* xref::kafka-connect.adoc[Kafka Connect Neo4j Connector]
+// ** xref::kafka-connect.adoc#kafka_connect_neo4j_connector_install[Plugin installation]
 // ** xref::kafka-connect.adoc#kafka-connect-sink-instance[Create the Sink Instance]
 // ** xref::kafka-connect.adoc#kafka-connect-sink-strategies[Sink ingestion strategies]
 // ** xref::kafka-connect.adoc#kafka-connect-cud-file-format[How deal with bad data]
@@ -45,7 +45,7 @@
 
 * xref::docker.adoc[Run with Docker]
 // ** xref::docker.adoc#neo4j_streams_docker[Neo4j Streams plugin]
-// ** xref::docker.adoc#docker_kafka_connect[Kafka Connect Plugin]
+// ** xref::docker.adoc#docker_kafka_connect[Kafka Connect Neo4j Connector]
 // ** xref::docker.adoc#docker_streams_cluster[Neo4j Streams with Neo4j Cluster and Kafka Cluster]
 
 * xref::kafka-ssl.adoc[Configure with Kafka over SSL]

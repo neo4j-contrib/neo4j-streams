@@ -9,7 +9,7 @@
     <packaging>jar</packaging>
 
     <name>Kafka Connect Neo4j</name>
-    <description>A Kafka Connect Connector for kafka-connect-neo4j</description>
+    <description>A Kafka Connect Neo4j Connector for kafka-connect-neo4j</description>
 
     <parent>
         <groupId>org.neo4j</groupId>
@@ -116,9 +116,9 @@
                             <ownerType>organization</ownerType>
                             <ownerName>Neo4j, Inc.</ownerName>
                             <ownerUrl>https://neo4j.com/</ownerUrl>
-                            <title>Kafka Connect Neo4j Sink</title>
+                            <title>Kafka Connect Neo4j Connector</title>
                             <documentationUrl>https://neo4j-contrib.github.io/neo4j-streams/#_kafka_connect</documentationUrl>
-                            <description>It's a basic Apache Kafka Connect Connector which allows moving data from Kafka topics into Neo4j via Cypher templated queries ad vice versa.</description>
+                            <description>It's a basic Apache Kafka Connect Neo4j Connector which allows moving data from Kafka topics into Neo4j via Cypher templated queries ad vice versa.</description>
                             <logo>assets/neo4j-logo.png</logo>
                             <supportSummary><![CDATA[Support through <a href="https://neo4j.com/labs/">Neo4j Labs</a>]]></supportSummary>
                             <sourceUrl>https://github.com/neo4j-contrib/neo4j-streams/tree/master/kafka-connect-neo4j</sourceUrl>
