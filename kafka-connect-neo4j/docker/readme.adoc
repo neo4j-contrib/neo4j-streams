@@ -107,6 +107,11 @@ To create the Sink instance and configure your preferred ingestion strategy, you
 into <<kafka-connect-sink-instance, Create the Sink Instance>> and <<kafka-connect-sink-strategies, Sink Ingestion Strategies>>
 sections.
 
+==== Create the Source Instance
+
+To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described
+into <<kafka-connect-source-instance, Create the Source Instance>> section.
+
 ===== Use the Kafka Connect Datagen
 
 In order to generate a sample dataset you can use Kafka Connect Datagen as explained in <<examples, `Example with Kafka Connect Datagen`>> section.

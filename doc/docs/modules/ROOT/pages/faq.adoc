@@ -9,11 +9,8 @@ the source code repository for full terms and conditions.
 
 == How to integrate Neo4j and Kafka
 
-When integrating Neo4j and Kafka using Neo4j Streams plugin or Kafka Connect plugin
+When integrating Neo4j and Kafka using Neo4j Streams plugin or Kafka Connect Neo4j Connector
 is important configure just one of them and not both.
-If you need to load data from Kafka to Neo4j (and not viceversa) you can just use the Kafka Connect plugin.
-If you need to have both sink and source functionalities then you have to use the Neo4j Streams plugin.
-This is the main difference between those plugins.
 
 == About CUD file format
 
@@ -21,7 +18,7 @@ The CUD file format is JSON file that represents Graph Entities (Nodes/Relations
 of **C**reate/**U**pdate/**D**elete operations.
 So every JSON event represents a single operation.
 For more details about how to use these, please checkout the xref:consumer.adoc#_cud_file_format[CUD File Format] section for the
-Neo4j Streams plugin, and the xref:kafka-connect.adoc#kafka-connect-cud-file-format[CUD File Format] section for Kafka Connect plugin.
+Neo4j Streams plugin, and the xref:kafka-connect.adoc#kafka-connect-cud-file-format[CUD File Format] section for Kafka Connect Neo4j Connector.
 
 == How to ingest events using CDC Schema strategy
 
@@ -45,7 +42,7 @@ streams.sink.topic.cdc.schema=<topic-name>
 streams.sink.enabled=true
 ----
 
-If you decide to use Kafka Connect plugin for the sink instance, then it has to be configured as follow:
+If you decide to use Kafka Connect Neo4j Connector for the sink instance, then it has to be configured as follow:
 
 [source, json]
 ----
@@ -191,3 +188,7 @@ Please see the following link for further details:
 * https://docs.confluent.io/platform/current/kafka/deployment.html#multi-node-configuration[Kafka multi-node configuration]
 * https://docs.confluent.io/platform/current/zookeeper/deployment.html#multi-node-setup[Zookeeper multi-node setup]
 --
+
+== Which way should I run the Neo4j Connector for Apache Kafka: As a database plugin, or using the Kafka Connect Framework?
+
+If you have already implemented the database plugin and are running Neo4j <= 4.2, there is no need to change, all other users, new users, and Neo4j Aura users should implement only the Kafka Connect Neo4j Connector

@@ -1,5 +1,8 @@
 = Using with Neo4j Causal Cluster
 
+[NOTE]
+The Neo4j Streams Plugin running inside the Neo4j database is deprecated and will not be supported after version 4.3 of Neo4j.
+We recommend users not to adopt this plugin for new implementations, and to consider migrating to the use of the Kafka Connect Neo4j Connector as a replacement
 
 ifdef::env-docs[]
 [abstract]
@@ -24,17 +27,17 @@ horizontally.
 == Kafka Connect
 
 When using Neo4j Streams in this method with a Neo4j cluster, the most important consideration is to use
-a routing driver.  Generally, these are identified by a URI with `bolt+routing://` as the scheme instead of
+a routing driver.  Generally, these are identified by a URI with `neo4j://` as the scheme instead of
 just `bolt://` as the scheme.
 
 If your Neo4j cluster is located at `graph.mycompany.com:7687`, simply configure the Kafka Connect worker with
 
 [source]
 ----
-neo4j.server.uri=bolt+routing://graph.mycompany.com:7687
+neo4j.server.uri=neo4j://graph.mycompany.com:7687
 ----
 
-The use of the `bolt+routing` driver will mean that the Neo4j Driver itself will handle connecting to
+The use of the `neo4j` driver will mean that the Neo4j Driver itself will handle connecting to
 the correct cluster member, and managing changes to the cluster membership over time.
 
 For further information on routing drivers, see the link:https://neo4j.com/docs/driver-manual/current/[Neo4j Driver Manual].
@@ -70,7 +73,7 @@ not work on a cluster follower or read replica, as only the leader can process w
 Sometimes there will be remote applications that talk to Neo4j via official drivers, that want to use
 streams functionality.  Best practices in these cases are:
 
-* Always use a `bolt+routing://` driver URI when communicating with the cluster in the client application.
+* Always use a `neo4j://` driver URI when communicating with the cluster in the client application.
 * Use link:https://neo4j.com/docs/driver-manual/current/session-api/configuration/#driver-simple-transaction-fn[Explicit Write Transactions] in
 your client application when using procedure calls such as `CALL streams.consume` to ensure that the routing
 driver routes the query to the leader.

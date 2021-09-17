@@ -9,7 +9,7 @@ Currently it provides an integration with *Apache Kafka and the Confluent Platfo
 
 The project contains these components:
 
-== Neo4j Kafka Connect Plugin
+== Neo4j Kafka Connect Neo4j Connector
 
 A https://www.confluent.io/connector/kafka-connect-neo4j-sink/[Kafka Connect Sink plugin] that allows to ingest events from Kafka to Neo4j via templated Cypher statements. (link:{docs}#_kafka_connect_sink_plugin[docs], https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[article])
 
@@ -25,7 +25,7 @@ image::https://www.confluent.io/wp-content/uploads/Kafka_Connect_Neo4j_Sink.png[
 
 Read more at http://r.neo4j.com/kafka
 
-Here are articles, introducing the https://medium.com/neo4j/a-new-neo4j-integration-with-apache-kafka-6099c14851d2[Neo4j Extension] and the https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[Kafka Connect Plugin].
+Here are articles, introducing the https://medium.com/neo4j/a-new-neo4j-integration-with-apache-kafka-6099c14851d2[Neo4j Extension] and the https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[Kafka Connect Neo4j Connector].
 
 And practical applications of the extension for https://medium.freecodecamp.org/how-to-leverage-neo4j-streams-and-build-a-just-in-time-data-warehouse-64adf290f093[Building Data Pipelines with Kafka, Spark, Neo4j & Zeppelin] (https://medium.freecodecamp.org/how-to-ingest-data-into-neo4j-from-a-kafka-stream-a34f574f5655[part 2]).
 
@@ -56,7 +56,7 @@ mvn clean install
 
 You'll find the build artifact in `<project_dir>/target/neo4j-streams-<VERSION>.jar`
 
-Testing the link:{docs}#_docker_compose_file[Kafka Connect Plugin locally with Docker].
+Testing the link:{docs}#_docker_compose_file[Kafka Connect Neo4j Connector locally with Docker].
 
 ==== License
 
@@ -65,9 +65,9 @@ Neo4j Streams is licensed under the terms of the Apache License, version 2.0.  S
 ////
 == Documentation Links
 
-=== Kafka Connect Plugin
+=== Kafka Connect Neo4j Connector
 
-### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Plugin]
+### link:doc/asciidoc/kafka-connect/index.adoc[Kafka Connect Neo4j Connector]
 
 === Streams Producer
 

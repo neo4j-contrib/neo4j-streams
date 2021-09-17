@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to your Neo4j Kafka Connect connector!
+Welcome to your Kafka Connect Neo4j Connector!
 
 # Build it locally
 

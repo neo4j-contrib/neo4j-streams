@@ -1,5 +1,9 @@
 = Run with Docker
 
+[NOTE]
+The Neo4j Streams Plugin running inside the Neo4j database is deprecated and will not be supported after version 4.3 of Neo4j.
+We recommend users not to adopt this plugin for new implementations, and to consider migrating to the use of the Kafka Connect Neo4j Connector as a replacement
+
 ifdef::env-docs[]
 [abstract]
 --
@@ -277,7 +281,7 @@ You'll see something like this:
 ----
 
 [[docker_kafka_connect]]
-== Kafka Connect plugin
+== Kafka Connect Neo4j Connector
 
 Inside the directory `/kafka-connect-neo4j/docker` you'll find a compose file that allows you to start the whole testing environment:
 

@@ -272,5 +272,5 @@ For further details on how to setup and define ACLs on Kafka, please refer to of
 * https://docs.confluent.io/platform/current/kafka/authorization.html#kafka-authorization
 
 [NOTE]
-This section applies only to the Neo4j Streams plugin and not to the Kafka Connect plugin. This because it's Kafka Connect plugin that takes care about the authorizations.
-The only special case for the Kafka Connect plugin is when you use the DLQ. If so, you have to define the **Write** authorization the DLQ producer needs.
+This section applies only to the Neo4j Streams plugin and not to the Kafka Connect Neo4j Connector. This because it's Kafka Connect Neo4j Connector that takes care about the authorizations.
+The only special case for the Kafka Connect Neo4j Connector is when you use the DLQ. If so, you have to define the **Write** authorization the DLQ producer needs.
