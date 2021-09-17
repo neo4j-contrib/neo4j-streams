@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-consumer</artifactId>
-    <version>4.0.8</version>
+    <version>4.1.0</version>
     <name>Neo4j Streams - Consumer</name>
     <description>Neo4j Streams - Kafka Consumer</description>
     <packaging>jar</packaging>
@@ -14,7 +14,7 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>4.0.8</version>
+        <version>4.1.0</version>
     </parent>
 
     <repositories>
