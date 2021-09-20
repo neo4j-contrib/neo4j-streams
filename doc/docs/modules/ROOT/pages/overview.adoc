@@ -32,12 +32,6 @@ may prefer using the Kafka Connect method.
 **Be aware of not configuring both Neo4j plugin and Kafka Connect worker. They will generate errors if used simultaneously, so
 just one at a time has to be used.**
 
-// [[neo4j_streams_plugin_overview]]
-== Neo4j Streams Plugin
-
-As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
-to Kafka.
-
 // [[kafka_connect_neo4j_connector_overview]]
 == Kafka Connect Neo4j Connector
 
@@ -45,19 +39,31 @@ As a **Kafka Connect Neo4j Connector**, neo4j-streams is deployed separately fro
 the connect worker can be used to push data to Neo4j (Neo4j as the consumer) but does not yet support
 change data capture (CDC) coming _from_ Neo4j.
 
+// [[neo4j_streams_plugin_overview]]
+== Neo4j Streams Plugin
+
+As a **Neo4j plugin**, neo4j-streams runs inside of the database, and can both consume and produce messages
+to Kafka.
+
 == Compatibility between Neo4j and Neo4j Streams
 
-Following a compatibility table between Neo4j and Neo4j Streams plugin:
+Following a compatibility table between Neo4j and Neo4j Streams database plugin.  If you are using the Kafka Connect Neo4j connector, we recommend the latest version to be compatible with all versions of Neo4j.
 
 [cols="2*",options="header"]
 |===
 |Neo4j
 |Neo4j Streams
 
+|> 4.3.x
+|deprecated; not guaranteed to work, use Kafka Connect instead
+|4.3.x
+|4.0.x, 4.1.x
+|4.2.x
+|4.0.x, 4.1.x
 |4.1.x
-|4.0.6
+|4.0.x, 4.1.x
 |4.0.x
-|4.0.3
+|4.0.x, 4.1.x
 |3.5.26 - 3.5.21
 |3.5.12
 |3.5.20 - 3.5.18
