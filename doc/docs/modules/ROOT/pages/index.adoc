@@ -1,5 +1,5 @@
 
-= Neo4j Streaming Data Integrations User Guide v{version}
+= Neo4j Streaming Data Integrations User Guide
 :img: https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images
 :env-docs: true
 
