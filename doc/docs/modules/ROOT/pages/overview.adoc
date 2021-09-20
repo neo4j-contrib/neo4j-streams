@@ -47,17 +47,23 @@ change data capture (CDC) coming _from_ Neo4j.
 
 == Compatibility between Neo4j and Neo4j Streams
 
-Following a compatibility table between Neo4j and Neo4j Streams plugin:
+Following a compatibility table between Neo4j and Neo4j Streams database plugin:
 
 [cols="2*",options="header"]
 |===
 |Neo4j
 |Neo4j Streams
 
+|> 4.3.x
+|deprecated; not guaranteed to work, use Kafka Connect instead
+|4.3.x
+|4.0.x, 4.1.x
+|4.2.x
+|4.0.x, 4.1.x
 |4.1.x
-|4.0.6
+|4.0.x, 4.1.x
 |4.0.x
-|4.0.3
+|4.0.x, 4.1.x
 |3.5.26 - 3.5.21
 |3.5.12
 |3.5.20 - 3.5.18
