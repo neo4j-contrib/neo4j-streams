@@ -15,7 +15,7 @@ A https://www.confluent.io/connector/kafka-connect-neo4j-sink/[Kafka Connect Sin
 
 image::https://www.confluent.io/wp-content/uploads/Kafka_Connect_Neo4j_Sink.png[width=300,link=https://www.confluent.io/connector/kafka-connect-neo4j-sink/]
 
-== Neo4j Server Extension
+== Neo4j Server Extension [Deprecated]
 
 * Source: a Change-Data-Capture (CDC) implementation sends change data to Kafka topics (link:{docs}#_neo4j_streams_source[docs])
 * Sink: a Neo4j extension that ingest data from Kafka topics into Neo4j via templated Cypher statements (link:{docs}#_neo4j_streams_sink[docs])
@@ -23,7 +23,7 @@ image::https://www.confluent.io/wp-content/uploads/Kafka_Connect_Neo4j_Sink.png[
 
 == Documentation & Articles
 
-Read more at http://r.neo4j.com/kafka
+Read more at https://neo4j.com/labs/kafka
 
 Here are articles, introducing the https://medium.com/neo4j/a-new-neo4j-integration-with-apache-kafka-6099c14851d2[Neo4j Extension] and the https://www.confluent.io/blog/kafka-connect-neo4j-sink-plugin[Kafka Connect Neo4j Connector].
 
