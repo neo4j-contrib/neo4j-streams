@@ -22,25 +22,10 @@ import java.io.File
 import java.net.URI
 import java.util.*
 import java.util.concurrent.TimeUnit
-import java.util.logging.Level
 
 enum class AuthenticationType {
     NONE, BASIC, KERBEROS
 }
-
-enum class DriverLogLevel {
-    ERROR(Level.SEVERE),
-    INFO(Level.INFO),
-    WARN(Level.WARNING),
-    DEBUG(Level.FINER),
-    TRACE(Level.FINEST),
-    DEFAULT(Level.INFO),
-
-    companion object {
-        fun from(type: String?): DriverLogLevel = values().find { it.name == type } ?: DEFAULT
-    }
-}
-
 
 object ConfigGroup {
     const val ENCRYPTION = "Encryption"
@@ -87,7 +72,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val database: String
 
-    val neo4jDriverLogLevel: DriverLogLevel
+    val neo4jDriverLogLevel: String
 
     init {
         database = getString(DATABASE)
@@ -129,7 +114,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                 .mapKeys { it.key.substring(kafkaPrefix.length) }
         validateAllTopics(originals)
 
-        neo4jDriverLogLevel = DriverLogLevel.from(DRIVER_LOG_LEVEL)
+        neo4jDriverLogLevel = getString(DRIVER_LOG_LEVEL)
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
