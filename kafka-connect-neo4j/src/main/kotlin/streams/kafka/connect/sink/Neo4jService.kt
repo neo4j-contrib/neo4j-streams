@@ -27,6 +27,7 @@ import streams.service.StreamsSinkService
 import streams.utils.retryForException
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 import kotlin.streams.toList
 
 
@@ -40,7 +41,7 @@ class Neo4jService(private val config: Neo4jSinkConnectorConfig):
     private val transactionConfig: TransactionConfig
 
     init {
-        val configBuilder = Config.builder().withLogging(Logging.slf4j())
+        val configBuilder = Config.builder().withLogging(Logging.javaUtilLogging(this.config.neo4jDriverLogLevel))
         configBuilder.withUserAgent("neo4j-kafka-connect-sink/${PropertiesUtil.getVersion()}")
 
         if (!this.config.hasSecuredURI()) {

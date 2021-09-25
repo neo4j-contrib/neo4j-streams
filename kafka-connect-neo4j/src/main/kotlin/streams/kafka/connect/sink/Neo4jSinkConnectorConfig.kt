@@ -22,10 +22,25 @@ import java.io.File
 import java.net.URI
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 
 enum class AuthenticationType {
     NONE, BASIC, KERBEROS
 }
+
+enum class DriverLogLevel {
+    ERROR(Level.SEVERE),
+    INFO(Level.INFO),
+    WARN(Level.WARNING),
+    DEBUG(Level.FINER),
+    TRACE(Level.FINEST),
+    DEFAULT(Level.INFO),
+
+    companion object {
+        fun from(type: String?): DriverLogLevel = values().find { it.name == type } ?: DEFAULT
+    }
+}
+
 
 object ConfigGroup {
     const val ENCRYPTION = "Encryption"
@@ -72,6 +87,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val database: String
 
+    val neo4jDriverLogLevel: DriverLogLevel
+
     init {
         database = getString(DATABASE)
         encryptionEnabled = getBoolean(ENCRYPTION_ENABLED)
@@ -111,6 +128,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                 .filterKeys { it.startsWith(kafkaPrefix) }
                 .mapKeys { it.key.substring(kafkaPrefix.length) }
         validateAllTopics(originals)
+
+        neo4jDriverLogLevel = DriverLogLevel.from(DRIVER_LOG_LEVEL)
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
@@ -174,10 +193,19 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
 
+        const val DRIVER_LOG_LEVEL = "neo4j.driver.log.level"
+
         val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
         fun config(): ConfigDef {
             return ConfigDef()
+                    .define(ConfigKeyBuilder
+                            .of(DRIVER_LOG_LEVEL, ConfigDef.Type.STRING)
+                            .documentation(PropertiesUtil.getProperty(DRIVER_LOG_LEVEL))
+                            .importance(ConfigDef.Importance.LOW)
+                            .defaultValue("INFO")
+                            .group(ConfigGroup.ERROR_REPORTING)
+                            .build())
                     .define(ConfigKeyBuilder
                             .of(AUTHENTICATION_TYPE, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(AUTHENTICATION_TYPE))
