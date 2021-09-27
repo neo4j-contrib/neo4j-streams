@@ -72,7 +72,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
 
     val database: String
 
-    val neo4jDriverLogLevel: String
+    val neo4jDriverLogLevel: Level
 
     init {
         database = getString(DATABASE)
