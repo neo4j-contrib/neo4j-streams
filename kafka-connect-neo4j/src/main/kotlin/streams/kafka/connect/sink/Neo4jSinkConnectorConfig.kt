@@ -189,7 +189,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                             .of(DRIVER_LOG_LEVEL, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(DRIVER_LOG_LEVEL))
                             .importance(ConfigDef.Importance.LOW)
-                            .defaultValue("INFO")
+                            .defaultValue(DRIVER_LOG_LEVEL_DEFAULT)
                             .group(ConfigGroup.ERROR_REPORTING)
                             .build())
                     .define(ConfigKeyBuilder
