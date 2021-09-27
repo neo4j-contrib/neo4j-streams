@@ -114,7 +114,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
                 .mapKeys { it.key.substring(kafkaPrefix.length) }
         validateAllTopics(originals)
 
-        neo4jDriverLogLevel = getString(DRIVER_LOG_LEVEL)
+        neo4jDriverLogLevel = Level.parse((getString(DRIVER_LOG_LEVEL) ?: DRIVER_LOG_LEVEL_DEFAULT).toUpperCase())
     }
 
     private fun validateAllTopics(originals: Map<*, *>) {
