@@ -22,6 +22,7 @@ import java.io.File
 import java.net.URI
 import java.util.*
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 
 enum class AuthenticationType {
     NONE, BASIC, KERBEROS
