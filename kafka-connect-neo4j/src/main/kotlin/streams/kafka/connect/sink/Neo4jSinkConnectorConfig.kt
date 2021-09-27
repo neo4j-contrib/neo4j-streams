@@ -179,6 +179,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): AbstractConfig(config(), o
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
 
         const val DRIVER_LOG_LEVEL = "neo4j.driver.log.level"
+        const val DRIVER_LOG_LEVEL_DEFAULT = "INFO"
 
         val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
