@@ -1366,5 +1366,24 @@ class Neo4jSinkTaskTest {
         }
     }
 
+    @Test
+    fun `should not fail running with invalid log level config`() {
+        val topic = "neotopic"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
+        props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jConnectorConfig.DRIVER_LOG_LEVEL] = "INVALID_LOG_LEVEL"
+        props[SinkTask.TOPICS_CONFIG] = topic
+        props[ErrorService.ErrorConfig.TOLERANCE] = "all"
+        props[ErrorService.ErrorConfig.LOG] = true.toString()
+
+        task.start(props)
+        task.put(listOf(SinkRecord(topic, 1, null, 42, null, "true", 42)))
+        db.defaultDatabaseService().beginTx().use {
+            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
+            assertTrue { node == null }
+        }
+    }
 
 }

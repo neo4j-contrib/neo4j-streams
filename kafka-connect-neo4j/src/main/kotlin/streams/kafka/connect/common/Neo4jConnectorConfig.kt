@@ -11,6 +11,7 @@ import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.neo4j.driver.*
 import org.neo4j.driver.internal.async.pool.PoolSettings
+import org.neo4j.driver.Logging
 import org.neo4j.driver.net.ServerAddress
 import streams.kafka.connect.sink.AuthenticationType
 import streams.kafka.connect.sink.Neo4jSinkConnectorConfig
@@ -19,6 +20,7 @@ import java.io.File
 import java.net.URI
 import java.time.Duration
 import java.util.concurrent.TimeUnit
+import java.util.logging.Level
 
 object ConfigGroup {
     const val ENCRYPTION = "Encryption"
@@ -32,6 +34,19 @@ object ConfigGroup {
 }
 
 enum class ConnectorType { SINK, SOURCE }
+
+enum class DriverLogLevel(var level: Level) {
+    ERROR(Level.SEVERE),
+	INFO(Level.INFO),
+	WARN(Level.WARNING),
+	DEBUG(Level.FINE),
+	TRACE(Level.FINEST);
+
+  // Return 'INFO' if user supplied incorrect level name
+  companion object {
+    fun from(type: String?): DriverLogLevel = values().find { it.name == type } ?: INFO
+  }
+}
 
 open class Neo4jConnectorConfig(configDef: ConfigDef,
                                 originals: Map<*, *>,
@@ -59,6 +74,8 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
     val batchSize: Int
 
     val database: String
+
+    val neo4jDriverLogLevel: Level
 
     init {
         database = getString(DATABASE)
@@ -88,12 +105,14 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
 
         batchTimeout = getLong(BATCH_TIMEOUT_MSECS)
         batchSize = getInt(BATCH_SIZE)
+
+        neo4jDriverLogLevel = DriverLogLevel.from(getString(DRIVER_LOG_LEVEL)).level
     }
 
     fun hasSecuredURI() = serverUri.any { it.scheme.endsWith("+s", true) || it.scheme.endsWith("+ssc", true) }
     
     fun createDriver(): Driver {
-        val configBuilder = Config.builder()
+        val configBuilder = Config.builder().withLogging(Logging.javaUtilLogging(neo4jDriverLogLevel))
         configBuilder.withUserAgent("neo4j-kafka-connect-$type/${PropertiesUtil.getVersion()}")
 
         if (!this.hasSecuredURI()) {
@@ -191,6 +210,9 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
 
+        const val DRIVER_LOG_LEVEL = "neo4j.driver.log.level"
+        const val DRIVER_LOG_LEVEL_DEFAULT = "INFO"
+
         fun isValidQuery(session: Session, query: String) = try {
             session.run("EXPLAIN $query")
             true
@@ -199,6 +221,13 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         }
 
         fun config(): ConfigDef = ConfigDef()
+                    .define(ConfigKeyBuilder
+                             .of(DRIVER_LOG_LEVEL, ConfigDef.Type.STRING)
+                             .documentation(PropertiesUtil.getProperty(DRIVER_LOG_LEVEL))
+                             .importance(ConfigDef.Importance.LOW)
+                             .defaultValue(DRIVER_LOG_LEVEL_DEFAULT)
+                             .group(ConfigGroup.ERROR_REPORTING)
+                             .build())
                     .define(ConfigKeyBuilder
                             .of(AUTHENTICATION_TYPE, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(AUTHENTICATION_TYPE))
