@@ -35,19 +35,6 @@ object ConfigGroup {
 
 enum class ConnectorType { SINK, SOURCE }
 
-enum class DriverLogLevel(var level: Level) {
-    ERROR(Level.SEVERE),
-	INFO(Level.INFO),
-	WARN(Level.WARNING),
-	DEBUG(Level.FINE),
-	TRACE(Level.FINEST);
-
-  // Return 'INFO' if user supplied incorrect level name
-  companion object {
-    fun from(type: String?): DriverLogLevel = values().find { it.name == type } ?: INFO
-  }
-}
-
 open class Neo4jConnectorConfig(configDef: ConfigDef,
                                 originals: Map<*, *>,
                                 private val type: ConnectorType): AbstractConfig(configDef, originals) {
@@ -106,7 +93,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         batchTimeout = getLong(BATCH_TIMEOUT_MSECS)
         batchSize = getInt(BATCH_SIZE)
 
-        neo4jDriverLogLevel = DriverLogLevel.from(getString(DRIVER_LOG_LEVEL)).level
+        neo4jDriverLogLevel = Level.parse((getString(DRIVER_LOG_LEVEL) ?: DRIVER_LOG_LEVEL_DEFAULT).toUpperCase())
     }
 
     fun hasSecuredURI() = serverUri.any { it.scheme.endsWith("+s", true) || it.scheme.endsWith("+ssc", true) }

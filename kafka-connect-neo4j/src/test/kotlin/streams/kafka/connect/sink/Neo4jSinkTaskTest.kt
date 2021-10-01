@@ -1367,13 +1367,13 @@ class Neo4jSinkTaskTest {
     }
 
     @Test
-    fun `should not fail running with invalid log level config`() {
+    fun `should not fail running with INFO log level`() {
         val topic = "neotopic"
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
         props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$topic"] = "CREATE (n:Person {name: event.firstName, surname: event.lastName})"
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
-        props[Neo4jConnectorConfig.DRIVER_LOG_LEVEL] = "INVALID_LOG_LEVEL"
+        props[Neo4jConnectorConfig.DRIVER_LOG_LEVEL] = "INFO"
         props[SinkTask.TOPICS_CONFIG] = topic
         props[ErrorService.ErrorConfig.TOLERANCE] = "all"
         props[ErrorService.ErrorConfig.LOG] = true.toString()
