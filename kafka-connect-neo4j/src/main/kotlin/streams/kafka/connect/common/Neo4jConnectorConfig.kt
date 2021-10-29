@@ -13,7 +13,6 @@ import org.neo4j.driver.*
 import org.neo4j.driver.internal.async.pool.PoolSettings
 import org.neo4j.driver.net.ServerAddress
 import streams.kafka.connect.sink.AuthenticationType
-import streams.kafka.connect.sink.Neo4jSinkConnectorConfig
 import streams.kafka.connect.utils.PropertiesUtil
 import java.io.File
 import java.net.URI
@@ -48,7 +47,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
 
     val serverUri: List<URI>
     val connectionMaxConnectionLifetime: Long
-    val connectionLifenessCheckTimeout: Long
+    val connectionLivenessCheckTimeout: Long
     val connectionPoolMaxSize: Int
     val connectionAcquisitionTimeout: Long
 
@@ -78,7 +77,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         authenticationKerberosTicket = getPassword(AUTHENTICATION_KERBEROS_TICKET).value()
 
         serverUri = getString(SERVER_URI).split(",").map { URI(it) }
-        connectionLifenessCheckTimeout = getLong(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS)
+        connectionLivenessCheckTimeout = getLong(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS)
         connectionMaxConnectionLifetime = getLong(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS)
         connectionPoolMaxSize = getInt(CONNECTION_POOL_MAX_SIZE)
         connectionAcquisitionTimeout = getLong(CONNECTION_MAX_CONNECTION_ACQUISITION_TIMEOUT_MSECS)
@@ -128,6 +127,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         configBuilder.withMaxConnectionLifetime(this.connectionMaxConnectionLifetime, TimeUnit.MILLISECONDS)
         configBuilder.withConnectionAcquisitionTimeout(this.connectionAcquisitionTimeout, TimeUnit.MILLISECONDS)
         configBuilder.withMaxTransactionRetryTime(this.retryBackoff, TimeUnit.MILLISECONDS)
+        configBuilder.withConnectionLivenessCheckTimeout(this.connectionLivenessCheckTimeout, TimeUnit.MINUTES)
         configBuilder.withResolver { address -> this.serverUri.map { ServerAddress.of(it.host, it.port) }.toSet() }
         val neo4jConfig = configBuilder.build()
 
@@ -190,6 +190,11 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         const val BATCH_SIZE_DEFAULT = 1000
         val RETRY_BACKOFF_DEFAULT = TimeUnit.SECONDS.toMillis(30L)
         const val RETRY_MAX_ATTEMPTS_DEFAULT = 5
+
+        // Default values optimizations for Aura please look at: https://aura.support.neo4j.com/hc/en-us/articles/1500002493281-Neo4j-Java-driver-settings-for-Aura
+        val CONNECTION_MAX_CONNECTION_LIFETIME_MSECS_DEFAULT = Duration.ofMinutes(8).toMillis()
+        val CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS_DEFAULT = Duration.ofMinutes(2).toMillis()
+
 
         fun isValidQuery(session: Session, query: String) = try {
             session.run("EXPLAIN $query")
@@ -259,7 +264,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
                             .of(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS, ConfigDef.Type.LONG)
                             .documentation(PropertiesUtil.getProperty(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS))
                             .importance(ConfigDef.Importance.LOW)
-                            .defaultValue(PoolSettings.DEFAULT_MAX_CONNECTION_LIFETIME)
+                            .defaultValue(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS_DEFAULT)
                             .group(ConfigGroup.CONNECTION)
                             .validator(ConfigDef.Range.atLeast(1))
                             .build())
@@ -267,7 +272,7 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
                             .of(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS, ConfigDef.Type.LONG)
                             .documentation(PropertiesUtil.getProperty(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS))
                             .importance(ConfigDef.Importance.LOW)
-                            .defaultValue(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT)
+                            .defaultValue(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS_DEFAULT)
                             .group(ConfigGroup.CONNECTION)
                             .validator(ConfigDef.Range.atLeast(1))
                             .build())

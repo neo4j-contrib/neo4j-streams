@@ -71,8 +71,8 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals("", config.authenticationKerberosTicket)
         assertNull(config.encryptionCACertificateFile, "encryptionCACertificateFile should be null")
 
-        assertEquals(PoolSettings.DEFAULT_MAX_CONNECTION_LIFETIME, config.connectionMaxConnectionLifetime)
-        assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionLifenessCheckTimeout)
+        assertEquals(Neo4jConnectorConfig.CONNECTION_MAX_CONNECTION_LIFETIME_MSECS_DEFAULT, config.connectionMaxConnectionLifetime)
+        assertEquals(Neo4jConnectorConfig.CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS_DEFAULT, config.connectionLivenessCheckTimeout)
         assertEquals(Neo4jConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
         assertEquals(Neo4jConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
@@ -118,8 +118,8 @@ class Neo4jSinkConnectorConfigTest {
         assertEquals("", config.authenticationKerberosTicket)
         assertNull(config.encryptionCACertificateFile, "encryptionCACertificateFile should be null")
 
-        assertEquals(PoolSettings.DEFAULT_MAX_CONNECTION_LIFETIME, config.connectionMaxConnectionLifetime)
-        assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionLifenessCheckTimeout)
+        assertEquals(Neo4jConnectorConfig.CONNECTION_MAX_CONNECTION_LIFETIME_MSECS_DEFAULT, config.connectionMaxConnectionLifetime)
+        assertEquals(Neo4jConnectorConfig.CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS_DEFAULT, config.connectionLivenessCheckTimeout)
         assertEquals(Neo4jConnectorConfig.CONNECTION_POOL_MAX_SIZE_DEFAULT, config.connectionPoolMaxSize)
         assertEquals(PoolSettings.DEFAULT_CONNECTION_ACQUISITION_TIMEOUT, config.connectionAcquisitionTimeout)
         assertEquals(Neo4jConnectorConfig.BATCH_TIMEOUT_DEFAULT, config.batchTimeout)
