@@ -293,8 +293,8 @@ you change properties related to the Sink, only it will be restarted.
 *What happens into the `Source` module*
 
 During the reload process the transaction event handler gets unplugged, this
-means that all transaction evens that happen during reload period are not
-caught by the Source, so they are *lost*.
+means that all transaction that even happen during reload period are not
+caught by the `Source`, so they are *lost*.
 
 *What happens into the `Sink` module*
 
