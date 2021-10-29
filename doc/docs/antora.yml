@@ -8,7 +8,7 @@ nav:
 asciidoc:
   attributes:
     theme: docs
-    version: 4.1/0
+    version: 4.1.0
     copyright: Neo4j Inc.
     page-product: Neo4j Streams
     environment: streams.sink
