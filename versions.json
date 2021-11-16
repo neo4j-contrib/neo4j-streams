@@ -333,6 +333,15 @@
         "downloadUrl": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.0.3/neo4j-streams-4.0.3.jar"
     },
     {
+        "neo4j": "3.5.30",
+        "neo4jVersion": "3.5.30",
+        "version": "3.5.13",
+        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.5.13",
+        "homepageUrl": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.5.13",
+        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/3.5.13/neo4j-streams-3.5.13.jar",
+        "downloadUrl": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/3.5.13/neo4j-streams-3.5.13.jar"
+    },
+    {
         "neo4j": "3.5.29",
         "neo4jVersion": "3.5.29",
         "version": "3.5.13",
