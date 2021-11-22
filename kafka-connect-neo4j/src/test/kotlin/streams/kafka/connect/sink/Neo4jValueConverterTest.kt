@@ -181,6 +181,25 @@ class Neo4jValueConverterTest {
         assertEquals(date.toInstant().atZone(ZoneId.of("UTC")).toLocalDateTime(), result["date"]?.asLocalDateTime())
     }
 
+    @Test
+    fun `should be able to process a nested AVRO structure`() {
+        val trainSchema = SchemaBuilder.struct()
+            .field("internationalTrainNumber", Schema.STRING_SCHEMA)
+            .field("trainDate", Schema.STRING_SCHEMA).build()
+        val mySchema = SchemaBuilder.struct()
+            .field("trainId", trainSchema)
+            .field("coreId", Schema.STRING_SCHEMA).build()
+
+        val trainIdStruct = Struct(trainSchema)
+            .put("internationalTrainNumber", "46261")
+            .put("trainDate", "2021-05-20")
+        val rootStruct = Struct(mySchema)
+            .put("trainId", trainIdStruct)
+            .put("coreId", "000000046261")
+
+        val result = Neo4jValueConverter().convert(rootStruct) as Map<*, *>
+    }
+
     companion object {
         private val LI_SCHEMA = SchemaBuilder.struct().name("org.neo4j.example.html.LI")
                 .field("value", Schema.OPTIONAL_STRING_SCHEMA)
