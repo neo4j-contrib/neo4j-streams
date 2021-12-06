@@ -1,5 +1,6 @@
 package streams.kafka.connect.sink.converters
 
+import org.apache.kafka.connect.data.Struct
 import org.neo4j.driver.Value
 import org.neo4j.driver.Values
 import java.math.BigDecimal
@@ -51,5 +52,12 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
     override fun setDateField(result: MutableMap<String, Value?>?, fieldName: String, value: Date) {
         val localDate = value.toInstant().atZone(UTC).toLocalDate()
         setValue(result, fieldName, localDate)
+    }
+
+    override fun setStructField(result: MutableMap<String, Value?>?, fieldName: String, value: Struct) {
+        val converted = convert(value)
+            .mapValues { it.value?.asObject() }
+            .toMutableMap() as MutableMap<Any?, Any?>
+        setMap(result, fieldName, null, converted)
     }
 }
