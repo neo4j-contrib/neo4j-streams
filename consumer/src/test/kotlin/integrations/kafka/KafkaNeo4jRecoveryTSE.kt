@@ -21,16 +21,15 @@ import org.neo4j.graphdb.Label
 import org.neo4j.graphdb.RelationshipType.withName
 import org.neo4j.graphdb.schema.IndexType
 import org.neo4j.internal.helpers.collection.Iterables.count
-import org.neo4j.internal.index.label.RelationshipTypeScanStoreSettings.enable_relationship_type_scan_store
-import org.neo4j.internal.kernel.api.IndexQuery.fulltextSearch
 import org.neo4j.internal.kernel.api.IndexQueryConstraints.unconstrained
+import org.neo4j.internal.kernel.api.PropertyIndexQuery.fulltextSearch
 import org.neo4j.io.ByteUnit
 import org.neo4j.io.fs.DefaultFileSystemAbstraction
 import org.neo4j.io.layout.DatabaseLayout
 import org.neo4j.io.layout.Neo4jLayout
 import org.neo4j.io.pagecache.PageCache
+import org.neo4j.io.pagecache.context.CursorContext
 import org.neo4j.io.pagecache.tracing.DefaultPageCacheTracer
-import org.neo4j.io.pagecache.tracing.cursor.PageCursorTracer.NULL
 import org.neo4j.kernel.availability.CompositeDatabaseAvailabilityGuard
 import org.neo4j.kernel.database.DatabaseTracers
 import org.neo4j.kernel.database.DatabaseTracers.EMPTY
@@ -61,7 +60,6 @@ import org.neo4j.test.extension.Inject
 import org.neo4j.test.extension.Neo4jLayoutExtension
 import org.neo4j.test.extension.pagecache.PageCacheExtension
 import streams.utils.JSONUtils
-import java.io.IOException
 import java.lang.String.valueOf
 import java.nio.file.DirectoryStream
 import java.nio.file.Path
@@ -300,9 +298,10 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
             recoveredDatabase.beginTx().use { transaction ->
                 val ktx = (transaction as InternalTransaction).kernelTransaction()
                 val index = ktx.schemaRead().indexGetForName(indexName)
+                val indexReadSession = ktx.dataRead().indexReadSession(index)
                 var relationshipsInIndex = 0
-                ktx.cursors().allocateRelationshipIndexCursor(ktx.pageCursorTracer()).use { cursor ->
-                    ktx.dataRead().relationshipIndexSeek(index, cursor, unconstrained(), fulltextSearch("*"))
+                ktx.cursors().allocateRelationshipValueIndexCursor(ktx.cursorContext(), ktx.memoryTracker()).use { cursor ->
+                    ktx.dataRead().relationshipIndexSeek(indexReadSession, cursor, unconstrained(), fulltextSearch("*"))
                     while (cursor.next()) {
                         relationshipsInIndex++
                     }
@@ -395,7 +394,8 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
                 pageCache,
                 database.databaseLayout().metadataStore(),
                 LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP,
-                NULL
+                databaseLayout!!.databaseName,
+                CursorContext.NULL
             )
         )
         managementService!!.shutdown()
@@ -558,7 +558,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
             }
         }
         monitors.addMonitorListener(recoveryMonitor)
-        val service = builderWithRelationshipTypeScanStoreSet(layout.neo4jLayout)
+        val service = createTestDatabaseBuilder(layout.neo4jLayout)
             .addExtension(guardExtensionFactory)
             .setMonitors(monitors).build()
         try {
@@ -599,16 +599,14 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     private fun recoverDatabase(databaseTracers: DatabaseTracers) {
-        val config =
-            Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
+        val config = Config.newBuilder().build()
         assertTrue(isRecoveryRequired(databaseLayout, config))
         performRecovery(fileSystem, pageCache, databaseTracers, config, databaseLayout, INSTANCE)
         assertFalse(isRecoveryRequired(databaseLayout, config))
     }
 
     private fun isRecoveryRequired(layout: DatabaseLayout?): Boolean {
-        val config =
-            Config.newBuilder().set(enable_relationship_type_scan_store, enableRelationshipTypeScanStore()).build()
+        val config = Config.newBuilder().build()
         return isRecoveryRequired(layout, config)
     }
 
@@ -625,7 +623,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     private fun buildLogFiles(): LogFiles {
         return LogFilesBuilder
             .logFilesBasedOnlyBuilder(databaseLayout!!.transactionLogsDirectory, fileSystem)
-            .withCommandReaderFactory(StorageEngineFactory.selectStorageEngine().commandReaderFactory())
+            .withCommandReaderFactory(StorageEngineFactory.defaultStorageEngine().commandReaderFactory())
             .build()
     }
 
@@ -670,7 +668,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
 
     private fun createBuilder(logThreshold: Long) {
         if (builder == null) {
-            builder = builderWithRelationshipTypeScanStoreSet()
+            builder = createTestDatabaseBuilder()
                 .setConfig(preallocate_logical_logs, false)
                 .setConfig(logical_log_rotation_threshold, logThreshold)
         }
@@ -682,18 +680,17 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     private fun forcedRecoveryManagement(): DatabaseManagementService {
-        return builderWithRelationshipTypeScanStoreSet()
+        return createTestDatabaseBuilder()
             .setConfig(fail_on_missing_files, false)
             .build()
     }
 
-    private fun builderWithRelationshipTypeScanStoreSet(): TestDatabaseManagementServiceBuilder {
-        return builderWithRelationshipTypeScanStoreSet(neo4jLayout)
+    private fun createTestDatabaseBuilder(): TestDatabaseManagementServiceBuilder {
+        return createTestDatabaseBuilder(neo4jLayout)
     }
 
-    private fun builderWithRelationshipTypeScanStoreSet(neo4jLayout: Neo4jLayout?): TestDatabaseManagementServiceBuilder {
+    private fun createTestDatabaseBuilder(neo4jLayout: Neo4jLayout?): TestDatabaseManagementServiceBuilder {
         return TestDatabaseManagementServiceBuilder(neo4jLayout)
-            .setConfig(enable_relationship_type_scan_store, enableRelationshipTypeScanStore())
     }
 
     private fun getDatabasePageCache(databaseAPI: GraphDatabaseAPI): PageCache {
@@ -708,7 +705,8 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
                 restartedCache,
                 databaseAPI.databaseLayout().metadataStore(),
                 LAST_MISSING_STORE_FILES_RECOVERY_TIMESTAMP,
-                NULL
+                databaseLayout!!.databaseName,
+                CursorContext.NULL
             )
             assertThat(record).isGreaterThan(0L)
         } finally {
