@@ -140,4 +140,21 @@
         </plugins>
     </build>
 
+    <profiles>
+        <profile>
+            <id>oss-kafka-connect</id>
+            <dependencies>
+                <dependency>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                    <version>${google.guava.version}</version>
+                    <scope>compile</scope>
+                </dependency>
+            </dependencies>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+        </profile>
+    </profiles>
+
 </project>
