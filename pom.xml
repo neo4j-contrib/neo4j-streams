@@ -55,7 +55,7 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.4.30</kotlin.version>
         <kotlin.coroutines.version>1.4.2</kotlin.coroutines.version>
-        <neo4j.version>4.2.0</neo4j.version>
+        <neo4j.version>4.3.9</neo4j.version>
         <kafka.version>2.4.0</kafka.version>
         <jackson.version>2.9.7</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
@@ -140,19 +140,6 @@
                 <groupId>org.neo4j</groupId>
                 <artifactId>log-test-utils</artifactId>
                 <version>${neo4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.neo4j</groupId>
-                <artifactId>neo4j-causal-clustering</artifactId>
-                <version>${neo4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.neo4j</groupId>
-                <artifactId>neo4j-causal-clustering</artifactId>
-                <version>${neo4j.version}</version>
-                <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
             <dependency>

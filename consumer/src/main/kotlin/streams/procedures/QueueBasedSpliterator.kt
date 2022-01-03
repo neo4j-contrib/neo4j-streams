@@ -42,8 +42,7 @@ class QueueBasedSpliterator<T> constructor(private val queue: BlockingQueue<T>,
         }
     }
 
-    private val isEnd: Boolean
-        private get() = entry == null || entry === tombstone
+    private val isEnd: Boolean = entry == tombstone
 
     private fun poll(): T? {
         return try {
