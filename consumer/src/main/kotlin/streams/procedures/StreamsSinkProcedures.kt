@@ -134,7 +134,7 @@ class StreamsSinkProcedures {
 
     private fun readData(topic: String, procedureConfig: Map<String, Any>, consumerConfig: Map<String, String>): Stream<StreamResult?> {
         val cfg = procedureConfig.mapValues { if (it.key != "partitions") it.value else mapOf(topic to it.value) }
-        val maxRecords = cfg.getOrDefault("max.records", Int.MAX_VALUE).toString().toInt()
+        val maxRecords = cfg.getOrDefault("max.records", 1000).toString().toInt()
         val timeout = cfg.getOrDefault("timeout", 1000).toString().toLong()
         val data = ArrayBlockingQueue<StreamResult>(maxRecords)
         val tombstone = StreamResult(emptyMap<String, Any>())
