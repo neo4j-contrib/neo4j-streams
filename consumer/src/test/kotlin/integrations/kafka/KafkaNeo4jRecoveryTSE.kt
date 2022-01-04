@@ -7,12 +7,20 @@ import org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric
 import org.apache.commons.lang3.exception.ExceptionUtils.getRootCause
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.assertj.core.api.Assertions.assertThat
-import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.neo4j.configuration.Config
 import org.neo4j.configuration.Config.defaults
-import org.neo4j.configuration.GraphDatabaseSettings.*
+import org.neo4j.configuration.GraphDatabaseInternalSettings
+import org.neo4j.configuration.GraphDatabaseSettings.DEFAULT_DATABASE_NAME
+import org.neo4j.configuration.GraphDatabaseSettings.fail_on_missing_files
+import org.neo4j.configuration.GraphDatabaseSettings.logical_log_rotation_threshold
+import org.neo4j.configuration.GraphDatabaseSettings.preallocate_logical_logs
 import org.neo4j.dbms.DatabaseStateService
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.dbms.database.DatabaseStartAbortedException
@@ -118,7 +126,15 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
 
     @Test
     fun recoverEmptyDatabase() {
-        createDatabase()
+        val config = Config.newBuilder()
+                .set(GraphDatabaseInternalSettings.skip_default_indexes_on_creation, true)
+                .set(preallocate_logical_logs, false)
+                .build()
+
+        managementService = TestDatabaseManagementServiceBuilder(neo4jLayout)
+                .setConfig(config)
+                .build()
+        managementService!!.database(databaseLayout!!.databaseName) as GraphDatabaseAPI
         managementService!!.shutdown()
         sendKafkaEvents()
         RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
@@ -137,7 +153,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         recoverDatabase()
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
-            recoveredDatabase.beginTx().use { tx -> assertEquals(numberOfNodes, count(tx.allNodes)) }
+            recoveredDatabase.beginTx().use { tx -> assertEquals(numberOfNodes.toLong(), count(tx.allNodes)) }
         } finally {
             managementService!!.shutdown()
         }
@@ -159,7 +175,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         assertThat(pageCacheTracer.hits() + pageCacheTracer.faults()).isEqualTo(pageCacheTracer.pins())
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
-            recoveredDatabase.beginTx().use { tx -> assertEquals(numberOfNodes, count(tx.allNodes)) }
+            recoveredDatabase.beginTx().use { tx -> assertEquals(numberOfNodes.toLong(), count(tx.allNodes)) }
         } finally {
             managementService!!.shutdown()
         }
@@ -184,9 +200,9 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
             recoveredDatabase.beginTx().use { transaction ->
-                assertEquals(numberOfNodes, count(transaction.allNodes))
-                assertEquals(numberOfRelationships, count(transaction.allRelationships))
-                assertEquals(numberOfRelationships, count(transaction.allRelationshipTypesInUse))
+                assertEquals(numberOfNodes.toLong(), count(transaction.allNodes))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationships))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationshipTypesInUse))
             }
         } finally {
             managementService!!.shutdown()
@@ -214,10 +230,10 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
             recoveredDatabase.beginTx().use { transaction ->
-                assertEquals(numberOfNodes, count(transaction.allNodes))
-                assertEquals(numberOfRelationships, count(transaction.allRelationships))
-                assertEquals(numberOfRelationships, count(transaction.allRelationshipTypesInUse))
-                assertEquals(numberOfNodes, count(transaction.allPropertyKeys))
+                assertEquals(numberOfNodes.toLong(), count(transaction.allNodes))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationships))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationshipTypesInUse))
+                assertEquals(numberOfNodes.toLong(), count(transaction.allPropertyKeys))
             }
         } finally {
             managementService!!.shutdown()
@@ -257,10 +273,10 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val recoveredDatabase: GraphDatabaseService = createDatabase()
         try {
             recoveredDatabase.beginTx().use { transaction ->
-                assertEquals(numberOfNodes, count(transaction.allNodes))
-                assertEquals(numberOfRelationships, count(transaction.allRelationships))
-                assertEquals(numberOfRelationships, count(transaction.allRelationshipTypesInUse))
-                assertEquals(numberOfPropertyKeys, count(transaction.allPropertyKeys))
+                assertEquals(numberOfNodes.toLong(), count(transaction.allNodes))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationships))
+                assertEquals(numberOfRelationships.toLong(), count(transaction.allRelationshipTypesInUse))
+                assertEquals(numberOfPropertyKeys.toLong(), count(transaction.allPropertyKeys))
             }
         } finally {
             managementService!!.shutdown()

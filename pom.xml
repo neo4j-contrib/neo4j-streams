@@ -56,8 +56,8 @@
         <kotlin.version>1.4.30</kotlin.version>
         <kotlin.coroutines.version>1.4.2</kotlin.coroutines.version>
         <neo4j.version>4.3.9</neo4j.version>
-        <kafka.version>2.4.0</kafka.version>
-        <jackson.version>2.9.7</jackson.version>
+        <kafka.version>2.4.1</kafka.version>
+        <jackson.version>2.13.1</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.3.4</neo4j.java.driver.version>
         <testcontainers.version>1.15.1</testcontainers.version>
