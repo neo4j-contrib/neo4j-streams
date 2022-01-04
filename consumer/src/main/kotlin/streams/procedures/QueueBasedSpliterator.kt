@@ -24,10 +24,10 @@ class QueueBasedSpliterator<T> constructor(private val queue: BlockingQueue<T>,
 
     override fun tryAdvance(action: Consumer<in T?>): Boolean {
         if (transactionIsTerminated(terminationGuard)) return false
-        if (isEnd) return false
+        if (isEnd()) return false
         action.accept(entry)
         entry = poll()
-        return !isEnd
+        return !isEnd()
     }
 
     private fun transactionIsTerminated(terminationGuard: TerminationGuard): Boolean {
@@ -42,8 +42,7 @@ class QueueBasedSpliterator<T> constructor(private val queue: BlockingQueue<T>,
         }
     }
 
-    private val isEnd: Boolean
-        private get() = entry == null || entry === tombstone
+    private fun isEnd(): Boolean = entry == tombstone
 
     private fun poll(): T? {
         return try {

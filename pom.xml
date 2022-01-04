@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>4.1.0</version>
+    <version>4.1.1</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -55,9 +55,9 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.4.30</kotlin.version>
         <kotlin.coroutines.version>1.4.2</kotlin.coroutines.version>
-        <neo4j.version>4.2.0</neo4j.version>
-        <kafka.version>2.4.0</kafka.version>
-        <jackson.version>2.9.7</jackson.version>
+        <neo4j.version>4.3.9</neo4j.version>
+        <kafka.version>2.4.1</kafka.version>
+        <jackson.version>2.13.1</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.2</neo4j.java.driver.version>
         <testcontainers.version>1.15.1</testcontainers.version>
@@ -140,19 +140,6 @@
                 <groupId>org.neo4j</groupId>
                 <artifactId>log-test-utils</artifactId>
                 <version>${neo4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.neo4j</groupId>
-                <artifactId>neo4j-causal-clustering</artifactId>
-                <version>${neo4j.version}</version>
-                <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>com.neo4j</groupId>
-                <artifactId>neo4j-causal-clustering</artifactId>
-                <version>${neo4j.version}</version>
-                <type>test-jar</type>
                 <scope>test</scope>
             </dependency>
             <dependency>
@@ -311,12 +298,12 @@
             <scope>test</scope>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>org.slf4j</groupId>-->
-<!--            <artifactId>slf4j-simple</artifactId>-->
-<!--            <version>1.7.30</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.30</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j.community</groupId>

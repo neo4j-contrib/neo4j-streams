@@ -134,8 +134,9 @@ class StreamsSinkProcedures {
 
     private fun readData(topic: String, procedureConfig: Map<String, Any>, consumerConfig: Map<String, String>): Stream<StreamResult?> {
         val cfg = procedureConfig.mapValues { if (it.key != "partitions") it.value else mapOf(topic to it.value) }
+        val maxRecords = cfg.getOrDefault("max.records", 1000).toString().toInt()
         val timeout = cfg.getOrDefault("timeout", 1000).toString().toLong()
-        val data = ArrayBlockingQueue<StreamResult>(1000)
+        val data = ArrayBlockingQueue<StreamResult>(maxRecords)
         val tombstone = StreamResult(emptyMap<String, Any>())
         GlobalScope.launch(Dispatchers.IO) {
             val consumer = createConsumer(consumerConfig, topic)
@@ -144,15 +145,19 @@ class StreamsSinkProcedures {
                 val start = System.currentTimeMillis()
                 while ((System.currentTimeMillis() - start) < timeout) {
                     consumer.read(cfg) { _, topicData ->
-                        data.addAll(topicData.mapNotNull { it.value }.map { StreamResult(mapOf("data" to it)) })
+                        var elements = topicData.mapNotNull { it.value }.map { StreamResult(mapOf("data" to it)) }
+                        if (elements.size + data.size >= maxRecords) {
+                            elements = elements.subList(0, maxRecords - data.size - 1)
+                        }
+                        data.addAll(elements)
                     }
                 }
-                data.add(tombstone)
             } catch (e: Exception) {
                 if (log?.isDebugEnabled!!) {
                     log?.error("Error while consuming data", e)
                 }
             } finally {
+                data.add(tombstone)
                 consumer.stop()
             }
         }
