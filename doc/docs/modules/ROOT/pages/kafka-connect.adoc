@@ -114,9 +114,13 @@ parameters
 === How the Source module pushes the data to the defined Kafka topic
 
 [NOTE]
-Timestamps aren’t necessarily unique. As a result, this mode can’t guarantee that all updated data will be delivered.
-For example, if two rows share the same timestamp, and only one has been pushed to the kafka topic before a failure,
-the second update will be missed when the system recovers.
+====
+Timestamps aren’t necessarily unique. As a result:
+
+- this mode can’t guarantee that all updated data will be delivered. For example, if two rows share the same timestamp, and only one has been pushed to the kafka topic before a failure, the second update will be missed when the system recovers.
+
+- you could find duplicated events into the topic because events are sent to the topic every time the condition `ts.timestamp > $lastCheck` is satisfied. To manage this duplication you can implement some sort of "records filtering" in your consumer application or leveraging the Kafka SMT (Single Message Transformation) functions. See [here] (https://docs.confluent.io/platform/current/connect/transforms/overview.html) for further details. These functions allow you to transform the records in your topic and redirect them into a new topic (the one where your consumer application is reading from).
+====
 
 We use the query provided in the `neo4j.source.query` field by polling the database every value is into the
 `neo4j.streaming.poll.interval.msecs` field.
@@ -435,8 +439,13 @@ Following a summary of all the configuration parameters you can use for the Kafk
 
 | topic | <topic> | true | The topic where the Source will publish the data
 | partitions | <parition> | false | The number of partition for the Source (default 1)
-| neo4j.streaming.from | enum[ALL, NOW, LAST_COMMITTED] | false | When start the Source. ALL means from the beginning.
-LAST_COMMITTED will try to retrieve already committed offset, in case it will not find one LAST_COMMITTED use NOW as fallback (default NOW)
+| neo4j.streaming.from | enum[ALL, NOW, LAST_COMMITTED] | false | When the Source connector starts:
+
+- `ALL` means that the Source will stream all the data inside the graph from the beginning.
+
+- `NOW` means that the Source will start streaming by filtering data using the moment the connector was started as timestamp value. (default value)
+
+- `LAST_COMMITTED` will try to retrieve the last committed timestamp offset, in case it will not find one LAST_COMMITTED use NOW as fallback.
 | neo4j.source.type | enum[QUERY] | false | The type of the Source strategy, with QUERY you must set `neo4j.source.query`
 | neo4j.source.query | <valid cypher query> | false | The Cypher query in order to extract the data from Neo4j you need to define it if you use `neo4j.source.type=QUERY`
 | neo4j.streaming.property | <property> | false | The name of the property that we need to consider in order to determinate the last queried record;

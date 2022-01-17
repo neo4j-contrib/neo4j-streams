@@ -13,7 +13,7 @@
     "neo4j.encryption.enabled": false,
     "neo4j.streaming.poll.interval.msecs": 5000,
     "neo4j.streaming.property": "timestamp",
-    "neo4j.streaming.from": "LAST_COMMITTED",
+    "neo4j.streaming.from": "NOW",
     "neo4j.enforce.schema": true,
     "neo4j.source.query": "MATCH (ts:TestSource) WHERE ts.timestamp > $lastCheck RETURN ts.name AS name, ts.timestamp AS timestamp"
   }
