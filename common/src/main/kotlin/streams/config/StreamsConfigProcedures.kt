@@ -1,10 +1,9 @@
-package streams.configuration
+package streams.config
 
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.procedure.*
-import streams.config.StreamsConfig
 import streams.events.KeyValueResult
 import java.util.stream.Stream
 
@@ -24,7 +23,7 @@ class StreamsConfigProcedures {
     var db: GraphDatabaseService? = null
 
     @Admin
-    @Procedure
+    @Procedure("streams.configuration.set")
     @Description("""
         streams.configuration.set(<properties_map>, <config_map>) YIELD name, value
     """)
@@ -35,14 +34,13 @@ class StreamsConfigProcedures {
         }
         val map = properties.mapValues { it.value.toString() }
         val instance = StreamsConfig.getInstance(db!! as GraphDatabaseAPI)
-        println("Instance hash: ${instance.hashCode()}")
         val cfg = StreamsConfigProceduresConfiguration(config)
         instance.setProperties(map, cfg.save)
         return get()
     }
 
     @Admin
-    @Procedure
+    @Procedure("streams.configuration.remove")
     @Description("""
         streams.configuration.remove(<properties_list>, <config_map>) YIELD name, value
     """)
@@ -58,7 +56,7 @@ class StreamsConfigProcedures {
     }
 
     @Admin
-    @Procedure
+    @Procedure("streams.configuration.get")
     @Description("""
         streams.configuration.get() YIELD name, value
     """)
@@ -67,4 +65,36 @@ class StreamsConfigProcedures {
         .entries
         .map { KeyValueResult(it.key, it.value) }
         .stream()
+
+    @Admin
+    @Procedure("streams.configuration.status")
+    @Description("""
+        streams.configuration.status() YIELD status
+    """)
+    fun status(): Stream<KeyValueResult> = Stream.of(KeyValueResult("status", StreamsConfig.getInstance(db!! as GraphDatabaseAPI).status().toString()))
+
+    @Admin
+    @Procedure("streams.configuration.start")
+    @Description("""
+        streams.configuration.start() YIELD status
+    """)
+    fun start(): Stream<KeyValueResult> {
+        val streamsConfig = StreamsConfig.getInstance(db!! as GraphDatabaseAPI)
+        if (!setOf(StreamsConfig.Status.RUNNING, StreamsConfig.Status.STARTING)
+                .contains(streamsConfig.status())) {
+            streamsConfig.startEager()
+        }
+        return Stream.of(KeyValueResult("status", streamsConfig.status().toString()))
+    }
+
+    @Admin
+    @Procedure("streams.configuration.stop")
+    @Description("""
+        streams.configuration.stop() YIELD status
+    """)
+    fun stop(): Stream<KeyValueResult> {
+        val streamsConfig = StreamsConfig.getInstance(db!! as GraphDatabaseAPI)
+        streamsConfig.stop()
+        return Stream.of(KeyValueResult("status", streamsConfig.status().toString()))
+    }
 }
