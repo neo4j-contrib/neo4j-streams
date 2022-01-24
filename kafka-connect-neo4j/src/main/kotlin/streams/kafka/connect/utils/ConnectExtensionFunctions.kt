@@ -52,7 +52,7 @@ private fun neo4jToKafka(schema: Schema, value: Any?): Any? = when (schema.type(
         else -> throw IllegalArgumentException("For Schema.Type.ARRAY we support only Collection and Array")
     }
     Schema.Type.MAP -> when (value) {
-        is Map<*, *> -> value.mapValues { neo4jToKafka(neo4jValueSchema(it), it) }
+        is Map<*, *> -> value.mapValues { neo4jToKafka(neo4jValueSchema(it.value), it.value) }
         else -> throw IllegalArgumentException("For Schema.Type.MAP we support only Map")
     }
     Schema.Type.STRUCT -> when (value) {

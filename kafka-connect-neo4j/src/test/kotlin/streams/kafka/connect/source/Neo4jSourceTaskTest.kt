@@ -171,6 +171,10 @@ class Neo4jSourceTaskTest {
                                 |   n.array AS array,
                                 |   n.datetime AS datetime,
                                 |   n.boolean AS boolean,
+                                |   {
+                                |       key1: "value1",
+                                |       key2: "value2"
+                                |   } AS map,
                                 |   n AS node
                             """.trimMargin())
             val map = result.next()
@@ -244,6 +248,10 @@ class Neo4jSourceTaskTest {
                 |   n.array AS array,
                 |   n.datetime AS datetime,
                 |   n.boolean AS boolean,
+                |   {
+                |       key1: "value1",
+                |       key2: "value2"
+                |   } AS map,
                 |   n AS node
             """.trimMargin()
 
