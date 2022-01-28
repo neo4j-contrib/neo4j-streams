@@ -30,7 +30,7 @@ You can set the following configuration values via Confluent Connect UI, or via 
 
 === Configuring the stack
 
-Start the compose file
+==== Start the compose file
 
 [source,bash]
 ----
@@ -91,6 +91,13 @@ The component can be installed in any of the following Confluent Platform instal
 Please prefer the solution `(where this tool is installed)` and then go ahead with the default options.
 
 At the end of the process the plugin is automatically installed.
+
+[NOTE]
+====
+If you choose to install the plugin in this way, please note that the connector will work because the `CONNECT_PLUGIN_PATH` environment variable already contains the default path (`/usr/share/confluent-hub-components`) where the `confluent-hub` tool installed the plugin.
+Having that said, if you want to install it under a different path, you have to add that path to the above environment variable.
+====
+
 --
 
 === Multi Database Support

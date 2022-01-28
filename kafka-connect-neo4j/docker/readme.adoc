@@ -109,7 +109,7 @@ sections.
 
 ==== Create the Source Instance
 
-To create the Sink instance and configure your preferred ingestion strategy, you can follow instructions described
+To create the Source instance and configure your preferred ingestion strategy, you can follow instructions described
 into <<kafka-connect-source-instance, Create the Source Instance>> section.
 
 ===== Use the Kafka Connect Datagen
