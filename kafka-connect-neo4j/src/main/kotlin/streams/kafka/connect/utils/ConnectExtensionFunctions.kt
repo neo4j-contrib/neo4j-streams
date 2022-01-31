@@ -111,7 +111,7 @@ private fun neo4jValueSchema(value: Any?): Schema = when (value) {
             val valueTypes = value.values.mapNotNull { elem -> elem?.let{ it::class.java.simpleName } }
                     .toSet()
             if (valueTypes.size == 1) {
-                SchemaBuilder.map(Schema.STRING_SCHEMA, neo4jValueSchema(value.values.first()))
+                SchemaBuilder.map(Schema.STRING_SCHEMA, neo4jValueSchema(value.values.first())).build()
             } else {
                 val structMap = SchemaBuilder.struct()
                 value.forEach { structMap.field(it.key.toString(), neo4jValueSchema(it.value)) }
