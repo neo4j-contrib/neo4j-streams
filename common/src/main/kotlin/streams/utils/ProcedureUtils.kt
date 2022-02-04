@@ -1,5 +1,7 @@
 package streams.utils
 
+import org.neo4j.configuration.Config
+import org.neo4j.configuration.GraphDatabaseSettings
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.exceptions.UnsatisfiedDependencyException
 import org.neo4j.kernel.impl.factory.DbmsInfo
@@ -43,7 +45,7 @@ object ProcedureUtils {
                     val isLeader = isLeaderMethodHandle!!.invokeExact(raftMachine) as Boolean
                     if (isLeader) "LEADER" else "FOLLOWER"
                 } catch (e: UnsatisfiedDependencyException) {
-                    "LEADER"
+                    if (Neo4jUtils.isReadReplica(db)) "FOLLOWER" else "LEADER"
                 }
             } ?: "LEADER"
         }

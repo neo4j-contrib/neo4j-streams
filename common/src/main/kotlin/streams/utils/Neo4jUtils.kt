@@ -4,6 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.neo4j.configuration.Config
+import org.neo4j.configuration.GraphDatabaseSettings
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
@@ -85,4 +87,7 @@ object Neo4jUtils {
         }
     }
 
+    fun isReadReplica(db: GraphDatabaseAPI): Boolean = db.dependencyResolver
+            .resolveDependency(Config::class.java)
+            .let { it.get(GraphDatabaseSettings.mode).name == "READ_REPLICA" }
 }
