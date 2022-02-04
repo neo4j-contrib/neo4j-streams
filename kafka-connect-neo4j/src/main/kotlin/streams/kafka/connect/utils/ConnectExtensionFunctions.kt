@@ -52,7 +52,7 @@ private fun neo4jToKafka(schema: Schema, value: Any?): Any? = when (schema.type(
         else -> throw IllegalArgumentException("For Schema.Type.ARRAY we support only Collection and Array")
     }
     Schema.Type.MAP -> when (value) {
-        is Map<*, *> -> value.mapValues { neo4jToKafka(neo4jValueSchema(it), it) }
+        is Map<*, *> -> value.mapValues { neo4jToKafka(neo4jValueSchema(it.value), it.value) }
         else -> throw IllegalArgumentException("For Schema.Type.MAP we support only Map")
     }
     Schema.Type.STRUCT -> when (value) {
@@ -111,7 +111,7 @@ private fun neo4jValueSchema(value: Any?): Schema = when (value) {
             val valueTypes = value.values.mapNotNull { elem -> elem?.let{ it::class.java.simpleName } }
                     .toSet()
             if (valueTypes.size == 1) {
-                SchemaBuilder.map(Schema.STRING_SCHEMA, neo4jValueSchema(value.values.first()))
+                SchemaBuilder.map(Schema.STRING_SCHEMA, neo4jValueSchema(value.values.first())).build()
             } else {
                 val structMap = SchemaBuilder.struct()
                 value.forEach { structMap.field(it.key.toString(), neo4jValueSchema(it.value)) }
