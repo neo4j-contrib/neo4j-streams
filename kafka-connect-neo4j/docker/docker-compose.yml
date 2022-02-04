@@ -1,5 +1,6 @@
 ---
 version: '2'
+
 services:
   neo4j:
     image: neo4j:4.3-enterprise
@@ -33,7 +34,7 @@ services:
     ports:
       - "9092:9092"
     expose:
-    - "9093"
+      - "9093"
     environment:
       KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://broker:9093,OUTSIDE://localhost:9092
       KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,OUTSIDE:PLAINTEXT
@@ -97,13 +98,13 @@ services:
       CONNECT_INTERNAL_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_INTERNAL_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_ZOOKEEPER_CONNECT: 'zookeeper:2181'
-      CONNECT_PLUGIN_PATH: /usr/share/java,/tmp/connect-plugins
+      CONNECT_PLUGIN_PATH: /usr/share/java,/usr/share/confluent-hub-components,/tmp/connect-plugins
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=DEBUG,org.I0Itec.zkclient=DEBUG,org.reflections=ERROR
-    command: 
-#      - bash 
-#      - -c 
+    command:
+#      - bash
+#      - -c
 #      - |
-#        confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:1.0.6
+#        confluent-hub install --no-prompt neo4j/kafka-connect-neo4j:latest
         /etc/confluent/docker/run
 
   control-center:

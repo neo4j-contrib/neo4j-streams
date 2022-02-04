@@ -11,7 +11,6 @@ asciidoc:
     version: 4.1.0
     copyright: Neo4j Inc.
     page-product: Neo4j Streams
-    environment: streams.sink
     page-pagination: true
     url-common-license-page: https://neo4j.com/docs/license/
     url-confluent-blog: https://www.confluent.io/blog

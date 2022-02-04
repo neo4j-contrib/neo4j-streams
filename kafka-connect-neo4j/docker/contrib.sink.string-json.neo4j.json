@@ -3,6 +3,10 @@
   "config": {
     "topics": "my-topic",
     "connector.class": "streams.kafka.connect.sink.Neo4jSinkConnector",
+    "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "key.converter.schemas.enable": false,
+    "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+    "value.converter.schemas.enable": false,
     "errors.retry.timeout": "-1",
     "errors.retry.delay.max.ms": "1000",
     "errors.tolerance": "all",

@@ -160,7 +160,7 @@ We'll define the Sink configuration in several ways:
 
 [source,json]
 ----
-include::ROOT:partial$docker-data/contrib.sink.avro.neo4j.json[]
+include::ROOT:partial$docker-data/contrib.sink.string-json.neo4j.json[]
 ----
 
 In particular this line:
@@ -205,7 +205,7 @@ Let's load the configuration into the Confluent Platform with this REST call:
 curl -X POST http://localhost:8083/connectors \
   -H 'Content-Type:application/json' \
   -H 'Accept:application/json' \
-  -d @contrib.sink.avro.neo4j.json
+  -d @contrib.sink.string-json.neo4j.json
 ----
 
 The file `contrib.sink.string-json.neo4j.json` contains a configuration that manage a simple JSON producer example
@@ -260,7 +260,6 @@ with a list of topic separated by comma. For example:
   }
 }
 ----
-
 
 [#kafka-connect-sink-strategies]
 include::sink-strategies.adoc[]
@@ -375,8 +374,8 @@ Following a summary of all the configuration parameters you can use for the Kafk
 | value.converter | org.apache.kafka.connect.json.JsonConverter | false | Converter class for value Connect data
 | key.converter.schemas.enable | true/false | false | If true the key will be treated as a composite JSON object containing schema and the data. Default value is false
 | value.converter.schemas.enable | true/false | false | If true the value will be treated as a composite JSON object containing schema and the data. Default value is false
-| key.converter.schema.registry.url | \http://localhost:8081 | false | The Schema Registry URL has to be provide only when you decide to use AvroConverter
-| value.converter.schema.registry.url | \http://localhost:8081 | false | The Schema Registry URL has to be provide only when you decide to use AvroConverter
+| key.converter.schema.registry.url | \http://localhost:8081 | false | The Schema Registry URL has to be provided only when you decide to use AvroConverter
+| value.converter.schema.registry.url | \http://localhost:8081 | false | The Schema Registry URL has to be provided only when you decide to use AvroConverter
 | neo4j.database | "bolt://neo4j:7687" | true | Specify a database name only if you want to use a non-default database. Default value is 'neo4j'
 | neo4j.server.uri | "bolt://neo4j:7687" | true | Neo4j Server URI
 | neo4j.authentication.basic.username | your_neo4j_user | true | Neo4j username
