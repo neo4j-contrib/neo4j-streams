@@ -1,0 +1,3 @@
+[NOTE]
+The Neo4j Streams Plugin running inside the Neo4j database is deprecated and will not be supported after version 4.4 of Neo4j.
+We recommend users not to adopt this plugin for new implementations, and to consider migrating to the use of the Kafka Connect Neo4j Connector as a replacement

@@ -47,6 +47,10 @@
             <artifactId>kafka-avro-serializer</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.apache.kafka</groupId>
+            <artifactId>kafka-clients</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-test-support</artifactId>
             <version>${project.version}</version>
