@@ -54,7 +54,7 @@ Following a compatibility table between Neo4j and Neo4j Streams database plugin.
 |Neo4j
 |Neo4j Streams
 
-|> 4.3.x
+|> 4.4.x
 |deprecated; not guaranteed to work, use Kafka Connect instead
 |4.3.x
 |4.0.x, 4.1.x

@@ -26,15 +26,22 @@ import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.dbms.database.DatabaseStartAbortedException
 import org.neo4j.graphdb.GraphDatabaseService
 import org.neo4j.graphdb.Label
+import org.neo4j.graphdb.Node
+import org.neo4j.graphdb.Relationship
+import org.neo4j.graphdb.RelationshipType
 import org.neo4j.graphdb.RelationshipType.withName
 import org.neo4j.graphdb.schema.IndexType
 import org.neo4j.internal.helpers.collection.Iterables.count
-import org.neo4j.internal.kernel.api.IndexQueryConstraints.unconstrained
+import org.neo4j.internal.kernel.api.IndexQueryConstraints
+import org.neo4j.internal.kernel.api.PropertyIndexQuery
+import org.neo4j.internal.kernel.api.PropertyIndexQuery.allEntries
 import org.neo4j.internal.kernel.api.PropertyIndexQuery.fulltextSearch
+import org.neo4j.internal.schema.IndexDescriptor
 import org.neo4j.io.ByteUnit
 import org.neo4j.io.fs.DefaultFileSystemAbstraction
 import org.neo4j.io.layout.DatabaseLayout
 import org.neo4j.io.layout.Neo4jLayout
+import org.neo4j.io.layout.recordstorage.RecordDatabaseLayout
 import org.neo4j.io.pagecache.PageCache
 import org.neo4j.io.pagecache.context.CursorContext
 import org.neo4j.io.pagecache.tracing.DefaultPageCacheTracer
@@ -71,7 +78,7 @@ import streams.utils.JSONUtils
 import java.lang.String.valueOf
 import java.nio.file.DirectoryStream
 import java.nio.file.Path
-import java.util.*
+import java.util.UUID
 import java.util.concurrent.TimeUnit.MINUTES
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -103,12 +110,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     private var builder: TestDatabaseManagementServiceBuilder? = null
     private var managementService: DatabaseManagementService? = null
 
-    fun enableRelationshipTypeScanStore(): Boolean {
-        return false
-    }
-
     @Test
-    @Throws(Throwable::class)
     fun recoveryRequiredOnDatabaseWithoutCorrectCheckpoints() {
         val database: GraphDatabaseService = createDatabase()
         generateSomeData(database)
@@ -284,24 +286,71 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     }
 
     @Test
-    fun recoverDatabaseWithRelationshipIndex() {
+    fun recoverDatabaseWithNodeIndexes() {
+        val database: GraphDatabaseService = createDatabase()
+        val numberOfNodes = 10
+        val label = Label.label("myLabel")
+        val property = "prop"
+        val btreeIndex = "b-tree index"
+        val rangeIndex = "range index"
+        val textIndex = "text index"
+        val fullTextIndex = "full text index"
+        database.beginTx().use { transaction ->
+            transaction.schema().indexFor(label).on(property).withIndexType(IndexType.BTREE).withName(btreeIndex).create()
+            transaction.schema().indexFor(label).on(property).withIndexType(IndexType.RANGE).withName(rangeIndex).create()
+            transaction.schema().indexFor(label).on(property).withIndexType(IndexType.TEXT).withName(textIndex).create()
+            transaction.schema().indexFor(label).on(property).withIndexType(IndexType.FULLTEXT).withName(fullTextIndex).create()
+            transaction.commit()
+        }
+        awaitIndexesOnline(database)
+        for (i in 0 until numberOfNodes) {
+            database.beginTx().use { tx ->
+                val node = tx.createNode(label)
+                node.setProperty(property, "value$i")
+                tx.commit()
+            }
+        }
+        managementService!!.shutdown()
+        RecoveryHelpers.removeLastCheckpointRecordFromLastLogFile(databaseLayout, fileSystem)
+        recoverDatabase()
+        val recoveredDatabase = createDatabase()
+        awaitIndexesOnline(recoveredDatabase)
+        try {
+            (recoveredDatabase.beginTx() as InternalTransaction)?.use { transaction ->
+                verifyNodeIndexEntries(numberOfNodes, btreeIndex, transaction, allEntries())
+                verifyNodeIndexEntries(numberOfNodes, rangeIndex, transaction, allEntries())
+                verifyNodeIndexEntries(numberOfNodes, textIndex, transaction, allEntries())
+                verifyNodeIndexEntries(numberOfNodes, fullTextIndex, transaction, fulltextSearch("*"))
+            }
+        } finally {
+            managementService!!.shutdown()
+        }
+    }
+
+    @Test
+    fun recoverDatabaseWithRelationshipIndexes() {
         val database: GraphDatabaseService = createDatabase()
         val numberOfRelationships = 10
-        val type = withName("TYPE")
+        val type: RelationshipType = RelationshipType.withName("TYPE")
         val property = "prop"
-        val indexName = "my index"
+        val btreeIndex = "b-tree index"
+        val rangeIndex = "range index"
+        val textIndex = "text index"
+        val fullTextIndex = "full text index"
         database.beginTx().use { transaction ->
-            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.FULLTEXT)
-                .withName(indexName).create()
+            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.BTREE).withName(btreeIndex).create()
+            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.RANGE).withName(rangeIndex).create()
+            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.TEXT).withName(textIndex).create()
+            transaction.schema().indexFor(type).on(property).withIndexType(IndexType.FULLTEXT).withName(fullTextIndex).create()
             transaction.commit()
         }
         awaitIndexesOnline(database)
         database.beginTx().use { transaction ->
-            val start = transaction.createNode()
-            val stop = transaction.createNode()
+            val start: Node = transaction.createNode()
+            val stop: Node = transaction.createNode()
             for (i in 0 until numberOfRelationships) {
-                val relationship = start.createRelationshipTo(stop, type)
-                relationship.setProperty(property, "value")
+                val relationship: Relationship = start.createRelationshipTo(stop, type)
+                relationship.setProperty(property, "value$i")
             }
             transaction.commit()
         }
@@ -311,23 +360,48 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
         val recoveredDatabase = createDatabase()
         awaitIndexesOnline(recoveredDatabase)
         try {
-            recoveredDatabase.beginTx().use { transaction ->
-                val ktx = (transaction as InternalTransaction).kernelTransaction()
-                val index = ktx.schemaRead().indexGetForName(indexName)
-                val indexReadSession = ktx.dataRead().indexReadSession(index)
-                var relationshipsInIndex = 0
-                ktx.cursors().allocateRelationshipValueIndexCursor(ktx.cursorContext(), ktx.memoryTracker()).use { cursor ->
-                    ktx.dataRead().relationshipIndexSeek(indexReadSession, cursor, unconstrained(), fulltextSearch("*"))
-                    while (cursor.next()) {
-                        relationshipsInIndex++
-                    }
-                }
-                assertEquals(numberOfRelationships, relationshipsInIndex)
+            (recoveredDatabase.beginTx() as InternalTransaction)?.use { transaction ->
+                verifyRelationshipIndexEntries(numberOfRelationships, btreeIndex, transaction, allEntries())
+                verifyRelationshipIndexEntries(numberOfRelationships, rangeIndex, transaction, allEntries())
+                verifyRelationshipIndexEntries(numberOfRelationships, textIndex, transaction, allEntries())
+                verifyRelationshipIndexEntries(numberOfRelationships, fullTextIndex, transaction, fulltextSearch("*"))
             }
         } finally {
             managementService!!.shutdown()
         }
     }
+
+    private fun verifyNodeIndexEntries(
+            numberOfNodes: Int, indexName: String, transaction: InternalTransaction, query: PropertyIndexQuery) {
+        val ktx = transaction.kernelTransaction()
+        val index = ktx.schemaRead().indexGetForName(indexName)
+        val indexReadSession = ktx.dataRead().indexReadSession(index)
+        var nodesInIndex = 0
+        ktx.cursors().allocateNodeValueIndexCursor(ktx.cursorContext(), ktx.memoryTracker()).use { cursor ->
+            ktx.dataRead().nodeIndexSeek(ktx.queryContext(), indexReadSession, cursor, IndexQueryConstraints.unconstrained(), query)
+            while (cursor.next()) {
+                nodesInIndex++
+            }
+        }
+        assertEquals(numberOfNodes, nodesInIndex)
+    }
+
+
+    private fun verifyRelationshipIndexEntries(
+            numberOfRelationships: Int, indexName: String, transaction: InternalTransaction, query: PropertyIndexQuery) {
+        val ktx = transaction.kernelTransaction()
+        val index: IndexDescriptor = ktx.schemaRead().indexGetForName(indexName)
+        val indexReadSession = ktx.dataRead().indexReadSession(index)
+        var relationshipsInIndex = 0
+        ktx.cursors().allocateRelationshipValueIndexCursor(ktx.cursorContext(), ktx.memoryTracker()).use { cursor ->
+            ktx.dataRead().relationshipIndexSeek(ktx.queryContext(), indexReadSession, cursor, IndexQueryConstraints.unconstrained(), query)
+            while (cursor.next()) {
+                relationshipsInIndex++
+            }
+        }
+        assertEquals(numberOfRelationships, relationshipsInIndex)
+    }
+
 
     @Test
     fun recoverDatabaseWithFirstTransactionLogFileWithoutShutdownCheckpoint() {
@@ -517,7 +591,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     fun recoverDatabaseWithoutOneIdFile() {
         val db = createDatabase()
         generateSomeData(db)
-        val layout = db.databaseLayout()
+        val layout = RecordDatabaseLayout.cast(db.databaseLayout())
         managementService!!.shutdown()
         fileSystem!!.deleteFileOrThrow(layout.idRelationshipStore())
         assertTrue(isRecoveryRequired(layout))
@@ -639,7 +713,7 @@ class KafkaNeo4jRecoveryTSE: KafkaEventSinkBaseTSE() {
     private fun buildLogFiles(): LogFiles {
         return LogFilesBuilder
             .logFilesBasedOnlyBuilder(databaseLayout!!.transactionLogsDirectory, fileSystem)
-            .withCommandReaderFactory(StorageEngineFactory.defaultStorageEngine().commandReaderFactory())
+            .withStorageEngineFactory(StorageEngineFactory.defaultStorageEngine())
             .build()
     }
 

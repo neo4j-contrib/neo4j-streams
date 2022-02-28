@@ -11,9 +11,7 @@ Use this section to configure Neo4j to ingest the data from Kafka into Neo4j.
 
 endif::env-docs[]
 
-[NOTE]
-The Neo4j Streams Plugin running inside the Neo4j database is deprecated and will not be supported after version 4.3 of Neo4j.
-We recommend users not to adopt this plugin for new implementations, and to consider migrating to the use of the Kafka Connect Neo4j Connector as a replacement
+include::deprecation.adoc[]
 
 [[neo4j_streams_sink]]
 Is the Kafka Sink that ingest the data directly into Neo4j

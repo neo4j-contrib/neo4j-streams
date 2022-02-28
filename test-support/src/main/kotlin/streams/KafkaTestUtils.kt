@@ -9,7 +9,6 @@ import org.apache.kafka.common.serialization.ByteArraySerializer
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.apache.kafka.common.serialization.StringSerializer
 import java.util.Properties
-import java.util.UUID
 
 object KafkaTestUtils {
     fun <K, V> createConsumer(bootstrapServers: String,

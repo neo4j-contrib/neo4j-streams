@@ -2,14 +2,12 @@ package streams
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import org.apache.commons.configuration2.ImmutableConfiguration
 import org.junit.Assume
 import org.neo4j.configuration.SettingImpl
 import org.neo4j.configuration.SettingValueParsers
 import org.neo4j.graphdb.config.Setting
 import org.neo4j.plugin.configuration.ConfigurationLifecycleUtils
 import org.neo4j.plugin.configuration.EventType
-import org.neo4j.plugin.configuration.listners.ConfigurationLifecycleListener
 import org.neo4j.test.rule.DbmsRule
 import streams.config.StreamsConfig
 import streams.extensions.getSystemDb
