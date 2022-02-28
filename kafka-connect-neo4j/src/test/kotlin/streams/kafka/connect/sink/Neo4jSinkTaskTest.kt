@@ -9,6 +9,7 @@ import org.apache.kafka.connect.sink.SinkTask
 import org.apache.kafka.connect.sink.SinkTaskContext
 import org.junit.After
 import org.junit.Before
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.mockito.Mockito.mock
@@ -1306,7 +1307,8 @@ class Neo4jSinkTaskTest {
         }
     }
     
-    @Test
+    @Test()
+    @Ignore("Ignore, flaky")
     fun `should stop the query and fails with small timeout and vice versa`() {
         val myTopic = "foo"
         val props = mutableMapOf<String, String>()

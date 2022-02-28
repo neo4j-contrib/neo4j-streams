@@ -73,6 +73,10 @@ class KafkaEventSink(private val config: Map<String, String>,
     }
 
     override fun start() = runBlocking { // TODO move to the abstract class
+        if (Neo4jUtils.isReadReplica(db)) {
+            log.info("Cannot init the Kafka Sink module, it is running in a READ_REPLICA")
+            return@runBlocking
+        }
         if (streamsConfig.clusterOnly && !ProcedureUtils.isCluster(db)) {
             if (log.isDebugEnabled) {
                 log.info("""
