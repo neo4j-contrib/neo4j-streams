@@ -27,7 +27,7 @@ class StreamsEventRouterAvailabilityListener(private val db: GraphDatabaseAPI,
     override fun available() = runBlocking {
         mutex.withLock {
             setAvailable(db, true)
-            streamsConfig.start()
+            streamsConfig.start(db)
         }
     }
 

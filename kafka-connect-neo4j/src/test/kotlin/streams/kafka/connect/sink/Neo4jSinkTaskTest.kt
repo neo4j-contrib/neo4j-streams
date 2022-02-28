@@ -1307,8 +1307,8 @@ class Neo4jSinkTaskTest {
         }
     }
     
-    @Test()
-    @Ignore("Ignore, flaky")
+    @Test
+    @Ignore("flaky")
     fun `should stop the query and fails with small timeout and vice versa`() {
         val myTopic = "foo"
         val props = mutableMapOf<String, String>()

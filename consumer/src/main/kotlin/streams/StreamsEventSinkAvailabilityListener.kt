@@ -27,7 +27,7 @@ class StreamsEventSinkAvailabilityListener(dependencies: StreamsEventSinkExtensi
     override fun available() = runBlocking {
         mutex.withLock {
             setAvailable(db, true)
-            streamsConfig.start()
+            streamsConfig.start(db)
         }
     }
 

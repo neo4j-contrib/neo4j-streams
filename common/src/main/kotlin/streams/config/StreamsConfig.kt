@@ -3,7 +3,6 @@ package streams.config
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import org.neo4j.logging.internal.LogService
@@ -11,17 +10,13 @@ import org.neo4j.plugin.configuration.ConfigurationLifecycle
 import org.neo4j.plugin.configuration.ConfigurationLifecycleUtils
 import org.neo4j.plugin.configuration.EventType
 import org.neo4j.plugin.configuration.listners.ConfigurationLifecycleListener
-import streams.extensions.databaseManagementService
-import streams.extensions.getDefaultDbName
-import streams.extensions.isAvailable
 import streams.utils.Neo4jUtils
-import streams.utils.ProcedureUtils
 import streams.utils.StreamsUtils
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicReference
 
-class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementService) {
+class StreamsConfig(private val log: Log) {
 
     companion object {
         private const val SUN_JAVA_COMMAND = "sun.java.command"
@@ -41,6 +36,8 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
         const val POLL_INTERVAL = "streams.sink.poll.interval"
         const val INSTANCE_WAIT_TIMEOUT = "streams.wait.timeout"
         const val INSTANCE_WAIT_TIMEOUT_VALUE = 120000L
+        const val CONFIG_WAIT_FOR_AVAILABLE = "streams.wait.for.available"
+        const val CONFIG_WAIT_FOR_AVAILABLE_VALUE = true
 
         private const val DEFAULT_TRIGGER_PERIOD: Int = 10000
 
@@ -59,8 +56,8 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
 
         fun getInstance(db: GraphDatabaseAPI): StreamsConfig = cache.computeIfAbsent(StreamsUtils.getName(db)) {
             StreamsConfig(log = db.dependencyResolver
-                .resolveDependency(LogService::class.java)
-                .getUserLog(StreamsConfig::class.java), db.databaseManagementService())
+                    .resolveDependency(LogService::class.java)
+                    .getUserLog(StreamsConfig::class.java))
         }
 
         fun removeInstance(db: GraphDatabaseAPI) {
@@ -83,11 +80,13 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
         fun getSystemDbWaitTimeout(config: Map<String, Any?>) = config.getOrDefault(SYSTEM_DB_WAIT_TIMEOUT, SYSTEM_DB_WAIT_TIMEOUT_VALUE).toString().toLong()
 
         fun getInstanceWaitTimeout(config: Map<String, Any?>) = config.getOrDefault(INSTANCE_WAIT_TIMEOUT, INSTANCE_WAIT_TIMEOUT_VALUE).toString().toLong()
+
+        fun isWaitForAvailable(config: Map<String, Any?>) = config.getOrDefault(CONFIG_WAIT_FOR_AVAILABLE, CONFIG_WAIT_FOR_AVAILABLE_VALUE).toString().toBoolean()
     }
 
     private val configLifecycle: ConfigurationLifecycle
 
-    private enum class Status {RUNNING, STOPPED, CLOSED, UNKNOWN}
+    enum class Status {RUNNING, STARTING, STOPPED, CLOSED, UNKNOWN}
 
     private val status = AtomicReference(Status.UNKNOWN)
 
@@ -100,35 +99,28 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
             true, log, true, "streams.", "kafka.")
     }
 
-    fun start() = runBlocking {
+    fun start(db: GraphDatabaseAPI) = runBlocking {
         if (log.isDebugEnabled) {
             log.debug("Starting StreamsConfig")
         }
         mutex.withLock {
-            if (status.get() == Status.RUNNING) return@runBlocking
+            if (setOf(Status.RUNNING, Status.STARTING).contains(status.get())) return@runBlocking
             try {
-                // wait for all database to be ready
-                val isInstanceReady = StreamsUtils.blockUntilFalseOrTimeout(getInstanceWaitTimeout()) {
-                    if (log.isDebugEnabled) {
-                        log.debug("Waiting for the Neo4j instance to be ready...")
-                    }
-                    dbms.isAvailable(100)
-                }
-                if (!isInstanceReady) {
-                    log.warn("${getInstanceWaitTimeout()} ms have passed and the instance is not online, the Streams plugin will not started")
-                    return@runBlocking
-                }
-                if (ProcedureUtils.isCluster(dbms)) {
-                    log.info("We're in cluster instance waiting for the ${StreamsUtils.LEADER}s to be elected in each database")
-                    // in case is a cluster we wait for the correct cluster formation => LEADER elected
-                    Neo4jUtils.waitForTheLeaders(dbms, log) { configStart() }
+                if (isWaitForAvailable()) {
+                    status.set(Status.STARTING)
+                    Neo4jUtils.waitForAvailable(db, log, getInstanceWaitTimeout(), { status.set(Status.UNKNOWN) }) { configStart() }
                 } else {
                     configStart()
                 }
             } catch (e: Exception) {
                 log.warn("Cannot start StreamsConfig because of the following exception:", e)
+                status.set(Status.UNKNOWN)
             }
         }
+    }
+
+    fun startEager() = runBlocking {
+        configStart()
     }
 
     private fun configStart() = try {
@@ -139,14 +131,16 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
         log.error("Cannot start the StreamsConfig because of the following exception", e)
     }
 
+    fun status(): Status = status.get()
+
     fun stop(shutdown: Boolean = false) = runBlocking {
         if (log.isDebugEnabled) {
             log.debug("Stopping StreamsConfig")
         }
         mutex.withLock {
-            val status = getStopStatus(shutdown)
-            if (this@StreamsConfig.status.get() == status) return@runBlocking
-            configStop(shutdown, status)
+            val stopStatus = getStopStatus(shutdown)
+            if (status.get() == stopStatus) return@runBlocking
+            configStop(shutdown, stopStatus)
         }
     }
 
@@ -201,10 +195,6 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
 
     fun getConfiguration(): Map<String, Any> = ConfigurationLifecycleUtils.toMap(configLifecycle.configuration)
 
-    fun defaultDbName() = this.dbms.getDefaultDbName()
-
-    fun isDefaultDb(dbName: String) = this.defaultDbName() == dbName
-
     fun isSourceGloballyEnabled() = Companion.isSourceGloballyEnabled(getConfiguration())
 
     fun isSourceEnabled(dbName: String) = Companion.isSourceEnabled(getConfiguration(), dbName)
@@ -220,5 +210,7 @@ class StreamsConfig(private val log: Log, private val dbms: DatabaseManagementSe
     fun getSystemDbWaitTimeout() = Companion.getSystemDbWaitTimeout(getConfiguration())
 
     fun getInstanceWaitTimeout() = Companion.getInstanceWaitTimeout(getConfiguration())
+
+    fun isWaitForAvailable() = Companion.isWaitForAvailable(getConfiguration())
 
 }

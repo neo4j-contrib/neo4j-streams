@@ -6,28 +6,18 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import org.neo4j.configuration.Config
 import org.neo4j.configuration.GraphDatabaseSettings
-import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.graphdb.QueryExecutionException
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import org.neo4j.logging.Log
 import streams.extensions.execute
-import java.lang.reflect.InvocationTargetException
 import kotlin.streams.toList
 
 object Neo4jUtils {
     fun isWriteableInstance(db: GraphDatabaseAPI, availableAction: () -> Boolean = { true }): Boolean {
         try {
-            val isSlave = StreamsUtils.ignoreExceptions(
-                {
-                    val hadb = Class.forName("org.neo4j.kernel.ha.HighlyAvailableGraphDatabase")
-                    hadb.isInstance(db) && !(hadb.getMethod("isMaster").invoke(db) as Boolean)
-                }, ClassNotFoundException::class.java, IllegalAccessException::class.java,
-                InvocationTargetException::class.java, NoSuchMethodException::class.java)
-            if (isSlave != null && isSlave) {
-                return false
-            }
-
-            return availableAction() && ProcedureUtils.clusterMemberRole(db).equals(StreamsUtils.LEADER, ignoreCase = true)
+            return availableAction() && ProcedureUtils
+                    .clusterMemberRole(db)
+                    .equals(StreamsUtils.LEADER, ignoreCase = true)
         } catch (e: QueryExecutionException) {
             if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
                 return availableAction()
@@ -55,11 +45,8 @@ object Neo4jUtils {
                     .toList()
                     .contains(StreamsUtils.LEADER)
         }
-    } catch (e: QueryExecutionException) {
-        if (e.statusCode.equals("Neo.ClientError.Procedure.ProcedureNotFound", ignoreCase = true)) {
-            false
-        }
-        throw e
+    } catch (e: Exception) {
+        false
     }
 
     fun <T> executeInWriteableInstance(db: GraphDatabaseAPI,
@@ -70,24 +57,50 @@ object Neo4jUtils {
         null
     }
 
-    fun isClusterCorrectlyFormed(dbms: DatabaseManagementService) = dbms.listDatabases()
-        .filterNot { it == StreamsUtils.SYSTEM_DATABASE_NAME }
-        .map { dbms.database(it) as GraphDatabaseAPI }
-        .all { clusterHasLeader(it) }
-
-    fun waitForTheLeaders(dbms: DatabaseManagementService, log: Log, timeout: Long = 120000, action: () -> Unit) {
+    fun waitForTheLeaders(db: GraphDatabaseAPI, log: Log, timeout: Long = 240000, onFailure: () -> Unit = {}, action: () -> Unit) {
         GlobalScope.launch(Dispatchers.IO) {
             val start = System.currentTimeMillis()
             val delay: Long = 2000
-            while (!isClusterCorrectlyFormed(dbms) && System.currentTimeMillis() - start < timeout) {
-                log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
-                delay(delay)
+            var isClusterCorrectlyFormed: Boolean
+            do {
+                isClusterCorrectlyFormed = clusterHasLeader(db)
+                if (!isClusterCorrectlyFormed) {
+                    log.info("${StreamsUtils.LEADER} not found, new check comes in $delay milliseconds...")
+                    delay(delay)
+                }
+            } while (!isClusterCorrectlyFormed && System.currentTimeMillis() - start < timeout)
+            if (isClusterCorrectlyFormed) {
+                log.debug("${StreamsUtils.LEADER} has been found")
+                action()
+            } else {
+                log.warn("$timeout ms have passed and the ${StreamsUtils.LEADER} has not been elected, the Streams plugin will not started")
+                onFailure()
             }
-            action()
+        }
+    }
+
+    fun waitForAvailable(db: GraphDatabaseAPI, log: Log, timeout: Long = 240000, onFailure: () -> Unit = {}, action: () -> Unit) {
+        GlobalScope.launch(Dispatchers.IO) {
+            val start = System.currentTimeMillis()
+            val delay: Long = 2000
+            var isAvailable: Boolean
+            do {
+                isAvailable = db.isAvailable(delay)
+                if (!isAvailable) {
+                    log.debug("Waiting for Neo4j to be ready...")
+                }
+            } while (!isAvailable && System.currentTimeMillis() - start < timeout)
+            if (isAvailable) {
+                log.debug("Neo4j is ready")
+                action()
+            } else {
+                log.warn("$timeout ms have passed and Neo4j is not online, the Streams plugin will not started")
+                onFailure()
+            }
         }
     }
 
     fun isReadReplica(db: GraphDatabaseAPI): Boolean = db.dependencyResolver
-            .resolveDependency(Config::class.java)
-            .let { it.get(GraphDatabaseSettings.mode).name == "READ_REPLICA" }
+        .resolveDependency(Config::class.java)
+        .let { it.get(GraphDatabaseSettings.mode).name == "READ_REPLICA" }
 }

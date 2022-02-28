@@ -3,7 +3,6 @@ package streams.extensions
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.kernel.internal.GraphDatabaseAPI
 import streams.utils.StreamsUtils
-import java.util.concurrent.TimeUnit
 
 fun DatabaseManagementService.getSystemDb() = this.database(StreamsUtils.SYSTEM_DATABASE_NAME) as GraphDatabaseAPI
 
