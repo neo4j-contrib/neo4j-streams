@@ -280,7 +280,7 @@ You'll have this following output (it's related to *your* configuration 😄)
 
 |===
 
-====== What happens when we change a configuration properties from procedure
+===== What happens when we change a configuration properties from procedure
 
 When we change the configuration properties from `streams.configuration.set/remove`,
 under-the-hood `Sink` and `Source` modules are reloaded. So use it carefully

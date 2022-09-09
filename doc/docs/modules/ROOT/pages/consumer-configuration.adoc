@@ -3,7 +3,7 @@
 You can set the following Kafka configuration values in your `neo4j.conf`, here are the defaults.
 
 .neo4j.conf
-[source,subs="verbatim,attributes"]
+[source, subs=verbatim]
 ----
 kafka.bootstrap.servers=localhost:9092
 kafka.auto.offset.reset=earliest
