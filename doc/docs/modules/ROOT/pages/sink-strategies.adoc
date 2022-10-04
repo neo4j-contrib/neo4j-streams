@@ -2,6 +2,10 @@
 
 ==== Change Data Capture Event
 
+
+_This paragraph has as pre-requisite a Neo4j 4.x instance running with the Streams plugin 4.1.x.
+For Neo4j 5.x the database plugin is no longer available._
+
 This method allows to ingest CDC events coming from another Neo4j Instance. You can use two strategies:
 
 * The `SourceId` strategy which merges the nodes/relationships by the CDC event `id` field (it's related to the Neo4j physical ID)

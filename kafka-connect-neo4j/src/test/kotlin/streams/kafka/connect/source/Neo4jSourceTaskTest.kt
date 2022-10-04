@@ -8,40 +8,60 @@ import org.apache.kafka.connect.source.SourceTaskContext
 import org.apache.kafka.connect.storage.OffsetStorageReader
 import org.hamcrest.Matchers
 import org.junit.After
+import org.junit.AfterClass
 import org.junit.Before
-import org.junit.Rule
+import org.junit.BeforeClass
 import org.junit.Test
 import org.mockito.Mockito
-import org.neo4j.configuration.GraphDatabaseSettings
+import org.neo4j.driver.Driver
+import org.neo4j.driver.Session
+import org.neo4j.driver.types.Node
 import org.neo4j.function.ThrowingSupplier
-import org.neo4j.harness.junit.rule.Neo4jRule
 import streams.Assert
-import streams.extensions.labelNames
+import streams.Neo4jContainerExtension
 import streams.kafka.connect.common.Neo4jConnectorConfig
 import streams.kafka.connect.sink.AuthenticationType
 import streams.utils.JSONUtils
-import java.util.UUID
+import streams.utils.StreamsUtils
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 class Neo4jSourceTaskTest {
 
-    @Rule @JvmField val db = Neo4jRule()
-            .withDisabledServer()
-            .withConfig(GraphDatabaseSettings.auth_enabled, false)
+    companion object {
+        private lateinit var driver: Driver
+        private lateinit var session: Session
+
+        @JvmStatic
+        val neo4j = Neo4jContainerExtension()
+
+        @BeforeClass
+        @JvmStatic
+        fun setUpContainer() {
+            neo4j.start()
+            driver = neo4j.driver!!
+            session = driver.session()
+        }
+
+        @AfterClass
+        @JvmStatic
+        fun tearDownContainer() {
+            driver.let { StreamsUtils.closeSafetely(it) }
+            session.let { StreamsUtils.closeSafetely(it) }
+            StreamsUtils.closeSafetely(neo4j)
+        }
+    }
 
     private lateinit var task: SourceTask
 
     @After
     fun after() {
+        session.run("MATCH (n) DETACH DELETE n")
         task.stop()
     }
 
     @Before
     fun before() {
-        db.defaultDatabaseService().beginTx().use {
-            it.execute("MATCH (n) DETACH DELETE n")
-            it.commit()
-        }
         task = Neo4jSourceTask()
         val sourceTaskContextMock = Mockito.mock(SourceTaskContext::class.java)
         val offsetStorageReader = Mockito.mock(OffsetStorageReader::class.java)
@@ -66,7 +86,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY from NOW`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
         props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
@@ -88,7 +108,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY from NOW with Schema`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
@@ -111,7 +131,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY from ALL`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_FROM] = "ALL"
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
@@ -134,7 +154,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY from ALL with Schema`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_FROM] = "ALL"
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
@@ -155,9 +175,9 @@ class Neo4jSourceTaskTest {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
 
-    private fun insertRecords(totalRecords: Int, longToInt: Boolean = false) = db.defaultDatabaseService().beginTx().use { tx ->
+    private fun insertRecords(totalRecords: Int, longToInt: Boolean = false) = session.beginTransaction().use { tx ->
         val elements = (1..totalRecords).map {
-            val result = tx.execute("""
+            val result = tx.run("""
                                 |CREATE (n:Test{
                                 |   name: 'Name ' + $it,
                                 |   timestamp: timestamp(),
@@ -177,15 +197,16 @@ class Neo4jSourceTaskTest {
                                 |   } AS map,
                                 |   n AS node
                             """.trimMargin())
-            val map = result.next()
-            map["array"] = (map["array"] as LongArray).toList()
-                    .map { if (longToInt) it.toInt() else it }
+            val next = result.next()
+            val map = next.asMap().toMutableMap()
+            map["array"] = next["array"].asList()
+                    .map { if (longToInt) (it as Long).toInt() else it }
             map["point"] = JSONUtils.readValue<Map<String, Any>>(map["point"]!!)
-            map["datetime"] = JSONUtils.readValue<String>(map["datetime"]!!)
-            val node = map["node"] as org.neo4j.graphdb.Node
-            val nodeMap = node.allProperties
-            nodeMap["<id>"] = if (longToInt) node.id.toInt() else node.id
-            nodeMap["<labels>"] = node.labelNames()
+            map["datetime"] = next["datetime"].asLocalDateTime().toString()
+            val node = next["node"].asNode()
+            val nodeMap = node.asMap().toMutableMap()
+            nodeMap["<id>"] = if (longToInt) node.id().toInt() else node.id()
+            nodeMap["<labels>"] = node.labels()
             // are the same value as above
             nodeMap["array"] = map["array"]
             nodeMap["point"] = map["point"]
@@ -200,7 +221,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY without streaming property`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
@@ -221,7 +242,7 @@ class Neo4jSourceTaskTest {
     @Test
     fun `should source data from Neo4j with custom QUERY without streaming property with Schema`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
@@ -243,7 +264,8 @@ class Neo4jSourceTaskTest {
     private fun getSourceQuery() = """
                 |MATCH (n:Test)
                 |WHERE n.timestamp > ${'$'}lastCheck
-                |RETURN n.name AS name, n.timestamp AS timestamp,
+                |RETURN n.name AS name,
+                |   n.timestamp AS timestamp,
                 |   n.point AS point,
                 |   n.array AS array,
                 |   n.datetime AS datetime,
@@ -258,7 +280,7 @@ class Neo4jSourceTaskTest {
     @Test(expected = ConnectException::class)
     fun `should throw exception`() {
         val props = mutableMapOf<String, String>()
-        props[Neo4jConnectorConfig.SERVER_URI] = db.boltURI().toString()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = "WRONG QUERY".trimMargin()

@@ -3,15 +3,23 @@ package streams.utils
 import com.fasterxml.jackson.core.JsonGenerator
 import com.fasterxml.jackson.core.JsonParseException
 import com.fasterxml.jackson.core.JsonProcessingException
-import com.fasterxml.jackson.databind.*
+import com.fasterxml.jackson.databind.DeserializationFeature
+import com.fasterxml.jackson.databind.JsonSerializer
+import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.databind.SerializationFeature
+import com.fasterxml.jackson.databind.SerializerProvider
 import com.fasterxml.jackson.databind.module.SimpleModule
 import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
+import org.neo4j.driver.Value
 import org.neo4j.driver.internal.value.PointValue
-import org.neo4j.graphdb.spatial.Point
-import org.neo4j.values.storable.CoordinateReferenceSystem
-import streams.events.*
+import org.neo4j.driver.types.Node
+import org.neo4j.driver.types.Point
+import org.neo4j.driver.types.Relationship
+import streams.events.StreamsTransactionEvent
+import streams.events.StreamsTransactionNodeEvent
+import streams.events.StreamsTransactionRelationshipEvent
 import streams.extensions.asStreamsMap
 import java.io.IOException
 import java.time.temporal.TemporalAccessor
@@ -21,37 +29,28 @@ abstract class StreamsPoint { abstract val crs: String }
 data class StreamsPointCartesian(override val crs: String, val x: Double, val y: Double, val z: Double? = null): StreamsPoint()
 data class StreamsPointWgs(override val crs: String, val latitude: Double, val longitude: Double, val height: Double? = null): StreamsPoint()
 
-fun Point.toStreamsPoint(): StreamsPoint {
-    val crsType = this.crs.type
-    val coordinate = this.coordinates[0].coordinate
-    return when (this.crs) {
-        CoordinateReferenceSystem.Cartesian -> StreamsPointCartesian(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.Cartesian_3D -> StreamsPointCartesian(crsType, coordinate[0], coordinate[1], coordinate[2])
-        CoordinateReferenceSystem.WGS84 -> StreamsPointWgs(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.WGS84_3D -> StreamsPointWgs(crsType, coordinate[0], coordinate[1], coordinate[2])
-        else -> throw IllegalArgumentException("Point type $crsType not supported")
-    }
-}
-
 fun PointValue.toStreamsPoint(): StreamsPoint {
     val point = this.asPoint()
+    return point.toStreamsPoint()
+}
+
+fun Point.toStreamsPoint(): StreamsPoint {
+    val point = this
     return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
+        7203 -> StreamsPointCartesian("cartesian", point.x(), point.y())
+        9157 -> StreamsPointCartesian("cartesian-3d", point.x(), point.y(), point.z())
+        4326 -> StreamsPointWgs("wgs-84", point.x(), point.y())
+        4979 -> StreamsPointWgs("wgs-84-3d", point.x(), point.y(), point.z())
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
 
-fun org.neo4j.driver.types.Point.toStreamsPoint(): StreamsPoint {
-    val point = this
-    return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
-        else -> throw IllegalArgumentException("Point type $crsType not supported")
+class ValueSerializer : JsonSerializer<Value>() {
+    @Throws(IOException::class, JsonProcessingException::class)
+    override fun serialize(value: Value?, jgen: JsonGenerator,
+                           provider: SerializerProvider) {
+        value?.let { jgen.writeObject(it.asObject()) }
+
     }
 }
 
@@ -59,21 +58,7 @@ class PointSerializer : JsonSerializer<Point>() {
     @Throws(IOException::class, JsonProcessingException::class)
     override fun serialize(value: Point?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeObject(value.toStreamsPoint())
-    }
-}
-
-class DriverPointSerializer : JsonSerializer<org.neo4j.driver.types.Point>() {
-    @Throws(IOException::class, JsonProcessingException::class)
-    override fun serialize(value: org.neo4j.driver.types.Point?, jgen: JsonGenerator,
-                           provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeObject(value.toStreamsPoint())
+        value?.let { jgen.writeObject(it.toStreamsPoint()) }
     }
 }
 
@@ -81,10 +66,7 @@ class PointValueSerializer : JsonSerializer<PointValue>() {
     @Throws(IOException::class, JsonProcessingException::class)
     override fun serialize(value: PointValue?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeObject(value.toStreamsPoint())
+        value?.let { jgen.writeObject(it.toStreamsPoint()) }
     }
 }
 
@@ -92,32 +74,23 @@ class TemporalAccessorSerializer : JsonSerializer<TemporalAccessor>() {
     @Throws(IOException::class, JsonProcessingException::class)
     override fun serialize(value: TemporalAccessor?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeString(value.toString())
+        value?.let { jgen.writeString(it.toString()) }
     }
 }
 
-class DriverNodeSerializer : JsonSerializer<org.neo4j.driver.types.Node>() {
+class DriverNodeSerializer : JsonSerializer<Node>() {
     @Throws(IOException::class, JsonProcessingException::class)
-    override fun serialize(value: org.neo4j.driver.types.Node?, jgen: JsonGenerator,
+    override fun serialize(value: Node?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeObject(value.asStreamsMap())
+        value?.let { jgen.writeObject(it.asStreamsMap()) }
     }
 }
 
-class DriverRelationshipSerializer : JsonSerializer<org.neo4j.driver.types.Relationship>() {
+class DriverRelationshipSerializer : JsonSerializer<Relationship>() {
     @Throws(IOException::class, JsonProcessingException::class)
-    override fun serialize(value: org.neo4j.driver.types.Relationship?, jgen: JsonGenerator,
+    override fun serialize(value: Relationship?, jgen: JsonGenerator,
                            provider: SerializerProvider) {
-        if (value == null) {
-            return
-        }
-        jgen.writeObject(value.asStreamsMap())
+        value?.let { jgen.writeObject(it.asStreamsMap()) }
     }
 }
 
@@ -128,21 +101,18 @@ object JSONUtils {
 
     init {
         val module = SimpleModule("Neo4jKafkaSerializer")
-        StreamsUtils.ignoreExceptions({ module.addSerializer(Point::class.java, PointSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
-        StreamsUtils.ignoreExceptions({ module.addSerializer(PointValue::class.java, PointValueSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
-        StreamsUtils.ignoreExceptions({ module.addSerializer(org.neo4j.driver.types.Point::class.java, DriverPointSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
-        StreamsUtils.ignoreExceptions({ module.addSerializer(org.neo4j.driver.types.Node::class.java, DriverNodeSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
-        StreamsUtils.ignoreExceptions({ module.addSerializer(org.neo4j.driver.types.Relationship::class.java, DriverRelationshipSerializer()) }, NoClassDefFoundError::class.java) // in case is loaded from
+        module.addSerializer(Value::class.java, ValueSerializer())
+        module.addSerializer(Point::class.java, PointSerializer())
+        module.addSerializer(PointValue::class.java, PointValueSerializer())
+        module.addSerializer(Node::class.java, DriverNodeSerializer())
+        module.addSerializer(Relationship::class.java, DriverRelationshipSerializer())
         module.addSerializer(TemporalAccessor::class.java, TemporalAccessorSerializer())
         OBJECT_MAPPER.registerModule(module)
         OBJECT_MAPPER.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
         OBJECT_MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-        STRICT_OBJECT_MAPPER.registerModule(module)
     }
 
     fun getObjectMapper(): ObjectMapper = OBJECT_MAPPER
-
-    fun getStrictObjectMapper(): ObjectMapper = STRICT_OBJECT_MAPPER
 
     fun asMap(any: Any): Map<String, Any?> {
         return OBJECT_MAPPER.convertValue(any, Map::class.java)

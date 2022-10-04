@@ -5,7 +5,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>kafka-connect-neo4j</artifactId>
-    <version>2.0.2</version>
+    <version>5.0.0</version>
     <packaging>jar</packaging>
 
     <name>Kafka Connect Neo4j</name>
@@ -14,15 +14,15 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>4.1.2</version>
+        <version>5.0.0</version>
     </parent>
 
     <properties>
         <confluent.serializer.version>5.0.0</confluent.serializer.version>
-        <confluent.connect.plugin.version>0.11.1</confluent.connect.plugin.version>
+        <confluent.connect.plugin.version>0.12.0</confluent.connect.plugin.version>
         <mvn.assembly.plugin.version>3.1.0</mvn.assembly.plugin.version>
-        <kafka.connect.utils.version>0.3.141</kafka.connect.utils.version>
-        <google.guava.version>27.0.1-jre</google.guava.version>
+        <kafka.connect.utils.version>0.7.173</kafka.connect.utils.version>
+        <google.guava.version>31.1-jre</google.guava.version>
     </properties>
 
     <repositories>
