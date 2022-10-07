@@ -1,11 +1,8 @@
 package streams.service.errors
 
-import org.apache.avro.generic.GenericRecord
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.common.record.RecordBatch
-import streams.extensions.toMap
-import streams.utils.JSONUtils
-import java.util.*
+import java.util.Properties
 
 
 data class ErrorData(val originalTopic: String,
@@ -40,7 +37,6 @@ data class ErrorData(val originalTopic: String,
             when (v) {
                 null -> null
                 is ByteArray -> v
-                is GenericRecord -> JSONUtils.writeValueAsBytes(mapOf("schema" to v.schema.toMap(), "record" to v.toMap()))
                 else -> v.toString().toByteArray(Charsets.UTF_8)
             }
         } catch (e:Exception) {

@@ -1,5 +1,5 @@
 name: kafka
-version: '4.1'
+version: '5.0'
 title: Neo4j Streams Docs
 start_page: ROOT:index.adoc
 nav:
@@ -8,7 +8,7 @@ nav:
 asciidoc:
   attributes:
     theme: docs
-    version: 4.1.0
+    version: 5.0.0
     copyright: Neo4j Inc.
     page-product: Neo4j Streams
     page-pagination: true

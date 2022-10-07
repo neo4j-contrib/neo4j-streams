@@ -40,31 +40,6 @@ the correct cluster member, and managing changes to the cluster membership over 
 
 For further information on routing drivers, see the link:https://neo4j.com/docs/driver-manual/current/[Neo4j Driver Manual].
 
-[[cluster_neo4j_plugin]]
-== Neo4j Plugin
-
-When using Neo4j Streams as a plugin together with a cluster, there are several things to keep in mind:
-
-* The plugin must be present in the plugins directory of _all cluster members_, and not just one.
-* The configuration settings must be present in:
-- *all neo4j.conf files* for versions prior of `4.0.7`, and not just one;
-- *all streams.conf files* for versions since `4.0.7`, and not just one.
-
-Through the course of the cluster lifecycle, the leader may change; for this reason the plugin must be everywhere,
-and not just on the leader.
-
-The plugin detects the leader, and will not attempt to perform a write (i.e. in the case of the consumer)
-on a follower where it would fail.  The plugin checks cluster toplogy as needed.
-
-Additionally for CDC, a consideration to keep in mind is that as of Neo4j 3.5, committed transactions are only
-published on the leader as well.  In practical terms, this means that as new data is committed to Neo4j, it is
-the leader that will be publishing that data back out to Kafka, if you have the producer configured.
-
-The neo4j streams utility procedures, in particular `CALL streams.publish`, can work on any cluster member, or
-read replica.  `CALL streams.consume` may also be used on any cluster member, however it is important to keep in
-mind that due to the way clustering in Neo4j works, using `streams.consume` together with write operations will
-not work on a cluster follower or read replica, as only the leader can process writes.
-
 [[cluster_remote_clients]]
 == Remote Clients
 

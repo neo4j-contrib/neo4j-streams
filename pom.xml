@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>4.1.2</version>
+    <version>5.0.0</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -44,30 +44,28 @@
         <module>common</module>
         <module>test-support</module>
         <module>kafka-connect-neo4j</module>
-        <module>producer</module>
-        <module>consumer</module>
         <module>doc</module>
-        <module>distribution</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <java.version>1.8</java.version>
-        <kotlin.version>1.6.10</kotlin.version>
-        <kotlin.coroutines.version>1.6.0</kotlin.coroutines.version>
-        <neo4j.version>4.4.3</neo4j.version>
+        <java.version>11</java.version>
+        <kotlin.version>1.7.10</kotlin.version>
+        <kotlin.coroutines.version>1.6.4</kotlin.coroutines.version>
+        <neo4j.version>4.4.10</neo4j.version>
         <kafka.version>2.4.1</kafka.version>
-        <jackson.version>2.13.1</jackson.version>
+        <jackson.version>2.13.4</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
-        <neo4j.java.driver.version>4.4.2</neo4j.java.driver.version>
+        <neo4j.java.driver.version>4.4.9</neo4j.java.driver.version>
         <testcontainers.version>1.15.1</testcontainers.version>
         <avro.version>1.8.2</avro.version>
-        <mokito.version>3.3.0</mokito.version>
+        <mokito.version>4.8.0</mokito.version>
         <junit.version>4.13.2</junit.version>
         <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
-        <junit-jupiter.version>5.7.1</junit-jupiter.version>
+        <junit-jupiter.version>5.9.0</junit-jupiter.version>
         <hamcrest.version>1.3</hamcrest.version>
         <neo4j.configuration-lifecycle.version>ad59084711</neo4j.configuration-lifecycle.version>
+        <commons-lang3.version>3.12.0</commons-lang3.version>
     </properties>
 
     <organization>
@@ -152,34 +150,36 @@
                 <artifactId>kafka-clients</artifactId>
                 <version>${kafka.version}</version>
             </dependency>
+
+            <dependency>
+                <groupId>org.hamcrest</groupId>
+                <artifactId>hamcrest-core</artifactId>
+                <version>${hamcrest.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.hamcrest</groupId>
+                <artifactId>hamcrest-library</artifactId>
+                <version>${hamcrest.version}</version>
+                <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.hamcrest</groupId>
+                <artifactId>hamcrest-all</artifactId>
+                <version>${hamcrest.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-lang3</artifactId>
+                <version>${commons-lang3.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
-        <dependency>
-            <groupId>com.github.conker84</groupId>
-            <artifactId>neo4j-configuration-lifecycle</artifactId>
-            <version>${neo4j.configuration-lifecycle.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>server-api</artifactId>
-            <version>${neo4j.version}</version>
-            <scope>provided</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j</artifactId>
-            <version>${neo4j.version}</version>
-            <scope>provided</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-nop</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
 
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -206,11 +206,6 @@
         </dependency>
 
         <dependency>
-            <groupId>org.jetbrains.kotlin</groupId>
-            <artifactId>kotlin-stdlib-jdk8</artifactId>
-            <version>${kotlin.version}</version>
-        </dependency>
-        <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
             <artifactId>kotlinx-coroutines-core</artifactId>
             <version>${kotlin.coroutines.version}</version>
@@ -226,32 +221,6 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-io</artifactId>
-            <version>${neo4j.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j</groupId>
-            <artifactId>neo4j-kernel</artifactId>
-            <version>${neo4j.version}</version>
-            <type>test-jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j.test</groupId>
-            <artifactId>neo4j-harness</artifactId>
-            <version>${neo4j.version}</version>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-nop</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
@@ -312,22 +281,16 @@
         </dependency>
 
         <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-core</artifactId>
-            <version>1.3</version>
+            <groupId>org.neo4j.test</groupId>
+            <artifactId>neo4j-harness</artifactId>
+            <version>${neo4j.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-library</artifactId>
-            <version>1.3</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.hamcrest</groupId>
-            <artifactId>hamcrest-all</artifactId>
-            <version>1.3</version>
-            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-nop</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
     </dependencies>

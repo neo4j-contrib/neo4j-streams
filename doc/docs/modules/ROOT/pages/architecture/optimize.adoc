@@ -2,7 +2,7 @@
 
 Neo4j can't ingest fast if Kafka isn't set up correctly.   While this isn't a common source of problems, it has come up.  Confluent has {url-confluent-blog}/optimizing-apache-kafka-deployment/[good overall documentation] on optimizing Kafka that is worth being familiar with.
 
-The main trade offs are these, and they have to make sense at the Kafka layer before they can make sense for Neo4j.
+The main trade-offs are these, and they have to make sense at the Kafka layer before they can make sense for Neo4j.
 
 * Do you want to optimize for high throughput, which is the rate that data is moved from producers to brokers or brokers to consumers?
 * Do you want to optimize for low latency, which is the elapsed time moving messages end-to-end (from producers to brokers to consumers)?

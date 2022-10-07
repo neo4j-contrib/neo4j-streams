@@ -57,7 +57,7 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
 }
 
 class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContainerExtension>(dockerImage) {
-    constructor(): this("neo4j:4.1.1-enterprise")
+    constructor(): this("neo4j:4.4.10-enterprise")
     private val logger = LoggerFactory.getLogger(Neo4jContainerExtension::class.java)
     var driver: Driver? = null
     var session: Session? = null
@@ -66,7 +66,7 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
 
     private var withDriver = true
     private var withLogger = false
-    private var withStreamsPlugin = true
+    private var withStreamsPlugin = false
     private var forcePluginRebuild = true
 
     private var databases = arrayOf<String>()
@@ -89,8 +89,8 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
         return this
     }
 
-    fun withoutStreamsPlugin(): Neo4jContainerExtension {
-        this.withStreamsPlugin = false
+    fun withStreamsPlugin(): Neo4jContainerExtension {
+        this.withStreamsPlugin = true
         return this
     }
 
@@ -119,6 +119,7 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
     }
 
     override fun start() {
+        withNeo4jConfig("dbms.security.auth_enabled", "false")
         if (databases.isNotEmpty()) {
             withWaitStrategy(DatabasesWaitStrategy(createAuth())
                 .forDatabases(*databases)
