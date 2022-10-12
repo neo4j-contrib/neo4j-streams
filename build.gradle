@@ -76,9 +76,7 @@ task versions {
 //    println(neo4jReleases)
     for (neo4jRelease in neo4jReleases) {
         def prefix = neo4jRelease.substring(0,Math.min(4,neo4jRelease.length()))
-        println prefix
-        println prefix[0] > "5"
-        if (prefix < "3.0" || prefix[0] > "5") continue;
+        if (prefix < "3.0" || prefix > "5.0") continue;
 
         def apocVersion = neo4jToApoc[neo4jRelease]
 
