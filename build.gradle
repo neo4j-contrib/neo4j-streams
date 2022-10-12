@@ -23,7 +23,7 @@ def collectNeo4jReleases() {
 
     // We sort considering that X.Y.Z-SOMETHING should be considered lower than X.Y.Z --> it's not a lexicographical ordering
     return actualReleases
-            .findAll { it >= "3.0" }
+            .findAll { it >= "3.0" && it <= "5.0" }
             .sort{ o1, o2 -> orderVersion(o1) <=> orderVersion(o2) }
             .reverse()
 }
@@ -52,13 +52,13 @@ task versions {
     def neo4jToApoc = [:]
     def latestApoc, oldestApoc
     for (release in releases) {
-        if (release.prerelease || release.draft) continue;
+        if (release.prerelease || release.draft || release.tag_name[0] >= "5") continue;
         def buildText = new URL("https://raw.githubusercontent.com/neo4j-contrib/neo4j-streams/" + release.tag_name + "/pom.xml").getText()
         def matcher = pattern.matcher(buildText)
         for (def i = 0; i < matcher.getCount(); i++) {
             def neo4jVersion = matcher[i][1]
 
-            println "neo " + neo4jVersion + ", streams " + release.tag_name
+            // println "neo " + neo4jVersion + ", streams " + release.tag_name
             if (!neo4jToApoc.containsKey(neo4jVersion)) {
                 neo4jToApoc[neo4jVersion] = release.tag_name
             }
@@ -71,12 +71,12 @@ task versions {
         }
     }
 
-    println "LATEST STREAMS IS " + latestApoc + " WHILE OLDEST IS " + oldestApoc
-    println(neo4jToApoc)
-    println(neo4jReleases)
+//    println "LATEST STREAMS IS " + latestApoc + " WHILE OLDEST IS " + oldestApoc
+//    println(neo4jToApoc)
+//    println(neo4jReleases)
     for (neo4jRelease in neo4jReleases) {
         def prefix = neo4jRelease.substring(0,Math.min(4,neo4jRelease.length()))
-        if (prefix < "3.0") continue;
+        if (prefix < "3.0" || prefix > "5.0") continue;
 
         def apocVersion = neo4jToApoc[neo4jRelease]
 
