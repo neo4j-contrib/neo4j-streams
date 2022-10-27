@@ -11,7 +11,7 @@ class NodePatternIngestionStrategyTest {
     fun `should get all properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, true)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -22,7 +22,7 @@ class NodePatternIngestionStrategyTest {
         assertEquals("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
-                |SET n = event.properties
+                |SET n += event.properties
                 |SET n += event.keys
             """.trimMargin(), queryEvents[0].query)
         assertEquals(listOf(mapOf("keys" to mapOf("id" to 1),
@@ -38,7 +38,7 @@ class NodePatternIngestionStrategyTest {
     fun `should get nested properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, foo.bar})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, false)
         val data = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"))
 
         // when
@@ -66,7 +66,7 @@ class NodePatternIngestionStrategyTest {
     fun `should exclude nested properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, -foo})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, false)
         val map = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"), "prop" to 100)
 
         // when
@@ -94,7 +94,7 @@ class NodePatternIngestionStrategyTest {
     fun `should include nested properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, foo})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, true)
         val data = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"), "prop" to 100)
 
         // when
@@ -106,7 +106,7 @@ class NodePatternIngestionStrategyTest {
         assertEquals("""
                 |${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
-                |SET n = event.properties
+                |SET n += event.properties
                 |SET n += event.keys
             """.trimMargin(),
                 queryEvents[0].query)
@@ -122,7 +122,7 @@ class NodePatternIngestionStrategyTest {
     fun `should exclude the properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id,-foo,-bar})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, false)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -147,7 +147,7 @@ class NodePatternIngestionStrategyTest {
     fun `should include the properties`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id,foo,bar})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, false)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -171,7 +171,7 @@ class NodePatternIngestionStrategyTest {
     fun `should delete the node`() {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id})")
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(config, true)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when

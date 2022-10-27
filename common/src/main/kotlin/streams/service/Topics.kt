@@ -104,7 +104,7 @@ object TopicUtils {
         }
     }
 
-    fun toStrategyMap(topics: Topics, sourceIdStrategyConfig: SourceIdIngestionStrategyConfig): Map<TopicType, Any> {
+    fun toStrategyMap(topics: Topics, sourceIdStrategyConfig: SourceIdIngestionStrategyConfig, topicPatternMergeNodePropertiesEnabled: Boolean, topicPatternMergeRelationshipPropertiesEnabled: Boolean): Map<TopicType, Any> {
         return topics.asMap()
                 .filterKeys { it != TopicType.CYPHER }
                 .mapValues { (type, config) ->
@@ -114,11 +114,11 @@ object TopicUtils {
                         TopicType.CUD -> CUDIngestionStrategy()
                         TopicType.PATTERN_NODE -> {
                             val map = config as Map<String, NodePatternConfiguration>
-                            map.mapValues { NodePatternIngestionStrategy(it.value) }
+                            map.mapValues { NodePatternIngestionStrategy(it.value, topicPatternMergeNodePropertiesEnabled) }
                         }
                         TopicType.PATTERN_RELATIONSHIP -> {
                             val map = config as Map<String, RelationshipPatternConfiguration>
-                            map.mapValues { RelationshipPatternIngestionStrategy(it.value) }
+                            map.mapValues { RelationshipPatternIngestionStrategy(it.value, topicPatternMergeRelationshipPropertiesEnabled) }
                         }
                         else -> throw RuntimeException("Unsupported topic type $type")
                     }

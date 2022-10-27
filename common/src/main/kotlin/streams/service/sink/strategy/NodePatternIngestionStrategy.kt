@@ -8,14 +8,14 @@ import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeMergeKeys
 import streams.utils.StreamsUtils
 
-class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePatternConfiguration): IngestionStrategy {
+class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePatternConfiguration, private val topicPatternMergeNodePropertiesEnabled: Boolean = false): IngestionStrategy {
 
     private val mergeNodeTemplate: String = """
                 |${StreamsUtils.UNWIND}
                 |MERGE (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})
-                |SET n = event.properties
+                |SET n ${if (topicPatternMergeNodePropertiesEnabled) "+" else ""}= event.properties
                 |SET n += event.keys
             """.trimMargin()
 
