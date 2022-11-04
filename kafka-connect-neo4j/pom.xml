@@ -117,10 +117,10 @@
                             <ownerName>Neo4j, Inc.</ownerName>
                             <ownerUrl>https://neo4j.com/</ownerUrl>
                             <title>Neo4j Connector</title>
-                            <documentationUrl>https://neo4j-contrib.github.io/neo4j-streams/#_kafka_connect</documentationUrl>
+                            <documentationUrl>https://neo4j.com/docs/kafka/quickstart-connect/</documentationUrl>
                             <description>It's a basic Apache Kafka Connect Neo4j Connector which allows moving data from Kafka topics into Neo4j via Cypher templated queries and vice versa.</description>
                             <logo>assets/neo4j-logo.png</logo>
-                            <supportSummary><![CDATA[Support through <a href="https://neo4j.com/labs/">Neo4j Labs</a>]]></supportSummary>
+                            <supportSummary><![CDATA[Support through <a href="https://neo4j.com/">Neo4j</a>]]></supportSummary>
                             <sourceUrl>https://github.com/neo4j-contrib/neo4j-streams/tree/master/kafka-connect-neo4j</sourceUrl>
                             <supportUrl>${project.issueManagement.url}</supportUrl>
                             <confluentControlCenterIntegration>true</confluentControlCenterIntegration>
