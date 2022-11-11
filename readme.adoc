@@ -1,5 +1,5 @@
 = Neo4j Streaming Data Integrations
-:docs: https://neo4j-contrib.github.io/neo4j-streams/
+:docs: https://neo4j.com/docs/kafka/quickstart-connect/
 
 image::https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png[]
 
