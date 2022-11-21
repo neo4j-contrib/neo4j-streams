@@ -18,6 +18,7 @@ class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig): StreamsStrateg
         when (val topicConfig = topicConfigMap.getOrDefault(topicType, emptyList<Any>())) {
             is Collection<*> -> topicConfig.contains(topic)
             is Map<*, *> -> topicConfig.containsKey(topic)
+            is Pair<*, *> -> (topicConfig.first as Set<String>).contains(topic)
             else -> false
         }
     }
@@ -26,8 +27,8 @@ class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig): StreamsStrateg
         TopicType.CDC_SOURCE_ID -> config.strategyMap[topicType] as SourceIdIngestionStrategy
         TopicType.CDC_SCHEMA -> SchemaIngestionStrategy()
         TopicType.CUD -> CUDIngestionStrategy()
-        TopicType.PATTERN_NODE -> NodePatternIngestionStrategy(config.topics.nodePatternTopics.getValue(topic), config.topicPatternMergeNodePropertiesEnabled)
-        TopicType.PATTERN_RELATIONSHIP -> RelationshipPatternIngestionStrategy(config.topics.relPatternTopics.getValue(topic), config.topicPatternMergeRelationshipPropertiesEnabled)
+        TopicType.PATTERN_NODE -> NodePatternIngestionStrategy(config.topics.nodePatternTopics.getValue(topic))
+        TopicType.PATTERN_RELATIONSHIP -> RelationshipPatternIngestionStrategy(config.topics.relPatternTopics.getValue(topic))
         TopicType.CYPHER -> CypherTemplateStrategy(config.topics.cypherTopics.getValue(topic))
         null -> throw RuntimeException("Topic Type not Found")
     }

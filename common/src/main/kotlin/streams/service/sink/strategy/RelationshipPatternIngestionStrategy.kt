@@ -8,22 +8,22 @@ import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeMergeKeys
 import streams.utils.StreamsUtils
 
-class RelationshipPatternIngestionStrategy(private val relationshipPatternConfiguration: RelationshipPatternConfiguration, private val topicPatternMergeRelationshipPropertiesEnabled: Boolean = false): IngestionStrategy {
+class RelationshipPatternIngestionStrategy(private val relationshipPatternConfiguration: RelationshipPatternConfiguration): IngestionStrategy {
 
     private val mergeRelationshipTemplate: String = """
                 |${StreamsUtils.UNWIND}
                 |MERGE (start${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
                     getNodeMergeKeys("start.keys", relationshipPatternConfiguration.start.keys)
                 }})
-                |SET start ${if (topicPatternMergeRelationshipPropertiesEnabled) "+" else ""}= event.start.properties
+                |SET start ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.start.properties
                 |SET start += event.start.keys
                 |MERGE (end${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
                     getNodeMergeKeys("end.keys", relationshipPatternConfiguration.end.keys)
                 }})
-                |SET end ${if (topicPatternMergeRelationshipPropertiesEnabled) "+" else ""}= event.end.properties
+                |SET end ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.end.properties
                 |SET end += event.end.keys
                 |MERGE (start)-[r:${relationshipPatternConfiguration.relType}]->(end)
-                |SET r ${if (topicPatternMergeRelationshipPropertiesEnabled) "+" else ""}= event.properties
+                |SET r ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.properties
             """.trimMargin()
 
     private val deleteRelationshipTemplate: String = """

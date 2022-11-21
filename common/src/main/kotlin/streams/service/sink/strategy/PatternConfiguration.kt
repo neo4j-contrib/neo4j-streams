@@ -42,14 +42,14 @@ private fun cleanProperties(type: PatternConfigurationType, properties: List<Str
 interface PatternConfiguration
 
 data class NodePatternConfiguration(val keys: Set<String>, val type: PatternConfigurationType,
-                                    val labels: List<String>, val properties: List<String>): PatternConfiguration {
+                                    val labels: List<String>, val properties: List<String>, val mergeProperties: Boolean): PatternConfiguration {
     companion object {
 
         // (:LabelA{!id,foo,bar})
         @JvmStatic private val cypherNodePatternConfigured = """\((:\w+\s*(?::\s*(?:\w+)\s*)*)\s*(?:\{\s*(-?[\w!\.]+\s*(?:,\s*-?[!\w\*\.]+\s*)*)\})?\)$""".toRegex()
         // LabelA{!id,foo,bar}
         @JvmStatic private val simpleNodePatternConfigured = """^(\w+\s*(?::\s*(?:\w+)\s*)*)\s*(?:\{\s*(-?[\w!\.]+\s*(?:,\s*-?[!\w\*\.]+\s*)*)\})?$""".toRegex()
-        fun parse(pattern: String): NodePatternConfiguration {
+        fun parse(pattern: String, mergeProperties: Boolean): NodePatternConfiguration {
             val isCypherPattern = pattern.startsWith("(")
             val regex = if (isCypherPattern) cypherNodePatternConfigured else simpleNodePatternConfigured
             val matcher = regex.matchEntire(pattern)
@@ -75,25 +75,26 @@ data class NodePatternConfiguration(val keys: Set<String>, val type: PatternConf
                 val cleanedProperties = cleanProperties(type, properties)
 
                 return NodePatternConfiguration(keys = keys, type = type,
-                        labels = labels, properties = cleanedProperties)
+                        labels = labels, properties = cleanedProperties, mergeProperties)
             }
         }
     }
+
 }
 
 
 data class RelationshipPatternConfiguration(val start: NodePatternConfiguration, val end: NodePatternConfiguration,
                                             val relType: String, val type: PatternConfigurationType,
-                                            val properties: List<String>): PatternConfiguration {
+                                            val properties: List<String>, val mergeProperties: Boolean): PatternConfiguration {
     companion object {
 
         // we don't allow ALL for start/end nodes in rels
         // it's public for testing purpose
-        fun getNodeConf(pattern: String): NodePatternConfiguration {
-            val start = NodePatternConfiguration.parse(pattern)
+        fun getNodeConf(pattern: String, mergeProperties: Boolean): NodePatternConfiguration {
+            val start = NodePatternConfiguration.parse(pattern, mergeProperties)
             return if (start.type == PatternConfigurationType.ALL) {
                 NodePatternConfiguration(keys = start.keys, type = PatternConfigurationType.INCLUDE,
-                        labels = start.labels, properties = start.properties)
+                        labels = start.labels, properties = start.properties, mergeProperties)
             } else {
                 start
             }
@@ -148,7 +149,7 @@ data class RelationshipPatternConfiguration(val start: NodePatternConfiguration,
             }
         }
 
-        fun parse(pattern: String): RelationshipPatternConfiguration {
+        fun parse(pattern: String, mergeNodeProps: Boolean, mergeRelProps: Boolean): RelationshipPatternConfiguration {
             val isCypherPattern = pattern.startsWith("(")
             val regex = if (isCypherPattern) {
                 cypherRelationshipPatternConfigured
@@ -169,12 +170,12 @@ data class RelationshipPatternConfiguration(val start: NodePatternConfiguration,
                 val metadata = RelationshipPatternMetaData.create(isCypherPattern, isLeftToRight, matcher.groupValues)
 
                 val start = try {
-                    getNodeConf(metadata.startPattern)
+                    getNodeConf(metadata.startPattern, mergeNodeProps)
                 } catch (e: Exception) {
                     throw IllegalArgumentException("The Relationship pattern $pattern is invalid")
                 }
                 val end = try {
-                    getNodeConf(metadata.endPattern)
+                    getNodeConf(metadata.endPattern, mergeNodeProps)
                 } catch (e: Exception) {
                     throw IllegalArgumentException("The Relationship pattern $pattern is invalid")
                 }
@@ -182,7 +183,7 @@ data class RelationshipPatternConfiguration(val start: NodePatternConfiguration,
                 isHomogeneousPattern(type, metadata.properties, pattern, "Relationship")
                 val cleanedProperties = cleanProperties(type, metadata.properties)
                 return RelationshipPatternConfiguration(start = start, end = end, relType = metadata.relType,
-                        properties = cleanedProperties, type = type)
+                        properties = cleanedProperties, type = type, mergeProperties = mergeRelProps)
             }
         }
 

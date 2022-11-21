@@ -57,7 +57,7 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
 }
 
 class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContainerExtension>(dockerImage) {
-    constructor(): this("neo4j:4.4.10-enterprise")
+    constructor(): this("neo4j:5.1-enterprise")
     private val logger = LoggerFactory.getLogger(Neo4jContainerExtension::class.java)
     var driver: Driver? = null
     var session: Session? = null
@@ -100,7 +100,7 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
     }
 
     fun withKafka(kafka: KafkaContainer): Neo4jContainerExtension {
-        return withKafka(kafka.network, kafka.networkAliases.map { "$it:9092" }.joinToString(","))
+        return withKafka(kafka.network!!, kafka.networkAliases.map { "$it:9092" }.joinToString(","))
     }
 
     fun withKafka(network: Network, bootstrapServers: String): Neo4jContainerExtension {

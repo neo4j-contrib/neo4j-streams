@@ -11,11 +11,11 @@ class NodePatternConfigurationTest {
         val pattern = "(:LabelA:LabelB{!id,*})"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.ALL,
-                labels = listOf("LabelA", "LabelB"), properties = emptyList())
+                labels = listOf("LabelA", "LabelB"), properties = emptyList(), false)
         assertEquals(expected, result)
     }
 
@@ -25,11 +25,11 @@ class NodePatternConfigurationTest {
         val pattern = "(:LabelA{!id,foo,bar})"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -39,11 +39,11 @@ class NodePatternConfigurationTest {
         val pattern = "(:LabelA{!id,foo.bar})"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo.bar"))
+                labels = listOf("LabelA"), properties = listOf("foo.bar"), false)
         assertEquals(expected, result)
     }
 
@@ -53,11 +53,11 @@ class NodePatternConfigurationTest {
         val pattern = "(:LabelA{!idA,!idB,foo,bar})"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("idA", "idB"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -67,11 +67,11 @@ class NodePatternConfigurationTest {
         val pattern = "(:LabelA{!id,-foo,-bar})"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.EXCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -82,7 +82,7 @@ class NodePatternConfigurationTest {
 
         try {
             // when
-            NodePatternConfiguration.parse(pattern)
+            NodePatternConfiguration.parse(pattern, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Node pattern $pattern is not homogeneous", e.message)
@@ -97,7 +97,7 @@ class NodePatternConfigurationTest {
 
         try {
             // when
-            NodePatternConfiguration.parse(pattern)
+            NodePatternConfiguration.parse(pattern, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Node pattern $pattern is invalid", e.message)
@@ -112,7 +112,7 @@ class NodePatternConfigurationTest {
 
         try {
             // when
-            NodePatternConfiguration.parse(pattern)
+            NodePatternConfiguration.parse(pattern, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Node pattern $pattern must contains at lest one key", e.message)
@@ -126,11 +126,11 @@ class NodePatternConfigurationTest {
         val pattern = "LabelA:LabelB{!id,*}"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.ALL,
-                labels = listOf("LabelA", "LabelB"), properties = emptyList())
+                labels = listOf("LabelA", "LabelB"), properties = emptyList(), false)
         assertEquals(expected, result)
     }
 
@@ -140,11 +140,11 @@ class NodePatternConfigurationTest {
         val pattern = "LabelA{!id,foo,bar}"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -154,11 +154,11 @@ class NodePatternConfigurationTest {
         val pattern = "LabelA{!id,foo.bar}"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo.bar"))
+                labels = listOf("LabelA"), properties = listOf("foo.bar"), false)
         assertEquals(expected, result)
     }
 
@@ -168,11 +168,11 @@ class NodePatternConfigurationTest {
         val pattern = "LabelA{!idA,!idB,foo,bar}"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("idA", "idB"), type = PatternConfigurationType.INCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -182,11 +182,11 @@ class NodePatternConfigurationTest {
         val pattern = "LabelA{!id,-foo,-bar}"
 
         // when
-        val result = NodePatternConfiguration.parse(pattern)
+        val result = NodePatternConfiguration.parse(pattern, false)
 
         // then
         val expected = NodePatternConfiguration(keys = setOf("id"), type = PatternConfigurationType.EXCLUDE,
-                labels = listOf("LabelA"), properties = listOf("foo", "bar"))
+                labels = listOf("LabelA"), properties = listOf("foo", "bar"), false)
         assertEquals(expected, result)
     }
 
@@ -197,7 +197,7 @@ class NodePatternConfigurationTest {
 
         try {
             // when
-            NodePatternConfiguration.parse(pattern)
+            NodePatternConfiguration.parse(pattern, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Node pattern $pattern is not homogeneous", e.message)
@@ -212,7 +212,7 @@ class NodePatternConfigurationTest {
 
         try {
             // when
-            NodePatternConfiguration.parse(pattern)
+            NodePatternConfiguration.parse(pattern, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Node pattern $pattern must contains at lest one key", e.message)
@@ -231,15 +231,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "(:$startPattern)-[:REL_TYPE]->(:$endPattern)"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = NodePatternConfiguration.parse(startPattern)
-        val end = NodePatternConfiguration.parse(endPattern)
+        val start = NodePatternConfiguration.parse(startPattern, false)
+        val end = NodePatternConfiguration.parse(endPattern, false)
         val properties = emptyList<String>()
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.ALL)
+                properties = properties, type = PatternConfigurationType.ALL, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -251,15 +251,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "(:$startPattern)<-[:REL_TYPE]-(:$endPattern)"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = NodePatternConfiguration.parse(startPattern)
-        val end = NodePatternConfiguration.parse(endPattern)
+        val start = NodePatternConfiguration.parse(startPattern, false)
+        val end = NodePatternConfiguration.parse(endPattern, false)
         val properties = emptyList<String>()
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = end, end = start, relType = relType,
-                properties = properties, type = PatternConfigurationType.ALL)
+                properties = properties, type = PatternConfigurationType.ALL, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -271,15 +271,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "(:$startPattern)-[:REL_TYPE{foo, BAR}]->(:$endPattern)"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo", "BAR")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.INCLUDE)
+                properties = properties, type = PatternConfigurationType.INCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -291,15 +291,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "(:$startPattern)-[:REL_TYPE{foo.BAR, BAR.foo}]->(:$endPattern)"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo.BAR", "BAR.foo")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.INCLUDE)
+                properties = properties, type = PatternConfigurationType.INCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -311,15 +311,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "(:$startPattern)-[:REL_TYPE{-foo, -BAR}]->(:$endPattern)"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo", "BAR")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.EXCLUDE)
+                properties = properties, type = PatternConfigurationType.EXCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -330,7 +330,7 @@ class RelationshipPatternConfigurationTest {
 
         try {
             // when
-            RelationshipPatternConfiguration.parse(pattern)
+            RelationshipPatternConfiguration.parse(pattern, false, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Relationship pattern $pattern is not homogeneous", e.message)
@@ -345,7 +345,7 @@ class RelationshipPatternConfigurationTest {
 
         try {
             // when
-            RelationshipPatternConfiguration.parse(pattern)
+            RelationshipPatternConfiguration.parse(pattern, false, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Relationship pattern $pattern is invalid", e.message)
@@ -360,7 +360,7 @@ class RelationshipPatternConfigurationTest {
 
         try {
             // when
-            RelationshipPatternConfiguration.parse(pattern)
+            RelationshipPatternConfiguration.parse(pattern, false, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Relationship pattern $pattern is invalid", e.message)
@@ -376,15 +376,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "$startPattern REL_TYPE $endPattern"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = NodePatternConfiguration.parse(startPattern)
-        val end = NodePatternConfiguration.parse(endPattern)
+        val start = NodePatternConfiguration.parse(startPattern, false)
+        val end = NodePatternConfiguration.parse(endPattern, false)
         val properties = emptyList<String>()
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.ALL)
+                properties = properties, type = PatternConfigurationType.ALL, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -396,15 +396,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "$startPattern REL_TYPE{foo, BAR} $endPattern"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo", "BAR")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.INCLUDE)
+                properties = properties, type = PatternConfigurationType.INCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -416,15 +416,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "$startPattern REL_TYPE{foo.BAR, BAR.foo} $endPattern"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo.BAR", "BAR.foo")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.INCLUDE)
+                properties = properties, type = PatternConfigurationType.INCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -436,15 +436,15 @@ class RelationshipPatternConfigurationTest {
         val pattern = "$startPattern REL_TYPE{-foo, -BAR} $endPattern"
 
         // when
-        val result = RelationshipPatternConfiguration.parse(pattern)
+        val result = RelationshipPatternConfiguration.parse(pattern, false, false)
 
         // then
-        val start = RelationshipPatternConfiguration.getNodeConf(startPattern)
-        val end = RelationshipPatternConfiguration.getNodeConf(endPattern)
+        val start = RelationshipPatternConfiguration.getNodeConf(startPattern, false)
+        val end = RelationshipPatternConfiguration.getNodeConf(endPattern, false)
         val properties = listOf("foo", "BAR")
         val relType = "REL_TYPE"
         val expected = RelationshipPatternConfiguration(start = start, end = end, relType = relType,
-                properties = properties, type = PatternConfigurationType.EXCLUDE)
+                properties = properties, type = PatternConfigurationType.EXCLUDE, mergeProperties = false)
         assertEquals(expected, result)
     }
 
@@ -455,7 +455,7 @@ class RelationshipPatternConfigurationTest {
 
         try {
             // when
-            RelationshipPatternConfiguration.parse(pattern)
+            RelationshipPatternConfiguration.parse(pattern, false, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Relationship pattern $pattern is not homogeneous", e.message)
@@ -470,7 +470,7 @@ class RelationshipPatternConfigurationTest {
 
         try {
             // when
-            RelationshipPatternConfiguration.parse(pattern)
+            RelationshipPatternConfiguration.parse(pattern, false, false)
         } catch (e: IllegalArgumentException) {
             // then
             assertEquals("The Relationship pattern $pattern is invalid", e.message)
