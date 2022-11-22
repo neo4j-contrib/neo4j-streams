@@ -28,9 +28,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
     val kafkaBrokerProperties: Map<String, Any?>
 
     init {
-        val sourceIdStrategyConfig = SourceIdIngestionStrategyConfig(getString(TOPIC_CDC_SOURCE_ID_LABEL_NAME), getString(TOPIC_CDC_SOURCE_ID_ID_NAME))
         topics = Topics.from(originals as Map<String, Any?>, "streams.sink." to "neo4j.")
-        strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
+        strategyMap = TopicUtils.toStrategyMap(topics)
 
         parallelBatches = getBoolean(BATCH_PARALLELIZE)
         val kafkaPrefix = "kafka."
@@ -68,8 +67,17 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
         const val TOPIC_CDC_SOURCE_ID_ID_NAME = "neo4j.topic.cdc.sourceId.idName"
         const val TOPIC_PATTERN_NODE_PREFIX = "neo4j.topic.pattern.node."
         const val TOPIC_PATTERN_RELATIONSHIP_PREFIX = "neo4j.topic.pattern.relationship."
+        const val TOPIC_PATTERN_MERGE_NODE_PROPERTIES_ENABLED = "neo4j.topic.pattern.merge.node.properties.enabled"
+        const val TOPIC_PATTERN_MERGE_RELATIONSHIP_PROPERTIES_ENABLED = "neo4j.topic.pattern.merge.relationship.properties.enabled"
         const val TOPIC_CDC_SCHEMA = "neo4j.topic.cdc.schema"
         const val TOPIC_CUD = "neo4j.topic.cud"
+
+
+        const val DEFAULT_BATCH_PARALLELIZE = true
+        const val DEFAULT_TOPIC_PATTERN_MERGE_NODE_PROPERTIES_ENABLED = false
+        const val DEFAULT_TOPIC_PATTERN_MERGE_RELATIONSHIP_PROPERTIES_ENABLED = false
+
+
 
         private val sourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()
 
@@ -92,11 +100,19 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
                             .build())
                     .define(ConfigKeyBuilder.of(BATCH_PARALLELIZE, ConfigDef.Type.BOOLEAN)
                             .documentation(PropertiesUtil.getProperty(BATCH_PARALLELIZE)).importance(ConfigDef.Importance.MEDIUM)
-                            .defaultValue(true).group(ConfigGroup.BATCH)
+                            .defaultValue(DEFAULT_BATCH_PARALLELIZE).group(ConfigGroup.BATCH)
                             .build())
                     .define(ConfigKeyBuilder.of(TOPIC_CUD, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(TOPIC_CUD)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
                             .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_PATTERN_MERGE_NODE_PROPERTIES_ENABLED, ConfigDef.Type.BOOLEAN)
+                        .documentation(PropertiesUtil.getProperty(TOPIC_PATTERN_MERGE_NODE_PROPERTIES_ENABLED)).importance(ConfigDef.Importance.MEDIUM)
+                        .defaultValue(DEFAULT_TOPIC_PATTERN_MERGE_NODE_PROPERTIES_ENABLED).group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                        .build())
+                    .define(ConfigKeyBuilder.of(TOPIC_PATTERN_MERGE_RELATIONSHIP_PROPERTIES_ENABLED, ConfigDef.Type.BOOLEAN)
+                        .documentation(PropertiesUtil.getProperty(TOPIC_PATTERN_MERGE_RELATIONSHIP_PROPERTIES_ENABLED)).importance(ConfigDef.Importance.MEDIUM)
+                        .defaultValue(DEFAULT_TOPIC_PATTERN_MERGE_RELATIONSHIP_PROPERTIES_ENABLED).group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                        .build())
     }
 }

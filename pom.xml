@@ -57,7 +57,7 @@
         <jackson.version>2.13.4</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.9</neo4j.java.driver.version>
-        <testcontainers.version>1.15.1</testcontainers.version>
+        <testcontainers.version>1.17.6</testcontainers.version>
         <avro.version>1.8.2</avro.version>
         <mokito.version>4.8.0</mokito.version>
         <junit.version>4.13.2</junit.version>

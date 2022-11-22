@@ -18,6 +18,7 @@ class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig): StreamsStrateg
         when (val topicConfig = topicConfigMap.getOrDefault(topicType, emptyList<Any>())) {
             is Collection<*> -> topicConfig.contains(topic)
             is Map<*, *> -> topicConfig.containsKey(topic)
+            is Pair<*, *> -> (topicConfig.first as Set<String>).contains(topic)
             else -> false
         }
     }

@@ -7,7 +7,11 @@ import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.SchemaUtils
 import streams.utils.StreamsUtils
 
-data class SourceIdIngestionStrategyConfig(val labelName: String = "SourceEvent", val idName: String = "sourceId")
+data class SourceIdIngestionStrategyConfig(val labelName: String = "SourceEvent", val idName: String = "sourceId") {
+    companion object {
+        val DEFAULT = SourceIdIngestionStrategyConfig()
+    }
+}
 
 class SourceIdIngestionStrategy(config: SourceIdIngestionStrategyConfig = SourceIdIngestionStrategyConfig()): IngestionStrategy {
 

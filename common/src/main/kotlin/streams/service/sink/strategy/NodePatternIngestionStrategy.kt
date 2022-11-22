@@ -15,7 +15,7 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
                 |MERGE (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})
-                |SET n = event.properties
+                |SET n ${if (nodePatternConfiguration.mergeProperties) "+" else ""}= event.properties
                 |SET n += event.keys
             """.trimMargin()
 

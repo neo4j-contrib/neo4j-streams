@@ -15,15 +15,15 @@ class RelationshipPatternIngestionStrategy(private val relationshipPatternConfig
                 |MERGE (start${getLabelsAsString(relationshipPatternConfiguration.start.labels)}{${
                     getNodeMergeKeys("start.keys", relationshipPatternConfiguration.start.keys)
                 }})
-                |SET start = event.start.properties
+                |SET start ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.start.properties
                 |SET start += event.start.keys
                 |MERGE (end${getLabelsAsString(relationshipPatternConfiguration.end.labels)}{${
                     getNodeMergeKeys("end.keys", relationshipPatternConfiguration.end.keys)
                 }})
-                |SET end = event.end.properties
+                |SET end ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.end.properties
                 |SET end += event.end.keys
                 |MERGE (start)-[r:${relationshipPatternConfiguration.relType}]->(end)
-                |SET r = event.properties
+                |SET r ${if (relationshipPatternConfiguration.mergeProperties) "+" else ""}= event.properties
             """.trimMargin()
 
     private val deleteRelationshipTemplate: String = """
