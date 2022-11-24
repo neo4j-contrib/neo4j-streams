@@ -46,7 +46,6 @@
         <module>kafka-connect-neo4j</module>
         <module>producer</module>
         <module>consumer</module>
-        <module>doc</module>
         <module>distribution</module>
     </modules>
 
