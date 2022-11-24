@@ -21,7 +21,6 @@ jobs:
           ignore-unfixed: true
           format: 'sarif'
           output: 'trivy-results.sarif'
-          skip-dirs: 'doc'
           # severity: 'CRITICAL'
 
       - name: Upload Trivy scan results to GitHub Security tab
