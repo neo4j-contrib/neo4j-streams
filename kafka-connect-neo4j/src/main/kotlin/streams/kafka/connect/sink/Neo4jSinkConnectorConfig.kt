@@ -21,6 +21,8 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
 
     val parallelBatches: Boolean
 
+    val dropUnwind: Boolean
+
     val topics: Topics
 
     val strategyMap: Map<TopicType, Any>
@@ -33,6 +35,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
         strategyMap = TopicUtils.toStrategyMap(topics, sourceIdStrategyConfig)
 
         parallelBatches = getBoolean(BATCH_PARALLELIZE)
+        dropUnwind = getBoolean(CYPHER_DROP_UNWIND)
         val kafkaPrefix = "kafka."
         kafkaBrokerProperties = originals
                 .filterKeys { it.startsWith(kafkaPrefix) }
@@ -61,6 +64,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
     companion object {
 
         const val BATCH_PARALLELIZE = "neo4j.batch.parallelize"
+        const val CYPHER_DROP_UNWIND = "neo4j.cypher.dropUnwind"
 
         const val TOPIC_CYPHER_PREFIX = "neo4j.topic.cypher."
         const val TOPIC_CDC_SOURCE_ID = "neo4j.topic.cdc.sourceId"
@@ -89,6 +93,10 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>): Neo4jConnectorConfig(confi
                     .define(ConfigKeyBuilder.of(TOPIC_CDC_SCHEMA, ConfigDef.Type.STRING)
                             .documentation(PropertiesUtil.getProperty(TOPIC_CDC_SCHEMA)).importance(ConfigDef.Importance.HIGH)
                             .defaultValue("").group(ConfigGroup.TOPIC_CYPHER_MAPPING)
+                            .build())
+                    .define(ConfigKeyBuilder.of(CYPHER_DROP_UNWIND, ConfigDef.Type.BOOLEAN)
+                            .documentation(PropertiesUtil.getProperty(CYPHER_DROP_UNWIND)).importance(ConfigDef.Importance.LOW)
+                            .defaultValue(false).group(ConfigGroup.BATCH)
                             .build())
                     .define(ConfigKeyBuilder.of(BATCH_PARALLELIZE, ConfigDef.Type.BOOLEAN)
                             .documentation(PropertiesUtil.getProperty(BATCH_PARALLELIZE)).importance(ConfigDef.Importance.MEDIUM)

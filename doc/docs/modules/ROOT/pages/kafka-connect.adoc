@@ -427,6 +427,7 @@ Following a summary of all the configuration parameters you can use for the Kafk
 | neo4j.topic.pattern.relationship.<TOPIC_NAME> | <relationship extraction pattern> | false |
 | neo4j.topic.cud | <list of topics separated by semicolon> | false |
 | neo4j.topic.cypher.<topic> | <valid Cypher query> | false |
+| neo4j.cypher.dropUnwind | boolean | false | If enabled connector will drop UNWIND part which prefixes cypher query under the hood. Useful for single query execution without events.
 |===
 
 .Kafka Connect Source configuration parameters

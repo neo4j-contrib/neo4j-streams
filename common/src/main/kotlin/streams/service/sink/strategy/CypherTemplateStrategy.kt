@@ -3,8 +3,8 @@ package streams.service.sink.strategy
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
 
-class CypherTemplateStrategy(query: String): IngestionStrategy {
-    private val fullQuery = "${StreamsUtils.UNWIND} $query"
+class CypherTemplateStrategy(query: String, dropUnwind: Boolean = false): IngestionStrategy {
+    private val fullQuery = if (dropUnwind) query else "${StreamsUtils.UNWIND} $query"
     override fun mergeNodeEvents(events: Collection<StreamsSinkEntity>): List<QueryEvents> {
         return listOf(QueryEvents(fullQuery, events.mapNotNull { it.value as? Map<String, Any> }))
     }
