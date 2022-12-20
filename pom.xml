@@ -44,7 +44,6 @@
         <module>common</module>
         <module>test-support</module>
         <module>kafka-connect-neo4j</module>
-        <module>doc</module>
     </modules>
 
     <properties>
