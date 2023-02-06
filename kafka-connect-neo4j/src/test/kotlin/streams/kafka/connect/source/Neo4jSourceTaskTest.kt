@@ -292,4 +292,50 @@ class Neo4jSourceTaskTest {
 
         task.poll()
     }
+
+    @Test
+    fun `should source data from mock with custom QUERY without streaming property with Schema`() {
+        val props = mutableMapOf<String, String>()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
+        props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
+        props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = """
+                |WITH
+                |{
+                |   id: 'ROOT_ID',
+                |   root: [
+                |       { children: [] },
+                |       { children: [{ name: "child" }] }
+                |   ],
+                |   arr: [null, {foo: "bar"}]
+                |} AS data
+                |RETURN data, data.id AS id
+            """.trimMargin()
+        props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+
+        task.start(props)
+        val totalRecords = 10
+        insertRecords(totalRecords)
+
+        val list = mutableListOf<SourceRecord>()
+
+        val expected = mapOf(
+            "id" to "ROOT_ID",
+            "data" to mapOf(
+                "id" to "ROOT_ID",
+                "arr" to listOf(null, mapOf("foo" to "bar")),
+                "root" to listOf(
+                    mapOf("children" to emptyList<Map<String, Any>>()),
+                    mapOf("children" to listOf(mapOf("name" to "child")))
+                )
+            )
+        )
+
+        Assert.assertEventually(ThrowingSupplier {
+            task.poll()?.let { list.addAll(it) }
+            val actualList = list.map { (it.value() as Struct).toMap() }
+            actualList.first() == expected
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+    }
 }
