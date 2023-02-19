@@ -56,9 +56,13 @@ class SourceRecordBuilder {
                 "value" to timestamp)
         val (struct, schema) = when (enforceSchema) {
             true -> {
-                val st = record.asStruct()
-                val sc = st.schema()
-                st to sc
+                try {
+                    val st = record.asStruct()
+                    val sc = st.schema()
+                    st to sc
+                } catch (e: Exception) {
+                    throw RuntimeException("Failed to structure record: $record", e)
+                }
             }
             else -> record.asJsonString() to Schema.STRING_SCHEMA
         }
