@@ -15,7 +15,6 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.neo4j.driver.Driver
 import org.neo4j.driver.Session
-import org.neo4j.driver.types.Node
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.Neo4jContainerExtension
@@ -195,6 +194,16 @@ class Neo4jSourceTaskTest {
                                 |       key1: "value1",
                                 |       key2: "value2"
                                 |   } AS map,
+                                |   {
+                                |       key1: {
+                                |           subKey1: "value",
+                                |           subKey2: "value"
+                                |       },
+                                |       key2: {
+                                |           subKey1: "value",
+                                |           subKey2: true
+                                |       }
+                                |   } AS nested,
                                 |   n AS node
                             """.trimMargin())
             val next = result.next()
@@ -274,6 +283,16 @@ class Neo4jSourceTaskTest {
                 |       key1: "value1",
                 |       key2: "value2"
                 |   } AS map,
+                |   {
+                |       key1: {
+                |           subKey1: "value",
+                |           subKey2: "value"
+                |       },
+                |       key2: {
+                |           subKey1: "value",
+                |           subKey2: true
+                |       }
+                |   } AS nested,
                 |   n AS node
             """.trimMargin()
 
