@@ -1,9 +1,0 @@
-= Retries & Error Handling
-
-Messages being processed by neo4j-streams may provoke transaction errors in Neo4j.  In general, neo4j-streams does not support retries, and careful thought is needed to design a strategy that will work.  For example:
-
-* Errors may be caused by too much parallelism and node locking when writing relationships; in this case, rather than retries, a different write mechanism is a better idea
-* If Neo4j-streams grows to support retries, it needs to have configurable strategies for how many times to retry, when to backoff, and so on.  This would greatly complicate the situation
-* If a cascade of errors starts happening (for example during a leader re-election) under constant load from Kafka, you could have a cascade of retries, which would basically turn into a denial of service attack on the cluster.
-
-For all of these reasons, neo4j-streams doesn't support retries but sends error messages (at the user's option) to a configurable dead letter queue. (DLQ).   If your application needs retry logic you might consider downstream logic on the DLQ to handle them however is appropriate.

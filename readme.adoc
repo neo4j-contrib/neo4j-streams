@@ -58,6 +58,10 @@ You'll find the build artifact in `<project_dir>/target/neo4j-streams-<VERSION>.
 
 Testing the link:{docs}#_docker_compose_file[Kafka Connect Neo4j Connector locally with Docker].
 
+==== Docs
+
+The documentation source for this version lives at https://github.com/neo4j/docs-kafka-streams[this repository]. Please raise any documentation updates by creating a PR against it.
+
 ==== License
 
 Neo4j Streams is licensed under the terms of the Apache License, version 2.0.  See `LICENSE` for more details. 
