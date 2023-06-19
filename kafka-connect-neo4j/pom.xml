@@ -22,7 +22,7 @@
         <confluent.connect.plugin.version>0.12.0</confluent.connect.plugin.version>
         <mvn.assembly.plugin.version>3.1.0</mvn.assembly.plugin.version>
         <kafka.connect.utils.version>0.7.173</kafka.connect.utils.version>
-        <google.guava.version>31.1-jre</google.guava.version>
+        <google.guava.version>32.0.0-jre</google.guava.version>
     </properties>
 
     <repositories>
