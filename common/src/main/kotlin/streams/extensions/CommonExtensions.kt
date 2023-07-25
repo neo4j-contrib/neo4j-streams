@@ -74,7 +74,7 @@ private fun convertAvroData(rawValue: Any?): Any? = when (rawValue) {
             .mapValues { convertAvroData(it.value) }
     is GenericFixed -> rawValue.bytes()
     is ByteBuffer -> rawValue.array()
-    is GenericEnumSymbol, is CharSequence -> rawValue.toString()
+    is GenericEnumSymbol<*>, is CharSequence -> rawValue.toString()
     else -> rawValue
 }
 fun IndexedRecord.toMap() = this.schema.fields
