@@ -65,7 +65,7 @@ class KafkaEventRouterEnterpriseTSE {
             }
             StreamsUtils.ignoreExceptions({
                 neo4j.withWaitStrategy(LogMessageWaitStrategy()
-                    .withRegEx(".*\\[(${DB_NAME_NAMES.joinToString("|")}|neo4j)] \\[Source\\] Streams Source module initialised\n")
+                    .withRegEx(".*\\[(${DB_NAME_NAMES.joinToString("|")}|neo4j)/\\w+\\] \\[Source\\] Streams Source module initialised\n")
                     .withTimes(DB_NAME_NAMES.size + 1)
                     .withStartupTimeout(Duration.ofMinutes(10)))
                 DB_NAME_NAMES.forEach {
