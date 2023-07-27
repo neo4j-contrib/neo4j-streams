@@ -35,6 +35,7 @@ class KafkaEventSinkSuiteIT {
          * 4.0.x	          | 1.0.x
          * 4.1.x	          | 1.1.x
          * 5.0.x	          | 2.0.x
+         * 7.4.X              | 3.4.x (We are currently using 3.5.1 which is backward compatible)
          *
          * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
          */
