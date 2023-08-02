@@ -1,6 +1,7 @@
 package streams.service.sink.strategy
 
 import streams.events.EntityType
+import streams.extensions.Quadruple
 import streams.extensions.quote
 import streams.utils.JSONUtils
 import streams.service.StreamsSinkEntity
@@ -40,6 +41,7 @@ data class CUDNodeRel(val ids: Map<String, Any?> = emptyMap(),
 
 data class CUDRelationship(override val op: CUDOperations,
                            override val properties: Map<String, Any?> = emptyMap(),
+                           val ids: Map<String, Any?>,
                            val rel_type: String,
                            val from: CUDNodeRel,
                            val to: CUDNodeRel): CUD() {
@@ -109,12 +111,12 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildRelMergeStatement(from: NodeRelMetadata, to: NodeRelMetadata,
-                                        rel_type: String, ids: Set<String>): String = """
+                                        rel_type: String, ids: Map<String, Any?>): String = """
             |${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${StreamsUtils.WITH_EVENT_FROM}
             |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
-            |MERGE ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = ids)}]->($TO_KEY)
+            |MERGE ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = ids.map { it.key }.toSet())}]->($TO_KEY)
             |SET r += event.properties
         """.trimMargin()
 
@@ -140,11 +142,11 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildRelDeleteStatement(from: NodeRelMetadata, to: NodeRelMetadata,
-                                        rel_type: String, ids: Set<String>): String = """
+                                        rel_type: String, ids: Map<String, Any?>): String = """
             |${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
-            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = ids)}]->($TO_KEY)
+            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = ids.map { it.key }.toSet())}]->($TO_KEY)
             |DELETE r
         """.trimMargin()
 
@@ -244,7 +246,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                 .groupBy({ it.op }, { it })
 
         return data.flatMap { (op, list) ->
-            list.groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type) }
+            list.groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type, it.ids) }
                     .map {
                         val (from, to, rel_type, ids) = it.key
                         val query = when (op) {
@@ -272,7 +274,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                         }
                     }
                 }
-                .groupBy { Triple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type) }
+                .groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type, it.from.ids) }
                 .map {
                     val (from, to, rel_type, ids) = it.key
                     QueryEvents(buildRelDeleteStatement(from, to, rel_type, ids), it.value.map { it.toMap() })
