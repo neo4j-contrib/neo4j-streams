@@ -258,7 +258,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op= if (it in invalidMarker) CUDOperations.delete else CUDOperations.create)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -433,7 +433,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -521,7 +521,7 @@ class CUDIngestionStrategyTest {
         val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
         val end = CUDNodeRel(ids = mapOf(key to 2), labels = listOf(endNode))
         val list = listOf(CUDOperations.create, CUDOperations.delete, CUDOperations.update).map {
-            val rel = CUDRelationship(op = it, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(op = it, from = start, to = end, rel_type = relType, ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -576,7 +576,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op = CUDOperations.merge)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels, op = CUDOperations.merge)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -671,7 +671,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op = CUDOperations.match)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels, op = if (it <= 5) CUDOperations.merge else CUDOperations.create)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -767,7 +767,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels, op = if (it <= 5) CUDOperations.merge else CUDOperations.create)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels, CUDOperations.match)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -856,7 +856,7 @@ class CUDIngestionStrategyTest {
             val properties = emptyMap<String, Any>()
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels)
             val end = CUDNodeRel(ids = mapOf(key to it + 1), labels = labels)
-            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -905,7 +905,7 @@ class CUDIngestionStrategyTest {
             val start = CUDNodeRel(ids = mapOf(key to it), labels = labels)
             val relKey = if (it % 2 == 0) key else "key"
             val end = CUDNodeRel(ids = mapOf(relKey to it + 1), labels = labels)
-            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
@@ -960,7 +960,7 @@ class CUDIngestionStrategyTest {
             }
             val start = CUDNodeRel(ids = mapOf("_id" to it), labels = labels)
             val end = CUDNodeRel(ids = mapOf("_id" to it + 1), labels = labels)
-            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL")
+            val rel = CUDRelationship(op = op, properties = properties, from = start, to = end, rel_type = "MY_REL", ids=emptyMap<String, Any?>())
             StreamsSinkEntity(null, rel)
         }
 
