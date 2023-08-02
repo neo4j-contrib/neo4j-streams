@@ -274,7 +274,7 @@ class CUDIngestionStrategy: IngestionStrategy {
                         }
                     }
                 }
-                .groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type, it.from.ids) }
+                .groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type, it.ids) }
                 .map {
                     val (from, to, rel_type, ids) = it.key
                     QueryEvents(buildRelDeleteStatement(from, to, rel_type, ids), it.value.map { it.toMap() })
