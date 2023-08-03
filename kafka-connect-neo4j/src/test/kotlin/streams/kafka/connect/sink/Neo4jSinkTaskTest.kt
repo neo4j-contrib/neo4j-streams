@@ -983,7 +983,7 @@ class Neo4jSinkTaskTest {
         
         val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
         val end = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(endNode))
-        val relMerge = CUDRelationship(op = CUDOperations.merge, from = start, to = end, rel_type = relType)
+        val relMerge = CUDRelationship(op = CUDOperations.merge, from = start, to = end, rel_type = relType, ids = mapOf())
         val sinkRecordMerge = SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(relMerge), 0L)
 
         val props = mutableMapOf<String, String>()
@@ -1003,7 +1003,7 @@ class Neo4jSinkTaskTest {
             assertEquals(1L, countRels)
         }
 
-        val relDelete = CUDRelationship(op = CUDOperations.delete, from = start, to = end, rel_type = relType)
+        val relDelete = CUDRelationship(op = CUDOperations.delete, from = start, to = end, rel_type = relType, ids = mapOf())
         val sinkRecordDelete = SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(relDelete), 1L)
         task.put(listOf(sinkRecordDelete))
 
@@ -1064,7 +1064,7 @@ class Neo4jSinkTaskTest {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
-            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = rel_type)
+            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = rel_type, ids = mapOf())
             SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
         }
         val props = mutableMapOf<String, String>()
@@ -1108,7 +1108,7 @@ class Neo4jSinkTaskTest {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
-            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType, ids = mapOf())
             SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
         }
         val props = mutableMapOf<String, String>()
@@ -1136,7 +1136,7 @@ class Neo4jSinkTaskTest {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
-            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType, ids = mapOf())
             SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
         }
 
@@ -1166,7 +1166,7 @@ class Neo4jSinkTaskTest {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
-            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(op = CUDOperations.merge, properties = properties, from = start, to = end, rel_type = relType, ids = mapOf())
             SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
         }
 
@@ -1222,7 +1222,7 @@ class Neo4jSinkTaskTest {
             val opStartNode = if (it in invalidNodeRelMarkers) CUDOperations.delete else CUDOperations.merge
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = opStartNode)
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
-            val rel = CUDRelationship(op = opRelationship, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(op = opRelationship, properties = properties, from = start, to = end, rel_type = relType, ids = mapOf())
             SinkRecord(topic, 1, null, null, null, JSONUtils.asMap(rel), it.toLong())
         }
 
