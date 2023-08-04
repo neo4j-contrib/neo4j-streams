@@ -50,13 +50,11 @@ data class CUDRelationship(override val op: CUDOperations,
     fun toMap(): Map<String, Any> {
         val from = mapOf("ids" to from.ids)
         val to = mapOf("ids" to to.ids)
-        return when (op) {
-            CUDOperations.delete -> mapOf(FROM_KEY to from,
-                    TO_KEY to to)
-            else -> mapOf(FROM_KEY to from,
-                    TO_KEY to to,
-                    "properties" to properties)
-        }
+        return mapOf(
+            FROM_KEY to from,
+            TO_KEY to to,
+            "properties" to properties
+        )
     }
 }
 
