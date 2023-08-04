@@ -6,7 +6,7 @@ data class Quadruple<out A, out B, out C, out D>(
     val first: A,
     val second: B,
     val third: C,
-    val forth: D
+    val fourth: D
 ) : Serializable {
-    override fun toString(): String = "($first, $second, $third, $forth)"
+    override fun toString(): String = "($first, $second, $third, $fourth)"
 }

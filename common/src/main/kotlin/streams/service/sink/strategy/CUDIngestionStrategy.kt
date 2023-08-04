@@ -50,13 +50,11 @@ data class CUDRelationship(override val op: CUDOperations,
     fun toMap(): Map<String, Any> {
         val from = mapOf("ids" to from.ids)
         val to = mapOf("ids" to to.ids)
-        return when (op) {
-            CUDOperations.delete -> mapOf(FROM_KEY to from,
-                    TO_KEY to to)
-            else -> mapOf(FROM_KEY to from,
-                    TO_KEY to to,
-                    "properties" to properties)
-        }
+        return mapOf(
+            FROM_KEY to from,
+            TO_KEY to to,
+            "properties" to properties
+        )
     }
 }
 
@@ -142,11 +140,11 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildRelDeleteStatement(from: NodeRelMetadata, to: NodeRelMetadata,
-                                        rel_type: String, ids: Map<String, Any?>): String = """
+                                        rel_type: String, properties: Map<String, Any?>): String = """
             |${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
-            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = ids.map { it.key }.toSet())}]->($TO_KEY)
+            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} ${getNodeKeysAsString(keys = properties.map { it.key }.toSet())}]->($TO_KEY)
             |DELETE r
         """.trimMargin()
 
@@ -246,12 +244,12 @@ class CUDIngestionStrategy: IngestionStrategy {
                 .groupBy({ it.op }, { it })
 
         return data.flatMap { (op, list) ->
-            list.groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type, it.ids) }
+            list.groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys, it.from.op), NodeRelMetadata(getLabels(it.to), it.to.ids.keys, it.to.op), it.rel_type, it.properties) }
                     .map {
-                        val (from, to, rel_type, ids) = it.key
+                        val (from, to, rel_type, properties) = it.key
                         val query = when (op) {
                             CUDOperations.create -> buildRelCreateStatement(from, to, rel_type)
-                            CUDOperations.merge -> buildRelMergeStatement(from, to, rel_type, ids)
+                            CUDOperations.merge -> buildRelMergeStatement(from, to, rel_type, properties)
                             else -> buildRelUpdateStatement(from, to, rel_type)
                         }
                         QueryEvents(query, it.value.map { it.toMap() })
@@ -274,10 +272,10 @@ class CUDIngestionStrategy: IngestionStrategy {
                         }
                     }
                 }
-                .groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type, it.ids) }
+                .groupBy { Quadruple(NodeRelMetadata(getLabels(it.from), it.from.ids.keys), NodeRelMetadata(getLabels(it.to), it.to.ids.keys), it.rel_type, it.properties) }
                 .map {
-                    val (from, to, rel_type, ids) = it.key
-                    QueryEvents(buildRelDeleteStatement(from, to, rel_type, ids), it.value.map { it.toMap() })
+                    val (from, to, rel_type, properties) = it.key
+                    QueryEvents(buildRelDeleteStatement(from, to, rel_type, properties), it.value.map { it.toMap() })
                 }
     }
 
