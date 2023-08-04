@@ -146,7 +146,7 @@ class CUDIngestionStrategy: IngestionStrategy {
             |${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
-            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} {${getNodeKeysAsString(keys = ids.map { it.key }.toSet())}}]->($TO_KEY)
+            |MATCH ($FROM_KEY)-[r:${rel_type.quote()} {${getNodeKeysAsString(prefix = "ids", keys = ids.map { it.key }.toSet())}}]->($TO_KEY)
             |DELETE r
         """.trimMargin()
 
