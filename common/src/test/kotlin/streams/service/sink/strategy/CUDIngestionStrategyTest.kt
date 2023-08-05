@@ -294,7 +294,7 @@ class CUDIngestionStrategyTest {
                 |CREATE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(3, mergeRelFooBarLabel.events.size)
@@ -470,7 +470,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(1, mergeRelFooBar.events.size)
@@ -499,7 +499,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, mergeRelFooBarLabel.events.size)
@@ -558,7 +558,7 @@ class CUDIngestionStrategyTest {
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:$startNode {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (to:$endNode {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (from)-[r:$relType {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MATCH (from)-[r:$relType {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
         assertEquals(1, deleteRel.events.size)
@@ -615,7 +615,7 @@ class CUDIngestionStrategyTest {
                 |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(1, mergeRelFooBar.events.size)
@@ -644,7 +644,7 @@ class CUDIngestionStrategyTest {
                 |MERGE (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, mergeRelFooBarLabel.events.size)
@@ -711,7 +711,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, mergeRelFooBar.events.size)
@@ -721,7 +721,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MERGE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, matchMergeAndMergeRelFooBar.events.size)
@@ -731,7 +731,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |CREATE (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(1, matchMergeAndCreateRelFooBar.events.size)
@@ -808,7 +808,7 @@ class CUDIngestionStrategyTest {
                 |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, mergeRelFooBar.events.size)
@@ -818,7 +818,7 @@ class CUDIngestionStrategyTest {
                 |MERGE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(2, matchMergeAndMergeRelFooBar.events.size)
@@ -828,7 +828,7 @@ class CUDIngestionStrategyTest {
                 |CREATE (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(1, matchMergeAndCreateRelFooBar.events.size)
@@ -887,7 +887,7 @@ class CUDIngestionStrategyTest {
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (to:Foo:Bar {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MATCH (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
         assertEquals(5, deleteRelFooBar.events.size)
@@ -896,7 +896,7 @@ class CUDIngestionStrategyTest {
                 |${StreamsUtils.UNWIND}
                 |MATCH (from:Foo:Bar:Label {key: event.from.${CUDIngestionStrategy.ID_KEY}.key})
                 |MATCH (to:Foo:Bar:Label {key: event.to.${CUDIngestionStrategy.ID_KEY}.key})
-                |MATCH (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MATCH (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
         assertEquals(5, deleteRelFooBarLabel.events.size)
@@ -937,7 +937,7 @@ class CUDIngestionStrategyTest {
                 |${StreamsUtils.UNWIND}
                 |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
                 |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
-                |MATCH (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MATCH (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
         assertEquals(5, deleteRel.events.size)
@@ -947,7 +947,7 @@ class CUDIngestionStrategyTest {
                 |${StreamsUtils.UNWIND}
                 |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
                 |MATCH (to:Foo:Bar:Label {$relKey: event.to.${CUDIngestionStrategy.ID_KEY}.$relKey})
-                |MATCH (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MATCH (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |DELETE r
             """.trimMargin(), relationshipDeleteEvents)
         assertEquals(5, deleteRelFooBarLabel.events.size)
@@ -1005,7 +1005,7 @@ class CUDIngestionStrategyTest {
                 |MATCH (from) WHERE id(from) = event.from.${CUDIngestionStrategy.ID_KEY}._id
                 |${StreamsUtils.WITH_EVENT_FROM}
                 |MATCH (to) WHERE id(to) = event.to.${CUDIngestionStrategy.ID_KEY}._id
-                |MERGE (from)-[r:MY_REL {id1: event.properties.id1, id2: event.properties.id2}]->(to)
+                |MERGE (from)-[r:MY_REL {id1: event.ids.id1, id2: event.ids.id2}]->(to)
                 |SET r += event.properties
             """.trimMargin(), relationshipEvents)
         assertEquals(3, mergeRelFooBar.events.size)
