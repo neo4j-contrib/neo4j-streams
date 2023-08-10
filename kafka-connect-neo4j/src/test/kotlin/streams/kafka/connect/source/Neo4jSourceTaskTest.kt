@@ -290,7 +290,17 @@ class Neo4jSourceTaskTest {
         val totalRecords = 10
         insertRecords(totalRecords)
 
-        task.poll()
+        var exception: ConnectException? = null
+        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
+            try {
+                task.poll()
+                false
+            } catch (e: ConnectException) {
+                exception = e
+                true
+            }
+        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+        if (exception != null) throw exception as ConnectException
     }
 
     @Test
