@@ -190,8 +190,8 @@ class Neo4jSinkTaskTest {
         val secondTopic = "foo"
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
-        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
-        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {modified: event.place.modified})"
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {modified: event.place.modified})"
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
         props[Neo4jConnectorConfig.BATCH_SIZE] = 2.toString()
         props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
