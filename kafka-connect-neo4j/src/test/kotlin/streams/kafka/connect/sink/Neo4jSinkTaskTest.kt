@@ -82,6 +82,13 @@ class Neo4jSinkTaskTest {
         task.initialize(mock(SinkTaskContext::class.java))
     }
 
+    private val PLACE_SCHEMA = SchemaBuilder.struct().name("com.example.Place")
+            .field("name", Schema.STRING_SCHEMA)
+            .field("latitude", Schema.FLOAT32_SCHEMA)
+            .field("longitude", Schema.FLOAT32_SCHEMA)
+            .field("modified", Timestamp.SCHEMA)
+            .build()
+
     private val PERSON_SCHEMA = SchemaBuilder.struct().name("com.example.Person")
             .field("firstName", Schema.STRING_SCHEMA)
             .field("lastName", Schema.STRING_SCHEMA)
@@ -93,12 +100,7 @@ class Neo4jSinkTaskTest {
             .field("float", Schema.OPTIONAL_FLOAT32_SCHEMA)
             .field("double", Schema.OPTIONAL_FLOAT64_SCHEMA)
             .field("modified", Timestamp.SCHEMA)
-            .build()
-
-    private val PLACE_SCHEMA = SchemaBuilder.struct().name("com.example.Place")
-            .field("name", Schema.STRING_SCHEMA)
-            .field("latitude", Schema.FLOAT32_SCHEMA)
-            .field("longitude", Schema.FLOAT32_SCHEMA)
+            .field("place", PLACE_SCHEMA)
             .build()
 
     @Test
@@ -163,6 +165,54 @@ class Neo4jSinkTaskTest {
                 .put("double", -2436546.56457)
                 .put("age", 21)
                 .put("modified", Date(1474661402123L))
+
+        task.start(props)
+        val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),
+                SinkRecord(secondTopic, 1, null, null, PERSON_SCHEMA, struct, 43))
+        task.put(input)
+        session.beginTransaction().use {
+            val personCount = it.run("MATCH (p:Person) RETURN COUNT(p) as COUNT").single()["COUNT"].asLong()
+            val expectedPersonCount = input.filter { it.topic() == secondTopic }.size
+            assertEquals(expectedPersonCount, personCount.toInt())
+            val personExtCount = it.run("MATCH (p:PersonExt) RETURN COUNT(p) as COUNT").single()["COUNT"].asLong()
+            val expectedPersonExtCount = input.filter { it.topic() == firstTopic }.size
+            assertEquals(expectedPersonExtCount, personExtCount.toInt())
+        }
+    }
+
+    @Test
+    fun `should successfully parse nested timestamps`() {
+        val firstTopic = "neotopic"
+        val secondTopic = "foo"
+        val props = mutableMapOf<String, String>()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$firstTopic"] = "CREATE (n:PersonExt {name: event.firstName, surname: event.lastName})"
+        props["${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}$secondTopic"] = "CREATE (n:Person {name: event.firstName})"
+        props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jConnectorConfig.BATCH_SIZE] = 2.toString()
+        props[SinkTask.TOPICS_CONFIG] = "$firstTopic,$secondTopic"
+
+        val place = Struct(PLACE_SCHEMA)
+                .put("name", "San Mateo (CA)")
+                .put("latitude", 37.5629917.toFloat())
+                .put("longitude", -122.3255254.toFloat())
+                .put("modified", Date(1474661402123L))
+        val struct= Struct(PERSON_SCHEMA)
+                .put("firstName", "Alex")
+                .put("lastName", "Smith")
+                .put("bool", true)
+                .put("short", 1234.toShort())
+                .put("byte", (-32).toByte())
+                .put("long", 12425436L)
+                .put("float", 2356.3.toFloat())
+                .put("double", -2436546.56457)
+                .put("age", 21)
+                .put("modified", Date(1474661402123L))
+                .put("place", place)
 
         task.start(props)
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, struct, 42),

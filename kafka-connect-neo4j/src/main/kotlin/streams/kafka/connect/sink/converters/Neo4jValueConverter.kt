@@ -58,6 +58,6 @@ class Neo4jValueConverter: MapValueConverter<Value>() {
         val converted = convert(value)
             .mapValues { it.value?.asObject() }
             .toMutableMap() as MutableMap<Any?, Any?>
-        setMap(result, fieldName, null, converted)
+        setValue(result, fieldName, converted)
     }
 }
