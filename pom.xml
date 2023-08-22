@@ -43,7 +43,6 @@
     <modules>
         <module>common</module>
         <module>test-support</module>
-        <module>kafka-connect-neo4j</module>
         <module>producer</module>
         <module>consumer</module>
         <module>distribution</module>
@@ -108,6 +107,11 @@
             <dependency>
                 <groupId>org.neo4j.community</groupId>
                 <artifactId>it-test-support</artifactId>
+                <version>${neo4j.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j</groupId>
+                <artifactId>neo4j-configuration</artifactId>
                 <version>${neo4j.version}</version>
             </dependency>
             <dependency>
@@ -179,6 +183,19 @@
                 </exclusion>
             </exclusions>
         </dependency>
+
+        <!--
+            With the last neo4j versions there is a problem with the import of this library,
+            which is not correctly imported into org.neo4j:neo4j-configuration.
+            So we have to import it manually
+        -->
+        <dependency>
+            <groupId>com.github.seancfoley</groupId>
+            <artifactId>ipaddress</artifactId>
+            <version>5.4.0</version>
+            <scope>provided</scope>
+        </dependency>
+
 
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
@@ -297,12 +314,12 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
-            <version>1.7.30</version>
-            <scope>test</scope>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>org.slf4j</groupId>-->
+<!--            <artifactId>slf4j-simple</artifactId>-->
+<!--            <version>1.7.30</version>-->
+<!--            <scope>test</scope>-->
+<!--        </dependency>-->
 
         <dependency>
             <groupId>org.neo4j.community</groupId>

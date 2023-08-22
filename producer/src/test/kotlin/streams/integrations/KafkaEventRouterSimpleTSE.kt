@@ -5,6 +5,8 @@ import kotlinx.coroutines.runBlocking
 import org.hamcrest.Matchers
 import org.junit.Test
 import org.neo4j.function.ThrowingSupplier
+import org.neo4j.values.storable.CoordinateReferenceSystem
+import org.neo4j.values.storable.PointValue
 import streams.Assert
 import streams.events.EntityType
 import streams.events.NodeChange
@@ -17,6 +19,7 @@ import streams.KafkaTestUtils
 import streams.utils.JSONUtils
 import streams.setConfig
 import streams.start
+import streams.utils.toMapValue
 import java.util.*
 import java.util.concurrent.TimeUnit
 import kotlin.test.assertEquals
@@ -39,6 +42,36 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
                 labels == listOf("Person") && propertiesAfter == mapOf("name" to "John Doe", "age" to 42)
                         && it.meta.operation == OperationType.created
                         && it.schema.properties == mapOf("name" to "String", "age" to "Long")
+                        && it.schema.constraints.isEmpty()
+            }
+        })
+    }
+
+    @Test
+    fun testCreateNodeWithPointValue() {
+        db.start()
+        kafkaConsumer.subscribe(listOf("neo4j"))
+        db.execute("CREATE (:Person {name:'John Doe', age:42, bornIn: point({longitude: 12.78, latitude: 56.7, height: 100})})")
+        val records = kafkaConsumer.poll(5000)
+        assertEquals(1, records.count())
+        assertEquals(true, records.all {
+            JSONUtils.asStreamsTransactionEvent(it.value()).let {
+                val after = it.payload.after as NodeChange
+                val labels = after.labels
+                val propertiesAfter = after.properties
+                val expectedProperties = mapOf(
+                    "name" to "John Doe",
+                    "age" to 42,
+                    "bornIn" to PointValue.fromMap(mapOf(
+                        "crs" to "wgs-84-3d",
+                        "latitude" to 12.78,
+                        "longitude" to 56.7,
+                        "height" to 100.0,
+                    ).toMapValue())
+                )
+                labels == listOf("Person") && propertiesAfter == expectedProperties
+                        && it.meta.operation == OperationType.created
+                        && it.schema.properties == mapOf("name" to "String", "age" to "Long", "bornIn" to "PointValue")
                         && it.schema.constraints.isEmpty()
             }
         })

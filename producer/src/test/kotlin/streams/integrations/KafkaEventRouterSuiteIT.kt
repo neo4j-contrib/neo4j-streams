@@ -44,14 +44,13 @@ class KafkaEventRouterSuiteIT {
 
         @BeforeClass @JvmStatic
         fun setUpContainer() {
-            var exists = false
             StreamsUtils.ignoreExceptions({
                 kafka = KafkaContainer(confluentPlatformVersion)
                     .withNetwork(Network.newNetwork())
                 kafka.start()
-                exists = true
+                isRunning = kafka.isRunning
             }, IllegalStateException::class.java)
-            Assume.assumeTrue("Kafka container has to exist", exists)
+            Assume.assumeTrue("Kafka container has to exist", isRunning)
             Assume.assumeTrue("Kafka must be running", ::kafka.isInitialized && kafka.isRunning)
         }
 

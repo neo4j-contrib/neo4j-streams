@@ -1,4 +1,4 @@
-package streams.serialization
+package streams.utils
 
 import org.junit.Test
 import org.neo4j.driver.Values
@@ -17,7 +17,6 @@ import streams.events.NodePayload
 import streams.events.OperationType
 import streams.events.Schema
 import streams.events.StreamsTransactionEvent
-import streams.utils.JSONUtils
 import java.time.ZoneOffset.UTC
 import kotlin.test.assertEquals
 import kotlin.test.assertFails

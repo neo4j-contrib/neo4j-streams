@@ -1,7 +1,5 @@
 package streams.utils
 
-import org.neo4j.configuration.Config
-import org.neo4j.configuration.GraphDatabaseSettings
 import org.neo4j.dbms.api.DatabaseManagementService
 import org.neo4j.exceptions.UnsatisfiedDependencyException
 import org.neo4j.kernel.impl.factory.DbmsInfo

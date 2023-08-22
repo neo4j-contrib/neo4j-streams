@@ -34,6 +34,12 @@
             <artifactId>kafka-clients</artifactId>
             <scope>provided</scope>
         </dependency>
+
+        <dependency>
+            <groupId>org.neo4j</groupId>
+            <artifactId>neo4j-configuration</artifactId>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
 </project>
