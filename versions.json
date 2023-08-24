@@ -1,5 +1,14 @@
 [
     {
+        "neo4j": "4.4.25",
+        "neo4jVersion": "4.4.25",
+        "version": "4.1.2",
+        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.1.2",
+        "homepageUrl": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.1.2",
+        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.1.2/neo4j-streams-4.1.2.jar",
+        "downloadUrl": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.1.2/neo4j-streams-4.1.2.jar"
+    },
+    {
         "neo4j": "4.4.24",
         "neo4jVersion": "4.4.24",
         "version": "4.1.2",
@@ -1550,15 +1559,6 @@
     {
         "neo4j": "3.4.0-alpha05",
         "neo4jVersion": "3.4.0-alpha05",
-        "version": "3.4.4",
-        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.4.4",
-        "homepageUrl": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.4.4",
-        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/3.4.4/neo4j-streams-3.4.4.jar",
-        "downloadUrl": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/3.4.4/neo4j-streams-3.4.4.jar"
-    },
-    {
-        "neo4j": "3.4.0-alpha04",
-        "neo4jVersion": "3.4.0-alpha04",
         "version": "3.4.4",
         "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.4.4",
         "homepageUrl": "http://github.com/neo4j-contrib/neo4j-streams/releases/3.4.4",
