@@ -56,7 +56,7 @@
         <kotlin.coroutines.version>1.6.0</kotlin.coroutines.version>
         <neo4j.version>4.4.25</neo4j.version>
         <kafka.version>2.6.3</kafka.version>
-        <jackson.version>2.15.2</jackson.version>
+        <jackson.version>2.14.3</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.2</neo4j.java.driver.version>
         <testcontainers.version>1.18.3</testcontainers.version>
@@ -297,12 +297,12 @@
             <scope>test</scope>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>org.slf4j</groupId>-->
-<!--            <artifactId>slf4j-simple</artifactId>-->
-<!--            <version>1.7.30</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.30</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j.community</groupId>
