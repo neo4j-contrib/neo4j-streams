@@ -86,8 +86,8 @@ class Neo4jValueConverterNestedStructTest {
                     .put("tns", tnsList)
         }
 
-        fun getExpectedMap(): Map<String, Value> {
-            return JSONUtils.readValue<Map<String, Any?>>(data).mapValues(::convertDateNew).mapValues { Values.value(it.value) }
+        fun getExpectedMap(): Map<String, Any?> {
+            return JSONUtils.readValue<Map<String, Any?>>(data).mapValues(::convertDateNew)
         }
 
         fun convertDate(it: Map.Entry<String,Any?>) : Any? =
