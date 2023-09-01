@@ -3,7 +3,6 @@ package integrations.kafka
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.wait.strategy.Wait
 import org.testcontainers.containers.KafkaContainer
-import org.testcontainers.containers.KafkaContainer.KAFKA_PORT
 import org.testcontainers.containers.Network
 import org.testcontainers.containers.SocatContainer
 import java.util.stream.Stream
@@ -30,8 +29,9 @@ class SchemaRegistryContainer(version: String): GenericContainer<SchemaRegistryC
         return withKafka(kafka.network, kafka.networkAliases.map { "PLAINTEXT://$it:9092" }.joinToString(","))
     }
 
-    fun withKafka(network: Network, bootstrapServers: String): SchemaRegistryContainer {
+    fun withKafka(network: Network?, bootstrapServers: String): SchemaRegistryContainer {
         withNetwork(network)
+        withExposedPorts(PORT)
         withEnv("SCHEMA_REGISTRY_HOST_NAME", "schema-registry")
         withEnv("SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS", bootstrapServers)
         return self()

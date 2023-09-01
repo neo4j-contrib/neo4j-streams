@@ -11,7 +11,7 @@ object MavenUtils {
 
         val rt = Runtime.getRuntime()
         val mvnw = if (System.getProperty("os.name").startsWith("Windows")) "./mvnw.cmd" else "./mvnw"
-        val commands = arrayOf(mvnw, "-pl", "!doc,!kafka-connect-neo4j", "-DbuildSubDirectory=containerPlugins") +
+        val commands = arrayOf(mvnw, "-pl", "!kafka-connect-neo4j", "-DbuildSubDirectory=containerPlugins") +
                 args.let { if (it.isNullOrEmpty()) arrayOf("package", "-Dmaven.test.skip") else it }
         val proc = rt.exec(commands, null, File(path))
 

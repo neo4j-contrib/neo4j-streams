@@ -54,16 +54,16 @@
         <java.version>1.8</java.version>
         <kotlin.version>1.6.10</kotlin.version>
         <kotlin.coroutines.version>1.6.0</kotlin.coroutines.version>
-        <neo4j.version>4.4.3</neo4j.version>
-        <kafka.version>2.4.1</kafka.version>
-        <jackson.version>2.13.1</jackson.version>
+        <neo4j.version>4.4.25</neo4j.version>
+        <kafka.version>2.6.3</kafka.version>
+        <jackson.version>2.14.3</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.2</neo4j.java.driver.version>
-        <testcontainers.version>1.15.1</testcontainers.version>
-        <avro.version>1.8.2</avro.version>
+        <testcontainers.version>1.18.3</testcontainers.version>
+        <avro.version>1.11.2</avro.version>
         <mokito.version>3.3.0</mokito.version>
         <junit.version>4.13.2</junit.version>
-        <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
+        <kafka.avro.serializer.version>7.4.0</kafka.avro.serializer.version>
         <junit-jupiter.version>5.7.1</junit-jupiter.version>
         <hamcrest.version>1.3</hamcrest.version>
         <neo4j.configuration-lifecycle.version>ad59084711</neo4j.configuration-lifecycle.version>
@@ -297,12 +297,12 @@
             <scope>test</scope>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>org.slf4j</groupId>-->
-<!--            <artifactId>slf4j-simple</artifactId>-->
-<!--            <version>1.7.30</version>-->
-<!--            <scope>test</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-simple</artifactId>
+            <version>1.7.30</version>
+            <scope>test</scope>
+        </dependency>
 
         <dependency>
             <groupId>org.neo4j.community</groupId>
