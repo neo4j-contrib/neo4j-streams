@@ -51,12 +51,12 @@
         <java.version>11</java.version>
         <kotlin.version>1.7.10</kotlin.version>
         <kotlin.coroutines.version>1.6.4</kotlin.coroutines.version>
-        <neo4j.version>4.4.25</neo4j.version>
+        <neo4j.version>5.4.0</neo4j.version>
         <kafka.version>2.6.3</kafka.version>
         <jackson.version>2.15.2</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.12</neo4j.java.driver.version>
-        <testcontainers.version>1.19.0</testcontainers.version>
+        <testcontainers.version>1.19.1</testcontainers.version>
         <avro.version>1.11.2</avro.version>
         <mokito.version>5.5.0</mokito.version>
         <junit.version>4.13.2</junit.version>
