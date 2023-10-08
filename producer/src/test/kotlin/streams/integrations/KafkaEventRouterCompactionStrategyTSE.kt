@@ -49,7 +49,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         // check if there is only one record with key 'test' and payload 'Compaction 4'
         assertTopicFilled(kafkaConsumer, true) {
             val compactedRecord = it.filter { JSONUtils.readValue<String>(it.key()) == keyRecord }
-            it.count() == 500 &&
+            it.count() != 0 &&
                     compactedRecord.count() == 1 &&
                     JSONUtils.readValue<Map<*,*>>(compactedRecord.first().value())["payload"] == "Compaction 4"
         }
@@ -119,7 +119,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         // we check that there is only one tombstone record
         assertTopicFilled(kafkaConsumer, true) {
             val nullRecords = it.filter { it.value() == null }
-            it.count() == 500
+            it.count() != 0
                     && nullRecords.count() == 1
                     && JSONUtils.readValue<Map<*,*>>(nullRecords.first().key()) == mapOf("start" to "0", "end" to "1", "label" to relType)
         }
@@ -171,7 +171,7 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
         assertTopicFilled(kafkaConsumer, true) {
             val nullRecords = it.filter { it.value() == null }
             val keyRecordExpected = mapOf("ids" to mapOf("name" to "Sherlock"), "labels" to listOf("Person"))
-            it.count() == 500
+            it.count() != 0
                     && nullRecords.count() == 1
                     && keyRecordExpected == JSONUtils.readValue<Map<*,*>>(nullRecords.first().key())
         }

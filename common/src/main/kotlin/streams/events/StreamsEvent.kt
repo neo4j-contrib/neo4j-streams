@@ -1,7 +1,5 @@
 package streams.events
 
-import org.neo4j.graphdb.schema.ConstraintType
-
 enum class OperationType { created, updated, deleted }
 
 data class Meta(val timestamp: Long,
