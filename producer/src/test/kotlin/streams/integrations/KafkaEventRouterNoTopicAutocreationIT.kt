@@ -15,6 +15,7 @@ import org.testcontainers.containers.Network
 import streams.extensions.execute
 import streams.kafka.KafkaConfiguration
 import streams.KafkaTestUtils
+import streams.KafkaVersion
 import streams.setConfig
 import streams.start
 import streams.utils.StreamsUtils
@@ -24,19 +25,7 @@ import kotlin.test.assertEquals
 class KafkaEventRouterNoTopicAutocreationIT {
 
     companion object {
-        /**
-         * Kafka TestContainers uses Confluent OSS images.
-         * We need to keep in mind which is the right Confluent Platform version for the Kafka version this project uses
-         *
-         * Confluent Platform | Apache Kafka
-         *                    |
-         * 4.0.x	          | 1.0.x
-         * 4.1.x	          | 1.1.x
-         * 5.0.x	          | 2.0.x
-         *
-         * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
-         */
-        private const val confluentPlatformVersion = "4.0.2"
+        private const val confluentPlatformVersion = KafkaVersion.CURRENT
         @JvmStatic
         lateinit var kafka: KafkaContainer
 
