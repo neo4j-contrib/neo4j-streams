@@ -8,6 +8,7 @@ import org.junit.runner.RunWith
 import org.junit.runners.Suite
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.Network
+import streams.KafkaVersion
 import streams.MavenUtils
 import streams.utils.StreamsUtils
 
@@ -26,21 +27,7 @@ import streams.utils.StreamsUtils
 )
 class KafkaEventSinkSuiteIT {
     companion object {
-        /**
-         * Kafka TestContainers uses Confluent OSS images.
-         * We need to keep in mind which is the right Confluent Platform version for the Kafka version this project uses
-         *
-         * Confluent Platform | Apache Kafka
-         *                    |
-         * 4.0.x	          | 1.0.x
-         * 4.1.x	          | 1.1.x
-         * 5.0.x	          | 2.0.x
-         * 7.4.X              | 3.4.x (We are currently using 3.5.1 which is backward compatible)
-         *
-         * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
-         */
-//        private const val confluentPlatformVersion = "4.0.2"
-        private const val confluentPlatformVersion = "5.3.1-1"
+       private const val confluentPlatformVersion = KafkaVersion.CURRENT
         @JvmStatic lateinit var kafka: KafkaContainer
         @JvmStatic lateinit var schemaRegistry: SchemaRegistryContainer
 

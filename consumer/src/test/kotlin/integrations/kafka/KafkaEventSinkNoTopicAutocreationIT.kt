@@ -13,11 +13,8 @@ import org.neo4j.function.ThrowingSupplier
 import org.neo4j.test.rule.ImpermanentDbmsRule
 import org.testcontainers.containers.KafkaContainer
 import org.testcontainers.containers.Network
-import streams.KafkaTestUtils
+import streams.*
 import streams.extensions.execute
-import streams.setConfig
-import streams.shutdownSilently
-import streams.start
 import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.UUID
@@ -26,19 +23,7 @@ import kotlin.test.assertTrue
 
 class KafkaEventSinkNoTopicAutoCreationIT {
     companion object {
-        /**
-         * Kafka TestContainers uses Confluent OSS images.
-         * We need to keep in mind which is the right Confluent Platform version for the Kafka version this project uses
-         *
-         * Confluent Platform | Apache Kafka
-         *                    |
-         * 4.0.x	          | 1.0.x
-         * 4.1.x	          | 1.1.x
-         * 5.0.x	          | 2.0.x
-         *
-         * Please see also https://docs.confluent.io/current/installation/versions-interoperability.html#cp-and-apache-kafka-compatibility
-         */
-        private const val confluentPlatformVersion = "4.0.2"
+        private const val confluentPlatformVersion = KafkaVersion.CURRENT
         @JvmStatic
         lateinit var kafka: KafkaContainer
 
