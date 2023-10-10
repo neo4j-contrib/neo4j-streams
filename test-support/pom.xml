@@ -6,7 +6,7 @@
 
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-test-support</artifactId>
-    <version>5.0.2</version>
+    <version>5.0.3</version>
     <name>Neo4j Streams - Test Support</name>
     <description>Neo4j Streams - A set of utility functions for Streams Tests</description>
     <packaging>jar</packaging>
@@ -14,7 +14,7 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>5.0.2</version>
+        <version>5.0.3</version>
     </parent>
 
     <properties/>
@@ -23,7 +23,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>5.0.2</version>
+            <version>5.0.3</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
