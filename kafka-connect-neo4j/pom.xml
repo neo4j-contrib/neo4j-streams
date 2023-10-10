@@ -131,7 +131,7 @@
                             </description>
                             <logo>assets/neo4j-logo.png</logo>
                             <supportSummary>${connector.summary}</supportSummary>
-                            <sourceUrl>https://github.com/neo4j-contrib/neo4j-streams/tree/5.0</sourceUrl>
+                            <sourceUrl>https://github.com/neo4j-contrib/neo4j-streams</sourceUrl>
                             <supportUrl>${project.issueManagement.url}</supportUrl>
                             <confluentControlCenterIntegration>true</confluentControlCenterIntegration>
                             <tags>
