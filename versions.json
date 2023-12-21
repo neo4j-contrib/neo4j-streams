@@ -1,5 +1,14 @@
 [
     {
+        "neo4j": "4.4.29",
+        "neo4jVersion": "4.4.29",
+        "version": "4.1.3",
+        "url": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.1.3",
+        "homepageUrl": "http://github.com/neo4j-contrib/neo4j-streams/releases/4.1.3",
+        "jar": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.1.3/neo4j-streams-4.1.3.jar",
+        "downloadUrl": "https://github.com/neo4j-contrib/neo4j-streams/releases/download/4.1.3/neo4j-streams-4.1.3.jar"
+    },
+    {
         "neo4j": "4.4.28",
         "neo4jVersion": "4.4.28",
         "version": "4.1.3",
