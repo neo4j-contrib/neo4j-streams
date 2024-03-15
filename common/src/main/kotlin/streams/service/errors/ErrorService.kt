@@ -1,9 +1,6 @@
 package streams.service.errors
 
-import org.apache.kafka.clients.consumer.ConsumerRecord
-import org.apache.kafka.common.record.RecordBatch
 import java.util.Properties
-
 
 data class ErrorData(val originalTopic: String,
                      val timestamp: Long,
@@ -17,21 +14,11 @@ data class ErrorData(val originalTopic: String,
 
     constructor(originalTopic: String, timestamp: Long?, key: Any?, value: Any?,
                 partition: Int, offset: Long, executingClass: Class<*>?, databaseName: String?, exception: Exception?) :
-            this(originalTopic, timestamp ?: RecordBatch.NO_TIMESTAMP, toByteArray(key), toByteArray(value), partition.toString(),offset.toString(), executingClass, databaseName, exception)
+            this(originalTopic, timestamp ?: NO_TIMESTAMP, toByteArray(key), toByteArray(value), partition.toString(),offset.toString(), executingClass, databaseName, exception)
 
     companion object {
 
-        fun from(consumerRecord: ConsumerRecord<out Any, out Any>, exception: Exception?, executingClass: Class<*>?, databaseName: String?): ErrorData {
-            return ErrorData(offset = consumerRecord.offset().toString(),
-                    originalTopic = consumerRecord.topic(),
-                    partition = consumerRecord.partition().toString(),
-                    timestamp = consumerRecord.timestamp(),
-                    exception = exception,
-                    executingClass = executingClass,
-                    key = toByteArray(consumerRecord.key()),
-                    value = toByteArray(consumerRecord.value()),
-                    databaseName = databaseName)
-        }
+        private const val NO_TIMESTAMP: Long = -1L
 
         fun toByteArray(v:Any?) = try {
             when (v) {
