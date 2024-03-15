@@ -24,7 +24,7 @@ class KafkaErrorServiceTest {
         val counter = AtomicInteger(0)
         Mockito.`when`(producer.send(ArgumentMatchers.any<ProducerRecord<ByteArray, ByteArray>>())).then {
             counter.incrementAndGet()
-            FutureRecordMetadata(null, 0, RecordBatch.NO_TIMESTAMP, 0L, 0, 0, SystemTime())
+            FutureRecordMetadata(null, 0, RecordBatch.NO_TIMESTAMP, 0, 0, SystemTime())
         }
         val dlqService = KafkaErrorService(producer, ErrorService.ErrorConfig(fail=false,dlqTopic = "dlqTopic"), { s, e -> })
         dlqService.report(listOf(dlqData()))
