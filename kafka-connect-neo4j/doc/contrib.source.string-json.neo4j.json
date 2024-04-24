@@ -7,7 +7,7 @@
     "value.converter": "org.apache.kafka.connect.json.JsonConverter",
     "neo4j.server.uri": "bolt://neo4j:7687",
     "neo4j.authentication.basic.username": "neo4j",
-    "neo4j.authentication.basic.password": "connect",
+    "neo4j.authentication.basic.password": "kafkaconnect",
     "neo4j.encryption.enabled": false,
     "neo4j.streaming.poll.interval.msecs": 5000,
     "neo4j.streaming.property": "timestamp",
