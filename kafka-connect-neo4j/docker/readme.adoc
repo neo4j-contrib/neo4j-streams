@@ -12,7 +12,7 @@ You can set the following configuration values via Confluent Connect UI, or via 
 |{environment}.server.uri|String|The Bolt URI (default bolt://localhost:7687)
 |{environment}.authentication.type|enum[NONE, BASIC, KERBEROS]| The authentication type (default BASIC)
 |{environment}.batch.size|Int|The max number of events processed by the Cypher query (default 1000)
-|{environment}.batch.timeout.msecs|Long|The execution timeout for the cypher query (default 30000)
+|{environment}.batch.timeout.msecs|Long|The execution timeout for the Cypher query (default 30000)
 |{environment}.authentication.basic.username|String| The authentication username
 |{environment}.authentication.basic.password|String| The authentication password
 |{environment}.authentication.basic.realm|String| The authentication realm
@@ -37,7 +37,7 @@ Start the compose file
 docker-compose up -d
 ----
 
-You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `connect` as password (see the docker-compose file to change it).
+You can access your Neo4j instance under: http://localhost:7474, log in with `neo4j` as username and `kafkaconnect` as password (see the docker-compose file to change it).
 
 ===== Plugin installation
 

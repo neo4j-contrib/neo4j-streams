@@ -57,7 +57,7 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
 }
 
 class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContainerExtension>(dockerImage) {
-    constructor(): this("neo4j:5.1-enterprise")
+    constructor(): this("neo4j:5-enterprise")
     private val logger = LoggerFactory.getLogger(Neo4jContainerExtension::class.java)
     var driver: Driver? = null
     var session: Session? = null
