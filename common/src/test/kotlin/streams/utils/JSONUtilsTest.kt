@@ -26,9 +26,9 @@ class JSONUtilsTest {
     @Test
     fun `should serialize Geometry and Temporal Data Types`() {
         // Given
-        val expected = "{\"point2dCartesian\":{\"crs\":\"cartesian\",\"x\":1.0,\"y\":2.0,\"z\":null}," +
+        val expected = "{\"point2dCartesian\":{\"crs\":\"cartesian\",\"x\":1.0,\"y\":2.0}," +
                 "\"point3dCartesian\":{\"crs\":\"cartesian-3d\",\"x\":1.0,\"y\":2.0,\"z\":3.0}," +
-                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"latitude\":1.0,\"longitude\":2.0,\"height\":null}," +
+                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"latitude\":1.0,\"longitude\":2.0}," +
                 "\"point3dWgs84\":{\"crs\":\"wgs-84-3d\",\"latitude\":1.0,\"longitude\":2.0,\"height\":3.0}," +
                 "\"time\":\"14:00:00Z\",\"dateTime\":\"2017-12-17T17:14:35.123456789Z\"}"
         val map = linkedMapOf<String, Any>("point2dCartesian" to pointValue(Cartesian, 1.0, 2.0),
@@ -48,9 +48,9 @@ class JSONUtilsTest {
     @Test
     fun `should serialize driver Point Data Types`() {
         // Given
-        val expected = "{\"point2dCartesian\":{\"crs\":\"cartesian\",\"x\":1.0,\"y\":2.0,\"z\":null}," +
+        val expected = "{\"point2dCartesian\":{\"crs\":\"cartesian\",\"x\":1.0,\"y\":2.0}," +
                 "\"point3dCartesian\":{\"crs\":\"cartesian-3d\",\"x\":1.0,\"y\":2.0,\"z\":3.0}," +
-                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"latitude\":1.0,\"longitude\":2.0,\"height\":null}," +
+                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"latitude\":1.0,\"longitude\":2.0}," +
                 "\"point3dWgs84\":{\"crs\":\"wgs-84-3d\",\"latitude\":1.0,\"longitude\":2.0,\"height\":3.0}," +
                 "\"time\":\"14:00:00Z\",\"dateTime\":\"2017-12-17T17:14:35.123456789Z\"}"
         val map = linkedMapOf<String, Any>("point2dCartesian" to pointValue(Cartesian, 1.0, 2.0),
@@ -109,6 +109,81 @@ class JSONUtilsTest {
         val fromString = JSONUtils.asStreamsTransactionEvent(cdcString)
         assertEquals(cdcData, fromMap)
         assertEquals(cdcData, fromString)
+    }
+
+    @Test
+    fun `should convert wgs2D with height null to PointValue`() {
+        // given
+        val timestamp = System.currentTimeMillis()
+
+        val expected = org.neo4j.values.storable.PointValue.fromMap(mapOf("crs" to "wgs-84", "latitude" to 12.78, "longitude" to 56.7).toMapValue())
+
+        val cdcMap = mapOf<String, Any>(
+            "meta" to mapOf("timestamp" to timestamp,
+                "username" to "user",
+                "txId" to 1,
+                "txEventId" to 0,
+                "txEventsCount" to 1,
+                "operation" to OperationType.created),
+            "payload" to mapOf("id" to "0",
+                "before" to null,
+                "after" to NodeChange(properties = mapOf("location" to mapOf("crs" to "wgs-84", "latitude" to 12.78, "longitude" to 56.7, "height" to null)),
+                    labels = listOf("LabelCDC")),
+                "type" to EntityType.node),
+            "schema" to mapOf("properties" to mapOf("location" to "PointValue"))
+        )
+
+        val cdcString = """{
+            |"meta":{"timestamp":$timestamp,"username":"user","txId":1,"txEventId":0,"txEventsCount":1,"operation":"created"},
+            |"payload":{"id":"0","before":null,"after":{"properties":{"location":{"crs":"wgs-84","latitude":12.78,"longitude":56.7,"height":null}},
+            |"labels":["LabelCDC"]},"type":"node"},
+            |"schema":{"properties":{"location":"PointValue"}}
+            |}""".trimMargin()
+
+        val fromMap = JSONUtils.asStreamsTransactionEvent(cdcMap)
+        val fromMapPointValue = fromMap.payload.after?.properties?.get("location") as org.neo4j.values.storable.PointValue
+        assertEquals(expected, fromMapPointValue)
+
+        val fromString = JSONUtils.asStreamsTransactionEvent(cdcString)
+        val fromStringPointValue = fromString.payload.after?.properties?.get("location") as org.neo4j.values.storable.PointValue
+        assertEquals(expected, fromStringPointValue)
+    }
+
+    @Test
+    fun `should convert cartesian2D with z null to PointValue`() {
+        // given
+        val timestamp = System.currentTimeMillis()
+        val expected = org.neo4j.values.storable.PointValue.fromMap(mapOf("crs" to "cartesian", "x" to 12.78, "y" to 56.7).toMapValue())
+
+        val cdcMap = mapOf<String, Any>(
+            "meta" to mapOf("timestamp" to timestamp,
+                "username" to "user",
+                "txId" to 1,
+                "txEventId" to 0,
+                "txEventsCount" to 1,
+                "operation" to OperationType.created),
+            "payload" to mapOf("id" to "0",
+                "before" to null,
+                "after" to NodeChange(properties = mapOf("location" to mapOf("crs" to "cartesian", "x" to 12.78, "y" to 56.7, "z" to null)),
+                    labels = listOf("LabelCDC")),
+                "type" to EntityType.node),
+            "schema" to mapOf("properties" to mapOf("location" to "PointValue"))
+        )
+
+        val cdcString = """{
+            |"meta":{"timestamp":$timestamp,"username":"user","txId":1,"txEventId":0,"txEventsCount":1,"operation":"created"},
+            |"payload":{"id":"0","before":null,"after":{"properties":{"location":{"crs":"cartesian","x":12.78,"y":56.7,"z":null}},
+            |"labels":["LabelCDC"]},"type":"node"},
+            |"schema":{"properties":{"location":"PointValue"}}
+            |}""".trimMargin()
+
+        val fromMap = JSONUtils.asStreamsTransactionEvent(cdcMap)
+        val fromMapPointValue = fromMap.payload.after?.properties?.get("location") as org.neo4j.values.storable.PointValue
+        assertEquals(expected, fromMapPointValue)
+
+        val fromString = JSONUtils.asStreamsTransactionEvent(cdcString)
+        val fromStringPointValue = fromString.payload.after?.properties?.get("location") as org.neo4j.values.storable.PointValue
+        assertEquals(expected, fromStringPointValue)
     }
 
     @Test
