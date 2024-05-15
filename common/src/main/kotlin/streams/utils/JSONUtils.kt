@@ -55,11 +55,17 @@ fun Point.toStreamsPoint(): StreamsPoint {
     }
 }
 
-fun Map<String, Any>.toMapValue(): MapValue {
-    val map = this
-    val builder = MapValueBuilder()
-    map.forEach { (t, u) -> builder.add(t, Values.of(u)) }
-    return builder.build()
+fun Map<String, Any?>.toMapValue(): MapValue {
+    return toMapValue(true)
+}
+
+fun Map<String, Any?>.toMapValue(allowNulls: Boolean): MapValue {
+    return this
+        .filterValues { v -> allowNulls || v != null }
+        .entries
+        .fold(MapValueBuilder()) { builder, entry ->
+            builder.add(entry.key, Values.of(entry.value, allowNulls)); builder}
+        .build()
 }
 
 fun PointValue.toStreamsPoint(): StreamsPoint {
@@ -236,7 +242,7 @@ abstract class StreamsTransactionEventDeserializer<EVENT, PAYLOAD: Payload> : Js
         ?.properties
         ?.mapValues {
             if (points.contains(it.key)) {
-                org.neo4j.values.storable.PointValue.fromMap((it.value as Map<String, Any>).toMapValue().filter { _, u -> u != Values.NO_VALUE })
+                org.neo4j.values.storable.PointValue.fromMap((it.value as Map<String, Any>).toMapValue(false))
             } else {
                 it.value
             }
