@@ -17,9 +17,7 @@ import com.fasterxml.jackson.module.kotlin.convertValue
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import org.neo4j.driver.internal.value.PointValue
-import org.neo4j.function.ThrowingBiConsumer
 import org.neo4j.graphdb.spatial.Point
-import org.neo4j.values.AnyValue
 import org.neo4j.values.storable.CoordinateReferenceSystem
 import org.neo4j.values.storable.Values
 import org.neo4j.values.virtual.MapValue
@@ -40,35 +38,43 @@ import java.time.temporal.TemporalAccessor
 import kotlin.reflect.full.isSubclassOf
 
 abstract class StreamsPoint { abstract val crs: String }
-data class StreamsPointCartesian(override val crs: String, val x: Double, val y: Double, val z: Double? = null): StreamsPoint()
-data class StreamsPointWgs(override val crs: String, val latitude: Double, val longitude: Double, val height: Double? = null): StreamsPoint()
+data class StreamsPointCartesian2D(override val crs: String, val x: Double, val y: Double): StreamsPoint()
+data class StreamsPointCartesian3D(override val crs: String, val x: Double, val y: Double, val z: Double): StreamsPoint()
+data class StreamsPointWgs2D(override val crs: String, val latitude: Double, val longitude: Double): StreamsPoint()
+data class StreamsPointWgs3D(override val crs: String, val latitude: Double, val longitude: Double, val height: Double): StreamsPoint()
 
 fun Point.toStreamsPoint(): StreamsPoint {
     val crsType = this.crs.type
     val coordinate = this.coordinates[0].coordinate
     return when (this.crs) {
-        CoordinateReferenceSystem.Cartesian -> StreamsPointCartesian(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.Cartesian_3D -> StreamsPointCartesian(crsType, coordinate[0], coordinate[1], coordinate[2])
-        CoordinateReferenceSystem.WGS84 -> StreamsPointWgs(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.WGS84_3D -> StreamsPointWgs(crsType, coordinate[0], coordinate[1], coordinate[2])
+        CoordinateReferenceSystem.Cartesian -> StreamsPointCartesian2D(crsType, coordinate[0], coordinate[1])
+        CoordinateReferenceSystem.Cartesian_3D -> StreamsPointCartesian3D(crsType, coordinate[0], coordinate[1], coordinate[2])
+        CoordinateReferenceSystem.WGS84 -> StreamsPointWgs2D(crsType, coordinate[0], coordinate[1])
+        CoordinateReferenceSystem.WGS84_3D -> StreamsPointWgs3D(crsType, coordinate[0], coordinate[1], coordinate[2])
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
 
-fun Map<String, Any>.toMapValue(): MapValue {
-    val map = this
-    val builder = MapValueBuilder()
-    map.forEach { (t, u) -> builder.add(t, Values.of(u)) }
-    return builder.build()
+fun Map<String, Any?>.toMapValue(): MapValue {
+    return toMapValue(true)
+}
+
+fun Map<String, Any?>.toMapValue(allowNulls: Boolean): MapValue {
+    return this
+        .filterValues { v -> allowNulls || v != null }
+        .entries
+        .fold(MapValueBuilder()) { builder, entry ->
+            builder.add(entry.key, Values.of(entry.value, allowNulls)); builder}
+        .build()
 }
 
 fun PointValue.toStreamsPoint(): StreamsPoint {
     val point = this.asPoint()
     return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
+        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
+        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
@@ -76,10 +82,10 @@ fun PointValue.toStreamsPoint(): StreamsPoint {
 fun org.neo4j.driver.types.Point.toStreamsPoint(): StreamsPoint {
     val point = this
     return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
+        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
+        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
@@ -236,7 +242,7 @@ abstract class StreamsTransactionEventDeserializer<EVENT, PAYLOAD: Payload> : Js
         ?.properties
         ?.mapValues {
             if (points.contains(it.key)) {
-                org.neo4j.values.storable.PointValue.fromMap((it.value as Map<String, Any>).toMapValue())
+                org.neo4j.values.storable.PointValue.fromMap((it.value as Map<String, Any>).toMapValue(false))
             } else {
                 it.value
             }
