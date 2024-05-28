@@ -51,7 +51,7 @@
         <java.version>11</java.version>
         <kotlin.version>1.9.20</kotlin.version>
         <kotlin.coroutines.version>1.7.3</kotlin.coroutines.version>
-        <neo4j.version>4.4.27</neo4j.version>
+        <neo4j.version>5.20.0</neo4j.version>
         <!-- Version 3.4 is the minimal version introducing version for CVE-2023-25194 -->
         <kafka.version>3.4.1</kafka.version>
         <jackson.version>2.15.2</jackson.version>
