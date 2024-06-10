@@ -15,7 +15,6 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.neo4j.driver.Driver
 import org.neo4j.driver.Session
-import org.neo4j.driver.types.Node
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.Neo4jContainerExtension
@@ -25,7 +24,6 @@ import streams.utils.JSONUtils
 import streams.utils.StreamsUtils
 import java.util.*
 import java.util.concurrent.TimeUnit
-import kotlin.math.exp
 
 class Neo4jSourceTaskTest {
 
