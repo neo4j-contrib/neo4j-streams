@@ -15,7 +15,6 @@ import org.junit.Test
 import org.mockito.Mockito
 import org.neo4j.driver.Driver
 import org.neo4j.driver.Session
-import org.neo4j.driver.types.Node
 import org.neo4j.function.ThrowingSupplier
 import streams.Assert
 import streams.Neo4jContainerExtension
@@ -66,20 +65,20 @@ class Neo4jSourceTaskTest {
         val sourceTaskContextMock = Mockito.mock(SourceTaskContext::class.java)
         val offsetStorageReader = Mockito.mock(OffsetStorageReader::class.java)
         Mockito.`when`(sourceTaskContextMock.offsetStorageReader())
-                .thenReturn(offsetStorageReader)
+            .thenReturn(offsetStorageReader)
         Mockito.`when`(offsetStorageReader.offset(Mockito.anyMap<String, Any>()))
-                .thenReturn(emptyMap())
+            .thenReturn(emptyMap())
         task.initialize(sourceTaskContextMock)
     }
 
     private fun structToMap(struct: Struct): Map<String, Any?> = struct.schema().fields()
-            .map {
-                it.name() to when (val value = struct[it.name()]) {
-                    is Struct -> structToMap(value)
-                    else -> value
-                }
+        .map {
+            it.name() to when (val value = struct[it.name()]) {
+                is Struct -> structToMap(value)
+                else -> value
             }
-            .toMap()
+        }
+        .toMap()
 
     fun Struct.toMap() = structToMap(this)
 
@@ -88,7 +87,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -110,7 +109,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
         props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
@@ -134,7 +133,7 @@ class Neo4jSourceTaskTest {
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_FROM] = "ALL"
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -157,7 +156,7 @@ class Neo4jSourceTaskTest {
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
         props[Neo4jSourceConnectorConfig.STREAMING_FROM] = "ALL"
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
         props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
@@ -177,7 +176,8 @@ class Neo4jSourceTaskTest {
 
     private fun insertRecords(totalRecords: Int, longToInt: Boolean = false) = session.beginTransaction().use { tx ->
         val elements = (1..totalRecords).map {
-            val result = tx.run("""
+            val result = tx.run(
+                """
                                 |CREATE (n:Test{
                                 |   name: 'Name ' + $it,
                                 |   timestamp: timestamp(),
@@ -196,11 +196,12 @@ class Neo4jSourceTaskTest {
                                 |       key2: "value2"
                                 |   } AS map,
                                 |   n AS node
-                            """.trimMargin())
+                            """.trimMargin()
+            )
             val next = result.next()
             val map = next.asMap().toMutableMap()
             map["array"] = next["array"].asList()
-                    .map { if (longToInt) (it as Long).toInt() else it }
+                .map { if (longToInt) (it as Long).toInt() else it }
             map["point"] = JSONUtils.readValue<Map<String, Any>>(map["point"]!!)
             map["datetime"] = next["datetime"].asLocalDateTime().toString()
             val node = next["node"].asNode()
@@ -223,7 +224,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
 
@@ -244,7 +245,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = getSourceQuery()
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
@@ -282,7 +283,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = "WRONG QUERY".trimMargin()
         props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
 
@@ -308,7 +309,7 @@ class Neo4jSourceTaskTest {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
         props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
-        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "10"
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
         props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
         props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = """
                 |WITH
@@ -328,8 +329,6 @@ class Neo4jSourceTaskTest {
         val totalRecords = 10
         insertRecords(totalRecords)
 
-        val list = mutableListOf<SourceRecord>()
-
         val expected = mapOf(
             "id" to "ROOT_ID",
             "data" to mapOf(
@@ -343,9 +342,49 @@ class Neo4jSourceTaskTest {
         )
 
         Assert.assertEventually(ThrowingSupplier {
-            task.poll()?.let { list.addAll(it) }
-            val actualList = list.map { (it.value() as Struct).toMap() }
-            actualList.first() == expected
-        }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
+            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+        }, Matchers.equalTo(expected), 30, TimeUnit.SECONDS)
+    }
+
+    @Test
+    fun `should support null values returned from query`() {
+        val props = mutableMapOf<String, String>()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
+        props[Neo4jSourceConnectorConfig.TOPIC] = UUID.randomUUID().toString()
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
+        props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
+        props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = """
+                |RETURN {
+                |   prop1: 1,
+                |   prop2: "string",
+                |   prop3: true,
+                |   prop4: null,
+                |   prop5: {
+                |       prop: null
+                |   },
+                |   prop6: [1],
+                |   prop7: [null]
+                |} AS data, 1717773205 AS timestamp
+            """.trimMargin()
+        props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+
+        task.start(props)
+
+
+        val expected = mapOf(
+            "data" to mapOf(
+                "prop1" to 1L,
+                "prop2" to "string",
+                "prop3" to true,
+                "prop4" to null,
+                "prop5" to mapOf("prop" to null),
+                "prop6" to listOf(1L),
+                "prop7" to listOf<Any?>(null)
+            ), "timestamp" to 1717773205L
+        )
+
+        Assert.assertEventually(ThrowingSupplier {
+            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+        }, Matchers.equalTo(expected), 30, TimeUnit.SECONDS)
     }
 }
