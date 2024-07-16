@@ -51,7 +51,7 @@ class KafkaEventRouterSimpleTSE: KafkaEventRouterBaseTSE() {
     fun testCreateNodeWithPointValue() {
         db.start()
         kafkaConsumer.subscribe(listOf("neo4j"))
-        db.execute("CREATE (:Person {name:'John Doe', age:42, bornIn: point({longitude: 12.78, latitude: 56.7, height: 100})})")
+        db.execute("CREATE (:Person {name:'John Doe', age:42, bornIn: point({latitude: 12.78, longitude: 56.7, height: 100})})")
         val records = kafkaConsumer.poll(5000)
         assertEquals(1, records.count())
         assertEquals(true, records.all {
