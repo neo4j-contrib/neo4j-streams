@@ -28,8 +28,8 @@ class JSONUtilsTest {
         // Given
         val expected = "{\"point2dCartesian\":{\"crs\":\"cartesian\",\"x\":1.0,\"y\":2.0}," +
                 "\"point3dCartesian\":{\"crs\":\"cartesian-3d\",\"x\":1.0,\"y\":2.0,\"z\":3.0}," +
-                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"latitude\":1.0,\"longitude\":2.0}," +
-                "\"point3dWgs84\":{\"crs\":\"wgs-84-3d\",\"latitude\":1.0,\"longitude\":2.0,\"height\":3.0}," +
+                "\"point2dWgs84\":{\"crs\":\"wgs-84\",\"longitude\":1.0,\"latitude\":2.0}," +
+                "\"point3dWgs84\":{\"crs\":\"wgs-84-3d\",\"longitude\":1.0,\"latitude\":2.0,\"height\":3.0}," +
                 "\"time\":\"14:00:00Z\",\"dateTime\":\"2017-12-17T17:14:35.123456789Z\"}"
         val map = linkedMapOf<String, Any>("point2dCartesian" to pointValue(Cartesian, 1.0, 2.0),
                 "point3dCartesian" to pointValue(Cartesian_3D, 1.0, 2.0, 3.0),
