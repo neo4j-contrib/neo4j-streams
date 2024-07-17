@@ -96,6 +96,20 @@ class Neo4jSinkConnectorConfigTest {
     }
 
     @Test
+    fun `should return URIs with default port if port does not exist`() {
+        val a = "bolt://neo4j.com"
+        val b = "bolt://neo4j2.com"
+
+        val originals = mapOf(SinkConnector.TOPICS_CONFIG to "foo",
+            "${Neo4jSinkConnectorConfig.TOPIC_CYPHER_PREFIX}foo" to "CREATE (p:Person{name: event.firstName})",
+            Neo4jConnectorConfig.SERVER_URI to "$a,$b")
+        val config = Neo4jSinkConnectorConfig(originals)
+
+        assertEquals("$a:7687", config.serverUri[0].toString())
+        assertEquals("$b:7687", config.serverUri[1].toString())
+    }
+
+    @Test
     fun `should return the configuration with shuffled topic order`() {
         val originals = mapOf(SinkConnector.TOPICS_CONFIG to "bar,foo",
                 "${Neo4jSinkConnectorConfig.TOPIC_PATTERN_NODE_PREFIX}foo" to "(:Foo{!fooId,fooName})",

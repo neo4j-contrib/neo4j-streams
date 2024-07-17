@@ -2,8 +2,8 @@ package streams.kafka.connect.source
 
 import org.apache.kafka.common.config.ConfigException
 import org.junit.Test
+import streams.kafka.connect.common.Neo4jConnectorConfig
 import kotlin.test.assertEquals
-import kotlin.test.assertNull
 
 class Neo4jSourceConnectorConfigTest {
 
@@ -60,5 +60,22 @@ class Neo4jSourceConnectorConfigTest {
                 Neo4jSourceConnectorConfig.STREAMING_FROM to StreamingFrom.NOW.toString())
         val config = Neo4jSourceConnectorConfig(originals)
         assertEquals("", config.streamingProperty)
+    }
+
+    @Test
+    fun `should return URIs with default port if port does not exist`() {
+        val a = "bolt://neo4j.com"
+        val b = "bolt://neo4j2.com"
+
+        val originals = mapOf(Neo4jSourceConnectorConfig.SOURCE_TYPE to SourceType.QUERY.toString(),
+            Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY to "MATCH (n) RETURN n",
+            Neo4jSourceConnectorConfig.TOPIC to "topic",
+            Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL to "10",
+            Neo4jSourceConnectorConfig.STREAMING_FROM to StreamingFrom.NOW.toString(),
+            Neo4jConnectorConfig.SERVER_URI to "$a,$b")
+        val config = Neo4jSourceConnectorConfig(originals)
+
+        assertEquals("$a:7687", config.serverUri[0].toString())
+        assertEquals("$b:7687", config.serverUri[1].toString())
     }
 }
