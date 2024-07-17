@@ -65,7 +65,7 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
   connect:
-    image: cnfldemos/cp-server-connect-datagen:0.6.0-7.3.0
+    image: confluentinc/cp-server-connect:7.3.0
     hostname: connect
     container_name: connect
     depends_on:
