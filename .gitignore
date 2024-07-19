@@ -31,3 +31,4 @@ Thumbs.db
 bin
 doc/node
 doc/node_modules
+*/docker/plugins/*

@@ -76,7 +76,11 @@ open class Neo4jConnectorConfig(configDef: ConfigDef,
         authenticationPassword = getPassword(AUTHENTICATION_BASIC_PASSWORD).value()
         authenticationKerberosTicket = getPassword(AUTHENTICATION_KERBEROS_TICKET).value()
 
-        serverUri = getString(SERVER_URI).split(",").map { URI(it) }
+        serverUri = getString(SERVER_URI).split(",").map {
+            val uri = URI(it)
+            if (uri.port == -1) URI("$it:7687") else uri
+        }
+
         connectionLivenessCheckTimeout = getLong(CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS)
         connectionMaxConnectionLifetime = getLong(CONNECTION_MAX_CONNECTION_LIFETIME_MSECS)
         connectionPoolMaxSize = getInt(CONNECTION_POOL_MAX_SIZE)
