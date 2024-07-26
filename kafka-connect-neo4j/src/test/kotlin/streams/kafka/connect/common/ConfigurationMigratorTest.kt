@@ -43,7 +43,7 @@ class ConfigurationMigratorTest {
   @Test
   fun `should migrate time-based keys to new configuration format`() {
     // Given a configuration originally defined in milliseconds
-    var originals = mapOf(
+    val originals = mapOf(
       "neo4j.retry.backoff.msecs" to "1200",
       "neo4j.connection.max.lifetime.msecs" to "1000",
       "neo4j.batch.timeout.msecs" to "500",
