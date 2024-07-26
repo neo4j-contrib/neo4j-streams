@@ -113,11 +113,12 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
 
         settings.forEach { (originalKey, value) ->
             val propConverter = propertyConverterMap[originalKey]
-            if (propConverter != null && propConverter.updatedConfigKey.isNotEmpty()) {
+            if (propConverter != null) {
                 val newKey = propConverter.updatedConfigKey
+                if (newKey.isBlank()) return@forEach
                 updatedConfig[newKey] = propConverter.migrationHandler()
                 log.debug("Migrating configuration {} to {}", originalKey, newKey)
-            } else {
+            } else if (prefixConverterMap.keys.any { k -> originalKey.startsWith(k) }) {
                 // prefix match?
                 val prefixMatch = prefixConverterMap.keys.find { k -> originalKey.startsWith(k) }
                 prefixMatch?.let { prefix ->
@@ -128,6 +129,9 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
                         log.debug("Migrating configuration prefix key {} to {}", originalKey, newKey)
                     }
                 }
+            } else {
+                // Configuration option not declared should be copied across
+                updatedConfig[originalKey] = value
             }
         }
 
