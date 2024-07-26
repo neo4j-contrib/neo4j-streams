@@ -113,7 +113,7 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
 
         settings.forEach { (originalKey, value) ->
             val propConverter = propertyConverterMap[originalKey]
-            if (propConverter != null) {
+            if (propConverter != null && propConverter.updatedConfigKey.isNotEmpty()) {
                 val newKey = propConverter.updatedConfigKey
                 updatedConfig[newKey] = propConverter.migrationHandler()
                 log.debug("Migrating configuration {} to {}", originalKey, newKey)
