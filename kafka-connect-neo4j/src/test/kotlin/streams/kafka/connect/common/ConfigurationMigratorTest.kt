@@ -1,8 +1,7 @@
-package streams.kafka.connect.sink
+package streams.kafka.connect.common
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import streams.kafka.connect.common.ConfigurationMigrator
 import streams.kafka.connect.source.SourceType
 
 class ConfigurationMigratorTest {
