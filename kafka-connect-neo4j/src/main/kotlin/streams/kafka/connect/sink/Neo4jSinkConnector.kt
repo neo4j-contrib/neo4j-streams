@@ -1,10 +1,14 @@
 package streams.kafka.connect.sink
 
-import com.github.jcustenborder.kafka.connect.utils.config.*
+import com.github.jcustenborder.kafka.connect.utils.config.Description
+import com.github.jcustenborder.kafka.connect.utils.config.DocumentationNote
+import com.github.jcustenborder.kafka.connect.utils.config.DocumentationTip
+import com.github.jcustenborder.kafka.connect.utils.config.TaskConfigs
+import com.github.jcustenborder.kafka.connect.utils.config.Title
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.sink.SinkConnector
-import org.slf4j.LoggerFactory
+import streams.kafka.connect.common.ConfigurationMigrator
 import streams.kafka.connect.utils.PropertiesUtil
 
 @Title("Neo4j Sink Connector")
@@ -23,7 +27,9 @@ class Neo4jSinkConnector: SinkConnector() {
         config = Neo4jSinkConnectorConfig(settings)
     }
 
-    override fun stop() {}
+    override fun stop() {
+        ConfigurationMigrator(settings).migrate()
+    }
 
     override fun version(): String {
         return PropertiesUtil.getVersion()
