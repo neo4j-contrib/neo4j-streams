@@ -387,4 +387,44 @@ class Neo4jSourceTaskTest {
             task.poll()?.map { (it.value() as Struct).toMap() }?.first()
         }, Matchers.equalTo(expected), 30, TimeUnit.SECONDS)
     }
+
+    @Test
+    fun `should convert point data`() {
+        val topic = UUID.randomUUID().toString()
+        val props = mutableMapOf<String, String>()
+        props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
+        props[Neo4jSourceConnectorConfig.TOPIC] = topic
+        props[Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL] = "1000"
+        props[Neo4jSourceConnectorConfig.STREAMING_PROPERTY] = "timestamp"
+        props[Neo4jSourceConnectorConfig.ENFORCE_SCHEMA] = "true"
+        props[Neo4jConnectorConfig.AUTHENTICATION_TYPE] = AuthenticationType.NONE.toString()
+        props[Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY] = """
+                MATCH (n:SourceNode)
+                WHERE n.timestamp > 0
+                RETURN n.cartesian2d AS cartesian2d,
+                   n.cartesian3d AS cartesian3d,
+                   n.geo2d AS geo2d,
+                   n.geo3d AS geo3d
+            """
+        task.start(props)
+
+        session.run("CREATE (n:SourceNode" +
+                "{" +
+                    "timestamp: timestamp(), " +
+                    "cartesian2d: point({x: 56.7, y: 12.78}), " +
+                    "cartesian3d: point({x: 56.7, y: 12.78, z: 8}), " +
+                    "geo2d: point({longitude: 56.7, latitude: 12.78}), " +
+                    "geo3d: point({longitude: 56.7, latitude: 12.78, height: 8})" +
+                "})").consume()
+
+        val expected = mapOf(
+            "cartesian2d" to mapOf("crs" to "cartesian", "x" to 56.7, "y" to 12.78),
+            "cartesian3d" to mapOf("crs" to "cartesian-3d", "x" to 56.7, "y" to 12.78, "z" to 8.0),
+            "geo2d" to mapOf("crs" to "wgs-84", "longitude" to 56.7, "latitude" to 12.78),
+            "geo3d" to mapOf("crs" to "wgs-84-3d", "longitude" to 56.7, "latitude" to 12.78, "height" to 8.0))
+
+        Assert.assertEventually(ThrowingSupplier {
+            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+        }, Matchers.equalTo(expected), 30, TimeUnit.SECONDS)
+    }
 }
