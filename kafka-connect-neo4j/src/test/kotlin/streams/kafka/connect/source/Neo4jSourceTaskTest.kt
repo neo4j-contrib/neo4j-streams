@@ -55,7 +55,7 @@ class Neo4jSourceTaskTest {
 
     @After
     fun after() {
-        session.run("MATCH (n) DETACH DELETE n")
+        session.run("MATCH (n) DETACH DELETE n").consume()
         task.stop()
     }
 
