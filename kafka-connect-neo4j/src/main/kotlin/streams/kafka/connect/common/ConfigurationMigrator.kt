@@ -39,20 +39,21 @@ import streams.kafka.connect.source.Neo4jSourceConnectorConfig.Companion.STREAMI
 import streams.kafka.connect.source.Neo4jSourceConnectorConfig.Companion.TOPIC
 
 /**
- * Configuration migrator
+ * Migrates configuration for the Neo4j Kafka Connector from <5.1 versions to 5.1.
+ * The connector upgrade includes breaking changes in configuration keys, from name changes.
  *
- * @property settings
- * @constructor Create empty Configuration migrator
+ * @property settings Kafka connect configuration
  */
 class ConfigurationMigrator(private val settings: Map<String, String>) {
 
     private val log: Logger = LoggerFactory.getLogger(ConfigurationMigrator::class.java)
 
     /**
-     * Property converter
+     * Property converter record
      *
-     * @property updatedConfigKey - v5.1 configuration key
-     * @property migrationHandler - Value migration handler
+     * @property updatedConfigKey New configuration key name
+     * @property migrationHandler Custom function to
+     * @constructor Create empty Property converter
      */
     data class PropertyConverter(val updatedConfigKey: String, val migrationHandler: () -> String)
 
@@ -115,11 +116,10 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
             val propConverter = propertyConverterMap[originalKey]
             if (propConverter != null) {
                 val newKey = propConverter.updatedConfigKey
-                if (newKey.isBlank()) return@forEach
+                if (newKey.isBlank()) return@forEach // Configuration option found, but no new equivalent key exists
                 updatedConfig[newKey] = propConverter.migrationHandler()
                 log.debug("Migrating configuration {} to {}", originalKey, newKey)
             } else if (prefixConverterMap.keys.any { k -> originalKey.startsWith(k) }) {
-                // prefix match?
                 val prefixMatch = prefixConverterMap.keys.find { k -> originalKey.startsWith(k) }
                 prefixMatch?.let { prefix ->
                     val replacement = prefixConverterMap[prefixMatch]
@@ -147,6 +147,14 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
     }
 
     companion object {
+        /**
+         * Converts milliseconds format into new format of time units
+         * Valid new format units are: `ms`, `s`, `m`, `h` and `d`.
+         * e.g. 1000 -> 1000ms
+         *
+         * @param msecs Original time value
+         * @return Migrated configuration time containing units
+         */
         private fun convertMsecs(msecs: String): String {
             return "${msecs}ms"
         }
