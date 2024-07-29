@@ -24,6 +24,7 @@ class ConfigurationMigratorTest {
     val migratedConfig = ConfigurationMigrator(originals).migrate()
 
     // Then the keys are updated to new key format containing the original value
+    assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["neo4j.pattern.node.merge-properties"], "true")
     assertEquals(migratedConfig["neo4j.uri"], "neo4j+s://x.x.x.x")
     assertEquals(migratedConfig["neo4j.max-retry-attempts"], "1")
@@ -58,6 +59,7 @@ class ConfigurationMigratorTest {
     val migratedConfig = ConfigurationMigrator(originals).migrate()
 
     // Then the new configuration should be labelled with its units
+    assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["neo4j.max-retry-time"], "1200ms")
     assertEquals(migratedConfig["neo4j.connection-timeout"], "1000ms")
     assertEquals(migratedConfig["neo4j.batch-timeout"], "500ms")
@@ -77,6 +79,7 @@ class ConfigurationMigratorTest {
     val migratedConfig = ConfigurationMigrator(originals).migrate()
 
     // Then the keys are updated to new values still containing the user-defined key part
+    assertEquals(originals.size, migratedConfig.size)
     assertEquals(
       migratedConfig["neo4j.cypher.topic.foo"],
       "CREATE (p:Person{name: event.firstName})",
@@ -100,6 +103,7 @@ class ConfigurationMigratorTest {
     val migratedConfig = ConfigurationMigrator(originals).migrate()
 
     // Then those options should still be included
+    assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.source.Neo4jSourceConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
     assertEquals(migratedConfig["arbitrary.config.key"], "arbitrary.value")
