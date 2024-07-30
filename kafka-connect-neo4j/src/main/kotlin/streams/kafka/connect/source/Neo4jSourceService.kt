@@ -1,5 +1,6 @@
 package streams.kafka.connect.source
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -16,6 +17,7 @@ import org.neo4j.driver.Record
 import org.neo4j.driver.Values
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.kafka.connect.common.ConfigurationMigrator
 import streams.utils.StreamsUtils
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
@@ -172,6 +174,13 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
         StreamsUtils.closeSafetely(driver) {
             log.info("Error while closing Driver instance:", it)
         }
+
+        val migratedConfig = ConfigurationMigrator(config.originals() as Map<String, String>).migrate()
+        // offset
+        val mapper = ObjectMapper()
+        val jsonConfig = mapper.writeValueAsString(migratedConfig)
+        log.info("Migrated Source configuration to v5.1 connector format: {}", jsonConfig)
+
         log.info("Neo4j Source Service closed successfully")
     }
 }

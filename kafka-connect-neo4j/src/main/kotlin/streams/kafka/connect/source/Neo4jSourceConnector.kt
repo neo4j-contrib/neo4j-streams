@@ -5,7 +5,6 @@ import com.github.jcustenborder.kafka.connect.utils.config.Title
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.source.SourceConnector
-import streams.kafka.connect.common.ConfigurationMigrator
 import streams.kafka.connect.utils.PropertiesUtil
 
 @Title("Neo4j Source Connector")
@@ -25,9 +24,7 @@ class Neo4jSourceConnector: SourceConnector() {
         config = Neo4jSourceConnectorConfig(settings)
     }
 
-    override fun stop() {
-        ConfigurationMigrator(settings).migrate()
-    }
+    override fun stop() {}
 
     override fun version(): String = PropertiesUtil.getVersion()
 

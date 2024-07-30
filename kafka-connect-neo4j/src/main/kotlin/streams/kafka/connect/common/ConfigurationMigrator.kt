@@ -135,15 +135,7 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
             }
         }
 
-        outputToLog(updatedConfig)
-
         return updatedConfig
-    }
-
-    private fun outputToLog(config: Map<String, Any>) {
-        val mapper = ObjectMapper()
-        val json = mapper.writeValueAsString(config)
-        log.info("Migrated configuration to v5.1 connector format: {}", json)
     }
 
     companion object {
