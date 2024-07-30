@@ -175,8 +175,12 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
             log.info("Error while closing Driver instance:", it)
         }
 
-        val migratedConfig = ConfigurationMigrator(config.originals() as Map<String, String>).migrate()
-        // offset
+        val migratedConfig = ConfigurationMigrator(config.originals() as Map<String, String>).migrate().toMutableMap()
+
+        log.debug("Defaulting v5.1 migrated configuration offset to last checked timestamp: {}", lastCheck)
+        migratedConfig["neo4j.start-from"] = "USER_PROVIDED"
+        migratedConfig["neo4j.start-from.value"] = lastCheck
+
         val mapper = ObjectMapper()
         val jsonConfig = mapper.writeValueAsString(migratedConfig)
         log.info("Migrated Source configuration to v5.1 connector format: {}", jsonConfig)
