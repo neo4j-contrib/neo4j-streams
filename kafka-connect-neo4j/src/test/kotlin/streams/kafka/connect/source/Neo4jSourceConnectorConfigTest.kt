@@ -3,6 +3,7 @@ package streams.kafka.connect.source
 import org.apache.kafka.common.config.ConfigException
 import org.junit.Test
 import streams.kafka.connect.common.Neo4jConnectorConfig
+import java.net.URI
 import kotlin.test.assertEquals
 
 class Neo4jSourceConnectorConfigTest {
@@ -77,5 +78,26 @@ class Neo4jSourceConnectorConfigTest {
 
         assertEquals("$a:7687", config.serverUri[0].toString())
         assertEquals("$b:7687", config.serverUri[1].toString())
+    }
+
+    @Test
+    fun `should parse multiple URIs`() {
+        val originals = mapOf(
+            Neo4jSourceConnectorConfig.SOURCE_TYPE to SourceType.QUERY.toString(),
+            Neo4jSourceConnectorConfig.SOURCE_TYPE_QUERY to "MATCH (n) RETURN n",
+            Neo4jSourceConnectorConfig.TOPIC to "topic",
+            Neo4jSourceConnectorConfig.STREAMING_POLL_INTERVAL to "10",
+            Neo4jSourceConnectorConfig.STREAMING_FROM to StreamingFrom.NOW.toString(),
+            Neo4jConnectorConfig.SERVER_URI to "neo4j://192.168.0.1:7687,neo4j://192.168.0.3:7687,neo4j://192.168.0.2"
+        )
+        val config = Neo4jSourceConnectorConfig(originals)
+
+        assertEquals(
+            config.serverUri, listOf(
+                URI("neo4j://192.168.0.1:7687"),
+                URI("neo4j://192.168.0.3:7687"),
+                URI("neo4j://192.168.0.2:7687"),
+            )
+        )
     }
 }
