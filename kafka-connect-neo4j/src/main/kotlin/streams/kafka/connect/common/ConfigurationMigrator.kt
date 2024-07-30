@@ -1,6 +1,5 @@
 package streams.kafka.connect.common
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import streams.kafka.connect.common.Neo4jConnectorConfig.Companion.AUTHENTICATION_BASIC_PASSWORD
@@ -109,7 +108,7 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
      *
      * @return updated configuration key-value pairs
      */
-    fun migrate(): Map<String, Any> {
+    fun migrateToV51(): Map<String, Any> {
         val updatedConfig: MutableMap<String, String> = mutableMapOf()
 
         settings.forEach { (originalKey, value) ->

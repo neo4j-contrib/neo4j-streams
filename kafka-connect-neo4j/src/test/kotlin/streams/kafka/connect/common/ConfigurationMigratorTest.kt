@@ -21,7 +21,7 @@ class ConfigurationMigratorTest {
       )
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(originals).migrate()
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
 
     // Then the keys are updated to new key format containing the original value
     assertEquals(originals.size, migratedConfig.size)
@@ -39,7 +39,7 @@ class ConfigurationMigratorTest {
     )
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(originals).migrate()
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
 
     // Then the existing key is not outputted
     assertEquals("Migrated configuration should be empty", 0, migratedConfig.size)
@@ -56,7 +56,7 @@ class ConfigurationMigratorTest {
     )
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(originals).migrate()
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
 
     // Then the new configuration should be labelled with its units
     assertEquals(originals.size, migratedConfig.size)
@@ -76,7 +76,7 @@ class ConfigurationMigratorTest {
       )
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(originals).migrate()
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
 
     // Then the keys are updated to new values still containing the user-defined key part
     assertEquals(originals.size, migratedConfig.size)
@@ -100,7 +100,7 @@ class ConfigurationMigratorTest {
     )
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(originals).migrate()
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
 
     // Then those options should still be included
     assertEquals(originals.size, migratedConfig.size)
@@ -115,7 +115,7 @@ class ConfigurationMigratorTest {
     val quickstartSettings = loadConfiguration("src/test/resources/exampleConfigs/sourceExample.json")
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(quickstartSettings).migrate()
+    val migratedConfig = ConfigurationMigrator(quickstartSettings).migrateToV51()
 
     // Then the keys are updated correctly
     assertEquals(12, migratedConfig.size)
@@ -146,7 +146,7 @@ class ConfigurationMigratorTest {
     val quickstartSettings = loadConfiguration("src/test/resources/exampleConfigs/sinkExample.json")
 
     // When the configuration is migrated
-    val migratedConfig = ConfigurationMigrator(quickstartSettings).migrate()
+    val migratedConfig = ConfigurationMigrator(quickstartSettings).migrateToV51()
 
     // Then the keys are updated correctly
     assertEquals(15, migratedConfig.size)
