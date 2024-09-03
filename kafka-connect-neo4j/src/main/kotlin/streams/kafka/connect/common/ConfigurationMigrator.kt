@@ -57,6 +57,8 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
     data class PropertyConverter(val updatedConfigKey: String, val migrationHandler: () -> String)
 
     private val propertyConverterMap: Map<String, PropertyConverter> = mutableMapOf(
+        // Kafka
+        "connector.class" to PropertyConverter("connector.class") {convertConnectorClass(settings["connector.class"] as String)},
         // Common
         DATABASE to PropertyConverter("neo4j.database") { settings[DATABASE] as String },
         SERVER_URI to PropertyConverter("neo4j.uri") { settings[SERVER_URI] as String },
@@ -94,6 +96,14 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
         STREAMING_POLL_INTERVAL to PropertyConverter("neo4j.query.poll-interval") { convertMsecs(settings[STREAMING_POLL_INTERVAL] as String) },
         ENFORCE_SCHEMA to PropertyConverter("") {settings[ENFORCE_SCHEMA] as String}
     )
+
+    private fun convertConnectorClass(className: String): String {
+        return when (className) {
+            "streams.kafka.connect.source.Neo4jSourceConnector" -> "org.neo4j.connectors.kafka.source.Neo4jConnector"
+            "streams.kafka.connect.sink.Neo4jSinkConnector" -> "org.neo4j.connectors.kafka.sink.Neo4jConnector"
+            else -> ""
+        }
+    }
 
     // Configuration properties that have user-defined keys
     private val prefixConverterMap: Map<String, String> = mutableMapOf(
@@ -136,7 +146,6 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
 
         return updatedConfig
     }
-
     companion object {
         /**
          * Converts milliseconds format into new format of time units
