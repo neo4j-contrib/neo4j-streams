@@ -184,7 +184,11 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
 
         val mapper = ObjectMapper()
         val jsonConfig = mapper.writeValueAsString(migratedConfig)
-        log.info("Migrated Neo4j Source Connector '{}' configuration to v5.1 connector format: {}", originalConfig["name"], jsonConfig)
+        log.info(
+            "The migrated settings for 5.1 version of Neo4j Source Connector '{}' is: `{}`",
+            originalConfig["name"],
+            jsonConfig
+        )
 
         log.info("Neo4j Source Service closed successfully")
     }
