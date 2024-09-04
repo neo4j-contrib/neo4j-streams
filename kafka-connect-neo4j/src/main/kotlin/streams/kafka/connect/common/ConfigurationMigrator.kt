@@ -66,7 +66,7 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
         AUTHENTICATION_BASIC_USERNAME to PropertyConverter("neo4j.authentication.basic.username") {settings[AUTHENTICATION_BASIC_USERNAME] as String},
         AUTHENTICATION_BASIC_PASSWORD to PropertyConverter("neo4j.authentication.basic.password") {""},
         AUTHENTICATION_BASIC_REALM to PropertyConverter("neo4j.authentication.basic.realm") {settings[AUTHENTICATION_BASIC_REALM] as String},
-        AUTHENTICATION_KERBEROS_TICKET to PropertyConverter("neo4j.authentication.kerberos.ticket") {settings[AUTHENTICATION_KERBEROS_TICKET] as String},
+        AUTHENTICATION_KERBEROS_TICKET to PropertyConverter("neo4j.authentication.kerberos.ticket") {""},
         BATCH_SIZE to PropertyConverter("neo4j.batch-size") {settings[BATCH_SIZE] as String},
         ENCRYPTION_ENABLED to PropertyConverter("neo4j.security.encrypted") {settings[ENCRYPTION_ENABLED] as String},
         ENCRYPTION_TRUST_STRATEGY to PropertyConverter("neo4j.security.trust-strategy") {settings[ENCRYPTION_TRUST_STRATEGY] as String},

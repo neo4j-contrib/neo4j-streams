@@ -169,6 +169,23 @@ class ConfigurationMigratorTest {
     assertEquals(migratedConfig["neo4j.cypher.topic.my-topic"], "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)")
   }
 
+  @Test
+  fun `should leave sensitive configuration values blank`() {
+    // Given a configuration which contains sensitive values
+    val config = mapOf(
+      "neo4j.authentication.basic.password" to "password",
+      "neo4j.authentication.kerberos.ticket" to "kerberos"
+    )
+
+    // When the configuration is migrated
+    val migratedConfig = ConfigurationMigrator(config).migrateToV51()
+
+    // Then the keys persist but the values are blank
+    assertEquals(2, migratedConfig.size)
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
+    assertEquals(migratedConfig["neo4j.authentication.kerberos.ticket"], "")
+  }
+
   private fun loadConfiguration(path: String): Map<String, String> {
     val file = File(path)
     val json = file.readText()
