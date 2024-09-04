@@ -183,7 +183,7 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
         migratedConfig["neo4j.start-from.value"] = lastCheck
 
         val mapper = ObjectMapper()
-        val jsonConfig = mapper.writeValueAsString(migratedConfig)
+        val jsonConfig = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(migratedConfig)
         log.info(
             "The migrated settings for 5.1 version of Neo4j Source Connector '{}' is: `{}`",
             originalConfig["name"],
