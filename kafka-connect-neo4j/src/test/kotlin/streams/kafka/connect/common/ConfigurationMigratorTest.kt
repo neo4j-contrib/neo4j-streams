@@ -129,7 +129,7 @@ class ConfigurationMigratorTest {
     assertEquals(migratedConfig["value.converter.schema.registry.url"], "http://schema-registry:8081")
     assertEquals(migratedConfig["neo4j.uri"], "bolt://neo4j:7687")
     assertEquals(migratedConfig["neo4j.authentication.basic.username"], "neo4j")
-    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "password")
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
     assertEquals(migratedConfig["neo4j.query.poll-interval"], "5000ms")
     assertEquals(migratedConfig["neo4j.query.streaming-property"], "timestamp")
     assertEquals(
@@ -165,7 +165,7 @@ class ConfigurationMigratorTest {
     assertEquals(migratedConfig["errors.log.include.messages"], "true")
     assertEquals(migratedConfig["neo4j.uri"], "bolt://neo4j:7687")
     assertEquals(migratedConfig["neo4j.authentication.basic.username"], "neo4j")
-    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "password")
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
     assertEquals(migratedConfig["neo4j.cypher.topic.my-topic"], "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)")
   }
 
