@@ -17,7 +17,7 @@ class ConfigurationMigratorTest {
       mapOf(
         "neo4j.topic.pattern.merge.node.properties.enabled" to "true",
         "neo4j.server.uri" to "neo4j+s://x.x.x.x",
-        "neo4j.retry.max.attemps" to "1"
+        "neo4j.encryption.enabled" to "false"
       )
 
     // When the configuration is migrated
@@ -27,7 +27,7 @@ class ConfigurationMigratorTest {
     assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["neo4j.pattern.node.merge-properties"], "true")
     assertEquals(migratedConfig["neo4j.uri"], "neo4j+s://x.x.x.x")
-    assertEquals(migratedConfig["neo4j.max-retry-attempts"], "1")
+    assertEquals(migratedConfig["neo4j.security.encrypted"], "false")
   }
 
   @Test fun `should not migrate keys with no matching configuration key`() {
@@ -35,7 +35,8 @@ class ConfigurationMigratorTest {
     val originals = mapOf(
       "neo4j.encryption.ca.certificate.path" to "./cert.pem",
       "neo4j.source.type" to SourceType.QUERY.toString(),
-      "neo4j.enforce.schema" to "true"
+      "neo4j.enforce.schema" to "true",
+      "neo4j.retry.max.attemps" to "1"
     )
 
     // When the configuration is migrated
@@ -104,7 +105,7 @@ class ConfigurationMigratorTest {
 
     // Then those options should still be included
     assertEquals(originals.size, migratedConfig.size)
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.source.Neo4jSourceConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.source.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
     assertEquals(migratedConfig["arbitrary.config.key"], "arbitrary.value")
   }
@@ -121,7 +122,7 @@ class ConfigurationMigratorTest {
     assertEquals(12, migratedConfig.size)
 
     assertEquals(migratedConfig["neo4j.query.topic"], "my-topic")
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.source.Neo4jSourceConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.source.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
     assertEquals(migratedConfig["key.converter.schema.registry.url"], "http://schema-registry:8081")
     assertEquals(migratedConfig["value.converter"], "io.confluent.connect.avro.AvroConverter")
@@ -152,7 +153,7 @@ class ConfigurationMigratorTest {
     assertEquals(15, migratedConfig.size)
 
     assertEquals(migratedConfig["topics"], "my-topic")
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.sink.Neo4jSinkConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.sink.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "org.apache.kafka.connect.json.JsonConverter")
     assertEquals(migratedConfig["key.converter.schemas.enable"], "false")
     assertEquals(migratedConfig["value.converter"], "org.apache.kafka.connect.json.JsonConverter")
