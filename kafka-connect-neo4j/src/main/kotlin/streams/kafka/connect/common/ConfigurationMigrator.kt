@@ -138,8 +138,8 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
                         log.debug("Migrating configuration prefix key {} to {}", originalKey, newKey)
                     }
                 }
-            } else {
-                // Configuration option not declared should be copied across
+            } else if (KafkaConnectConfig.options.any { k -> originalKey.startsWith(k) }) {
+                // Migrate all Kafka Connect configuration options
                 updatedConfig[originalKey] = value
             }
         }
