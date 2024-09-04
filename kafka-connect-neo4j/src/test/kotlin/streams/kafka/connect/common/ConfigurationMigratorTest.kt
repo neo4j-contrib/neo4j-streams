@@ -92,12 +92,13 @@ class ConfigurationMigratorTest {
   }
 
   @Test
-  fun `should migrate across unknown configuration options`() {
-    // Given a configuration with non-defined configuration options
+  fun `should migrate across kafka connect configuration options`() {
+    // Given a configuration with kafka connect configuration options
     val originals = mapOf(
       "connector.class" to "streams.kafka.connect.source.Neo4jSourceConnector",
       "key.converter" to "io.confluent.connect.avro.AvroConverter",
-      "arbitrary.config.key" to "arbitrary.value"
+      "errors.deadletterqueue.topic.name" to "dlq-topic",
+      "key.converter.schema.registry.url" to "http://schema-registry:8081"
     )
 
     // When the configuration is migrated
@@ -107,7 +108,25 @@ class ConfigurationMigratorTest {
     assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.source.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
-    assertEquals(migratedConfig["arbitrary.config.key"], "arbitrary.value")
+    assertEquals(migratedConfig["errors.deadletterqueue.topic.name"], "dlq-topic")
+    assertEquals(migratedConfig["key.converter.schema.registry.url"], "http://schema-registry:8081")
+
+  }
+
+  @Test
+  fun `should not migrate across unknown configuration options`() {
+    // Given a configuration with unknown configuration options
+    val originals = mapOf(
+      "arbitrary.config.key" to "arbitrary.value",
+      "kafka.region" to "eu-west-2",
+      "confluent.custom.connector.plugin.url" to "s3://confluent-custom-connectors-prod-eu-west-2/connect_plugins/a/b/c/plugin.jar",
+    )
+
+    // When the configuration is migrated
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
+
+    // Then those options should not exist anymore
+    assertEquals(migratedConfig.size, 0)
   }
 
   @Test
