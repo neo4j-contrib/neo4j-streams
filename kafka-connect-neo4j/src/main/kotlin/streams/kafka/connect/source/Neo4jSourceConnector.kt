@@ -1,10 +1,7 @@
 package streams.kafka.connect.source
 
-import com.github.jcustenborder.kafka.connect.utils.config.*
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import com.github.jcustenborder.kafka.connect.utils.config.Description
+import com.github.jcustenborder.kafka.connect.utils.config.Title
 import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.connect.connector.Task
 import org.apache.kafka.connect.source.SourceConnector

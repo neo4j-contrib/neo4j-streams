@@ -1,5 +1,6 @@
 package streams.kafka.connect.source
 
+import com.fasterxml.jackson.databind.ObjectMapper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.GlobalScope
@@ -16,6 +17,7 @@ import org.neo4j.driver.Record
 import org.neo4j.driver.Values
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import streams.kafka.connect.common.ConfigurationMigrator
 import streams.utils.StreamsUtils
 import java.util.concurrent.BlockingQueue
 import java.util.concurrent.LinkedBlockingQueue
@@ -172,6 +174,22 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
         StreamsUtils.closeSafetely(driver) {
             log.info("Error while closing Driver instance:", it)
         }
+
+        val originalConfig = config.originals() as Map<String, String>
+        val migratedConfig = ConfigurationMigrator(originalConfig).migrateToV51().toMutableMap()
+
+        log.debug("Defaulting v5.1 migrated configuration offset to last checked timestamp: {}", lastCheck)
+        migratedConfig["neo4j.start-from"] = "USER_PROVIDED"
+        migratedConfig["neo4j.start-from.value"] = lastCheck
+
+        val mapper = ObjectMapper()
+        val jsonConfig = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(migratedConfig)
+        log.info(
+            "The migrated settings for 5.1 version of Neo4j Source Connector '{}' is: `{}`",
+            originalConfig["name"],
+            jsonConfig
+        )
+
         log.info("Neo4j Source Service closed successfully")
     }
 }
