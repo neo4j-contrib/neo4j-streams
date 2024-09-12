@@ -17,7 +17,7 @@ class ConfigurationMigratorTest {
       mapOf(
         "neo4j.topic.pattern.merge.node.properties.enabled" to "true",
         "neo4j.server.uri" to "neo4j+s://x.x.x.x",
-        "neo4j.retry.max.attemps" to "1"
+        "neo4j.encryption.enabled" to "false"
       )
 
     // When the configuration is migrated
@@ -27,7 +27,7 @@ class ConfigurationMigratorTest {
     assertEquals(originals.size, migratedConfig.size)
     assertEquals(migratedConfig["neo4j.pattern.node.merge-properties"], "true")
     assertEquals(migratedConfig["neo4j.uri"], "neo4j+s://x.x.x.x")
-    assertEquals(migratedConfig["neo4j.max-retry-attempts"], "1")
+    assertEquals(migratedConfig["neo4j.security.encrypted"], "false")
   }
 
   @Test fun `should not migrate keys with no matching configuration key`() {
@@ -35,7 +35,8 @@ class ConfigurationMigratorTest {
     val originals = mapOf(
       "neo4j.encryption.ca.certificate.path" to "./cert.pem",
       "neo4j.source.type" to SourceType.QUERY.toString(),
-      "neo4j.enforce.schema" to "true"
+      "neo4j.enforce.schema" to "true",
+      "neo4j.retry.max.attemps" to "1"
     )
 
     // When the configuration is migrated
@@ -91,12 +92,13 @@ class ConfigurationMigratorTest {
   }
 
   @Test
-  fun `should migrate across unknown configuration options`() {
-    // Given a configuration with non-defined configuration options
+  fun `should migrate across kafka connect configuration options`() {
+    // Given a configuration with kafka connect configuration options
     val originals = mapOf(
       "connector.class" to "streams.kafka.connect.source.Neo4jSourceConnector",
       "key.converter" to "io.confluent.connect.avro.AvroConverter",
-      "arbitrary.config.key" to "arbitrary.value"
+      "errors.deadletterqueue.topic.name" to "dlq-topic",
+      "key.converter.schema.registry.url" to "http://schema-registry:8081"
     )
 
     // When the configuration is migrated
@@ -104,9 +106,27 @@ class ConfigurationMigratorTest {
 
     // Then those options should still be included
     assertEquals(originals.size, migratedConfig.size)
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.source.Neo4jSourceConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.source.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
-    assertEquals(migratedConfig["arbitrary.config.key"], "arbitrary.value")
+    assertEquals(migratedConfig["errors.deadletterqueue.topic.name"], "dlq-topic")
+    assertEquals(migratedConfig["key.converter.schema.registry.url"], "http://schema-registry:8081")
+
+  }
+
+  @Test
+  fun `should not migrate across unknown configuration options`() {
+    // Given a configuration with unknown configuration options
+    val originals = mapOf(
+      "arbitrary.config.key" to "arbitrary.value",
+      "kafka.region" to "eu-west-2",
+      "confluent.custom.connector.plugin.url" to "s3://confluent-custom-connectors-prod-eu-west-2/connect_plugins/a/b/c/plugin.jar",
+    )
+
+    // When the configuration is migrated
+    val migratedConfig = ConfigurationMigrator(originals).migrateToV51()
+
+    // Then those options should not exist anymore
+    assertEquals(migratedConfig.size, 0)
   }
 
   @Test
@@ -121,14 +141,14 @@ class ConfigurationMigratorTest {
     assertEquals(12, migratedConfig.size)
 
     assertEquals(migratedConfig["neo4j.query.topic"], "my-topic")
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.source.Neo4jSourceConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.source.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "io.confluent.connect.avro.AvroConverter")
     assertEquals(migratedConfig["key.converter.schema.registry.url"], "http://schema-registry:8081")
     assertEquals(migratedConfig["value.converter"], "io.confluent.connect.avro.AvroConverter")
     assertEquals(migratedConfig["value.converter.schema.registry.url"], "http://schema-registry:8081")
     assertEquals(migratedConfig["neo4j.uri"], "bolt://neo4j:7687")
     assertEquals(migratedConfig["neo4j.authentication.basic.username"], "neo4j")
-    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "password")
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
     assertEquals(migratedConfig["neo4j.query.poll-interval"], "5000ms")
     assertEquals(migratedConfig["neo4j.query.streaming-property"], "timestamp")
     assertEquals(
@@ -152,7 +172,7 @@ class ConfigurationMigratorTest {
     assertEquals(15, migratedConfig.size)
 
     assertEquals(migratedConfig["topics"], "my-topic")
-    assertEquals(migratedConfig["connector.class"], "streams.kafka.connect.sink.Neo4jSinkConnector")
+    assertEquals(migratedConfig["connector.class"], "org.neo4j.connectors.kafka.sink.Neo4jConnector")
     assertEquals(migratedConfig["key.converter"], "org.apache.kafka.connect.json.JsonConverter")
     assertEquals(migratedConfig["key.converter.schemas.enable"], "false")
     assertEquals(migratedConfig["value.converter"], "org.apache.kafka.connect.json.JsonConverter")
@@ -164,8 +184,25 @@ class ConfigurationMigratorTest {
     assertEquals(migratedConfig["errors.log.include.messages"], "true")
     assertEquals(migratedConfig["neo4j.uri"], "bolt://neo4j:7687")
     assertEquals(migratedConfig["neo4j.authentication.basic.username"], "neo4j")
-    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "password")
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
     assertEquals(migratedConfig["neo4j.cypher.topic.my-topic"], "MERGE (p:Person{name: event.name, surname: event.surname}) MERGE (f:Family{name: event.surname}) MERGE (p)-[:BELONGS_TO]->(f)")
+  }
+
+  @Test
+  fun `should leave sensitive configuration values blank`() {
+    // Given a configuration which contains sensitive values
+    val config = mapOf(
+      "neo4j.authentication.basic.password" to "password",
+      "neo4j.authentication.kerberos.ticket" to "kerberos"
+    )
+
+    // When the configuration is migrated
+    val migratedConfig = ConfigurationMigrator(config).migrateToV51()
+
+    // Then the keys persist but the values are blank
+    assertEquals(2, migratedConfig.size)
+    assertEquals(migratedConfig["neo4j.authentication.basic.password"], "")
+    assertEquals(migratedConfig["neo4j.authentication.kerberos.ticket"], "")
   }
 
   private fun loadConfiguration(path: String): Map<String, String> {
