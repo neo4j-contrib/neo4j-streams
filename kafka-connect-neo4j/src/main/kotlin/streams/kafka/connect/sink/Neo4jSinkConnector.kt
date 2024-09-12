@@ -35,8 +35,12 @@ class Neo4jSinkConnector: SinkConnector() {
     override fun stop() {
         val migratedConfig = ConfigurationMigrator(settings).migrateToV51()
         val mapper = ObjectMapper()
-        val jsonConfig = mapper.writeValueAsString(migratedConfig)
-        log.info("Migrated Sink configuration to v5.1 connector format: {}", jsonConfig)
+        val jsonConfig = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(migratedConfig)
+        log.info(
+            "The migrated settings for 5.1 version of Neo4j Sink Connector '{}' is: `{}`",
+            settings["name"],
+            jsonConfig
+        )
     }
 
     override fun version(): String {

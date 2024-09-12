@@ -57,14 +57,16 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
     data class PropertyConverter(val updatedConfigKey: String, val migrationHandler: () -> String)
 
     private val propertyConverterMap: Map<String, PropertyConverter> = mutableMapOf(
+        // Kafka
+        "connector.class" to PropertyConverter("connector.class") {convertConnectorClass(settings["connector.class"] as String)},
         // Common
         DATABASE to PropertyConverter("neo4j.database") { settings[DATABASE] as String },
         SERVER_URI to PropertyConverter("neo4j.uri") { settings[SERVER_URI] as String },
         AUTHENTICATION_TYPE to PropertyConverter("neo4j.authentication.type") { settings[AUTHENTICATION_TYPE] as String },
         AUTHENTICATION_BASIC_USERNAME to PropertyConverter("neo4j.authentication.basic.username") {settings[AUTHENTICATION_BASIC_USERNAME] as String},
-        AUTHENTICATION_BASIC_PASSWORD to PropertyConverter("neo4j.authentication.basic.password") {settings[AUTHENTICATION_BASIC_PASSWORD] as String},
+        AUTHENTICATION_BASIC_PASSWORD to PropertyConverter("neo4j.authentication.basic.password") {""},
         AUTHENTICATION_BASIC_REALM to PropertyConverter("neo4j.authentication.basic.realm") {settings[AUTHENTICATION_BASIC_REALM] as String},
-        AUTHENTICATION_KERBEROS_TICKET to PropertyConverter("neo4j.authentication.kerberos.ticket") {settings[AUTHENTICATION_KERBEROS_TICKET] as String},
+        AUTHENTICATION_KERBEROS_TICKET to PropertyConverter("neo4j.authentication.kerberos.ticket") {""},
         BATCH_SIZE to PropertyConverter("neo4j.batch-size") {settings[BATCH_SIZE] as String},
         ENCRYPTION_ENABLED to PropertyConverter("neo4j.security.encrypted") {settings[ENCRYPTION_ENABLED] as String},
         ENCRYPTION_TRUST_STRATEGY to PropertyConverter("neo4j.security.trust-strategy") {settings[ENCRYPTION_TRUST_STRATEGY] as String},
@@ -74,7 +76,7 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
         CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS to PropertyConverter("neo4j.pool.idle-time-before-connection-test") { convertMsecs(settings[CONNECTION_LIVENESS_CHECK_TIMEOUT_MSECS] as String) },
         CONNECTION_POOL_MAX_SIZE to PropertyConverter("neo4j.pool.max-connection-pool-size") {settings[CONNECTION_POOL_MAX_SIZE] as String},
         RETRY_BACKOFF_MSECS to PropertyConverter("neo4j.max-retry-time") { convertMsecs(settings[RETRY_BACKOFF_MSECS] as String) },
-        RETRY_MAX_ATTEMPTS to PropertyConverter("neo4j.max-retry-attempts") {settings[RETRY_MAX_ATTEMPTS] as String},
+        RETRY_MAX_ATTEMPTS to PropertyConverter("") {settings[RETRY_MAX_ATTEMPTS] as String},
         // Sink
         TOPIC_CDC_SOURCE_ID to PropertyConverter("neo4j.cdc.source-id.topics") {settings[TOPIC_CDC_SOURCE_ID] as String},
         TOPIC_CDC_SOURCE_ID_LABEL_NAME to PropertyConverter("neo4j.cdc.source-id.label-name") {settings[TOPIC_CDC_SOURCE_ID_LABEL_NAME] as String},
@@ -94,6 +96,14 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
         STREAMING_POLL_INTERVAL to PropertyConverter("neo4j.query.poll-interval") { convertMsecs(settings[STREAMING_POLL_INTERVAL] as String) },
         ENFORCE_SCHEMA to PropertyConverter("") {settings[ENFORCE_SCHEMA] as String}
     )
+
+    private fun convertConnectorClass(className: String): String {
+        return when (className) {
+            "streams.kafka.connect.source.Neo4jSourceConnector" -> "org.neo4j.connectors.kafka.source.Neo4jConnector"
+            "streams.kafka.connect.sink.Neo4jSinkConnector" -> "org.neo4j.connectors.kafka.sink.Neo4jConnector"
+            else -> ""
+        }
+    }
 
     // Configuration properties that have user-defined keys
     private val prefixConverterMap: Map<String, String> = mutableMapOf(
@@ -128,15 +138,14 @@ class ConfigurationMigrator(private val settings: Map<String, String>) {
                         log.debug("Migrating configuration prefix key {} to {}", originalKey, newKey)
                     }
                 }
-            } else {
-                // Configuration option not declared should be copied across
+            } else if (KafkaConnectConfig.options.any { k -> originalKey.startsWith(k) }) {
+                // Migrate all Kafka Connect configuration options
                 updatedConfig[originalKey] = value
             }
         }
 
         return updatedConfig
     }
-
     companion object {
         /**
          * Converts milliseconds format into new format of time units
