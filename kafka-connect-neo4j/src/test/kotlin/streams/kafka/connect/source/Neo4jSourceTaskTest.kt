@@ -246,6 +246,7 @@ class Neo4jSourceTaskTest {
                                 |       key2: "value2"
                                 |   } AS map,
                                 |   n AS node
+                                |ORDER BY n.timestamp   
                             """.trimMargin(), mapOf("timestamp" to clock.instant().toEpochMilli() + it)
                 )
                 val next = result.next()
@@ -324,6 +325,7 @@ class Neo4jSourceTaskTest {
                 |       key2: "value2"
                 |   } AS map,
                 |   n AS node
+                |ORDER BY n.timestamp
             """.trimMargin()
 
     @Test(expected = ConnectException::class)
