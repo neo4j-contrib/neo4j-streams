@@ -72,7 +72,7 @@ class Neo4jSinkTaskTest {
 
     @After
     fun after() {
-        session.run("MATCH (n) DETACH DELETE n")
+        session.run("MATCH (n) DETACH DELETE n").consume()
         task.stop()
     }
 
