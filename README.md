@@ -6,7 +6,7 @@ This project integrates Neo4j with *Apache Kafka and the Confluent Platform*.
 
 > [!IMPORTANT]  
 > Newer versions of this connector are now maintained at https://github.com/neo4j/neo4j-kafka-connector.
-> This repository is only kept alive for maintenance and security updates of 5.0.x versions of the connector.
+> This repository is only kept alive for critical bug and security fixes of 5.0.x versions of the connector.
 
 ## Neo4j Kafka Connect Neo4j Connector
 
