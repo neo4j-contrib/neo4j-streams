@@ -3,10 +3,9 @@
 
 image::https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png[]
 
-[IMPORTANT]
 ====
-Newer versions of this connector are now maintained at https://github.com/neo4j/neo4j-kafka-connector.
-This repository is only kept alive for maintenance and security updates of 5.0.x versions of the connector.
+_**Newer versions of this connector are now maintained at https://github.com/neo4j/neo4j-kafka-connector.
+This repository is only kept alive for maintenance and security updates of 5.0.x versions of the connector.**_
 ====
 
 This project integrates Neo4j with *Apache Kafka and the Confluent Platform*.
