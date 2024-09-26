@@ -65,7 +65,7 @@
         <junit-jupiter.version>5.10.0</junit-jupiter.version>
         <hamcrest.version>2.2</hamcrest.version>
         <neo4j.configuration-lifecycle.version>ad59084711</neo4j.configuration-lifecycle.version>
-        <commons-lang3.version>3.16.0</commons-lang3.version>
+        <commons-lang3.version>3.17.0</commons-lang3.version>
     </properties>
 
     <organization>
