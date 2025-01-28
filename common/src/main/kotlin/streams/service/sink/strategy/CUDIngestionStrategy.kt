@@ -9,7 +9,7 @@ import streams.service.sink.strategy.CUDIngestionStrategy.Companion.TO_KEY
 import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeKeysAsString
 import streams.utils.StreamsUtils
-
+import java.util.Locale
 
 enum class CUDOperations { create, merge, update, delete, match }
 
@@ -75,7 +75,7 @@ class CUDIngestionStrategy: IngestionStrategy {
 
     private fun CUDRelationship.isValidOperation(): Boolean = from.op in LIST_VALID_CUD_NODE_REL && to.op in LIST_VALID_CUD_NODE_REL && op in LIST_VALID_CUD_REL
 
-    private fun NodeRelMetadata.getOperation() = op.toString().toUpperCase()
+    private fun NodeRelMetadata.getOperation() = op.toString().uppercase(Locale.ROOT)
 
     private fun buildNodeLookupByIds(keyword: String = "MATCH", ids: Set<String>, labels: List<String>, identifier: String = "n", field: String = ""): String {
         val fullField = if (field.isNotBlank()) "$field." else field
