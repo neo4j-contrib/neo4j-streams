@@ -54,7 +54,7 @@
         <neo4j.version>4.4.37</neo4j.version>
         <!-- Version 3.4 is the minimal version introducing version for CVE-2023-25194 -->
         <kafka.version>3.8.0</kafka.version>
-        <jackson.version>2.17.1</jackson.version>
+        <jackson.version>2.18.2</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <testcontainers.version>1.20.1</testcontainers.version>
         <neo4j.java.driver.version>4.4.18</neo4j.java.driver.version>
