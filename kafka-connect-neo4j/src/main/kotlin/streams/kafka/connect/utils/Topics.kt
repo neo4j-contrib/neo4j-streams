@@ -5,8 +5,6 @@ import streams.service.sink.strategy.*
 import java.util.Locale
 import kotlin.reflect.jvm.javaType
 
-class TopicValidationException(message: String): RuntimeException(message)
-
 private fun TopicType.replaceKeyBy(replacePrefix: Pair<String, String>) = if (replacePrefix.first.isNullOrBlank())
         this.key
     else
