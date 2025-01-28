@@ -50,7 +50,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>11</java.version>
         <kotlin.version>2.1.10</kotlin.version>
-        <kotlin.coroutines.version>1.9.0</kotlin.coroutines.version>
+        <kotlin.coroutines.version>1.10.1</kotlin.coroutines.version>
         <neo4j.version>4.4.40</neo4j.version>
         <!-- Version 3.4 is the minimal version introducing version for CVE-2023-25194 -->
         <kafka.version>3.8.0</kafka.version>
