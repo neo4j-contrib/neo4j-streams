@@ -63,7 +63,7 @@
         <junit.version>4.13.2</junit.version>
         <kafka.avro.serializer.version>5.2.2</kafka.avro.serializer.version>
         <junit-jupiter.version>5.11.4</junit-jupiter.version>
-        <hamcrest.version>2.2</hamcrest.version>
+        <hamcrest.version>3.0</hamcrest.version>
         <neo4j.configuration-lifecycle.version>ad59084711</neo4j.configuration-lifecycle.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
     </properties>
