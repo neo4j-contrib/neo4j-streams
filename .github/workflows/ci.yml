@@ -17,14 +17,10 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 11
-      - name: Cache Maven packages
-        uses: actions/cache@v1
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          distribution: 'temurin'
+          cache: 'maven'
       - name: Build with Maven
         env:
           # needed for excluding enterprise tests
           TRAVIS: true
-        run: mvn -B clean test --file pom.xml --no-transfer-progress
+        run: mvn --batch-mode clean test --no-transfer-progress
