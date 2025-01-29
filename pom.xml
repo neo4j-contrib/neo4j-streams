@@ -23,17 +23,6 @@
 
     <repositories>
         <repository>
-            <id>neo4j-v4-repository</id>
-            <name>Neo4j Maven 2 snapshot repository</name>
-            <url>https://neo4j.bintray.com/community</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-        </repository>
-        <repository>
             <id>jitpack.io</id>
             <name>Jitpack</name>
             <url>https://jitpack.io</url>
