@@ -46,7 +46,7 @@
         <!-- 3.4 is the minimum version for CVE-2023-25194 -->
         <kafka.version>3.4.1</kafka.version>
         <!-- Keep it at 2.14 as future versions cause problems with neo4j procedure framework -->
-        <jackson.version>2.14.3</jackson.version>
+        <jackson.version>2.18.2</jackson.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.12</neo4j.java.driver.version>
         <testcontainers.version>1.19.1</testcontainers.version>
