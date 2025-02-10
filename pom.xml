@@ -40,7 +40,7 @@
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <java.version>1.8</java.version>
-        <kotlin.version>1.9.10</kotlin.version>
+        <kotlin.version>2.1.10</kotlin.version>
         <kotlin.coroutines.version>1.7.3</kotlin.coroutines.version>
         <neo4j.version>4.4.40</neo4j.version>
         <!-- 3.4 is the minimum version for CVE-2023-25194 -->

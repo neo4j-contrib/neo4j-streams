@@ -3,6 +3,7 @@ package streams
 import org.hamcrest.Matcher
 import org.hamcrest.StringDescription
 import org.neo4j.function.ThrowingSupplier
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 object Assert {
@@ -25,7 +26,7 @@ object Assert {
                     val description = StringDescription()
                     description.appendText(reason.apply(last)).appendText("\nExpected: ").appendDescriptionOf(matcher).appendText("\n     but: ")
                     matcher.describeMismatch(last, description)
-                    throw AssertionError("Timeout hit (" + timeout + " " + timeUnit.toString().toLowerCase() + ") while waiting for condition to match: " + description.toString())
+                    throw AssertionError("Timeout hit (" + timeout + " " + timeUnit.toString().lowercase(Locale.ROOT) + ") while waiting for condition to match: " + description.toString())
                 } else {
                     return
                 }

@@ -1,6 +1,7 @@
 package streams.service
 
 import streams.service.sink.strategy.*
+import java.util.Locale
 import kotlin.reflect.jvm.javaType
 
 class TopicValidationException(message: String): RuntimeException(message)
@@ -45,7 +46,7 @@ data class Topics(val cypherTopics: Map<String, String> = emptyMap(),
     companion object {
         fun from(map: Map<String, Any?>, replacePrefix: Pair<String, String> = ("" to ""), dbName: String = "", invalidTopics: List<String> = emptyList()): Topics {
             val config = map
-                    .filterKeys { if (dbName.isNotBlank()) it.toLowerCase().endsWith(".to.$dbName") else !it.contains(".to.") }
+                    .filterKeys { if (dbName.isNotBlank()) it.lowercase(Locale.ROOT).endsWith(".to.$dbName") else !it.contains(".to.") }
                     .mapKeys { if (dbName.isNotBlank()) it.key.replace(".to.$dbName", "", true) else it.key }
             val cypherTopicPrefix = TopicType.CYPHER.replaceKeyBy(replacePrefix)
             val sourceIdKey = TopicType.CDC_SOURCE_ID.replaceKeyBy(replacePrefix)

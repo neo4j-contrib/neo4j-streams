@@ -44,7 +44,7 @@ fun Relationship.asStreamsMap(): Map<String, Any?> {
 }
 
 fun String.toPointCase(): String {
-    return this.split("(?<=[a-z])(?=[A-Z])".toRegex()).joinToString(separator = ".").toLowerCase()
+    return this.split("(?<=[a-z])(?=[A-Z])".toRegex()).joinToString(separator = ".").lowercase(Locale.ROOT)
 }
 
 fun String.quote(): String = if (SourceVersion.isIdentifier(this)) this else "`$this`"

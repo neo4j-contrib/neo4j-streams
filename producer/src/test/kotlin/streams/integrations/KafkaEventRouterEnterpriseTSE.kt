@@ -89,9 +89,9 @@ class KafkaEventRouterEnterpriseTSE {
                         .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_WITH_TOMBSTONE.from.$DB_TOMBSTONE_WITH_COMPACT", "KNOWS{*}")
 
                         .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_ALL.from.$DB_STRATEGY_ALL", "ALPHA{*}")
-                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_ALL.from.$DB_STRATEGY_ALL.key_strategy", RelKeyStrategy.ALL.toString().toLowerCase())
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_ALL.from.$DB_STRATEGY_ALL.key_strategy", RelKeyStrategy.ALL.toString().lowercase())
                         .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_DEFAULT.from.$DB_STRATEGY_DEFAULT", "ALPHA{*}")
-                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_DEFAULT.from.$DB_STRATEGY_DEFAULT.key_strategy", RelKeyStrategy.DEFAULT.toString().toLowerCase())
+                        .withNeo4jConfig("streams.source.topic.relationships.$TOPIC_STRATEGY_DEFAULT.from.$DB_STRATEGY_DEFAULT.key_strategy", RelKeyStrategy.DEFAULT.toString().lowercase())
 
                 neo4j.withDatabases("foo", "bar", "baz", "deletedb",
                         DB_TEST_REL_WITH_COMPACT, DB_TEST_NODE_WITH_COMPACT, DB_TOMBSTONE_WITH_COMPACT,
