@@ -50,7 +50,7 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <neo4j.java.driver.version>4.4.19</neo4j.java.driver.version>
         <testcontainers.version>1.20.4</testcontainers.version>
-        <avro.version>1.11.3</avro.version>
+        <avro.version>1.12.0</avro.version>
         <mokito.version>5.15.2</mokito.version>
         <junit.version>4.13.2</junit.version>
         <kafka.avro.serializer.version>7.5.1</kafka.avro.serializer.version>
