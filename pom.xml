@@ -198,7 +198,6 @@
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
             <version>${jackson.version}</version>
-            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -209,14 +208,6 @@
                 <exclusion>
                     <groupId>org.jetbrains.kotlin</groupId>
                     <artifactId>kotlin-reflect</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-annotations</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
