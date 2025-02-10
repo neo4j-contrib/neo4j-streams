@@ -39,8 +39,8 @@ class KafkaEventRouterWithMultipleNodeConstraintsTSE: KafkaEventRouterBaseTSE() 
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$keyStrategyAll{*}",
                 "streams.source.topic.relationships.$topicWithStrategyDefault" to "$keyStrategyDefault{*}",
                 "streams.source.topic.relationships.$topicWithoutStrategy" to "$noKeyStrategy{*}",
-                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.ALL.toString().toLowerCase(),
-                "streams.source.topic.relationships.$topicWithStrategyDefault.key_strategy" to RelKeyStrategy.DEFAULT.toString().toLowerCase())
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.ALL.toString().lowercase(),
+                "streams.source.topic.relationships.$topicWithStrategyDefault.key_strategy" to RelKeyStrategy.DEFAULT.toString().lowercase())
         val queries = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelEnd) ASSERT p.name IS UNIQUE")

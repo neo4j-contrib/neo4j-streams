@@ -450,8 +450,8 @@ class KafkaEventRouterCompactionStrategyTSE : KafkaEventRouterBaseTSE() {
                 "streams.source.topic.relationships.$topicWithStrategyAll" to "$allProps{*}",
                 "streams.source.topic.relationships.$topicWithStrategyFirst" to "$oneProp{*}",
                 "streams.source.topic.relationships.$topicWithoutStrategy" to "$defaultProp{*}",
-                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.ALL.toString().toLowerCase(),
-                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.DEFAULT.toString().toLowerCase())
+                "streams.source.topic.relationships.$topicWithStrategyAll.key_strategy" to RelKeyStrategy.ALL.toString().lowercase(),
+                "streams.source.topic.relationships.$topicWithStrategyFirst.key_strategy" to RelKeyStrategy.DEFAULT.toString().lowercase())
 
         val constraints = listOf("CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.name IS UNIQUE",
                 "CREATE CONSTRAINT ON (p:$labelStart) ASSERT p.surname IS UNIQUE",
