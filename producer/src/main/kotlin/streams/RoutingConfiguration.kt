@@ -7,6 +7,7 @@ import org.neo4j.graphdb.Node
 import org.neo4j.graphdb.Relationship
 import org.neo4j.logging.Log
 import streams.events.*
+import java.util.Locale
 
 
 private val PATTERN_REG: Regex = "^(\\s*\\:*\\s*\\`*\\s*\\w+\\s*(?:\\:*\\s*\\`*\\s*\\:?(?:[\\w\\`|\\*]+)\\s*)*\\`*\\:?)\\s*(?:\\{\\s*(-?[\\w|\\*]+\\s*(?:,\\s*-?[\\w|\\*]+\\s*)*)\\})?\$".toRegex()
@@ -189,9 +190,9 @@ data class RelationshipRoutingConfiguration(val name: String = "",
                     val properties = RoutingProperties.from(matcher)
 
                     val relKeyStrategy = try {
-                        RelKeyStrategy.valueOf(keyStrategyString.toUpperCase())
+                        RelKeyStrategy.valueOf(keyStrategyString.uppercase(Locale.ROOT))
                     } catch (e: IllegalArgumentException) {
-                        log?.warn("Invalid key strategy setting, switching to default value ${RelKeyStrategy.DEFAULT.toString().toLowerCase()}")
+                        log?.warn("Invalid key strategy setting, switching to default value ${RelKeyStrategy.DEFAULT.toString().lowercase(Locale.ROOT)}")
                         RelKeyStrategy.DEFAULT
                     }
 

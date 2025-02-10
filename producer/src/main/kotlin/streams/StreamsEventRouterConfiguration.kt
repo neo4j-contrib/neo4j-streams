@@ -5,6 +5,7 @@ import org.neo4j.logging.Log
 import streams.config.StreamsConfig
 import streams.events.EntityType
 import streams.events.RelKeyStrategy
+import java.util.Locale
 
 
 private inline fun <reified T> filterMap(config: Map<String, String>, routingPrefix: String, dbName: String = "", routingSuffix: String? = null, log: Log? = null): List<T> {
@@ -31,7 +32,7 @@ private inline fun <reified T> filterMap(config: Map<String, String>, routingPre
                 val keyStrategy = routingSuffix?.let { suffix ->
                     print("suffix - $suffix")
                     config.entries.firstOrNull{ it.key.startsWith(prefixAndTopic) && it.key.endsWith(suffix) }?.value
-                } ?: RelKeyStrategy.DEFAULT.toString().toLowerCase()
+                } ?: RelKeyStrategy.DEFAULT.toString().lowercase(Locale.ROOT)
 
                 RoutingConfigurationFactory
                     .getRoutingConfiguration(prefixAndTopic.replace(routingPrefix, StringUtils.EMPTY),
