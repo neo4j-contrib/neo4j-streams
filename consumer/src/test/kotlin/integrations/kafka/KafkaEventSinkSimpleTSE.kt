@@ -168,7 +168,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
 
         // when
         val actual = db.execute("CALL streams.sink.status()") {
-            it.stream().toList()
+            it.asSequence().toList()
         }
 
         // then
@@ -188,7 +188,7 @@ class KafkaEventSinkSimpleTSE: KafkaEventSinkBaseTSE() {
 
         // when
         val actual = db.execute("CALL streams.sink.status()") {
-            it.stream().toList()
+            it.asSequence().toList()
         }
 
         // then
