@@ -12,9 +12,6 @@
     <packaging>jar</packaging>
     <name>Neo4j Streams - Common</name>
     <description>Neo4j Streams - Commons Package</description>
-    <properties>
-        <kotlin.version>2.1.10</kotlin.version>
-    </properties>
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
@@ -39,7 +36,6 @@
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-stdlib-jdk8</artifactId>
-            <version>${kotlin.version}</version>
         </dependency>
         <dependency>
             <groupId>org.jetbrains.kotlinx</groupId>
@@ -68,7 +64,6 @@
         <dependency>
             <groupId>org.jetbrains.kotlin</groupId>
             <artifactId>kotlin-test</artifactId>
-            <version>${kotlin.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
