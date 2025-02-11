@@ -52,6 +52,7 @@
         <jackson.version>2.15.2</jackson.version>
         <java.version>11</java.version>
         <jna.version>5.13.0</jna.version>
+        <junit-5.version>5.11.4</junit-5.version>
         <junit.version>4.13.2</junit.version>
         <kafka.avro.serializer.version>7.5.1</kafka.avro.serializer.version>
         <kafka.version>3.8.1</kafka.version>
@@ -92,6 +93,13 @@
                 <groupId>org.jetbrains.kotlinx</groupId>
                 <artifactId>kotlinx-coroutines-bom</artifactId>
                 <version>${kotlin.coroutines.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit-5.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -234,6 +242,20 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
+    <dependencies>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>${junit-5.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <version>${junit-5.version}</version>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
     <repositories>
         <repository>
             <id>jitpack.io</id>
@@ -323,13 +345,6 @@
                         </includes>
                         <trimStackTrace>false</trimStackTrace>
                     </configuration>
-                    <dependencies>
-                        <dependency>
-                            <groupId>org.apache.maven.surefire</groupId>
-                            <artifactId>surefire-junit47</artifactId>
-                            <version>${maven-surefire-plugin.version}</version>
-                        </dependency>
-                    </dependencies>
                 </plugin>
             </plugins>
         </pluginManagement>
