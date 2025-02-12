@@ -40,9 +40,9 @@
     </scm>
     <properties>
         <annotations.version>23.0.0</annotations.version>
-        <awaitility.version>4.2.0</awaitility.version>
+        <awaitility.version>4.2.2</awaitility.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
-        <connect-utils.version>0.7.177</connect-utils.version>
+        <connect-utils.version>1.0.3</connect-utils.version>
         <guava-bom.version>33.4.0-jre</guava-bom.version>
         <hamcrest.version>1.3</hamcrest.version>
         <jackson.version>2.18.2</jackson.version>
@@ -60,6 +60,7 @@
         <maven-surefire-plugin.version>3.5.2</maven-surefire-plugin.version>
         <mockito.version>5.15.2</mockito.version>
         <neo4j.java.driver.version>4.4.19</neo4j.java.driver.version>
+        <netty-bom.version>4.1.118.Final</netty-bom.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <sortpom-maven-plugin.version>4.0.0</sortpom-maven-plugin.version>
@@ -84,7 +85,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.118.Final</version>
+                <version>${netty-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -158,7 +159,7 @@
             </dependency>
             <dependency>
                 <groupId>org.neo4j.driver</groupId>
-                <artifactId>neo4j-java-driver</artifactId>
+                <artifactId>neo4j-java-driver-slim</artifactId>
                 <version>${neo4j.java.driver.version}</version>
             </dependency>
             <dependency>
