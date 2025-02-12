@@ -49,6 +49,7 @@
         <commons-configuration2.version>2.11.0</commons-configuration2.version>
         <commons-io.version>2.17.0</commons-io.version>
         <commons-lang3.version>3.14.0</commons-lang3.version>
+        <commons-logging.version>1.3.2</commons-logging.version>
         <hamcrest.version>1.3</hamcrest.version>
         <jackson.version>2.15.2</jackson.version>
         <java.version>11</java.version>
@@ -146,6 +147,11 @@
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-logging</groupId>
+                <artifactId>commons-logging</artifactId>
+                <version>${commons-logging.version}</version>
             </dependency>
             <dependency>
                 <groupId>io.confluent</groupId>
