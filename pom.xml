@@ -41,6 +41,7 @@
     <properties>
         <annotations.version>23.0.0</annotations.version>
         <awaitility.version>4.2.2</awaitility.version>
+        <commons-compress.version>1.27.1</commons-compress.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <connect-utils.version>1.0.3</connect-utils.version>
         <guava-bom.version>33.4.0-jre</guava-bom.version>
@@ -126,6 +127,11 @@
                 <groupId>junit</groupId>
                 <artifactId>junit</artifactId>
                 <version>${junit.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.commons</groupId>
+                <artifactId>commons-compress</artifactId>
+                <version>${commons-compress.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.apache.commons</groupId>
