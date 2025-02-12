@@ -19,16 +19,7 @@ jobs:
         with:
           distribution: temurin
           java-version: 11
-
-      - name: Cache Maven packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2
-          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
-          restore-keys: ${{ runner.os }}-m2
+          cache: 'maven'
 
       - name: Build with Maven
-        env:
-          # needed for excluding enterprise tests
-          TRAVIS: true
         run: mvn -B clean test --file pom.xml --no-transfer-progress
