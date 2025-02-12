@@ -5,10 +5,10 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>4.1.5</version>
+        <version>4.1.6</version>
     </parent>
     <artifactId>neo4j-streams-producer</artifactId>
-    <version>4.1.5</version>
+    <version>4.1.6</version>
     <packaging>jar</packaging>
     <name>Neo4j Streams - Producer</name>
     <description>Neo4j Streams - Kafka Producer</description>
