@@ -30,7 +30,4 @@ object MavenUtils {
             logger?.error(s)
         }
     }
-
-    fun isTravis() = System.getenv()
-            .getOrDefault("TRAVIS", "false") == "true"
 }
