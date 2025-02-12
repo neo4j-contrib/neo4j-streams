@@ -2,10 +2,6 @@ package streams.utils
 
 import org.junit.Test
 import org.neo4j.driver.Values
-import org.neo4j.values.storable.CoordinateReferenceSystem.Cartesian
-import org.neo4j.values.storable.CoordinateReferenceSystem.Cartesian_3D
-import org.neo4j.values.storable.CoordinateReferenceSystem.WGS84
-import org.neo4j.values.storable.CoordinateReferenceSystem.WGS84_3D
 import streams.events.EntityType
 import streams.events.Meta
 import streams.events.NodeChange
@@ -20,6 +16,12 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 
 class JSONUtilsTest {
+    companion object {
+        const val CARTESIAN_CODE = 7203
+        const val CARTESIAN_3D_CODE = 9157
+        const val WGS84_CODE = 4326
+        const val WGS84_3D_CODE = 4979
+    }
 
     @Test
     fun `should serialize driver Point Data Types`() {
@@ -30,10 +32,10 @@ class JSONUtilsTest {
                 "\"point3dWgs84\":{\"crs\":\"wgs-84-3d\",\"longitude\":1.0,\"latitude\":2.0,\"height\":3.0}," +
                 "\"time\":\"14:01:01.000000001Z\",\"dateTime\":\"2017-12-17T17:14:35.123456789Z\"}"
 
-        val map = linkedMapOf<String, Any>("point2dCartesian" to Values.point(Cartesian.code, 1.0, 2.0),
-                "point3dCartesian" to Values.point(Cartesian_3D.code, 1.0, 2.0, 3.0),
-                "point2dWgs84" to Values.point(WGS84.code, 1.0, 2.0),
-                "point3dWgs84" to Values.point(WGS84_3D.code, 1.0, 2.0, 3.0),
+        val map = linkedMapOf<String, Any>("point2dCartesian" to Values.point(CARTESIAN_CODE, 1.0, 2.0),
+                "point3dCartesian" to Values.point(CARTESIAN_3D_CODE, 1.0, 2.0, 3.0),
+                "point2dWgs84" to Values.point(WGS84_CODE, 1.0, 2.0),
+                "point3dWgs84" to Values.point(WGS84_3D_CODE, 1.0, 2.0, 3.0),
                 "time" to Values.value(OffsetTime.of(14, 1, 1, 1, UTC)),
                 "dateTime" to Values.value(ZonedDateTime.of(2017, 12, 17, 17, 14, 35, 123456789, UTC)))
 

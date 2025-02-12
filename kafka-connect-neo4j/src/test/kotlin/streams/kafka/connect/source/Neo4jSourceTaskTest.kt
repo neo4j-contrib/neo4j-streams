@@ -6,13 +6,13 @@ import org.apache.kafka.connect.source.SourceRecord
 import org.apache.kafka.connect.source.SourceTask
 import org.apache.kafka.connect.source.SourceTaskContext
 import org.apache.kafka.connect.storage.OffsetStorageReader
+import org.awaitility.Awaitility.await
+import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.*
 import org.junit.*
 import org.mockito.Mockito
 import org.neo4j.driver.Driver
 import org.neo4j.driver.Session
-import org.neo4j.function.ThrowingSupplier
-import streams.Assert
 import streams.Neo4jContainerExtension
 import streams.kafka.connect.common.Neo4jConnectorConfig
 import streams.kafka.connect.sink.AuthenticationType
@@ -24,6 +24,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.test.assertFailsWith
 
 class Neo4jSourceTaskTest {
 
@@ -107,14 +108,15 @@ class Neo4jSourceTaskTest {
         )
 
         val list = mutableListOf<Map<String, Any?>>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { received ->
                 list.addAll(received.map { JSONUtils.readValue<Map<String, Any?>>(it.value()) }
                 )
             }
 
-            list
-        }, equalTo(expected), 30, TimeUnit.SECONDS)
+            assertThat(list, equalTo(expected))
+        }
     }
 
     @Test
@@ -143,13 +145,13 @@ class Neo4jSourceTaskTest {
         )
 
         val list = mutableListOf<Map<String, Any?>>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { received ->
                 list.addAll(received.map { (it.value() as Struct).toMap() })
             }
 
-            list
-        }, equalTo(expected), 30, TimeUnit.SECONDS)
+            assertThat(list, equalTo(expected))
+        }
     }
 
     @Test
@@ -177,14 +179,14 @@ class Neo4jSourceTaskTest {
         )
 
         val list = mutableListOf<Map<String, Any?>>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { received ->
                 list.addAll(received.map { JSONUtils.readValue<Map<String, Any?>>(it.value()) }
                 )
             }
 
-            list
-        }, hasSize(175), 30, TimeUnit.SECONDS)
+            assertThat(list, hasSize(175))
+        }
     }
 
     @Test
@@ -213,14 +215,14 @@ class Neo4jSourceTaskTest {
         )
 
         val list = mutableListOf<Map<String, Any?>>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { received ->
                 list.addAll(received.map { (it.value() as Struct).toMap() }
                 )
             }
 
-            list
-        }, hasSize(175), 30, TimeUnit.SECONDS)
+            assertThat(list, hasSize(175))
+        }
     }
 
     private fun insertRecords(totalRecords: Int, clock: Clock = Clock.systemDefaultZone(), longToInt: Boolean = false) =
@@ -284,10 +286,11 @@ class Neo4jSourceTaskTest {
         insertRecords(totalRecords)
 
         val list = mutableListOf<SourceRecord>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { list.addAll(it) }
-            list.map { JSONUtils.readValue<Map<String, Any?>>(it.value()) }
-        }, hasSize(greaterThanOrEqualTo(2)), 30, TimeUnit.SECONDS)
+
+            assertThat(list, hasSize(greaterThanOrEqualTo(2)))
+        }
     }
 
     @Test
@@ -305,10 +308,11 @@ class Neo4jSourceTaskTest {
         insertRecords(totalRecords)
 
         val list = mutableListOf<SourceRecord>()
-        Assert.assertEventually(ThrowingSupplier<List<*>, Exception> {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
             task.poll()?.let { list.addAll(it) }
-            list.map { (it.value() as Struct).toMap() }
-        }, hasSize(greaterThanOrEqualTo(2)), 30, TimeUnit.SECONDS)
+
+            assertThat(list, hasSize(greaterThanOrEqualTo(2)))
+        }
     }
 
     private fun getSourceQuery() = """
@@ -328,7 +332,7 @@ class Neo4jSourceTaskTest {
                 |ORDER BY n.timestamp
             """.trimMargin()
 
-    @Test(expected = ConnectException::class)
+    @Test
     fun `should throw exception`() {
         val props = mutableMapOf<String, String>()
         props[Neo4jConnectorConfig.SERVER_URI] = neo4j.boltUrl
@@ -341,17 +345,11 @@ class Neo4jSourceTaskTest {
         val totalRecords = 10
         insertRecords(totalRecords)
 
-        var exception: ConnectException? = null
-        Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            try {
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
+            assertFailsWith(ConnectException::class) {
                 task.poll()
-                false
-            } catch (e: ConnectException) {
-                exception = e
-                true
             }
-        }, equalTo(true), 30, TimeUnit.SECONDS)
-        if (exception != null) throw exception as ConnectException
+        }
     }
 
     @Test
@@ -391,9 +389,11 @@ class Neo4jSourceTaskTest {
             )
         )
 
-        Assert.assertEventually(ThrowingSupplier {
-            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
-        }, equalTo(expected), 30, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
+            val e = task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+
+            assertThat(e, equalTo(expected))
+        }
     }
 
     @Test
@@ -433,9 +433,11 @@ class Neo4jSourceTaskTest {
             ), "timestamp" to 1717773205L
         )
 
-        Assert.assertEventually(ThrowingSupplier {
-            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
-        }, equalTo(expected), 30, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
+            val e = task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+
+            assertThat(e, equalTo(expected))
+        }
     }
 
     @Test
@@ -476,8 +478,10 @@ class Neo4jSourceTaskTest {
             "geo3d" to mapOf("crs" to "wgs-84-3d", "longitude" to 56.7, "latitude" to 12.78, "height" to 8.0)
         )
 
-        Assert.assertEventually(ThrowingSupplier {
-            task.poll()?.map { (it.value() as Struct).toMap() }?.first()
-        }, equalTo(expected), 30, TimeUnit.SECONDS)
+        await().atMost(30, TimeUnit.SECONDS).untilAsserted {
+            val e = task.poll()?.map { (it.value() as Struct).toMap() }?.first()
+
+            assertThat(e, equalTo(expected))
+        }
     }
 }

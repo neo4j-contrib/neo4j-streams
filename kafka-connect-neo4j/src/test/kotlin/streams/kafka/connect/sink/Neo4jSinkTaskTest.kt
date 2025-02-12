@@ -17,7 +17,6 @@ import org.mockito.Mockito.mock
 import org.neo4j.driver.Driver
 import org.neo4j.driver.Session
 import org.neo4j.driver.types.Node
-import org.neo4j.graphdb.Label
 import streams.Neo4jContainerExtension
 import streams.events.*
 import streams.kafka.connect.common.Neo4jConnectorConfig
@@ -129,10 +128,10 @@ class Neo4jSinkTaskTest {
         val input = listOf(SinkRecord(firstTopic, 1, null, null, PERSON_SCHEMA, Neo4jValueConverterTest.getTreeStruct(), 42))
         task.put(input)
         session.beginTransaction().use {
-            assertEquals(1, it.findNodes(Label.label("BODY")).stream().count())
-            assertEquals(2, it.findNodes(Label.label("P")).stream().count())
-            assertEquals(2, it.findNodes(Label.label("UL")).stream().count())
-            assertEquals(4, it.findNodes(Label.label("LI")).stream().count())
+            assertEquals(1, it.findNodes("BODY").stream().count())
+            assertEquals(2, it.findNodes("P").stream().count())
+            assertEquals(2, it.findNodes("UL").stream().count())
+            assertEquals(4, it.findNodes("LI").stream().count())
 
             assertEquals(2, it.run("MATCH (b:BODY)-[r:HAS_P]->(p:P) RETURN COUNT(r) AS COUNT").single()["COUNT"].asLong())
             assertEquals(2, it.run("MATCH (b:BODY)-[r:HAS_UL]->(ul:UL) RETURN COUNT(r) AS COUNT").single()["COUNT"].asLong())
@@ -473,7 +472,7 @@ class Neo4jSinkTaskTest {
         }
 
         val labels = session.beginTransaction()
-            .use { it.allLabels().map(Label::name).toSet() }
+            .use { it.allLabels().toSet() }
         assertEquals(setOf("User"), labels)
     }
 
@@ -692,10 +691,10 @@ class Neo4jSinkTaskTest {
         }
 
         var labels = session.beginTransaction()
-            .use { it.allLabels().map(Label::name).toSet() }
+            .use { it.allLabels().toSet() }
         assertEquals(setOf("User"), labels)
 
-        var countUsers = session.beginTransaction().use { it.findNodes(Label.label("User")).stream().count() }
+        var countUsers = session.beginTransaction().use { it.findNodes("User").stream().count() }
         assertEquals(2L, countUsers)
 
 
@@ -736,7 +735,7 @@ class Neo4jSinkTaskTest {
             assertFalse { result.hasNext() }
         }
         labels = session.beginTransaction()
-            .use { it.allLabels().map(Label::name).toSet() }
+            .use { it.allLabels().toSet() }
         assertEquals(setOf("User"), labels)
 
         countUsers = session.beginTransaction().use { it.allNodes().stream().count() }
@@ -830,10 +829,10 @@ class Neo4jSinkTaskTest {
         }
 
         val labels = session.beginTransaction()
-            .use { it.allLabels().map(Label::name).toSet() }
+            .use { it.allLabels().toSet() }
         assertEquals(setOf("User"), labels)
 
-        val countUsers = session.beginTransaction().use { it.findNodes(Label.label("User")).stream().count() }
+        val countUsers = session.beginTransaction().use { it.findNodes("User").stream().count() }
         assertEquals(4L, countUsers)
     }
 
@@ -899,7 +898,7 @@ class Neo4jSinkTaskTest {
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, PERSON_SCHEMA, struct, 42)))
         session.beginTransaction().use {
-            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
+            val node: Node? = it.findNode("Person", "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -918,7 +917,7 @@ class Neo4jSinkTaskTest {
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, null, null, "a", 42)))
         session.beginTransaction().use {
-            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
+            val node: Node? = it.findNode("Person", "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -937,7 +936,7 @@ class Neo4jSinkTaskTest {
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, 42, null, "true", 42)))
         session.beginTransaction().use {
-            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
+            val node: Node? = it.findNode("Person", "name", "Alex")
             assertTrue { node == null }
         }
     }
@@ -956,7 +955,7 @@ class Neo4jSinkTaskTest {
         task.start(props)
         task.put(listOf(SinkRecord(topic, 1, null, 42, null, "{\"foo\":42}", 42)))
         session.beginTransaction().use {
-            val node: Node? = it.findNode(Label.label("Person"), "name", "Alex")
+            val node: Node? = it.findNode("Person", "name", "Alex")
             assertTrue { node == null }
         }
     }
