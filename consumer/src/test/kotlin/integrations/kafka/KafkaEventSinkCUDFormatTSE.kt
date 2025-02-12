@@ -31,10 +31,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                 in mergeMarkers -> CUDOperations.merge to mapOf(key to it)
                 else -> CUDOperations.create to emptyMap()
             }
-            val cudNode = CUDNode(op = op,
-                    labels = labels,
-                    ids = ids,
-                    properties = properties)
+            val cudNode = CUDNode(
+                op = op,
+                labels = labels,
+                ids = ids,
+                properties = properties
+            )
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
@@ -49,17 +51,21 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val hasFooBar = db.execute("""
+            val hasFooBar = db.execute(
+                """
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
-            val hasFooBarLabel = db.execute("""
+            val hasFooBarLabel = db.execute(
+                """
                 MATCH (n:Foo:Bar:Label)
                 RETURN count(n) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBarLabel = it.columnAs<Long>("count")
                 fooBarLabel.hasNext() && fooBarLabel.next() == 5L && !fooBarLabel.hasNext()
             }
@@ -67,7 +73,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
-                it.allNodes.stream().map { it.allProperties }.toList()
+                it.allNodes.map { it.allProperties }.toList()
             }
             nodes.size == 10 && nodes.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -88,18 +94,20 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             db.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})")
             assertEquals(10, it.allNodes.count())
             val ret = it.allNodes.stream()
-                    .limit(5)
-                    .toList()
-                    .map { it.id }
+                .limit(5)
+                .toList()
+                .map { it.id }
             it.commit()
             ret
         }
         val list = idList.map {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
-            val cudNode = CUDNode(op = CUDOperations.update,
-                    labels = listOf("Foo", "Bar"),
-                    ids = mapOf(key to it),
-                    properties = properties)
+            val cudNode = CUDNode(
+                op = CUDOperations.update,
+                labels = listOf("Foo", "Bar"),
+                ids = mapOf(key to it),
+                properties = properties
+            )
             JSONUtils.writeValueAsBytes(cudNode)
         }
 
@@ -111,17 +119,19 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val nodes = db.beginTx().use {
-                it.allNodes.stream().map { it.allProperties }.toList()
+                it.allNodes.map { it.allProperties }.toList()
             }
             val nodesUpdated = nodes.filter { props ->
                 when (props.containsKey("id")) {
@@ -130,6 +140,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
                         val foo = props.getValue("foo").toString()
                         foo == "foo-value-$id" && props.containsKey("key")
                     }
+
                     else -> false
                 }
             }
@@ -143,9 +154,11 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         val key = "key"
         val deleteEvents = (1..5).map {
             val labels = listOf("Foo", "Bar")
-            val cudNode = CUDNode(op = CUDOperations.delete,
-                    labels = labels,
-                    ids = mapOf(key to it))
+            val cudNode = CUDNode(
+                op = CUDOperations.delete,
+                labels = labels,
+                ids = mapOf(key to it)
+            )
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
@@ -165,11 +178,13 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val fooBar = db.execute("""
+            val fooBar = db.execute(
+                """
                 MATCH (n:Foo:Bar)
                 WHERE n.key > 5
                 RETURN n.key AS key
-            """.trimIndent()) { it.columnAs<Long>("key").stream().toList() }
+            """.trimIndent()
+            ) { it.columnAs<Long>("key").stream().toList() }
             fooBar == (6L..10L).toList()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
     }
@@ -180,10 +195,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         val key = "key"
         val deleteEvents = (1..5).map {
             val labels = listOf("Foo", "Bar")
-            val cudNode = CUDNode(op = CUDOperations.delete,
-                    labels = labels,
-                    ids = mapOf(key to it),
-                    detach = false)
+            val cudNode = CUDNode(
+                op = CUDOperations.delete,
+                labels = labels,
+                ids = mapOf(key to it),
+                detach = false
+            )
             JSONUtils.writeValueAsBytes(cudNode)
         }
         val topic = UUID.randomUUID().toString()
@@ -203,10 +220,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH (n:Foo:Bar)
                 RETURN count(n) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
@@ -222,18 +241,26 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
-            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = rel_type)
+            val rel = CUDRelationship(
+                op = CUDOperations.create,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = rel_type
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
         val topic = UUID.randomUUID().toString()
         db.setConfig("streams.sink.topic.cud", topic)
         db.start()
         db.beginTx().use {
-            db.execute("""
+            db.execute(
+                """
                 UNWIND range(1, 10) AS id
                 CREATE (:Foo:Bar {key: id})
                 CREATE (:FooBar {key: id})
-            """.trimIndent())
+            """.trimIndent()
+            )
             assertEquals(20, it.allNodes.count())
             it.commit()
         }
@@ -246,17 +273,19 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH p = (:Foo:Bar)-[:$rel_type]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
             val rels = db.beginTx().use {
-                it.allRelationships.stream().map { it.allProperties }.toList()
+                it.allRelationships.map { it.allProperties }.toList()
             }
             rels.size == 10 && rels.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -273,7 +302,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         val key = "key"
         val startNode = "SourceNode"
         val endNode = "TargetNode"
-        
+
         val start = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(startNode))
         val end = CUDNodeRel(ids = mapOf(key to 1), labels = listOf(endNode))
         val relMerge = CUDRelationship(op = CUDOperations.merge, from = start, to = end, rel_type = relType)
@@ -283,10 +312,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         db.setConfig("streams.sink.topic.cud", topic)
         db.start()
         db.beginTx().use {
-            db.execute("""
+            db.execute(
+                """
                 CREATE (:$startNode {key: 1})
                 CREATE (:$endNode {key: 1})
-            """.trimIndent())
+            """.trimIndent()
+            )
             assertEquals(2, it.allNodes.count())
             it.commit()
         }
@@ -295,20 +326,20 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
         kafkaProducer.send(producerRecord).get()
 
         val query = "MATCH p = (:$startNode)-[:$relType]->(:$endNode) RETURN count(p) AS count"
-        
+
         Assert.assertEventually(ThrowingSupplier {
             db.execute(query) {
                 val count = it.columnAs<Long>("count")
                 count.hasNext() && count.next() == 1L && !count.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        
+
         val relDelete = CUDRelationship(op = CUDOperations.delete, from = start, to = end, rel_type = relType)
         val relDeleteAsBytes = JSONUtils.writeValueAsBytes(relDelete)
 
         val producerRecordDelete = ProducerRecord(topic, UUID.randomUUID().toString(), relDeleteAsBytes)
         kafkaProducer.send(producerRecordDelete).get()
-        
+
         Assert.assertEventually(ThrowingSupplier {
             db.execute(query) {
                 val count = it.columnAs<Long>("count")
@@ -326,7 +357,13 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = emptyMap<String, Any>()
             val start = CUDNodeRel(ids = mapOf(key to it), labels = emptyList())
             val end = CUDNodeRel(ids = mapOf(key to it), labels = emptyList())
-            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = rel_type)
+            val rel = CUDRelationship(
+                op = CUDOperations.delete,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = rel_type
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
         val topic = UUID.randomUUID().toString()
@@ -346,22 +383,26 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            val ids = db.execute("""
+            val ids = db.execute(
+                """
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
-                    """.trimIndent()) {
+                    """.trimIndent()
+            ) {
                 it.columnAs<Long>("id")
-                        .stream()
-                        .toList()
+                    .stream()
+                    .toList()
             }
             ids == (6L..10L).toList()
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
@@ -379,11 +420,11 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             tx.execute("UNWIND range(1, 10) AS id CREATE (:Foo:Bar {key: id})-[:$rel_type{id: id}]->(:FooBar{key: id})")
             assertEquals(10, tx.allRelationships.count())
             val res = tx.allRelationships.stream()
-                    .toList()
-                    .sortedBy { it.id }
-                    .subList(0, 5)
-                    .map { it.startNodeId to it.endNodeId }
-                    .toMap()
+                .toList()
+                .sortedBy { it.id }
+                .subList(0, 5)
+                .map { it.startNodeId to it.endNodeId }
+                .toMap()
             tx.commit()
             res
         }
@@ -391,7 +432,13 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = emptyMap<String, Any>()
             val start = CUDNodeRel(ids = mapOf(key to it.key), labels = emptyList())
             val end = CUDNodeRel(ids = mapOf(key to it.value), labels = emptyList())
-            val rel = CUDRelationship(op = CUDOperations.delete, properties = properties, from = start, to = end, rel_type = rel_type)
+            val rel = CUDRelationship(
+                op = CUDOperations.delete,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = rel_type
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
 
@@ -403,21 +450,25 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                 RETURN count(r) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 5L && !fooBar.hasNext()
             }
         }, Matchers.equalTo(true), 30, TimeUnit.SECONDS)
-        val ids = db.execute("""
+        val ids = db.execute(
+            """
                         MATCH (:Foo:Bar)-[r:$rel_type]->(:FooBar)
                         RETURN r.id AS id
-                    """.trimIndent()) {
+                    """.trimIndent()
+        ) {
             it.columnAs<Long>("id")
-                    .stream()
-                    .toList()
+                .stream()
+                .toList()
         }
         assertEquals(ids, (6L..10L).toList())
     }
@@ -432,7 +483,13 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.merge)
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.merge)
-            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(
+                op = CUDOperations.create,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = relType
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
         db.setConfig("streams.sink.topic.cud", topic)
@@ -446,10 +503,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 10L && !fooBar.hasNext()
             }
@@ -457,7 +516,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         Assert.assertEventually(ThrowingSupplier {
             val rels = db.beginTx().use {
-                it.allRelationships.stream().map { it.allProperties }.toList()
+                it.allRelationships.map { it.allProperties }.toList()
             }
             rels.size == 10 && rels.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -471,15 +530,23 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"))
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"), op = CUDOperations.create)
-            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(
+                op = CUDOperations.create,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = relType
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
 
         db.beginTx().use {
-            db.execute("""
+            db.execute(
+                """
                 UNWIND range(11, 20) AS id
                 CREATE (:Foo:Bar {key: id})
-            """.trimIndent())
+            """.trimIndent()
+            )
             assertEquals(30, it.allNodes.count())
             it.commit()
         }
@@ -492,10 +559,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier {
-            db.execute("""
+            db.execute(
+                """
                 MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 20L && !fooBar.hasNext()
             }
@@ -503,7 +572,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         Assert.assertEventually(ThrowingSupplier {
             val rels = db.beginTx().use {
-                it.allRelationships.stream().map { it.allProperties }.toList()
+                it.allRelationships.map { it.allProperties }.toList()
             }
             rels.size == 20 && rels.all { props ->
                 val id = props.getValue("id").toString().toLong()
@@ -517,15 +586,23 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
             val properties = mapOf("foo" to "foo-value-$it", "id" to it)
             val start = CUDNodeRel(ids = mapOf(key to it), labels = listOf("Foo", "Bar"), op = CUDOperations.create)
             val end = CUDNodeRel(ids = mapOf(key to it), labels = listOf("FooBar"))
-            val rel = CUDRelationship(op = CUDOperations.create, properties = properties, from = start, to = end, rel_type = relType)
+            val rel = CUDRelationship(
+                op = CUDOperations.create,
+                properties = properties,
+                from = start,
+                to = end,
+                rel_type = relType
+            )
             JSONUtils.writeValueAsBytes(rel)
         }
 
         db.beginTx().use {
-            db.execute("""
+            db.execute(
+                """
                 UNWIND range(21, 30) AS id
                 CREATE (:FooBar {key: id})
-            """.trimIndent())
+            """.trimIndent()
+            )
             assertEquals(50, it.allNodes.count())
             it.commit()
         }
@@ -538,10 +615,12 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         // then
         Assert.assertEventually(ThrowingSupplier<Boolean, Exception> {
-            db.execute("""
+            db.execute(
+                """
                 MATCH p = (:Foo:Bar)-[:$relType]->(:FooBar)
                 RETURN count(p) AS count
-            """.trimIndent()) {
+            """.trimIndent()
+            ) {
                 val fooBar = it.columnAs<Long>("count")
                 fooBar.hasNext() && fooBar.next() == 30L && !fooBar.hasNext()
             }
@@ -549,7 +628,7 @@ class KafkaEventSinkCUDFormatTSE : KafkaEventSinkBaseTSE() {
 
         Assert.assertEventually(ThrowingSupplier {
             val rels = db.beginTx().use {
-                it.allRelationships.stream().map { it.allProperties }.toList()
+                it.allRelationships.map { it.allProperties }.toList()
             }
             rels.size == 30 && rels.all { props ->
                 val id = props.getValue("id").toString().toLong()

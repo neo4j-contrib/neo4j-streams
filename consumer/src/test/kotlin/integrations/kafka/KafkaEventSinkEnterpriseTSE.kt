@@ -36,7 +36,7 @@ class KafkaEventSinkEnterpriseTSE {
         const val DLQ_CYPHER_TOPIC = "dlqCypherTopic"
 
         @JvmStatic
-        val neo4j = Neo4jContainerExtension()//.withLogging()
+        val neo4j = Neo4jContainerExtension().withLogging()
 
         @BeforeClass
         @JvmStatic

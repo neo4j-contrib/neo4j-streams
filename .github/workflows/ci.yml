@@ -20,7 +20,4 @@ jobs:
           distribution: 'temurin'
           cache: 'maven'
       - name: Build with Maven
-        env:
-          # needed for excluding enterprise tests
-          TRAVIS: true
         run: mvn --batch-mode clean test --no-transfer-progress
