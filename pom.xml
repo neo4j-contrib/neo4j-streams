@@ -39,7 +39,7 @@
         <url>git@github.com:neo4j-contrib/neo4j-streams.git</url>
     </scm>
     <properties>
-        <annotations.version>23.0.0</annotations.version>
+        <annotations.version>26.0.2</annotations.version>
         <awaitility.version>4.2.2</awaitility.version>
         <commons-compress.version>1.27.1</commons-compress.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
