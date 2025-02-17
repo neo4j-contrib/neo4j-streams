@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        neo4j-image: [ "neo4j:4.4", "neo4j:4.4-enterprise", "neo4j:5", "neo4j:5-enterprise", "neo4j:2025-enterprise" ]
+        neo4j-image: [ "neo4j:4.4", "neo4j:4.4-enterprise", "neo4j:5", "neo4j:5-enterprise", "neo4j:2025", "neo4j:2025-enterprise" ]
     name: Build and test with ${{ matrix.neo4j-image }}
     steps:
       - uses: actions/checkout@v4
