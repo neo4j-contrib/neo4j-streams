@@ -13,7 +13,7 @@ services:
       NEO4J_server_memory_heap_max__size: "4G"
 
   zookeeper:
-    image: confluentinc/cp-zookeeper:7.3.0
+    image: confluentinc/cp-zookeeper:7.8.1
     hostname: zookeeper
     container_name: zookeeper
     ports:
@@ -23,7 +23,7 @@ services:
       ZOOKEEPER_TICK_TIME: 2000
 
   broker:
-    image: confluentinc/cp-server:7.3.0
+    image: confluentinc/cp-server:7.8.1
     hostname: broker
     container_name: broker
     depends_on:
@@ -52,7 +52,7 @@ services:
       CONFLUENT_SUPPORT_CUSTOMER_ID: 'anonymous'
 
   schema-registry:
-    image: confluentinc/cp-schema-registry:7.3.0
+    image: confluentinc/cp-schema-registry:7.8.1
     hostname: schema-registry
     container_name: schema-registry
     depends_on:
@@ -65,7 +65,7 @@ services:
       SCHEMA_REGISTRY_LISTENERS: http://0.0.0.0:8081
 
   connect:
-    image: confluentinc/cp-server-connect:7.3.0
+    image: confluentinc/cp-server-connect:7.8.1
     hostname: connect
     container_name: connect
     depends_on:
@@ -90,19 +90,19 @@ services:
       CONNECT_VALUE_CONVERTER: io.confluent.connect.avro.AvroConverter
       CONNECT_VALUE_CONVERTER_SCHEMA_REGISTRY_URL: http://schema-registry:8081
       # CLASSPATH required due to CC-2422
-      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-7.3.0.jar
+      CLASSPATH: /usr/share/java/monitoring-interceptors/monitoring-interceptors-7.8.1.jar
       CONNECT_PRODUCER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringProducerInterceptor"
       CONNECT_CONSUMER_INTERCEPTOR_CLASSES: "io.confluent.monitoring.clients.interceptor.MonitoringConsumerInterceptor"
       CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/tmp/connect-plugins"
       CONNECT_LOG4J_LOGGERS: org.apache.zookeeper=ERROR,org.I0Itec.zkclient=ERROR,org.reflections=ERROR
     command:
-#      - bash
-#      - -c
-#      - |
-        /etc/confluent/docker/run
+      #      - bash
+      #      - -c
+      #      - |
+      /etc/confluent/docker/run
 
   control-center:
-    image: confluentinc/cp-enterprise-control-center:7.3.0
+    image: confluentinc/cp-enterprise-control-center:7.8.1
     hostname: control-center
     container_name: control-center
     depends_on:
@@ -114,8 +114,6 @@ services:
     environment:
       CONTROL_CENTER_BOOTSTRAP_SERVERS: 'broker:29092'
       CONTROL_CENTER_CONNECT_CONNECT-DEFAULT_CLUSTER: 'connect:8083'
-      CONTROL_CENTER_KSQL_KSQLDB1_URL: "http://ksqldb-server:8088"
-      CONTROL_CENTER_KSQL_KSQLDB1_ADVERTISED_URL: "http://localhost:8088"
       CONTROL_CENTER_SCHEMA_REGISTRY_URL: "http://schema-registry:8081"
       CONTROL_CENTER_REPLICATION_FACTOR: 1
       CONTROL_CENTER_INTERNAL_TOPICS_PARTITIONS: 1

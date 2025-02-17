@@ -1,17 +1,20 @@
 package streams.service.sink.strategy
 
-import org.junit.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ArgumentsSource
+import org.neo4j.caniuse.Neo4j
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
 class NodePatternIngestionStrategyTest {
 
-    @Test
-    fun `should get all properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get all properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id})", true)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -20,7 +23,7 @@ class NodePatternIngestionStrategyTest {
 
         // then
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n += event.properties
                 |SET n += event.keys
@@ -34,11 +37,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should get nested properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get nested properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, foo.bar})", false)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"))
 
         // when
@@ -48,7 +52,7 @@ class NodePatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n = event.properties
                 |SET n += event.keys
@@ -62,11 +66,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should exclude nested properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should exclude nested properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, -foo})", false)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val map = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"), "prop" to 100)
 
         // when
@@ -76,7 +81,7 @@ class NodePatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n = event.properties
                 |SET n += event.keys
@@ -90,11 +95,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should include nested properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should include nested properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id, foo})", true)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to mapOf("bar" to "bar", "foobar" to "foobar"), "prop" to 100)
 
         // when
@@ -104,7 +110,7 @@ class NodePatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n += event.properties
                 |SET n += event.keys
@@ -118,11 +124,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should exclude the properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should exclude the properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id,-foo,-bar})", false)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -132,7 +139,7 @@ class NodePatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n = event.properties
                 |SET n += event.keys
@@ -143,11 +150,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should include the properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should include the properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id,foo,bar})", false)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -156,7 +164,7 @@ class NodePatternIngestionStrategyTest {
 
         // then
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n:LabelA:LabelB{id: event.keys.id})
                 |SET n = event.properties
                 |SET n += event.keys
@@ -167,11 +175,12 @@ class NodePatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeRelationshipEvents(events))
     }
 
-    @Test
-    fun `should delete the node`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should delete the node`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val config = NodePatternConfiguration.parse("(:LabelA:LabelB{!id})", true)
-        val strategy = NodePatternIngestionStrategy(config)
+        val strategy = NodePatternIngestionStrategy(neo4j, config)
         val data = mapOf("id" to 1, "foo" to "foo", "bar" to "bar", "foobar" to "foobar")
 
         // when
@@ -180,7 +189,7 @@ class NodePatternIngestionStrategyTest {
 
         // then
         assertEquals("""
-                |${StreamsUtils.UNWIND}
+                |${expectedPrefix}${StreamsUtils.UNWIND}
                 |MATCH (n:LabelA:LabelB{id: event.keys.id})
                 |DETACH DELETE n
             """.trimMargin(), queryEvents[0].query)
