@@ -8,18 +8,23 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    strategy:
+      fail-fast: false
+      matrix:
+        neo4j-image: [ "neo4j:4.4", "neo4j:4.4-enterprise" "neo4j:5", "neo4j:5-enterprise", "neo4j:2025-enterprise" ]
+    name: Build and test with ${{ matrix.neo4j-image }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up JDK 11
+      - name: Set up Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 11
           cache: 'maven'
 
-      - name: Build with Maven
-        run: mvn -B clean test --file pom.xml --no-transfer-progress
+      - name: Build and run tests
+        env:
+          NEO4J_IMAGE: ${{ matrix.neo4j-image }}
+        run: mvn -B clean verify --file pom.xml --no-transfer-progress
