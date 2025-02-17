@@ -21,7 +21,7 @@ import java.io.File
 import java.time.Duration
 import java.util.concurrent.TimeUnit
 
-private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitStrategy() {
+private class DatabasesWaitStrategy(private val auth: AuthToken) : AbstractWaitStrategy() {
     private var databases = arrayOf<String>()
 
     fun forDatabases(vararg databases: String): DatabasesWaitStrategy {
@@ -41,7 +41,10 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
             rateLimiter.doWhenReady {
                 if (databases.isNotEmpty()) {
                     val databasesStatus = systemSession.beginTransaction()
-                            .use { tx -> tx.run("SHOW DATABASES").list().map { it.get("name").asString() to it.get("currentStatus").asString() }.toMap() }
+                        .use { tx ->
+                            tx.run("SHOW DATABASES").list()
+                                .map { it.get("name").asString() to it.get("currentStatus").asString() }.toMap()
+                        }
                     val notOnline = databasesStatus.filterValues { it != "online" }
                     if (databasesStatus.size < databases.size || notOnline.isNotEmpty()) {
                         throw RuntimeException("Cannot started because of the following databases: ${notOnline.keys}")
@@ -56,8 +59,9 @@ private class DatabasesWaitStrategy(private val auth: AuthToken): AbstractWaitSt
 
 }
 
-class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContainerExtension>(dockerImage) {
-    constructor(): this("neo4j:5-enterprise")
+class Neo4jContainerExtension(dockerImage: String) : Neo4jContainer<Neo4jContainerExtension>(dockerImage) {
+    constructor() : this(System.getenv("NEO4J_IMAGE") ?: "neo4j:5-enterprise")
+
     private val logger = LoggerFactory.getLogger(Neo4jContainerExtension::class.java)
     var driver: Driver? = null
     var session: Session? = null
@@ -121,9 +125,11 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
     override fun start() {
         withNeo4jConfig("dbms.security.auth_enabled", "false")
         if (databases.isNotEmpty()) {
-            withWaitStrategy(DatabasesWaitStrategy(createAuth())
-                .forDatabases(*databases)
-                .withStartupTimeout(Duration.ofMinutes(2)))
+            withWaitStrategy(
+                DatabasesWaitStrategy(createAuth())
+                    .forDatabases(*databases)
+                    .withStartupTimeout(Duration.ofMinutes(2))
+            )
         }
         if (waitStrategies.isNotEmpty()) {
             val waitAllStrategy = waitStrategy as WaitAllStrategy
@@ -147,7 +153,7 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
         driver = GraphDatabase.driver(boltUrl, createAuth())
         session = driver!!.session()
         cypher?.split(";")
-                ?.forEach { query -> session!!.beginTransaction().use { it.run(query) } }
+            ?.forEach { query -> session!!.beginTransaction().use { it.run(query) } }
     }
 
     private fun mountStreamsPlugin() {
@@ -162,8 +168,8 @@ class Neo4jContainerExtension(dockerImage: String): Neo4jContainer<Neo4jContaine
     private fun findDistrFile(): File? {
         try {
             return File("../target/containerPlugins").listFiles()
-                    .filter { it.extension == "jar" }
-                    .firstOrNull()
+                .filter { it.extension == "jar" }
+                .firstOrNull()
         } catch (e: Exception) {
             return null
         }

@@ -31,8 +31,6 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
 
     private val log: Logger = LoggerFactory.getLogger(Neo4jSourceService::class.java)
 
-    private val driver = config.createDriver()
-
     private val queue: BlockingQueue<SourceRecord> = LinkedBlockingQueue()
     private val error: AtomicReference<Throwable> = AtomicReference(null)
 
@@ -78,7 +76,7 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
                         lastCheck.set(System.currentTimeMillis() - pollInterval)
                     }
                 }
-                driver.session(sessionConfig).readTransaction({ tx ->
+                config.driver.session(sessionConfig).readTransaction({ tx ->
                     val result = tx.run(config.query, mapOf("lastCheck" to lastCheck.get()))
                     lastCheckHadResult = result.hasNext()
                     result.forEach { record ->
@@ -171,9 +169,7 @@ class Neo4jSourceService(private val config: Neo4jSourceConnectorConfig, offsetS
     override fun close() {
         isClose.set(true)
         runBlocking { job.cancelAndJoin() }
-        StreamsUtils.closeSafetely(driver) {
-            log.info("Error while closing Driver instance:", it)
-        }
+        config.close()
 
         val originalConfig = config.originals() as Map<String, String>
         val migratedConfig = ConfigurationMigrator(originalConfig).migrateToV51().toMutableMap()

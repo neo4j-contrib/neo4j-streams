@@ -1,5 +1,8 @@
 package streams.service.sink.strategy
 
+import org.neo4j.caniuse.CanIUse.canIUse
+import org.neo4j.caniuse.Cypher
+import org.neo4j.caniuse.Neo4j
 import streams.extensions.flatten
 import streams.utils.JSONUtils
 import streams.service.StreamsSinkEntity
@@ -8,10 +11,11 @@ import streams.utils.IngestionUtils.getLabelsAsString
 import streams.utils.IngestionUtils.getNodeMergeKeys
 import streams.utils.StreamsUtils
 
-class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePatternConfiguration): IngestionStrategy {
+class NodePatternIngestionStrategy(neo4j: Neo4j, private val nodePatternConfiguration: NodePatternConfiguration): IngestionStrategy {
+    private val cypherPrefix = if (canIUse(Cypher.explicitCypher5Selection()).withNeo4j(neo4j)) "CYPHER 5 " else ""
 
     private val mergeNodeTemplate: String = """
-                |${StreamsUtils.UNWIND}
+                |${cypherPrefix}${StreamsUtils.UNWIND}
                 |MERGE (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})
@@ -20,7 +24,7 @@ class NodePatternIngestionStrategy(private val nodePatternConfiguration: NodePat
             """.trimMargin()
 
     private val deleteNodeTemplate: String = """
-                |${StreamsUtils.UNWIND}
+                |${cypherPrefix}${StreamsUtils.UNWIND}
                 |MATCH (n${getLabelsAsString(nodePatternConfiguration.labels)}{${
                     getNodeMergeKeys("keys", nodePatternConfiguration.keys)
                 }})

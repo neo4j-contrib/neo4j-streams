@@ -1,6 +1,8 @@
 package streams.service.sink.strategy
 
-import org.junit.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ArgumentsSource
+import org.neo4j.caniuse.Neo4j
 import streams.events.*
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
@@ -8,8 +10,9 @@ import kotlin.test.assertEquals
 
 class SourceIdIngestionStrategyTest {
 
-    @Test
-    fun `should create the Merge Query Strategy for mixed events`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should create the Merge Query Strategy for mixed events`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val cdcDataStart = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -58,7 +61,7 @@ class SourceIdIngestionStrategyTest {
                 schema = Schema()
         )
         val config = SourceIdIngestionStrategyConfig(labelName = "Custom SourceEvent", idName = "custom Id")
-        val cdcQueryStrategy = SourceIdIngestionStrategy(config)
+        val cdcQueryStrategy = SourceIdIngestionStrategy(neo4j, config)
         val txEvents = listOf(
                 StreamsSinkEntity(cdcDataStart, cdcDataStart),
                 StreamsSinkEntity(cdcDataEnd, cdcDataEnd),
@@ -76,7 +79,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (n:`Custom SourceEvent`{`custom Id`: event.id})
             |SET n = event.properties
             |SET n.`custom Id` = event.id
@@ -95,7 +98,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:`Custom SourceEvent`{`custom Id`: event.start})
             |MERGE (end:`Custom SourceEvent`{`custom Id`: event.end})
             |MERGE (start)-[r:`KNOWS WHO`{`custom Id`: event.id}]->(end)
@@ -111,8 +114,9 @@ class SourceIdIngestionStrategyTest {
         assertEquals(expectedRelEvents, eventsRelList)
     }
 
-    @Test
-    fun `should create the Merge Query Strategy for node updates`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should create the Merge Query Strategy for node updates`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val nodeSchema = Schema()
         // given
@@ -144,7 +148,7 @@ class SourceIdIngestionStrategyTest {
                 ),
                 schema = nodeSchema
         )
-        val cdcQueryStrategy = SourceIdIngestionStrategy()
+        val cdcQueryStrategy = SourceIdIngestionStrategy(neo4j)
         val txEvents = listOf(
                 StreamsSinkEntity(cdcDataStart, cdcDataStart),
                 StreamsSinkEntity(cdcDataEnd, cdcDataEnd))
@@ -158,7 +162,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, nodeEvents.size)
         val nodeQuery = nodeEvents[0].query
         val expectedNodeQuery = """
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (n:SourceEvent{sourceId: event.id})
             |SET n = event.properties
             |SET n.sourceId = event.id
@@ -175,8 +179,9 @@ class SourceIdIngestionStrategyTest {
         assertEquals(expectedNodeEvents, eventsNodeList)
     }
 
-    @Test
-    fun `should create the Merge Query Strategy for relationships updates`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should create the Merge Query Strategy for relationships updates`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val cdcDataRelationship = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -196,7 +201,7 @@ class SourceIdIngestionStrategyTest {
                 ),
                 schema = Schema()
         )
-        val cdcQueryStrategy = SourceIdIngestionStrategy()
+        val cdcQueryStrategy = SourceIdIngestionStrategy(neo4j)
         val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
 
         // when
@@ -208,7 +213,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(1, relationshipEvents.size)
         val relQuery = relationshipEvents[0].query
         val expectedRelQuery = """
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:SourceEvent{sourceId: event.start})
             |MERGE (end:SourceEvent{sourceId: event.end})
             |MERGE (start)-[r:`KNOWS WHO`{sourceId: event.id}]->(end)
@@ -224,8 +229,9 @@ class SourceIdIngestionStrategyTest {
         assertEquals(expectedRelEvents, eventsRelList)
     }
 
-    @Test
-    fun `should create the Merge Query Strategy for node deletes`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should create the Merge Query Strategy for node deletes`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val nodeSchema = Schema()
         // given
@@ -257,7 +263,7 @@ class SourceIdIngestionStrategyTest {
                 ),
                 schema = nodeSchema
         )
-        val cdcQueryStrategy = SourceIdIngestionStrategy()
+        val cdcQueryStrategy = SourceIdIngestionStrategy(neo4j)
         val txEvents = listOf(
                 StreamsSinkEntity(cdcDataStart, cdcDataStart),
                 StreamsSinkEntity(cdcDataEnd, cdcDataEnd))
@@ -271,7 +277,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(0, nodeEvents.size)
         val nodeQuery = nodeDeleteEvents[0].query
         val expectedNodeQuery = """
-            |${StreamsUtils.UNWIND} MATCH (n:SourceEvent{sourceId: event.id}) DETACH DELETE n
+            |${expectedPrefix}${StreamsUtils.UNWIND} MATCH (n:SourceEvent{sourceId: event.id}) DETACH DELETE n
         """.trimMargin()
         assertEquals(expectedNodeQuery, nodeQuery.trimIndent())
         val eventsNodeList = nodeDeleteEvents[0].events
@@ -283,8 +289,9 @@ class SourceIdIngestionStrategyTest {
         assertEquals(expectedNodeEvents, eventsNodeList)
     }
 
-    @Test
-    fun `should create the Merge Query Strategy for relationships deletes`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should create the Merge Query Strategy for relationships deletes`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val cdcDataRelationship = StreamsTransactionEvent(
                 meta = Meta(timestamp = System.currentTimeMillis(),
@@ -304,7 +311,7 @@ class SourceIdIngestionStrategyTest {
                 ),
                 schema = Schema()
         )
-        val cdcQueryStrategy = SourceIdIngestionStrategy()
+        val cdcQueryStrategy = SourceIdIngestionStrategy(neo4j)
         val txEvents = listOf(StreamsSinkEntity(cdcDataRelationship, cdcDataRelationship))
 
         // when
@@ -316,7 +323,7 @@ class SourceIdIngestionStrategyTest {
         assertEquals(0, relationshipEvents.size)
         val relQuery = relationshipDeleteEvents[0].query
         val expectedRelQuery = """
-            |${StreamsUtils.UNWIND} MATCH ()-[r:`KNOWS WHO`{sourceId: event.id}]-() DELETE r
+            |${expectedPrefix}${StreamsUtils.UNWIND} MATCH ()-[r:`KNOWS WHO`{sourceId: event.id}]-() DELETE r
         """.trimMargin()
         assertEquals(expectedRelQuery, relQuery.trimIndent())
         val eventsRelList = relationshipDeleteEvents[0].events

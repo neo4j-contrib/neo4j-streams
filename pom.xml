@@ -41,6 +41,7 @@
     <properties>
         <annotations.version>26.0.2</annotations.version>
         <awaitility.version>4.2.2</awaitility.version>
+        <caniuse-core.version>1.0.0</caniuse-core.version>
         <commons-compress.version>1.27.1</commons-compress.version>
         <commons-lang3.version>3.17.0</commons-lang3.version>
         <connect-utils.version>1.0.3</connect-utils.version>
@@ -105,6 +106,13 @@
                 <scope>import</scope>
             </dependency>
             <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${junit-jupiter.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.mockito</groupId>
                 <artifactId>mockito-bom</artifactId>
                 <version>${mockito.version}</version>
@@ -162,6 +170,16 @@
                 <groupId>org.jetbrains</groupId>
                 <artifactId>annotations</artifactId>
                 <version>${annotations.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j</groupId>
+                <artifactId>caniuse-core</artifactId>
+                <version>${caniuse-core.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.neo4j</groupId>
+                <artifactId>caniuse-neo4j-detection</artifactId>
+                <version>${caniuse-core.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.neo4j.driver</groupId>

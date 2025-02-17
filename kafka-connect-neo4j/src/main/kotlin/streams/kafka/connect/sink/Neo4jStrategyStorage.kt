@@ -9,9 +9,8 @@ import streams.service.sink.strategy.NodePatternIngestionStrategy
 import streams.service.sink.strategy.RelationshipPatternIngestionStrategy
 import streams.service.sink.strategy.SchemaIngestionStrategy
 import streams.service.sink.strategy.SourceIdIngestionStrategy
-import streams.service.sink.strategy.SourceIdIngestionStrategyConfig
 
-class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig): StreamsStrategyStorage() {
+class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig) : StreamsStrategyStorage() {
     private val topicConfigMap = config.topics.asMap()
 
     override fun getTopicType(topic: String): TopicType? = TopicType.values().firstOrNull { topicType ->
@@ -25,11 +24,22 @@ class Neo4jStrategyStorage(val config: Neo4jSinkConnectorConfig): StreamsStrateg
 
     override fun getStrategy(topic: String): IngestionStrategy = when (val topicType = getTopicType(topic)) {
         TopicType.CDC_SOURCE_ID -> config.strategyMap[topicType] as SourceIdIngestionStrategy
-        TopicType.CDC_SCHEMA -> SchemaIngestionStrategy()
-        TopicType.CUD -> CUDIngestionStrategy()
-        TopicType.PATTERN_NODE -> NodePatternIngestionStrategy(config.topics.nodePatternTopics.getValue(topic))
-        TopicType.PATTERN_RELATIONSHIP -> RelationshipPatternIngestionStrategy(config.topics.relPatternTopics.getValue(topic))
-        TopicType.CYPHER -> CypherTemplateStrategy(config.topics.cypherTopics.getValue(topic))
+        TopicType.CDC_SCHEMA -> SchemaIngestionStrategy(config.neo4j)
+        TopicType.CUD -> CUDIngestionStrategy(config.neo4j)
+        TopicType.PATTERN_NODE -> NodePatternIngestionStrategy(
+            config.neo4j,
+            config.topics.nodePatternTopics.getValue(topic)
+        )
+
+        TopicType.PATTERN_RELATIONSHIP -> RelationshipPatternIngestionStrategy(
+            config.neo4j,
+            config.topics.relPatternTopics.getValue(topic)
+        )
+
+        TopicType.CYPHER -> CypherTemplateStrategy(
+            config.neo4j, config.topics.cypherTopics.getValue(topic)
+        )
+
         null -> throw RuntimeException("Topic Type not Found")
     }
 }

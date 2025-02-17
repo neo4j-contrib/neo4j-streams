@@ -1,20 +1,23 @@
 package streams.service.sink.strategy
 
-import org.junit.Test
+import org.junit.jupiter.params.ParameterizedTest
+import org.junit.jupiter.params.provider.ArgumentsSource
+import org.neo4j.caniuse.Neo4j
 import streams.service.StreamsSinkEntity
 import streams.utils.StreamsUtils
 import kotlin.test.assertEquals
 
 class RelationshipPatternIngestionStrategyTest {
 
-    @Test
-    fun `should get all properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get all properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val startPattern = "LabelA{!idStart}"
         val endPattern = "LabelB{!idEnd}"
         val pattern = "(:$startPattern)-[:REL_TYPE]->(:$endPattern)"
         val config = RelationshipPatternConfiguration.parse(pattern, mergeNodeProps = false, mergeRelProps = true)
-        val strategy = RelationshipPatternIngestionStrategy(config)
+        val strategy = RelationshipPatternIngestionStrategy(neo4j, config)
         val data = mapOf("idStart" to 1, "idEnd" to 2,
                 "foo" to "foo",
                 "bar" to "bar")
@@ -26,7 +29,7 @@ class RelationshipPatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:LabelA{idStart: event.start.keys.idStart})
             |SET start += event.start.properties
             |SET start += event.start.keys
@@ -44,14 +47,15 @@ class RelationshipPatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeNodeEvents(events))
     }
 
-    @Test
-    fun `should get all properties - simple`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get all properties - simple`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val startPattern = "LabelA{!idStart}"
         val endPattern = "LabelB{!idEnd}"
         val pattern = "$startPattern REL_TYPE $endPattern"
         val config = RelationshipPatternConfiguration.parse(pattern, mergeNodeProps = false, mergeRelProps = false)
-        val strategy = RelationshipPatternIngestionStrategy(config)
+        val strategy = RelationshipPatternIngestionStrategy(neo4j, config)
         val data = mapOf("idStart" to 1, "idEnd" to 2,
                 "foo" to "foo",
                 "bar" to "bar")
@@ -63,7 +67,7 @@ class RelationshipPatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:LabelA{idStart: event.start.keys.idStart})
             |SET start = event.start.properties
             |SET start += event.start.keys
@@ -81,14 +85,15 @@ class RelationshipPatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeNodeEvents(events))
     }
 
-    @Test
-    fun `should get all properties with reverse start-end`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get all properties with reverse start-end`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val startPattern = "LabelA{!idStart}"
         val endPattern = "LabelB{!idEnd}"
         val pattern = "(:$endPattern)<-[:REL_TYPE]-(:$startPattern)"
         val config = RelationshipPatternConfiguration.parse(pattern, mergeNodeProps = false, mergeRelProps = false)
-        val strategy = RelationshipPatternIngestionStrategy(config)
+        val strategy = RelationshipPatternIngestionStrategy(neo4j, config)
         val data = mapOf("idStart" to 1, "idEnd" to 2,
                 "foo" to "foo",
                 "bar" to "bar")
@@ -100,7 +105,7 @@ class RelationshipPatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:LabelA{idStart: event.start.keys.idStart})
             |SET start = event.start.properties
             |SET start += event.start.keys
@@ -118,14 +123,15 @@ class RelationshipPatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeNodeEvents(events))
     }
 
-    @Test
-    fun `should get nested properties`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should get nested properties`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val startPattern = "LabelA{!idStart, foo.mapFoo}"
         val endPattern = "LabelB{!idEnd, bar.mapBar}"
         val pattern = "(:$startPattern)-[:REL_TYPE]->(:$endPattern)"
         val config = RelationshipPatternConfiguration.parse(pattern, mergeNodeProps = false, mergeRelProps = true)
-        val strategy = RelationshipPatternIngestionStrategy(config)
+        val strategy = RelationshipPatternIngestionStrategy(neo4j, config)
         val data = mapOf("idStart" to 1, "idEnd" to 2,
                 "foo" to mapOf("mapFoo" to "mapFoo"),
                 "bar" to mapOf("mapBar" to "mapBar"),
@@ -139,7 +145,7 @@ class RelationshipPatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MERGE (start:LabelA{idStart: event.start.keys.idStart})
             |SET start += event.start.properties
             |SET start += event.start.keys
@@ -159,14 +165,15 @@ class RelationshipPatternIngestionStrategyTest {
         assertEquals(emptyList(), strategy.mergeNodeEvents(events))
     }
 
-    @Test
-    fun `should delete the relationship`() {
+    @ParameterizedTest
+    @ArgumentsSource(SupportedVersionsProvider::class)
+    fun `should delete the relationship`(neo4j: Neo4j, expectedPrefix: String) {
         // given
         val startPattern = "LabelA{!idStart}"
         val endPattern = "LabelB{!idEnd}"
         val pattern = "(:$startPattern)-[:REL_TYPE]->(:$endPattern)"
         val config = RelationshipPatternConfiguration.parse(pattern, mergeNodeProps = false, mergeRelProps = false)
-        val strategy = RelationshipPatternIngestionStrategy(config)
+        val strategy = RelationshipPatternIngestionStrategy(neo4j, config)
         val data = mapOf("idStart" to 1, "idEnd" to 2,
                 "foo" to "foo",
                 "bar" to "bar")
@@ -178,7 +185,7 @@ class RelationshipPatternIngestionStrategyTest {
         // then
         assertEquals(1, queryEvents.size)
         assertEquals("""
-            |${StreamsUtils.UNWIND}
+            |${expectedPrefix}${StreamsUtils.UNWIND}
             |MATCH (start:LabelA{idStart: event.start.keys.idStart})
             |MATCH (end:LabelB{idEnd: event.end.keys.idEnd})
             |MATCH (start)-[r:REL_TYPE]->(end)

@@ -1,5 +1,8 @@
 package streams.service.sink.strategy
 
+import org.neo4j.caniuse.CanIUse.canIUse
+import org.neo4j.caniuse.Cypher
+import org.neo4j.caniuse.Neo4j
 import streams.events.EntityType
 import streams.extensions.quote
 import streams.utils.JSONUtils
@@ -25,7 +28,7 @@ data class CUDNode(override val op: CUDOperations,
                    val detach: Boolean = true,
                    val labels: List<String> = emptyList()): CUD() {
     override val type = EntityType.node
-    
+
     fun toMap(): Map<String, Any> {
         return when (op) {
             CUDOperations.delete -> mapOf("ids" to ids)
@@ -59,7 +62,8 @@ data class CUDRelationship(override val op: CUDOperations,
 }
 
 
-class CUDIngestionStrategy: IngestionStrategy {
+class CUDIngestionStrategy(private val neo4j: Neo4j): IngestionStrategy {
+    private val cypherPrefix = if (canIUse(Cypher.explicitCypher5Selection()).withNeo4j(neo4j)) "CYPHER 5 " else ""
 
     companion object {
         @JvmStatic val ID_KEY = "ids"
@@ -87,14 +91,14 @@ class CUDIngestionStrategy: IngestionStrategy {
     }
 
     private fun buildNodeCreateStatement(labels: List<String>): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |CREATE (n${getLabelsAsString(labels)})
             |SET n = event.properties
         """.trimMargin()
 
     private fun buildRelCreateStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${StreamsUtils.WITH_EVENT_FROM}
             |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
@@ -103,14 +107,14 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildNodeMergeStatement(labels: List<String>, ids: Set<String>): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(keyword = "MERGE", ids = ids, labels = labels)}
             |SET n += event.properties
         """.trimMargin()
 
     private fun buildRelMergeStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(keyword = from.getOperation(), ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${StreamsUtils.WITH_EVENT_FROM}
             |${buildNodeLookupByIds(keyword = to.getOperation(), ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
@@ -119,14 +123,14 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildNodeUpdateStatement(labels: List<String>, ids: Set<String>): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = ids, labels = labels)}
             |SET n += event.properties
         """.trimMargin()
 
     private fun buildRelUpdateStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                        rel_type: String): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |MATCH ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)
@@ -134,14 +138,14 @@ class CUDIngestionStrategy: IngestionStrategy {
         """.trimMargin()
 
     private fun buildDeleteStatement(labels: List<String>, ids: Set<String>, detach: Boolean): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = ids, labels = labels)}
             |${if (detach) "DETACH " else ""}DELETE n
         """.trimMargin()
 
     private fun buildRelDeleteStatement(from: NodeRelMetadata, to: NodeRelMetadata,
                                         rel_type: String): String = """
-            |${StreamsUtils.UNWIND}
+            |${cypherPrefix}${StreamsUtils.UNWIND}
             |${buildNodeLookupByIds(ids = from.ids, labels = from.labels, identifier = FROM_KEY, field = FROM_KEY)}
             |${buildNodeLookupByIds(ids = to.ids, labels = to.labels, identifier = TO_KEY, field = TO_KEY)}
             |MATCH ($FROM_KEY)-[r:${rel_type.quote()}]->($TO_KEY)

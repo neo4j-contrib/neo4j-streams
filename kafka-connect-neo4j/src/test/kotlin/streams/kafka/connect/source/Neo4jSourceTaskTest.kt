@@ -46,9 +46,9 @@ class Neo4jSourceTaskTest {
         @AfterClass
         @JvmStatic
         fun tearDownContainer() {
-            driver.let { StreamsUtils.closeSafetely(it) }
-            session.let { StreamsUtils.closeSafetely(it) }
-            StreamsUtils.closeSafetely(neo4j)
+            driver.let { StreamsUtils.closeSafely(it) }
+            session.let { StreamsUtils.closeSafely(it) }
+            StreamsUtils.closeSafely(neo4j)
         }
     }
 
