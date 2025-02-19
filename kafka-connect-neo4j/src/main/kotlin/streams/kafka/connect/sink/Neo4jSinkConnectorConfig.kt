@@ -5,7 +5,7 @@ import org.apache.kafka.common.config.ConfigDef
 import org.apache.kafka.common.config.ConfigException
 import org.apache.kafka.connect.sink.SinkTask
 import org.neo4j.caniuse.Neo4j
-import org.neo4j.caniuse.detectedWith
+import org.neo4j.caniuse.Neo4jDetector
 import streams.kafka.connect.common.ConfigGroup
 import streams.kafka.connect.common.ConnectorType
 import streams.kafka.connect.common.Neo4jConnectorConfig
@@ -33,7 +33,7 @@ class Neo4jSinkConnectorConfig(originals: Map<*, *>) : Neo4jConnectorConfig(conf
 
     val kafkaBrokerProperties: Map<String, Any?>
 
-    val neo4j: Neo4j by lazy { Neo4j.detectedWith(this.driver) }
+    val neo4j: Neo4j by lazy { Neo4jDetector.detect(this.driver) }
 
     init {
         parallelBatches = getBoolean(BATCH_PARALLELIZE)
