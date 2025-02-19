@@ -1,5 +1,8 @@
 package streams.service.sink.strategy
 
+import org.neo4j.caniuse.CanIUse.canIUse
+import org.neo4j.caniuse.Cypher
+import org.neo4j.caniuse.Neo4j
 import streams.events.*
 import streams.extensions.quote
 import streams.service.StreamsSinkEntity
@@ -10,7 +13,8 @@ import streams.utils.SchemaUtils.toStreamsTransactionEvent
 import streams.utils.StreamsUtils
 
 
-class SchemaIngestionStrategy: IngestionStrategy {
+class SchemaIngestionStrategy(neo4j: Neo4j): IngestionStrategy {
+    private val cypherPrefix = if (canIUse(Cypher.explicitCypher5Selection()).withNeo4j(neo4j)) "CYPHER 5 " else ""
 
     private fun prepareRelationshipEvents(events: List<StreamsTransactionEvent>, withProperties: Boolean = true): Map<RelationshipSchemaMetadata, List<Map<String, Any>>> = events
             .mapNotNull {
@@ -77,7 +81,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 .map {
                     val label = it.key.label.quote()
                     val query = """
-                        |${StreamsUtils.UNWIND}
+                        |${cypherPrefix}${StreamsUtils.UNWIND}
                         |MERGE (start${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
                         |MERGE (end${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
                         |MERGE (start)-[r:$label]->(end)
@@ -94,7 +98,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 .map {
                     val label = it.key.label.quote()
                     val query = """
-                        |${StreamsUtils.UNWIND}
+                        |${cypherPrefix}${StreamsUtils.UNWIND}
                         |MATCH (start${getLabelsAsString(it.key.startLabels)}{${getNodeKeysAsString("start", it.key.startKeys)}})
                         |MATCH (end${getLabelsAsString(it.key.endLabels)}{${getNodeKeysAsString("end", it.key.endKeys)}})
                         |MATCH (start)-[r:$label]->(end)
@@ -121,7 +125,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                     val labels = it.key.mapNotNull { it.label }
                     val nodeKeys = it.key.flatMap { it.properties }.toSet()
                     val query = """
-                        |${StreamsUtils.UNWIND}
+                        |${cypherPrefix}${StreamsUtils.UNWIND}
                         |MATCH (n${getLabelsAsString(labels)}{${getNodeKeysAsString(keys = nodeKeys)}})
                         |DETACH DELETE n
                     """.trimMargin()
@@ -165,7 +169,7 @@ class SchemaIngestionStrategy: IngestionStrategy {
                 .groupBy({ it.first }, { it.second })
                 .map { map ->
                     var query = """
-                        |${StreamsUtils.UNWIND}
+                        |${cypherPrefix}${StreamsUtils.UNWIND}
                         |MERGE (n${getLabelsAsString(map.key.constraints.mapNotNull { it.label })}{${getNodeKeysAsString(keys = map.key.keys)}})
                         |SET n = event.properties
                     """.trimMargin()
