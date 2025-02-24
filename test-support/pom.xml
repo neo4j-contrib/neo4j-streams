@@ -5,10 +5,10 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>${project.version}</version>
+        <version>5.0.8</version>
     </parent>
     <artifactId>neo4j-streams-test-support</artifactId>
-    <version>${project.version}</version>
+    <version>5.0.8</version>
     <packaging>jar</packaging>
     <name>Neo4j Streams - Test Support</name>
     <description>Neo4j Streams - A set of utility functions for Streams Tests</description>
@@ -33,7 +33,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>${project.version}</version>
+            <version>5.0.8</version>
         </dependency>
         <dependency>
             <groupId>org.neo4j.driver</groupId>
