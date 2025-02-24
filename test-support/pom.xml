@@ -33,7 +33,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-streams-common</artifactId>
-            <version>5.0.8</version>
+            <version>${project.version}</version>
         </dependency>
         <dependency>
             <groupId>org.neo4j.driver</groupId>
