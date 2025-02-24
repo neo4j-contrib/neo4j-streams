@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.neo4j</groupId>
     <artifactId>neo4j-streams-parent</artifactId>
-    <version>5.0.7</version>
+    <version>${project.version}</version>
     <packaging>pom</packaging>
     <name>Neo4j Streams - Parent</name>
     <description>Neo4j Integration for streaming platforms</description>
@@ -64,6 +64,7 @@
         <neo4j.java.driver.version>4.4.19</neo4j.java.driver.version>
         <netty-bom.version>4.1.118.Final</netty-bom.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.version>5.0.8</project.version>
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <sortpom-maven-plugin.version>4.0.0</sortpom-maven-plugin.version>
         <testcontainers.version>1.20.5</testcontainers.version>

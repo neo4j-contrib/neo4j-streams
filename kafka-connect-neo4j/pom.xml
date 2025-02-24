@@ -5,10 +5,10 @@
     <parent>
         <groupId>org.neo4j</groupId>
         <artifactId>neo4j-streams-parent</artifactId>
-        <version>5.0.7</version>
+        <version>${project.version}</version>
     </parent>
     <artifactId>kafka-connect-neo4j</artifactId>
-    <version>5.0.7</version>
+    <version>${project.version}</version>
     <packaging>jar</packaging>
     <name>Kafka Connect Neo4j</name>
     <description>A Kafka Connect Neo4j Connector for kafka-connect-neo4j</description>
