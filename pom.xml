@@ -55,7 +55,7 @@
         <kafka.version>3.8.1</kafka.version>
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.coroutines.version>1.10.1</kotlin.coroutines.version>
-        <kotlin.version>2.1.10</kotlin.version>
+        <kotlin.version>2.1.20</kotlin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
         <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
