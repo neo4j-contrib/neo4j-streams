@@ -62,7 +62,7 @@
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
         <mockito.version>5.17.0</mockito.version>
         <neo4j.java.driver.version>4.4.20</neo4j.java.driver.version>
-        <netty-bom.version>4.2.0.Final</netty-bom.version>
+        <netty-bom.version>4.2.1.Final</netty-bom.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j-api.version>1.7.36</slf4j-api.version>
         <sortpom-maven-plugin.version>4.0.0</sortpom-maven-plugin.version>
