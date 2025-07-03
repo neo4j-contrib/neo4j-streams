@@ -57,7 +57,7 @@
         <kotlin.coroutines.version>1.10.2</kotlin.coroutines.version>
         <kotlin.version>2.2.0</kotlin.version>
         <maven-compiler-plugin.version>3.14.0</maven-compiler-plugin.version>
-        <maven-enforcer-plugin.version>3.5.0</maven-enforcer-plugin.version>
+        <maven-enforcer-plugin.version>3.6.0</maven-enforcer-plugin.version>
         <maven-resources-plugin.version>3.3.1</maven-resources-plugin.version>
         <maven-surefire-plugin.version>3.5.3</maven-surefire-plugin.version>
         <mockito.version>5.18.0</mockito.version>
