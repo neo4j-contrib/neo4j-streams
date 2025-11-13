@@ -2,7 +2,6 @@ package org.neo4j.test.rule;
 
 import org.neo4j.common.DependencyResolver;
 import org.neo4j.dbms.api.DatabaseManagementService;
-import org.neo4j.dbms.api.DatabaseManagementServiceBuilder;
 import org.neo4j.graphdb.GraphDatabaseService;
 import org.neo4j.graphdb.QueryExecutionException;
 import org.neo4j.graphdb.ResultTransformer;
@@ -17,6 +16,7 @@ import org.neo4j.kernel.impl.coreapi.InternalTransaction;
 import org.neo4j.kernel.impl.factory.DbmsInfo;
 import org.neo4j.kernel.internal.GraphDatabaseAPI;
 import org.neo4j.monitoring.Monitors;
+import org.neo4j.test.TestDatabaseManagementServiceBuilder;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -32,7 +32,7 @@ import static org.neo4j.configuration.GraphDatabaseSettings.DEFAULT_DATABASE_NAM
 @Deprecated
 public abstract class DbmsRule extends ExternalResource implements GraphDatabaseAPI
 {
-    private DatabaseManagementServiceBuilder databaseBuilder;
+    private TestDatabaseManagementServiceBuilder databaseBuilder;
     private GraphDatabaseAPI database;
     private boolean startEagerly = true;
     private final Map<Setting<?>, Object> globalConfig = new HashMap<>();
@@ -216,9 +216,9 @@ public abstract class DbmsRule extends ExternalResource implements GraphDatabase
     {
     }
 
-    protected abstract DatabaseManagementServiceBuilder newFactory();
+    protected abstract TestDatabaseManagementServiceBuilder newFactory();
 
-    protected void configure( DatabaseManagementServiceBuilder databaseFactory )
+    protected void configure( TestDatabaseManagementServiceBuilder databaseFactory )
     {
         // Override to configure the database factory
     }

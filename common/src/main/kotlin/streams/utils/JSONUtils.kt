@@ -47,10 +47,10 @@ fun Point.toStreamsPoint(): StreamsPoint {
     val crsType = this.crs.type
     val coordinate = this.coordinates[0].coordinate
     return when (this.crs) {
-        CoordinateReferenceSystem.Cartesian -> StreamsPointCartesian2D(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.Cartesian_3D -> StreamsPointCartesian3D(crsType, coordinate[0], coordinate[1], coordinate[2])
-        CoordinateReferenceSystem.WGS84 -> StreamsPointWgs2D(crsType, coordinate[0], coordinate[1])
-        CoordinateReferenceSystem.WGS84_3D -> StreamsPointWgs3D(crsType, coordinate[0], coordinate[1], coordinate[2])
+        CoordinateReferenceSystem.CARTESIAN -> StreamsPointCartesian2D(crsType, coordinate[0], coordinate[1])
+        CoordinateReferenceSystem.CARTESIAN_3D -> StreamsPointCartesian3D(crsType, coordinate[0], coordinate[1], coordinate[2])
+        CoordinateReferenceSystem.WGS_84 -> StreamsPointWgs2D(crsType, coordinate[0], coordinate[1])
+        CoordinateReferenceSystem.WGS_84_3D -> StreamsPointWgs3D(crsType, coordinate[0], coordinate[1], coordinate[2])
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
@@ -71,10 +71,10 @@ fun Map<String, Any?>.toMapValue(allowNulls: Boolean): MapValue {
 fun PointValue.toStreamsPoint(): StreamsPoint {
     val point = this.asPoint()
     return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.CARTESIAN.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.CARTESIAN.name, point.x(), point.y())
+        CoordinateReferenceSystem.CARTESIAN_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.CARTESIAN_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.WGS_84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS_84.name, point.x(), point.y())
+        CoordinateReferenceSystem.WGS_84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS_84_3D.name, point.x(), point.y(), point.z())
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }
@@ -82,10 +82,10 @@ fun PointValue.toStreamsPoint(): StreamsPoint {
 fun org.neo4j.driver.types.Point.toStreamsPoint(): StreamsPoint {
     val point = this
     return when (val crsType = point.srid()) {
-        CoordinateReferenceSystem.Cartesian.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.Cartesian.name, point.x(), point.y())
-        CoordinateReferenceSystem.Cartesian_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.Cartesian_3D.name, point.x(), point.y(), point.z())
-        CoordinateReferenceSystem.WGS84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS84.name, point.x(), point.y())
-        CoordinateReferenceSystem.WGS84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS84_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.CARTESIAN.code -> StreamsPointCartesian2D(CoordinateReferenceSystem.CARTESIAN.name, point.x(), point.y())
+        CoordinateReferenceSystem.CARTESIAN_3D.code -> StreamsPointCartesian3D(CoordinateReferenceSystem.CARTESIAN_3D.name, point.x(), point.y(), point.z())
+        CoordinateReferenceSystem.WGS_84.code -> StreamsPointWgs2D(CoordinateReferenceSystem.WGS_84.name, point.x(), point.y())
+        CoordinateReferenceSystem.WGS_84_3D.code -> StreamsPointWgs3D(CoordinateReferenceSystem.WGS_84_3D.name, point.x(), point.y(), point.z())
         else -> throw IllegalArgumentException("Point type $crsType not supported")
     }
 }

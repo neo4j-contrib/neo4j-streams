@@ -102,5 +102,5 @@ object Neo4jUtils {
 
     fun isReadReplica(db: GraphDatabaseAPI): Boolean = db.dependencyResolver
         .resolveDependency(Config::class.java)
-        .let { it.get(GraphDatabaseSettings.mode).name == "READ_REPLICA" }
+        .let { it.get(GraphDatabaseSettings.read_only_database_default) }
 }

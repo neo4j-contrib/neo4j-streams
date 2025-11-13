@@ -50,7 +50,7 @@ object ProcedureUtils {
         return executeOrFallback(execute, fallback)
     }
 
-    fun isCluster(db: GraphDatabaseAPI): Boolean = db.dbmsInfo() == DbmsInfo.CORE || db.dbmsInfo() == DbmsInfo.READ_REPLICA
+    fun isCluster(db: GraphDatabaseAPI): Boolean = db.dbmsInfo() == DbmsInfo.ENTERPRISE
 
     fun isCluster(dbms: DatabaseManagementService): Boolean = dbms.listDatabases()
         .firstOrNull { it != StreamsUtils.SYSTEM_DATABASE_NAME }
