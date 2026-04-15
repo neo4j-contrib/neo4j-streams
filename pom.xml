@@ -56,7 +56,7 @@
         <kotlin.compiler.incremental>true</kotlin.compiler.incremental>
         <kotlin.coroutines.version>1.10.2</kotlin.coroutines.version>
         <kotlin.version>2.3.20</kotlin.version>
-        <maven-compiler-plugin.version>3.14.1</maven-compiler-plugin.version>
+        <maven-compiler-plugin.version>3.15.0</maven-compiler-plugin.version>
         <maven-enforcer-plugin.version>3.6.2</maven-enforcer-plugin.version>
         <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
