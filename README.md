@@ -1,3 +1,7 @@
+> [!CAUTION]
+> This branch (4.1) has reached EOL (end of life) and you should not expect any new updates.
+> There is a newer Neo4j Kafka connector avaialble and at https://github.com/neo4j/neo4j-kafka-connector.
+
 # Neo4j Streaming Data Integrations
 
 ![(:Neo4j)-[:LOVES]->(:Kafka:Confluent)](https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png "(:Neo4j)-[:LOVES]->(:Kafka:Confluent)")
@@ -5,10 +9,6 @@
 This project integrates Neo4j with streaming data solutions.
 
 Currently it provides an integration with Apache Kafka and the Confluent Platform.
-
-> [!CAUTION]
-> This branch (4.1) has reached EOL (end of life) and you should not expect any new updates.
-> Newer versions of this connector are now maintained at https://github.com/neo4j/neo4j-kafka-connector.
 
 The project contains these components:
 
