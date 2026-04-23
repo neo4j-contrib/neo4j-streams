@@ -1,6 +1,6 @@
 > [!CAUTION]
 > This branch (4.1) has reached EOL (end of life) and you should not expect any new updates.
-> There is a newer Neo4j Kafka connector avaialble and at https://github.com/neo4j/neo4j-kafka-connector.
+> There is a newer Neo4j Kafka connector available at https://github.com/neo4j/neo4j-kafka-connector.
 
 # Neo4j Streaming Data Integrations
 
