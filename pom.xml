@@ -61,7 +61,7 @@
         <maven-resources-plugin.version>3.5.0</maven-resources-plugin.version>
         <maven-surefire-plugin.version>3.5.5</maven-surefire-plugin.version>
         <mockito.version>5.23.0</mockito.version>
-        <neo4j.java.driver.version>4.4.22</neo4j.java.driver.version>
+        <neo4j.java.driver.version>4.4.23</neo4j.java.driver.version>
         <netty-bom.version>4.1.132.Final</netty-bom.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <slf4j-api.version>1.7.36</slf4j-api.version>
