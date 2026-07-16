@@ -6,6 +6,9 @@ on:
   schedule:
     - cron: "0 7 * * *"
 
+permissions:
+  contents: read
+
 jobs:
   build-dependency-tree:
     name: Build dependency tree
