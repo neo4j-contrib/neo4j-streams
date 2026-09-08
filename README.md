@@ -1,8 +1,12 @@
+> [!CAUTION]
+> This branch (5.0) is deprecated and you should not expect any new feature updates.
+> There is a newer Neo4j Kafka connector available at https://github.com/neo4j/neo4j-kafka-connector.
+
 # Neo4j Connector for Kafka 5.0
 
 ![(:Neo4j)-[:LOVES]->(:Kafka:Confluent)](https://github.com/neo4j-contrib/neo4j-streams/raw/gh-pages/3.4/images/neo4j-loves-confluent.png "(:Neo4j)-[:LOVES]->(:Kafka:Confluent)")
 
-This project integrates Neo4j with *Apache Kafka and the Confluent Platform*.
+This project integrates Neo4j with _Apache Kafka and the Confluent Platform_.
 
 > [!IMPORTANT]  
 > Newer versions of this connector are now maintained at https://github.com/neo4j/neo4j-kafka-connector.
@@ -40,4 +44,4 @@ Please raise any documentation updates by creating a PR against it.
 
 ## License
 
-Neo4j Streams is licensed under the terms of the Apache License, version 2.0.  See `LICENSE` for more details. 
+Neo4j Streams is licensed under the terms of the Apache License, version 2.0. See `LICENSE` for more details.
